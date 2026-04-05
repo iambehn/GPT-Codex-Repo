@@ -1,0 +1,181 @@
+{
+  "template_id": "recap_montage",
+  "version": 1,
+  "deprecated": false,
+  "display_name": "Recap Montage v1",
+  "description": "Multi-clip compilation assembled from a longer session recording — hard cuts between clips, energetic music, zoom-blur transitions.",
+  "created_at": "2026-04-05",
+
+  "trigger_conditions": {
+    "min_score_threshold": 0.50,
+    "conditions": [
+      {
+        "field": "motion_level",
+        "operator": "in",
+        "value": ["medium", "high"],
+        "weight": 0.30
+      },
+      {
+        "field": "audio_energy",
+        "operator": "in",
+        "value": ["medium", "high"],
+        "weight": 0.20
+      },
+      {
+        "field": "duration_seconds",
+        "operator": "gte",
+        "value": 120,
+        "weight": 0.30
+      },
+      {
+        "field": "keywords",
+        "operator": "contains_any",
+        "value": ["game", "round", "match", "session", "ranked", "plays", "montage", "compilation", "highlights"],
+        "weight": 0.20
+      }
+    ]
+  },
+
+  "timeline": {
+    "input_mode": "multi",
+    "max_input_clips": 10,
+    "target_duration_seconds": 60.0,
+    "target_duration_strategy": "hard_cut",
+    "segments": [
+      { "name": "intro", "duration_seconds": 3.0, "source": "static_asset" },
+      { "name": "main", "duration_seconds": 52.0, "source": "clip" },
+      { "name": "outro", "duration_seconds": 5.0, "source": "static_asset" }
+    ],
+    "intro": {
+      "enabled": true,
+      "duration_seconds": 3.0,
+      "asset_path": null
+    },
+    "outro": {
+      "enabled": true,
+      "duration_seconds": 5.0,
+      "asset_path": null
+    }
+  },
+
+  "captions": {
+    "enabled": true,
+    "source": "transcript",
+    "style": {
+      "font_family": "Montserrat-Bold",
+      "font_size_px": 52,
+      "font_color": "#FFFFFF",
+      "stroke_color": "#000000",
+      "stroke_width_px": 3,
+      "background": {
+        "enabled": false,
+        "color": "#000000BB",
+        "padding_px": 0
+      },
+      "alignment": "bottom_center",
+      "word_highlight": {
+        "enabled": false,
+        "highlight_color": "#FFFFFF"
+      }
+    },
+    "max_chars_per_line": 28,
+    "max_lines_on_screen": 2,
+    "static_lines": []
+  },
+
+  "visual_effects": {
+    "vertical_fill": {
+      "method": "blur_pillarbox",
+      "blur_strength": 40
+    },
+    "zoom": {
+      "enabled": true,
+      "type": "dynamic",
+      "intensity": 1.06,
+      "duration_seconds": 0.5
+    },
+    "color_grade": {
+      "enabled": true,
+      "preset": "vibrant",
+      "brightness": 0.0,
+      "contrast": 0.10,
+      "saturation": 0.20,
+      "lut_path": null
+    },
+    "transitions": {
+      "between_clips": "zoom_blur",
+      "duration_seconds": 0.20
+    },
+    "overlays": [
+      {
+        "type": "text",
+        "asset_path": null,
+        "text_content": "Follow for more",
+        "position": "bottom_right",
+        "size_percent": 8.0,
+        "opacity": 0.85,
+        "start_seconds": 55.0,
+        "end_seconds": null
+      }
+    ],
+    "vignette": {
+      "enabled": true,
+      "intensity": 0.25
+    },
+    "film_grain": {
+      "enabled": false,
+      "intensity": 0.0
+    },
+    "chromatic_aberration": {
+      "enabled": false,
+      "intensity": 0.0
+    },
+    "flash_cuts": {
+      "enabled": true,
+      "color": "#FFFFFF",
+      "duration_frames": 2
+    }
+  },
+
+  "audio": {
+    "background_music": {
+      "enabled": true,
+      "asset_path": null,
+      "volume_db": -14.0,
+      "fade_in_seconds": 1.0,
+      "fade_out_seconds": 2.0,
+      "loop": true
+    },
+    "original_audio": {
+      "enabled": true,
+      "volume_db": -8.0,
+      "normalize": true
+    },
+    "ducking": {
+      "enabled": true,
+      "duck_level_db": -26.0,
+      "attack_ms": 50,
+      "release_ms": 250
+    },
+    "sound_effects": []
+  },
+
+  "output": {
+    "resolution": {
+      "width": 1080,
+      "height": 1920
+    },
+    "aspect_ratio": "9:16",
+    "fps": 60,
+    "codec": "h264",
+    "bitrate_kbps": 8000,
+    "platform_targets": ["youtube_shorts", "tiktok", "instagram_reels"],
+    "safe_zone": {
+      "enabled": true,
+      "top_percent": 8.0,
+      "bottom_percent": 22.0,
+      "left_percent": 3.0,
+      "right_percent": 3.0
+    }
+  }
+}

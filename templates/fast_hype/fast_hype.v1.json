@@ -1,0 +1,164 @@
+{
+  "template_id": "fast_hype",
+  "version": 1,
+  "deprecated": false,
+  "display_name": "Fast Hype v1",
+  "description": "High-energy vertical clip for kill streaks, clutch moments, and aggressive pacing — fast cuts, punch-in zoom, vibrant color.",
+  "created_at": "2026-04-05",
+
+  "trigger_conditions": {
+    "min_score_threshold": 0.60,
+    "conditions": [
+      {
+        "field": "motion_level",
+        "operator": "eq",
+        "value": "high",
+        "weight": 0.35
+      },
+      {
+        "field": "audio_energy",
+        "operator": "in",
+        "value": ["medium", "high"],
+        "weight": 0.25
+      },
+      {
+        "field": "duration_seconds",
+        "operator": "between",
+        "value": [8, 90],
+        "weight": 0.15
+      },
+      {
+        "field": "keywords",
+        "operator": "contains_any",
+        "value": ["kill", "clutch", "ace", "win", "streak", "insane", "highlight", "headshot", "eliminated", "destroyed"],
+        "weight": 0.25
+      }
+    ]
+  },
+
+  "timeline": {
+    "input_mode": "single",
+    "target_duration_seconds": 30.0,
+    "target_duration_strategy": "trim_end",
+    "intro": {
+      "enabled": false,
+      "duration_seconds": 0,
+      "asset_path": null
+    },
+    "outro": {
+      "enabled": false,
+      "duration_seconds": 0,
+      "asset_path": null
+    }
+  },
+
+  "captions": {
+    "enabled": true,
+    "source": "transcript",
+    "style": {
+      "font_family": "Impact",
+      "font_size_px": 72,
+      "font_color": "#FFFFFF",
+      "stroke_color": "#000000",
+      "stroke_width_px": 4,
+      "background": {
+        "enabled": false,
+        "color": "#000000CC",
+        "padding_px": 0
+      },
+      "alignment": "bottom_center",
+      "word_highlight": {
+        "enabled": true,
+        "highlight_color": "#FF4500"
+      }
+    },
+    "max_chars_per_line": 25,
+    "max_lines_on_screen": 2,
+    "static_lines": []
+  },
+
+  "visual_effects": {
+    "vertical_fill": {
+      "method": "blur_pillarbox",
+      "blur_strength": 40
+    },
+    "zoom": {
+      "enabled": true,
+      "type": "punch_in",
+      "intensity": 1.08,
+      "duration_seconds": 0.15
+    },
+    "color_grade": {
+      "enabled": true,
+      "preset": "vibrant",
+      "brightness": 0.05,
+      "contrast": 0.20,
+      "saturation": 0.30,
+      "lut_path": null
+    },
+    "transitions": {
+      "between_clips": "flash",
+      "duration_seconds": 0.08
+    },
+    "overlays": [],
+    "vignette": {
+      "enabled": true,
+      "intensity": 0.30
+    },
+    "film_grain": {
+      "enabled": false,
+      "intensity": 0.0
+    },
+    "chromatic_aberration": {
+      "enabled": true,
+      "intensity": 0.40
+    },
+    "flash_cuts": {
+      "enabled": true,
+      "color": "#FFFFFF",
+      "duration_frames": 2
+    }
+  },
+
+  "audio": {
+    "background_music": {
+      "enabled": true,
+      "asset_path": null,
+      "volume_db": -16.0,
+      "fade_in_seconds": 0.5,
+      "fade_out_seconds": 1.0,
+      "loop": true
+    },
+    "original_audio": {
+      "enabled": true,
+      "volume_db": -2.0,
+      "normalize": true
+    },
+    "ducking": {
+      "enabled": true,
+      "duck_level_db": -28.0,
+      "attack_ms": 40,
+      "release_ms": 200
+    },
+    "sound_effects": []
+  },
+
+  "output": {
+    "resolution": {
+      "width": 1080,
+      "height": 1920
+    },
+    "aspect_ratio": "9:16",
+    "fps": 60,
+    "codec": "h264",
+    "bitrate_kbps": 8000,
+    "platform_targets": ["youtube_shorts", "tiktok", "instagram_reels"],
+    "safe_zone": {
+      "enabled": true,
+      "top_percent": 8.0,
+      "bottom_percent": 20.0,
+      "left_percent": 3.0,
+      "right_percent": 3.0
+    }
+  }
+}

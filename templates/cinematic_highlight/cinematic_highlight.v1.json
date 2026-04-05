@@ -1,0 +1,171 @@
+{
+  "template_id": "cinematic_highlight",
+  "version": 1,
+  "deprecated": false,
+  "display_name": "Cinematic Highlight v1",
+  "description": "A single impactful moment presented with drama and weight — slow push zoom, cinematic color, minimal text, high quality source preferred.",
+  "created_at": "2026-04-05",
+
+  "trigger_conditions": {
+    "min_score_threshold": 0.55,
+    "conditions": [
+      {
+        "field": "motion_level",
+        "operator": "in",
+        "value": ["medium", "high"],
+        "weight": 0.25
+      },
+      {
+        "field": "quality_tag",
+        "operator": "eq",
+        "value": "high",
+        "weight": 0.30
+      },
+      {
+        "field": "duration_seconds",
+        "operator": "between",
+        "value": [5, 45],
+        "weight": 0.20
+      },
+      {
+        "field": "keywords",
+        "operator": "contains_any",
+        "value": ["clutch", "snipe", "god", "moment", "perfect", "insane", "one shot", "unreal", "impossible"],
+        "weight": 0.25
+      }
+    ]
+  },
+
+  "timeline": {
+    "input_mode": "single",
+    "target_duration_seconds": 45.0,
+    "target_duration_strategy": "speed_ramp",
+    "intro": {
+      "enabled": false,
+      "duration_seconds": 0,
+      "asset_path": null
+    },
+    "outro": {
+      "enabled": false,
+      "duration_seconds": 0,
+      "asset_path": null
+    }
+  },
+
+  "captions": {
+    "enabled": true,
+    "source": "static",
+    "style": {
+      "font_family": "Montserrat-Bold",
+      "font_size_px": 52,
+      "font_color": "#FFFFFF",
+      "stroke_color": "#000000",
+      "stroke_width_px": 2,
+      "background": {
+        "enabled": false,
+        "color": "#000000AA",
+        "padding_px": 0
+      },
+      "alignment": "top_center",
+      "word_highlight": {
+        "enabled": false,
+        "highlight_color": "#FFFFFF"
+      }
+    },
+    "max_chars_per_line": 30,
+    "max_lines_on_screen": 1,
+    "static_lines": [
+      {
+        "text": "",
+        "start_seconds": 1.0,
+        "end_seconds": 4.0,
+        "position_override": "top_center"
+      }
+    ]
+  },
+
+  "visual_effects": {
+    "vertical_fill": {
+      "method": "blur_pillarbox",
+      "blur_strength": 50
+    },
+    "zoom": {
+      "enabled": true,
+      "type": "slow_push",
+      "intensity": 1.04,
+      "duration_seconds": 3.0
+    },
+    "color_grade": {
+      "enabled": true,
+      "preset": "cinematic",
+      "brightness": -0.05,
+      "contrast": 0.15,
+      "saturation": -0.10,
+      "lut_path": null
+    },
+    "transitions": {
+      "between_clips": "crossfade",
+      "duration_seconds": 0.50
+    },
+    "overlays": [],
+    "vignette": {
+      "enabled": true,
+      "intensity": 0.50
+    },
+    "film_grain": {
+      "enabled": true,
+      "intensity": 0.20
+    },
+    "chromatic_aberration": {
+      "enabled": false,
+      "intensity": 0.0
+    },
+    "flash_cuts": {
+      "enabled": false,
+      "color": "#FFFFFF",
+      "duration_frames": 1
+    }
+  },
+
+  "audio": {
+    "background_music": {
+      "enabled": true,
+      "asset_path": null,
+      "volume_db": -20.0,
+      "fade_in_seconds": 2.0,
+      "fade_out_seconds": 3.0,
+      "loop": true
+    },
+    "original_audio": {
+      "enabled": true,
+      "volume_db": -6.0,
+      "normalize": true
+    },
+    "ducking": {
+      "enabled": false,
+      "duck_level_db": -30.0,
+      "attack_ms": 50,
+      "release_ms": 300
+    },
+    "sound_effects": []
+  },
+
+  "output": {
+    "resolution": {
+      "width": 1920,
+      "height": 1080
+    },
+    "aspect_ratio": "16:9",
+    "fps": 30,
+    "codec": "h264",
+    "bitrate_kbps": 12000,
+    "platform_targets": ["youtube", "reddit", "twitter_x"],
+    "safe_zone": {
+      "enabled": true,
+      "top_percent": 5.0,
+      "bottom_percent": 5.0,
+      "left_percent": 5.0,
+      "right_percent": 5.0
+    }
+  }
+}
