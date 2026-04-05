@@ -13,11 +13,11 @@
      ↓
 [ Feature Extraction ]
      ↓
-[ AI Scoring Engine ]
-     ↓
-[ Decision Engine ]
+[ Decision Engine ]        ← picks template from metadata (no AI score yet)
      ↓
 [ Processing ]
+     ↓
+[ AI Scoring Engine ]      ← virality score assigned to the finished clip
      ↓
 [ Manual Review ]
      ↓
@@ -68,21 +68,11 @@ Output: a JSON metadata file per clip (e.g., `clip_001_meta.json`)
 
 ---
 
-### 4. AI Scoring Engine
-**Tool:** LLM or rules-based scorer
+### 4. Decision Engine
 
-- Ingest the metadata JSON from Feature Extraction
-- Assign a **virality score** to the clip (e.g., 0–100)
-- Score factors may include: energy, keyword relevance, pacing, audio impact
-- Score is stored in the metadata and displayed during Manual Review
-- Over time, scoring weights should be tunable via the Optimize stage
-
----
-
-### 5. Decision Engine
-
-- Reads clip metadata + virality score
+- Reads clip metadata from Feature Extraction
 - Selects the most appropriate **template** for the clip
+- No virality score exists yet — template selection is driven purely by metadata (duration, motion, audio energy, keywords, quality tag)
 - A template defines:
   - Timeline structure
   - Text/caption placement and style
@@ -100,7 +90,7 @@ Output: a JSON metadata file per clip (e.g., `clip_001_meta.json`)
 
 ---
 
-### 6. Processing
+### 5. Processing
 **Tools:** FFmpeg (primary), Shutter Encoder (GUI/batch), HandBrake (compression)
 
 - Implement a **Watch Folder / Hot Folder** system:
@@ -110,6 +100,19 @@ Output: a JSON metadata file per clip (e.g., `clip_001_meta.json`)
 - Apply the template selected by the Decision Engine
 - Encode output per platform format (see Output stage)
 - HandBrake used for final compression pass if file size is a concern
+
+---
+
+### 6. AI Scoring Engine
+**Tool:** LLM or rules-based scorer
+
+- Runs on the **finished processed clip** (post-production)
+- Assigns a **virality score** to the clip (e.g., 0–100)
+- Score factors may include: energy, keyword relevance, pacing, audio impact, visual quality
+- Score is stored in the clip's metadata JSON and displayed during Manual Review
+- Over time, scoring weights should be tunable via the Optimize stage
+
+> **Note:** A secondary, lightweight pre-processing score (derived purely from raw metadata) could also feed the Decision Engine to help pick templates — but the primary virality score lives here, after the clip is fully produced.
 
 ---
 
@@ -195,3 +198,4 @@ Track tools, repos, and workflows that are relevant to each stage:
 | Date       | Change                          |
 |------------|---------------------------------|
 | 2026-04-05 | Initial planning document       |
+| 2026-04-05 | Corrected pipeline order: AI Scoring moved after Processing; Decision Engine uses metadata only |
