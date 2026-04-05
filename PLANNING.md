@@ -101,6 +101,8 @@ Output: a JSON metadata file per clip (e.g., `clip_001_meta.json`)
 - Encode output per platform format (see Output stage)
 - HandBrake used for final compression pass if file size is a concern
 
+> **Future — Music Library:** Each template has a `background_music` slot with `enabled: false` and `asset_path: null`. When a music library is added, set `enabled: true` and point `asset_path` at an audio file (e.g., `assets/music/hype_track_01.mp3`). Plan to organize the library by energy level or genre and tag tracks to match template types. Audio ducking settings are already configured per template so music will automatically duck under speech once enabled.
+
 ---
 
 ### 6. AI Scoring Engine
@@ -199,3 +201,4 @@ Track tools, repos, and workflows that are relevant to each stage:
 |------------|---------------------------------|
 | 2026-04-05 | Initial planning document       |
 | 2026-04-05 | Corrected pipeline order: AI Scoring moved after Processing; Decision Engine uses metadata only |
+| 2026-04-05 | Template library created: schema + 5 starter templates. Music disabled pending music library. Blur pillarbox set as default vertical fill. |

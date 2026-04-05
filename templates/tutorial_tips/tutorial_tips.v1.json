@@ -145,7 +145,7 @@
 
   "audio": {
     "background_music": {
-      "enabled": true,
+      "enabled": false,
       "asset_path": null,
       "volume_db": -24.0,
       "fade_in_seconds": 1.0,
