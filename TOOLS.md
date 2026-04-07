@@ -91,7 +91,7 @@ Every tool relevant to the gaming clip farming bot pipeline — whether in use, 
 **Cost:** Open Source  
 **What it does:** Extends Whisper with forced alignment to produce word-level timestamps (not just segment-level).  
 **Pipeline fit:** Required if we implement word-highlight caption style (each word lights up as spoken). Segment-level timestamps from vanilla Whisper are too coarse for this effect.  
-**Notes:** https://github.com/m-bain/whisperX — depends on `pyannote.audio` for alignment; requires a Hugging Face token for the alignment model.
+**Notes:** https://github.com/m-bain/whisperX — depends on `pyannote.audio` for alignment; requires a Hugging Face token for the alignment model. Segment-level Whisper is the chosen approach for the initial build; WhisperX is the planned upgrade path when word-highlight captions are implemented.
 
 ---
 
@@ -151,11 +151,12 @@ Every tool relevant to the gaming clip farming bot pipeline — whether in use, 
 
 ### Shutter Encoder
 **Stage:** Processing (batch encode)  
-**Status:** CONSIDERING  
+**Status:** NOT USING  
 **Cost:** Free (open source, Java)  
 **What it does:** GUI-based batch video converter built on top of FFmpeg and HandBrake. Provides a visual preset library for encoding jobs.  
 **Pipeline fit:** Useful for manual batch re-encoding passes or testing encode presets before codifying them as FFmpeg commands. Not part of the automated pipeline — operator-facing tool.  
-**Notes:** https://www.shutterencoder.com — Windows/Mac/Linux. No CLI automation; interaction is through the GUI.
+**Notes:** https://www.shutterencoder.com — Windows/Mac/Linux. No CLI automation; interaction is through the GUI.  
+**Reason not using:** FFmpeg is the permanent processing engine. Shutter Encoder is a GUI wrapper with no CLI automation path — it adds no capability to a scripted pipeline.
 
 ---
 
@@ -265,7 +266,7 @@ Every tool relevant to the gaming clip farming bot pipeline — whether in use, 
 
 ### Claude API
 **Stage:** AI Scoring  
-**Status:** CONSIDERING  
+**Status:** IN USE  
 **Cost:** Token-based (~$3–15 per million tokens depending on model)  
 **What it does:** Anthropic's Claude models via API. Multimodal (text + vision) — can analyze transcripts, metadata, and video frames to score clip quality and generate titles/descriptions.  
 **Pipeline fit:** AI Scoring stage sends clip transcript + metadata to Claude with a scoring prompt. Returns structured JSON with `highlight_score`, `clip_type`, suggested title, and caption text.  
@@ -297,7 +298,7 @@ Every tool relevant to the gaming clip farming bot pipeline — whether in use, 
 
 ### Flask
 **Stage:** Manual Review  
-**Status:** CONSIDERING  
+**Status:** IN USE  
 **Cost:** Open Source  
 **What it does:** Lightweight Python web framework for building server-side web applications and REST APIs.  
 **Pipeline fit:** Backend for the Manual Review UI — serves clip data, accepts approve/reject/edit actions, updates the clip manifest.  
@@ -307,11 +308,12 @@ Every tool relevant to the gaming clip farming bot pipeline — whether in use, 
 
 ### FastAPI
 **Stage:** Manual Review / Pipeline API  
-**Status:** CONSIDERING  
+**Status:** NOT USING  
 **Cost:** Open Source  
 **What it does:** Modern Python web framework with automatic OpenAPI docs, async support, and Pydantic data validation.  
 **Pipeline fit:** Alternative to Flask for the Review UI backend. Better choice if the pipeline exposes a REST API for external integrations (n8n webhooks, mobile review app).  
-**Notes:** https://fastapi.tiangolo.com — async support is useful if the review UI needs to stream video or handle concurrent requests.
+**Notes:** https://fastapi.tiangolo.com — async support is useful if the review UI needs to stream video or handle concurrent requests.  
+**Reason not using:** Flask selected for the Manual Review UI. FastAPI's async benefits and auto-docs aren't needed at this scale.
 
 ---
 
@@ -329,11 +331,12 @@ Every tool relevant to the gaming clip farming bot pipeline — whether in use, 
 
 ### n8n
 **Stage:** Distribution / Workflow Automation  
-**Status:** CONSIDERING  
+**Status:** NOT USING  
 **Cost:** Open Source (self-hosted free); Cloud ~$24/mo  
 **What it does:** Self-hosted workflow automation platform (similar to Zapier/Make but open source). Connects apps and APIs via a visual node editor.  
 **Pipeline fit:** Watch folder → detect approved clips → trigger upload to TikTok/YouTube Shorts/Instagram Reels → log result. Keeps distribution logic out of the Python codebase.  
-**Notes:** https://n8n.io — 400+ integrations. Docker-deployable. Webhook nodes can receive events from the pipeline.
+**Notes:** https://n8n.io — 400+ integrations. Docker-deployable. Webhook nodes can receive events from the pipeline.  
+**Reason not using:** Direct platform API calls chosen for distribution. n8n overhead (separate service, visual editor, Docker) isn't justified at current scale.
 
 ---
 
