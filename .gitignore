@@ -21,19 +21,24 @@ ENV/
 # Pipeline data folders — ignore all video/media/metadata files,
 # but keep the folder structure via .gitkeep
 inbox/**
-!inbox/**/.gitkeep
+!inbox/*/
+!inbox/*/.gitkeep
 
 quarantine/**
-!quarantine/**/.gitkeep
+!quarantine/*/
+!quarantine/*/.gitkeep
 
 processing/**
-!processing/**/.gitkeep
+!processing/*/
+!processing/*/.gitkeep
 
 accepted/**
-!accepted/**/.gitkeep
+!accepted/*/
+!accepted/*/.gitkeep
 
 rejected/**
-!rejected/**/.gitkeep
+!rejected/*/
+!rejected/*/.gitkeep
 
 # Logs — keep folder, ignore log files
 logs/**
