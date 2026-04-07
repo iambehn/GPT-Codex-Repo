@@ -1,0 +1,42 @@
+games:
+  arc_raiders:
+    display_name: "Arc Raiders"
+    twitch_url: "https://www.twitch.tv/directory/game/Arc%20Raiders/clips"
+    folder: "arc_raiders"
+  marvel_rivals:
+    display_name: "Marvel Rivals"
+    twitch_url: "https://www.twitch.tv/directory/game/Marvel%20Rivals/clips"
+    folder: "marvel_rivals"
+  deadlock:
+    display_name: "Deadlock"
+    twitch_url: "https://www.twitch.tv/directory/game/Deadlock/clips"
+    folder: "deadlock"
+
+paths:
+  inbox: "inbox"
+  quarantine: "quarantine"
+  processing: "processing"
+  accepted: "accepted"
+  rejected: "rejected"
+  templates: "templates"
+  assets: "assets"
+  logs: "logs"
+
+ingestion:
+  max_clips_per_run: 20
+  quality_thresholds:
+    min_duration_seconds: 5
+    max_duration_seconds: 600
+    min_resolution_height: 480
+
+transcription:
+  model: "medium"  # options: tiny | base | small | medium | large-v3
+  language: "en"
+
+pipeline:
+  watch_interval_seconds: 30
+
+review:
+  host: "127.0.0.1"
+  port: 5000
+  debug: false
