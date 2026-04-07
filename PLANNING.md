@@ -171,18 +171,7 @@ Principles:
 
 ### 10. Research (Ongoing)
 
-Track tools, repos, and workflows that are relevant to each stage:
-
-| Category                   | Tools / Resources to Investigate              |
-|----------------------------|-----------------------------------------------|
-| Clip discovery / sourcing  | yt-dlp, Twitch API, Medal.tv API              |
-| Transcription              | Whisper, Deepgram, AssemblyAI                 |
-| Video editing / automation | FFmpeg, Shutter Encoder, Remotion, MoviePy    |
-| AI scoring                 | Claude API, GPT-4o, custom classifiers        |
-| Upload / distribution      | n8n workflows, Zapier, platform APIs          |
-| Review UI                  | Flask, FastAPI, Streamlit                     |
-| MCP / AI agents            | Claude MCP, LangChain, AutoGPT workflows      |
-| GitHub references          | *(add repos as found)*                        |
+See [TOOLS.md](./TOOLS.md) for a full reference of all tools in the ecosystem — status, cost model, pipeline fit, and reason for exclusion where applicable.
 
 ---
 
