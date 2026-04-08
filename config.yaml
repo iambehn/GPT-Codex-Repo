@@ -33,6 +33,10 @@ transcription:
   model: "medium"  # options: tiny | base | small | medium | large-v3
   language: "en"
 
+scoring:
+  model: "claude-haiku-4-5-20251001"  # haiku: fast + cheap; swap to claude-sonnet-4-6 for higher quality
+  max_tokens: 512
+
 pipeline:
   watch_interval_seconds: 30
 
