@@ -37,6 +37,26 @@ scoring:
   model: "claude-haiku-4-5-20251001"  # haiku: fast + cheap; swap to claude-sonnet-4-6 for higher quality
   max_tokens: 512
 
+distribution:
+  platforms:
+    youtube_shorts:
+      enabled: false        # set true + configure YOUTUBE_CLIENT_ID/SECRET in .env
+      privacy: "public"
+      category_id: "20"    # 20 = Gaming
+    tiktok:
+      enabled: false        # set true + configure TIKTOK_ACCESS_TOKEN in .env
+      privacy_level: "SELF_ONLY"   # use SELF_ONLY for testing, PUBLIC_TO_EVERYONE for live
+    instagram_reels:
+      enabled: false        # requires public video hosting step — see distribution.py
+    twitter_x:
+      enabled: false        # set true + configure TWITTER_* vars in .env
+    reddit:
+      enabled: false        # set true + configure REDDIT_* vars in .env
+      subreddits:
+        arc_raiders: "ArcRaiders"
+        marvel_rivals: "MarvelRivals"
+        deadlock: "DeadlockTheGame"
+
 pipeline:
   watch_interval_seconds: 30
 
