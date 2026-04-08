@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Queue{% endblock %}
+
+{% block extra_styles %}
+.queue-page { padding: 24px; max-width: 1100px; margin: 0 auto; }
+
+.queue-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.queue-header h1 { font-size: 20px; font-weight: 700; }
+.queue-header .count {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--muted);
+}
+.empty-state p { font-size: 15px; margin-top: 8px; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+thead tr {
+  border-bottom: 1px solid var(--border);
+}
+th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+tbody tr:hover { background: var(--surface); }
+td {
+  padding: 12px;
+  vertical-align: middle;
+}
+
+.clip-title {
+  font-weight: 500;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clip-title small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.review-btn {
+  display: inline-block;
+  padding: 5px 14px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.review-btn:hover {
+  background: #6b5ce7;
+  text-decoration: none;
+}
+{% endblock %}
+
+{% block header_extra %}
+  <span style="margin-left:auto;color:var(--muted);font-size:12px;">
+    {{ clips|length }} clip{{ 's' if clips|length != 1 else '' }} pending
+  </span>
+{% endblock %}
+
+{% block content %}
+<div class="queue-page">
+  <div class="queue-header">
+    <h1>Review Queue</h1>
+    <span class="count">Sorted by AI score — highest first</span>
+  </div>
+
+  {% if not clips %}
+  <div class="empty-state">
+    <div style="font-size:40px;">📭</div>
+    <p>No clips pending review.</p>
+    <p>Run <code>python run.py --game &lt;game&gt;</code> to ingest and process clips.</p>
+  </div>
+  {% else %}
+  <table>
+    <thead>
+      <tr>
+        <th style="width:52px;">Score</th>
+        <th>Title / Clip ID</th>
+        <th>Game</th>
+        <th>Type</th>
+        <th>Template</th>
+        <th>Duration</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for clip in clips %}
+      {% set score = clip.score %}
+      {% set score_class = 'score-high' if score >= 70 else ('score-medium' if score >= 40 else 'score-low') %}
+      {% set badge_class = 'badge-high' if clip.motion_level == 'high' else ('badge-medium' if clip.motion_level == 'medium' else 'badge-low') %}
+      <tr>
+        <td>
+          <div class="score-pill {{ score_class }}">{{ score }}</div>
+        </td>
+        <td>
+          <div class="clip-title">
+            {{ clip.suggested_title or clip.clip_id }}
+            <small>{{ clip.clip_id }}</small>
+          </div>
+        </td>
+        <td style="color:var(--muted);">{{ clip.game.replace('_', ' ').title() }}</td>
+        <td>
+          <span class="badge badge-other">{{ clip.clip_type.replace('_', ' ') }}</span>
+        </td>
+        <td style="color:var(--muted);font-size:12px;">{{ clip.template }}</td>
+        <td style="color:var(--muted);">{{ clip.duration }}s</td>
+        <td>
+          <a class="review-btn" href="{{ url_for('review_clip', game=clip.game, stem=clip.stem) }}">
+            Review →
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

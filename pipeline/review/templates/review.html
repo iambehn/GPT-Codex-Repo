@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block title %}Review — {{ clip.clip_id }}{% endblock %}
+
+{% block extra_styles %}
+.review-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  height: calc(100vh - 49px);
+  overflow: hidden;
+}
+
+/* ---- Video panel ---- */
+.video-panel {
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.video-panel video {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+/* ---- Metadata panel ---- */
+.meta-panel {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.meta-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.score-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.score-big {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.score-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+.meta-section { margin-bottom: 18px; }
+.meta-section h3 {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.meta-value {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.meta-value.muted { color: var(--muted); }
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag {
+  background: #252525;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.reasoning {
+  background: #1e1e1e;
+  border-left: 3px solid var(--accent);
+  padding: 10px 12px;
+  border-radius: 0 4px 4px 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.caption-box {
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* ---- Decision bar ---- */
+.decision-bar {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.decision-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn {
+  border: none;
+  border-radius: 7px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.3px;
+}
+.btn:hover { opacity: 0.88; }
+.btn:active { transform: scale(0.97); }
+.btn-approve { background: var(--green); color: #fff; }
+.btn-reject  { background: var(--red);   color: #fff; }
+
+.keyboard-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+}
+.kbd {
+  display: inline-block;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.nav-hint {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+{% endblock %}
+
+{% block header_extra %}
+  {% if next_clip %}
+  <a href="{{ url_for('review_clip', game=next_clip.game, stem=next_clip.stem) }}"
+     style="margin-left:auto;font-size:12px;color:var(--muted);">
+    Next: {{ next_clip.suggested_title or next_clip.clip_id }} →
+  </a>
+  {% else %}
+  <span style="margin-left:auto;font-size:12px;color:var(--muted);">Last clip in queue</span>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% set score = clip.score %}
+{% set score_class = 'score-high' if score >= 70 else ('score-medium' if score >= 40 else 'score-low') %}
+{% set score_bg   = '#14532d' if score >= 70 else ('#78350f' if score >= 40 else '#1e1b4b') %}
+{% set score_fg   = '#4ade80' if score >= 70 else ('#fbbf24' if score >= 40 else '#a5b4fc') %}
+
+<div class="review-layout">
+
+  <!-- Video -->
+  <div class="video-panel">
+    <video id="player" controls autoplay loop>
+      <source src="{{ video_url }}" type="video/mp4">
+      Your browser does not support HTML5 video.
+    </video>
+  </div>
+
+  <!-- Metadata + decisions -->
+  <div class="meta-panel">
+    <div class="meta-scroll">
+
+      <!-- Score -->
+      <div class="score-section">
+        <div class="score-big" style="background:{{ score_bg }};color:{{ score_fg }};">
+          {{ score }}
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:15px;">{{ clip.suggested_title or clip.clip_id }}</div>
+          <div class="score-label">AI virality score / 100</div>
+          <div style="margin-top:4px;">
+            <span class="badge badge-other" style="font-size:10px;">
+              {{ clip.clip_type.replace('_', ' ') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Score reasoning -->
+      {% if clip.score_reasoning %}
+      <div class="meta-section">
+        <h3>Why this score</h3>
+        <div class="reasoning">{{ clip.score_reasoning }}</div>
+      </div>
+      {% endif %}
+
+      <!-- Suggested caption -->
+      {% if clip.suggested_caption %}
+      <div class="meta-section">
+        <h3>Suggested caption</h3>
+        <div class="caption-box">{{ clip.suggested_caption }}</div>
+      </div>
+      {% endif %}
+
+      <!-- Signals -->
+      <div class="meta-section">
+        <h3>Clip signals</h3>
+        <table style="width:100%;border-collapse:collapse;">
+          {% for label, val in [
+            ('Game',      clip.game.replace('_', ' ').title()),
+            ('Duration',  clip.duration ~ 's'),
+            ('Template',  clip.template),
+            ('Motion',    clip.motion_level),
+            ('Energy',    clip.audio_energy),
+            ('Quality',   clip.quality_tag),
+          ] %}
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:5px 0;font-size:11px;color:var(--muted);width:80px;">{{ label }}</td>
+            <td style="padding:5px 0;font-size:12px;">{{ val }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+
+      <!-- Keywords -->
+      {% if clip.keywords %}
+      <div class="meta-section">
+        <h3>Keywords matched</h3>
+        <div class="tags">
+          {% for kw in clip.keywords %}
+          <span class="tag">{{ kw }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Clip ID -->
+      <div class="meta-section">
+        <h3>Clip ID</h3>
+        <div class="meta-value muted" style="font-size:11px;word-break:break-all;">
+          {{ clip.clip_id }}
+        </div>
+      </div>
+
+    </div><!-- /meta-scroll -->
+
+    <!-- Decision bar -->
+    <div class="decision-bar">
+      <div class="decision-buttons">
+        <form method="POST"
+              action="{{ url_for('approve_clip', game=clip.game, stem=clip.stem) }}">
+          <button type="submit" class="btn btn-approve" style="width:100%;">
+            ✓ Approve
+          </button>
+        </form>
+        <form method="POST"
+              action="{{ url_for('reject_clip', game=clip.game, stem=clip.stem) }}">
+          <button type="submit" class="btn btn-reject" style="width:100%;">
+            ✗ Reject
+          </button>
+        </form>
+      </div>
+      <div class="keyboard-hint">
+        <span class="kbd">A</span> approve &nbsp;·&nbsp;
+        <span class="kbd">R</span> reject &nbsp;·&nbsp;
+        <span class="kbd">Space</span> play/pause
+      </div>
+    </div>
+
+  </div><!-- /meta-panel -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const player = document.getElementById('player');
+
+  document.addEventListener('keydown', (e) => {
+    // Ignore when typing in an input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.key === 'a' || e.key === 'A') {
+      document.querySelector('form[action*="approve"] button').click();
+    }
+    if (e.key === 'r' || e.key === 'R') {
+      document.querySelector('form[action*="reject"] button').click();
+    }
+    if (e.key === ' ') {
+      e.preventDefault();
+      player.paused ? player.play() : player.pause();
+    }
+  });
+</script>
+{% endblock %}
