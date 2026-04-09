@@ -6,36 +6,6 @@
   "description": "A single impactful moment presented with drama and weight — slow push zoom, cinematic color, minimal text, high quality source preferred.",
   "created_at": "2026-04-05",
 
-  "trigger_conditions": {
-    "min_score_threshold": 0.55,
-    "conditions": [
-      {
-        "field": "motion_level",
-        "operator": "in",
-        "value": ["medium", "high"],
-        "weight": 0.25
-      },
-      {
-        "field": "quality_tag",
-        "operator": "eq",
-        "value": "high",
-        "weight": 0.30
-      },
-      {
-        "field": "duration_seconds",
-        "operator": "between",
-        "value": [5, 45],
-        "weight": 0.20
-      },
-      {
-        "field": "keywords",
-        "operator": "contains_any",
-        "value": ["clutch", "snipe", "god", "moment", "perfect", "insane", "one shot", "unreal", "impossible"],
-        "weight": 0.25
-      }
-    ]
-  },
-
   "timeline": {
     "input_mode": "single",
     "target_duration_seconds": 45.0,
