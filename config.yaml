@@ -57,6 +57,8 @@ distribution:
         marvel_rivals: "MarvelRivals"
         deadlock: "DeadlockTheGame"
 
+default_template_id: "fast_hype"  # all clips use this template; change here to switch
+
 pipeline:
   watch_interval_seconds: 30
 
