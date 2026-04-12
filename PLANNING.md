@@ -231,4 +231,151 @@ See [TOOLS.md](./TOOLS.md) for a full reference of all tools in the ecosystem �
 | 2026-04-05 | Initial planning document       |
 | 2026-04-05 | Corrected pipeline order: AI Scoring moved after Processing; Decision Engine uses metadata only |
 | 2026-04-05 | Template library created: schema + 5 starter templates. Music disabled pending music library. Blur pillarbox set as default vertical fill. |
-| 2026-04-07 | Applied scope decisions: FPS games (Arc Raiders, Marvel Rivals, Deadlock), Twitch clips pages as source, segment-level Whisper captions (word-highlight deferred), Flask for Review UI, Claude API for scoring, direct API calls for distribution, Viewership as optimize metric. Per-game subfolder structure added to all pipeline folders. FPS keyword lists added to Decision Engine. |
+| 2026-04-12 | Brainstorming: Scalable Faceless Content System notes added (see bottom of document) |
+
+---
+
+## Brainstorming: Scalable Faceless Short-Form Content System
+
+> Additional notes for future reference — not current build scope.
+
+### Core Philosophy
+
+Treat content creation as a system, not a creative process. Optimize for speed, consistency, and low decision-making overhead. Each channel operates as a content production pipeline.
+
+---
+
+### Content Paradigm
+
+Every video follows a fixed structure:
+
+**Format:** Vertical (9:16), 20–40 seconds
+
+**Structure:**
+1. Hook (first 1–2 seconds)
+2. Context (brief setup)
+3. Main content / payoff
+4. Loop or cliffhanger ending
+
+**Visual Rules:**
+- Subtitles required on every video
+- Visual change every 2–3 seconds
+- Background music always present
+
+---
+
+### Template System
+
+Templates replace scripting and enable scale. Each template contains:
+- Pre-built timeline (cuts, transitions)
+- Caption styles (font, animation, placement)
+- Audio presets (music + SFX)
+- Visual effects (zoom, motion, overlays)
+
+Workflow: duplicate template → replace assets (clips, text, audio) → export.
+
+---
+
+### Workflow Pipeline
+
+1. **Idea Generation** — source trending topics or reusable formats
+2. **Script / Clip Selection** — AI-generated scripts or extracted clips
+3. **Asset Collection** — video clips, images, audio
+4. **Editing (Template-Based)** — insert assets into predefined template
+5. **Export & Upload**
+
+---
+
+### Content Unit Strategy
+
+Maximize output per source:
+- 1 long video / stream → 10–30 short clips
+- 1 topic → multiple angle variations
+
+Focus on batch processing, not one-off videos.
+
+---
+
+### CapCut Capabilities and Constraints
+
+**Capabilities:**
+- Template-based editing
+- AI tools: auto captions, text-to-speech, AutoCut / highlight generation
+- Presets for text, effects, and audio
+
+**Constraints:**
+- No official scripting or API
+- No macro recording
+- Limited UI customization
+
+---
+
+### Automation Approach
+
+**Inside CapCut:** Templates are the primary automation method. Presets reduce repetitive setup. AI features reduce manual editing time.
+
+**Outside CapCut (optional enhancements):**
+- Clip sourcing: Twitch VOD downloaders, yt-dlp
+- Transcription: Whisper
+- Workflow automation: n8n, Zapier
+- Video processing: FFmpeg, MoviePy
+
+**Pseudo-automated workflow:**
+1. Download source content (streams, podcasts)
+2. Extract clips
+3. Load template project in CapCut
+4. Replace assets
+5. Apply auto captions
+6. Export and publish
+
+---
+
+### Quality Control Checklist
+
+Each video must pass before publishing:
+- Hook within first 2 seconds
+- No dead air
+- Subtitles present
+- Visual change every 2–3 seconds
+- Clear audio
+
+---
+
+### Channel Archetypes
+
+Reusable channel types, each with its own template, pacing rules, and content sources:
+
+| Archetype | Description |
+|---|---|
+| Clip-based | Gaming highlights, podcast moments |
+| Story-based | Reddit stories, interesting facts |
+| Educational micro-content | Quick tips, how-tos |
+| AI narration | Fully generated voiceover content |
+
+---
+
+### Performance Targets
+
+| Task | Target Time |
+|---|---|
+| Idea / Script | 2–5 min |
+| Editing | 5–15 min |
+| Upload | 2 min |
+
+Goal: 10–20 videos per day at scaled output.
+
+---
+
+### Key Insight
+
+CapCut is a template-driven system, not a programmable tool. Automation is achieved through predefined structures, asset replacement, and AI-assisted editing — not scripting or code.
+
+---
+
+### Future Optimization Path
+
+- Build external automation pipeline (Python + FFmpeg) — *this is what we're building*
+- Store clips and metadata in structured datasets
+- Test and rank video performance
+- Iterate templates based on analytics
+
