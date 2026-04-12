@@ -246,73 +246,115 @@ def _add_color_grade(parts: list[str], current: str, cg_cfg: dict) -> str:
     return out
 
 
-def _add_captions(parts: list[str], current: str, cap_cfg: dict,
-                  srt_path: Path | None, tmp_dir: str) -> str:
-    """Burn captions into the video via FFmpeg subtitles filter."""
-    if not cap_cfg.get("enabled", False):
-        return current
+def _srt_to_ass(srt_content: str, style: dict, out_w: int, out_h: int) -> str:
+    """Convert SRT subtitle text to ASS format with style embedded.
 
-    source = cap_cfg.get("source", "none")
-    effective_srt: Path | None = None
+    Using ASS avoids the force_style quoting issues in FFmpeg's filter_complex
+    parser — the ass= filter only needs a clean file path, no extra options.
+    """
+    import re
 
-    if source == "transcript":
-        if srt_path and srt_path.exists() and srt_path.stat().st_size > 0:
-            effective_srt = srt_path
-        else:
-            logger.debug("No SRT file for transcript captions — skipping captions.")
-            return current
-
-    elif source == "static":
-        static_lines = cap_cfg.get("static_lines", [])
-        srt_content = _make_static_srt(static_lines)
-        if not srt_content.strip():
-            return current
-        tmp_srt = Path(tmp_dir) / "static_captions.srt"
-        tmp_srt.write_text(srt_content)
-        effective_srt = tmp_srt
-
-    else:
-        return current  # source == "none"
-
-    # FFmpeg subtitles filter breaks on spaces, emojis, and non-ASCII characters
-    # in file paths even when quoted. Always copy to a safe ASCII temp path.
-    safe_srt = Path(tmp_dir) / "captions.srt"
-    safe_srt.write_bytes(effective_srt.read_bytes())
-    effective_srt = safe_srt
-
-    style = cap_cfg.get("style", {})
     font_family = style.get("font_family", "Arial")
     font_size = int(style.get("font_size_px", 48))
     font_color = _hex_to_ass(style.get("font_color", "#FFFFFF"))
     stroke_color = _hex_to_ass(style.get("stroke_color", "#000000"))
     stroke_width = int(style.get("stroke_width_px", 2))
-    alignment_str = style.get("alignment", "bottom_center")
-    alignment_val = _ASS_ALIGNMENT.get(alignment_str, 2)
-
+    alignment_val = _ASS_ALIGNMENT.get(style.get("alignment", "bottom_center"), 2)
     bg = style.get("background", {})
     bg_enabled = bg.get("enabled", False)
+    bg_color = _hex_to_ass(bg.get("color", "#000000CC")) if bg_enabled else "&H00000000"
+    border_style = 4 if bg_enabled else 1
 
-    force_style_parts = [
-        f"FontName={font_family}",
-        f"FontSize={font_size}",
-        f"PrimaryColour={font_color}",
-        f"OutlineColour={stroke_color}",
-        f"Outline={stroke_width}",
-        f"Alignment={alignment_val}",
-        "MarginV=60",
-    ]
-    if bg_enabled:
-        bg_color = _hex_to_ass(bg.get("color", "#000000CC"))
-        force_style_parts += [f"BackColour={bg_color}", "BorderStyle=4"]
-
-    force_style = ",".join(force_style_parts)
-    escaped_path = _escape_filter_path(str(effective_srt))
-    out = "vcap"
-
-    parts.append(
-        f"[{current}]subtitles='{escaped_path}':"
-        f"force_style='{force_style}'[{out}]"
+    header = (
+        "[Script Info]\n"
+        "ScriptType: v4.00+\n"
+        f"PlayResX: {out_w}\n"
+        f"PlayResY: {out_h}\n"
+        "WrapStyle: 0\n"
+        "ScaledBorderAndShadow: yes\n"
+        "\n"
+        "[V4+ Styles]\n"
+        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, "
+        "OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, "
+        "ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
+        "Alignment, MarginL, MarginR, MarginV, Encoding\n"
+        f"Style: Default,{font_family},{font_size},{font_color},&H000000FF,"
+        f"{stroke_color},{bg_color},-1,0,0,0,100,100,0,0,"
+        f"{border_style},{stroke_width},0,{alignment_val},10,10,60,1\n"
+        "\n"
+        "[Events]\n"
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
+
+    def _srt_ts_to_ass(ts: str) -> str:
+        ts = ts.strip().replace(",", ".")
+        h, m, rest = ts.split(":")
+        s, ms_str = rest.split(".")
+        cs = int(ms_str[:3]) // 10
+        return f"{int(h)}:{int(m):02d}:{int(s):02d}.{cs:02d}"
+
+    dialogues: list[str] = []
+    for block in re.split(r"\n\n+", srt_content.strip()):
+        lines = block.strip().splitlines()
+        ts_line = next((l for l in lines if "-->" in l), None)
+        if not ts_line:
+            continue
+        try:
+            start_str, end_str = ts_line.split("-->")
+            start_ass = _srt_ts_to_ass(start_str)
+            end_ass = _srt_ts_to_ass(end_str)
+        except (ValueError, IndexError):
+            continue
+        idx = lines.index(ts_line)
+        text = r"\N".join(l.strip() for l in lines[idx + 1:] if l.strip())
+        text = re.sub(r"<[^>]+>", "", text)
+        if text:
+            dialogues.append(
+                f"Dialogue: 0,{start_ass},{end_ass},Default,,0,0,0,,{text}"
+            )
+
+    return header + "\n".join(dialogues) + "\n"
+
+
+def _add_captions(parts: list[str], current: str, cap_cfg: dict,
+                  srt_path: Path | None, tmp_dir: str,
+                  out_w: int = 1080, out_h: int = 1920) -> str:
+    """Burn captions into the video using the FFmpeg ass= filter.
+
+    Generates an ASS file with style baked in rather than using the
+    subtitles filter's force_style option, which breaks in filter_complex
+    due to commas and equals signs in the value.
+    """
+    if not cap_cfg.get("enabled", False):
+        return current
+
+    source = cap_cfg.get("source", "none")
+    srt_text: str | None = None
+
+    if source == "transcript":
+        if srt_path and srt_path.exists() and srt_path.stat().st_size > 0:
+            srt_text = srt_path.read_text(encoding="utf-8", errors="replace")
+        else:
+            logger.debug("No SRT file for transcript captions — skipping captions.")
+            return current
+
+    elif source == "static":
+        srt_text = _make_static_srt(cap_cfg.get("static_lines", []))
+        if not srt_text.strip():
+            return current
+
+    else:
+        return current  # source == "none"
+
+    style = cap_cfg.get("style", {})
+    ass_content = _srt_to_ass(srt_text, style, out_w, out_h)
+
+    ass_path = Path(tmp_dir) / "captions.ass"
+    ass_path.write_text(ass_content, encoding="utf-8")
+
+    escaped_path = _escape_filter_path(str(ass_path))
+    out = "vcap"
+    parts.append(f"[{current}]ass='{escaped_path}'[{out}]")
     return out
 
 
@@ -387,7 +429,7 @@ def _build_ffmpeg_cmd(
     current = _add_vertical_fill(video_parts, current, vfx["vertical_fill"], out_w, out_h)
     current = _add_zoom(video_parts, current, vfx["zoom"], out_w, out_h, out_fps, target_dur)
     current = _add_color_grade(video_parts, current, vfx["color_grade"])
-    current = _add_captions(video_parts, current, cap_cfg, srt_path, tmp_dir)
+    current = _add_captions(video_parts, current, cap_cfg, srt_path, tmp_dir, out_w, out_h)
     current = _add_post_effects(video_parts, current, vfx)
     final_video_label = current
 
