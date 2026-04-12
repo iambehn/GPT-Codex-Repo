@@ -354,7 +354,7 @@ def _add_captions(parts: list[str], current: str, cap_cfg: dict,
 
     escaped_path = _escape_filter_path(str(ass_path))
     out = "vcap"
-    parts.append(f"[{current}]ass='{escaped_path}'[{out}]")
+    parts.append(f"[{current}]ass={escaped_path}[{out}]")
     return out
 
 
@@ -532,7 +532,7 @@ def run_processing(clip_path: str, template: dict, metadata: dict, config: dict)
     Returns:
         Path string of the processed output file, or empty string on failure.
     """
-    clip = Path(clip_path)
+    clip = Path(clip_path).resolve()
     template_id = template.get("template_id", "unknown")
 
     # Reject multi-clip templates (not yet implemented)
@@ -547,7 +547,7 @@ def run_processing(clip_path: str, template: dict, metadata: dict, config: dict)
     clip_id = metadata.get("clip_id", clip.stem)
     today = date.today().strftime("%Y%m%d")
 
-    output_dir = Path(config["paths"]["processing"]) / game
+    output_dir = (Path(config["paths"]["processing"]) / game).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{game}_{today}_{clip_id}.mp4"
 
