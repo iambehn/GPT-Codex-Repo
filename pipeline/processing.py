@@ -430,7 +430,7 @@ def _build_ffmpeg_cmd(
     filter_complex_str = ";".join(all_parts)
 
     # ---- Build command ---------------------------------------------------
-    cmd = ["ffmpeg", "-y"]
+    cmd = ["ffmpeg", "-y", "-hide_banner"]
 
     # Inputs
     cmd += ["-i", str(clip_path)]
