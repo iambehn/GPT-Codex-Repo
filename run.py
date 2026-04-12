@@ -56,6 +56,10 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
         return
 
     for clip in clips:
+        if clip.get("review_status"):
+            logger.debug(f"Skipping already-reviewed clip: {clip.get('clip_id')}")
+            continue
+
         clip_path = clip["clip_path"]
         logger.info(f"Processing clip: {clip_path}")
 

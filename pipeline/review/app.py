@@ -69,8 +69,9 @@ def _get_pending_clips() -> list[dict]:
     Returns list of clip info dicts sorted by highlight_score descending.
     """
     clips = []
-    inbox_root = Path(CONFIG["paths"]["inbox"])
-    processing_root = Path(CONFIG["paths"]["processing"])
+    project_root = Path(__file__).parent.parent.parent
+    inbox_root = (project_root / CONFIG["paths"]["inbox"]).resolve()
+    processing_root = (project_root / CONFIG["paths"]["processing"]).resolve()
 
     for game in CONFIG["games"]:
         inbox_dir = inbox_root / game
