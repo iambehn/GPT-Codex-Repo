@@ -1,13 +1,18 @@
 """
 Stage 1 — Ingestion
 
-Downloads clips from the Twitch game clips page for a given game using yt-dlp.
-Each downloaded clip is probed with FFprobe to extract duration, resolution, fps,
-and audio presence. Clips are then assigned a quality tag (high / medium / low)
-or quarantined if they fall outside the configured thresholds.
+Uses the Twitch Helix API to fetch the top clips for a game, then downloads
+each clip via yt-dlp. Each downloaded clip is probed with FFprobe to extract
+duration, resolution, fps, and audio presence. Clips are assigned a quality
+tag (high / medium / low) or quarantined if they fall outside the configured
+thresholds.
 
 Good clips land in inbox/{game}/ with a sidecar .meta.json file.
 Bad clips are moved to quarantine/{game}/ and excluded from the returned list.
+
+Required environment variables (in .env):
+    TWITCH_CLIENT_ID      — from dev.twitch.tv
+    TWITCH_CLIENT_SECRET  — from dev.twitch.tv
 
 Sidecar .meta.json fields:
     clip_id, game, clip_path, meta_path, quality_tag,
@@ -16,10 +21,12 @@ Sidecar .meta.json fields:
 """
 
 import json
+import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
 
+import requests
 import yt_dlp
 
 from utils.file_utils import move_to_quarantine
@@ -27,21 +34,69 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+_TWITCH_TOKEN_URL = "https://id.twitch.tv/oauth2/token"
+_TWITCH_GAMES_URL = "https://api.twitch.tv/helix/games"
+_TWITCH_CLIPS_URL = "https://api.twitch.tv/helix/clips"
+
 
 # ---------------------------------------------------------------------------
-# Private helpers
+# Twitch API helpers
+# ---------------------------------------------------------------------------
+
+def _get_twitch_token(client_id: str, client_secret: str) -> str:
+    """Obtain a Twitch app access token via client credentials flow."""
+    resp = requests.post(
+        _TWITCH_TOKEN_URL,
+        params={
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "grant_type": "client_credentials",
+        },
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return resp.json()["access_token"]
+
+
+def _get_game_id(display_name: str, client_id: str, token: str) -> str | None:
+    """Look up the Twitch numeric game ID by display name."""
+    resp = requests.get(
+        _TWITCH_GAMES_URL,
+        params={"name": display_name},
+        headers={"Client-Id": client_id, "Authorization": f"Bearer {token}"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json().get("data", [])
+    if not data:
+        logger.error(f"Game '{display_name}' not found on Twitch.")
+        return None
+    game_id = data[0]["id"]
+    logger.debug(f"Resolved '{display_name}' → Twitch game_id={game_id}")
+    return game_id
+
+
+def _fetch_clip_urls(game_id: str, client_id: str, token: str, count: int) -> list[str]:
+    """Return up to `count` clip URLs for a game, sorted by view count."""
+    resp = requests.get(
+        _TWITCH_CLIPS_URL,
+        params={"game_id": game_id, "first": min(count, 100)},
+        headers={"Client-Id": client_id, "Authorization": f"Bearer {token}"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    clips = resp.json().get("data", [])
+    urls = [c["url"] for c in clips if c.get("url")]
+    logger.debug(f"Fetched {len(urls)} clip URL(s) from Twitch API.")
+    return urls
+
+
+# ---------------------------------------------------------------------------
+# FFprobe helper
 # ---------------------------------------------------------------------------
 
 def _probe_clip(clip_path: Path) -> dict | None:
-    """Run FFprobe on a clip and return parsed media info.
-
-    Args:
-        clip_path: Path to the video file.
-
-    Returns:
-        Dict with keys: duration_seconds, resolution_width, resolution_height,
-        fps, has_audio. Returns None if FFprobe fails or no video stream found.
-    """
+    """Run FFprobe on a clip and return parsed media info."""
     try:
         result = subprocess.run(
             [
@@ -67,11 +122,9 @@ def _probe_clip(clip_path: Path) -> dict | None:
         logger.warning(f"No video stream found in {clip_path.name}")
         return None
 
-    # Duration: prefer format-level, fall back to stream-level
     fmt = data.get("format", {})
     duration = float(fmt.get("duration") or video_stream.get("duration", 0))
 
-    # FPS: stored as a fraction string e.g. "60000/1001"
     fps_raw = video_stream.get("r_frame_rate", "30/1")
     try:
         num, den = fps_raw.split("/")
@@ -90,26 +143,12 @@ def _probe_clip(clip_path: Path) -> dict | None:
     }
 
 
+# ---------------------------------------------------------------------------
+# Quality classification
+# ---------------------------------------------------------------------------
+
 def _assign_quality_tag(probe: dict, thresholds: dict) -> str | None:
-    """Assign a quality tag or flag a clip for quarantine.
-
-    Quarantine conditions (returns None):
-      - duration < min_duration_seconds
-      - duration > max_duration_seconds
-      - resolution_height < min_resolution_height
-
-    Quality tag (for clips that pass quarantine):
-      - high:   resolution_height >= 1080
-      - medium: resolution_height >= 720
-      - low:    resolution_height >= 480
-
-    Args:
-        probe: Dict returned by _probe_clip.
-        thresholds: config['ingestion']['quality_thresholds'] dict.
-
-    Returns:
-        'high', 'medium', 'low', or None (quarantine).
-    """
+    """Assign a quality tag or return None to quarantine the clip."""
     h = probe["resolution_height"]
     dur = probe["duration_seconds"]
 
@@ -154,32 +193,56 @@ def _write_meta(clip_path: Path, game: str, probe: dict, quality_tag: str) -> Pa
 def run_ingestion(game: str, config: dict) -> list[dict]:
     """Download and classify clips for a single game.
 
-    Downloads up to config['ingestion']['max_clips_per_run'] clips from the
-    game's Twitch clips page, probes each with FFprobe, assigns quality tags,
-    quarantines bad clips, and writes a sidecar .meta.json per good clip.
+    Fetches top clip URLs from the Twitch Helix API, downloads each via
+    yt-dlp, probes with FFprobe, assigns quality tags, quarantines bad clips,
+    and writes a sidecar .meta.json per good clip.
 
     Args:
-        game: Game key matching a key in config['games'] (e.g. 'arc_raiders').
+        game: Game key matching a key in config['games'] (e.g. 'deadlock').
         config: Full parsed config.yaml dict.
 
     Returns:
         List of clip manifest dicts for all successfully ingested clips.
-        Each dict mirrors the fields written to the sidecar .meta.json.
     """
     game_cfg = config["games"][game]
-    twitch_url = game_cfg["twitch_url"]
+    display_name = game_cfg["display_name"]
     output_dir = Path(config["paths"]["inbox"]) / game
     output_dir.mkdir(parents=True, exist_ok=True)
 
     thresholds = config["ingestion"]["quality_thresholds"]
     max_clips = config["ingestion"]["max_clips_per_run"]
 
-    logger.info(f"[{game}] Downloading up to {max_clips} clips from {twitch_url}")
+    # --- Twitch API: resolve game ID and fetch clip URLs ---
+    client_id = os.environ.get("TWITCH_CLIENT_ID", "")
+    client_secret = os.environ.get("TWITCH_CLIENT_SECRET", "")
 
+    if not client_id or not client_secret:
+        logger.error(
+            "TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET must be set in .env. "
+            "Create a free app at dev.twitch.tv to get these."
+        )
+        return []
+
+    try:
+        token = _get_twitch_token(client_id, client_secret)
+        game_id = _get_game_id(display_name, client_id, token)
+        if not game_id:
+            return []
+        clip_urls = _fetch_clip_urls(game_id, client_id, token, max_clips)
+    except requests.RequestException as e:
+        logger.error(f"[{game}] Twitch API error: {e}")
+        return []
+
+    if not clip_urls:
+        logger.warning(f"[{game}] No clips returned from Twitch API.")
+        return []
+
+    logger.info(f"[{game}] Downloading {len(clip_urls)} clip(s) for '{display_name}'...")
+
+    # --- yt-dlp: download each clip URL ---
     ydl_opts = {
         "outtmpl": str(output_dir / "%(title)s_%(id)s.%(ext)s"),
         "format": "best[ext=mp4]/best",
-        "max_downloads": max_clips,
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
@@ -188,33 +251,25 @@ def run_ingestion(game: str, config: dict) -> list[dict]:
 
     downloaded_paths: list[Path] = []
 
-    class _PathCollector:
-        """yt-dlp post-processor hook that records downloaded file paths."""
-        def __init__(self):
-            self.paths = []
-
-        def __call__(self, info: dict) -> None:
-            path = info.get("filepath") or info.get("filename")
+    def _on_progress(d: dict) -> None:
+        if d.get("status") == "finished":
+            path = d.get("filepath") or d.get("filename")
             if path:
-                self.paths.append(Path(path))
+                downloaded_paths.append(Path(path))
 
-    collector = _PathCollector()
-    ydl_opts["progress_hooks"] = [
-        lambda d: collector(d) if d.get("status") == "finished" else None
-    ]
+    ydl_opts["progress_hooks"] = [_on_progress]
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([twitch_url])
-        downloaded_paths = collector.paths
-    except yt_dlp.utils.MaxDownloadsReached:
-        downloaded_paths = collector.paths
+            ydl.download(clip_urls)
     except Exception as e:
-        logger.error(f"[{game}] yt-dlp download error: {e}")
-        return []
+        logger.error(f"[{game}] yt-dlp error: {e}")
+        if not downloaded_paths:
+            return []
 
     logger.info(f"[{game}] Downloaded {len(downloaded_paths)} file(s). Classifying...")
 
+    # --- Classify each downloaded clip ---
     manifests: list[dict] = []
 
     for clip_path in downloaded_paths:
@@ -222,7 +277,6 @@ def run_ingestion(game: str, config: dict) -> list[dict]:
             logger.warning(f"File missing after download: {clip_path}")
             continue
 
-        # Skip if already processed in a previous run
         meta_path = clip_path.with_suffix(".meta.json")
         if meta_path.exists():
             logger.debug(f"Skipping already-processed clip: {clip_path.name}")
@@ -241,7 +295,9 @@ def run_ingestion(game: str, config: dict) -> list[dict]:
                 f"duration={probe['duration_seconds']}s, "
                 f"height={probe['resolution_height']}px"
             )
-            logger.warning(f"[{game}] Quarantining (thresholds): {clip_path.name} ({reason})")
+            logger.warning(
+                f"[{game}] Quarantining (thresholds): {clip_path.name} ({reason})"
+            )
             move_to_quarantine(clip_path, game, config)
             continue
 
