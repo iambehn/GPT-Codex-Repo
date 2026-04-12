@@ -274,12 +274,11 @@ def _add_captions(parts: list[str], current: str, cap_cfg: dict,
     else:
         return current  # source == "none"
 
-    # FFmpeg subtitles filter cannot handle spaces in file paths even when quoted.
-    # Copy to a guaranteed space-free temp path before building the filter string.
-    if " " in str(effective_srt):
-        safe_srt = Path(tmp_dir) / "captions.srt"
-        safe_srt.write_bytes(effective_srt.read_bytes())
-        effective_srt = safe_srt
+    # FFmpeg subtitles filter breaks on spaces, emojis, and non-ASCII characters
+    # in file paths even when quoted. Always copy to a safe ASCII temp path.
+    safe_srt = Path(tmp_dir) / "captions.srt"
+    safe_srt.write_bytes(effective_srt.read_bytes())
+    effective_srt = safe_srt
 
     style = cap_cfg.get("style", {})
     font_family = style.get("font_family", "Arial")
