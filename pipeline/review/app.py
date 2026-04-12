@@ -203,7 +203,8 @@ def _handle_decision(game: str, stem: str, decision: str):
 @app.route("/video/<game>/<filename>")
 def serve_video(game: str, filename: str):
     """Stream a processed video file safely."""
-    video_dir = Path(CONFIG["paths"]["processing"]) / game
+    project_root = Path(__file__).parent.parent.parent
+    video_dir = (project_root / CONFIG["paths"]["processing"] / game).resolve()
     return send_from_directory(str(video_dir), filename, mimetype="video/mp4")
 
 
