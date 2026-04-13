@@ -84,6 +84,10 @@ def _get_pending_clips() -> list[dict]:
             except (json.JSONDecodeError, OSError):
                 continue
 
+            # Skip clips that have already been reviewed
+            if meta.get("review_status"):
+                continue
+
             processed_path_str = meta.get("processed_path", "")
             if not processed_path_str:
                 continue
