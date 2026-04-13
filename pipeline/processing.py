@@ -22,6 +22,7 @@ NOT YET IMPLEMENTED (logs a warning and skips):
 Output naming: processing/{game}/{game}_{YYYYMMDD}_{clip_id}.mp4
 """
 
+import functools
 import json
 import subprocess
 import tempfile
@@ -32,6 +33,34 @@ from utils.file_utils import get_game_from_path
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+@functools.lru_cache(maxsize=1)
+def _subtitles_filter_available() -> bool:
+    """Return True if FFmpeg was compiled with libass (subtitles filter).
+
+    Cached after the first call so it only runs once per process.
+    If False, captions are skipped and a one-time warning is logged.
+
+    Fix on macOS: brew upgrade ffmpeg
+    (Homebrew's standard FFmpeg build includes libass.)
+    """
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-filters"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        available = " subtitles " in result.stdout or "\tsubtitles " in result.stdout
+        if not available:
+            logger.warning(
+                "FFmpeg subtitles filter not available — libass is not compiled in. "
+                "Captions will be skipped. Fix: brew upgrade ffmpeg"
+            )
+        return available
+    except Exception:
+        return False
 
 # ASS subtitle alignment codes (numpad layout)
 _ASS_ALIGNMENT = {
@@ -328,6 +357,9 @@ def _add_captions(parts: list[str], current: str, cap_cfg: dict,
     """
     if not cap_cfg.get("enabled", False):
         return current
+
+    if not _subtitles_filter_available():
+        return current  # warning already logged once by _subtitles_filter_available()
 
     source = cap_cfg.get("source", "none")
     srt_text: str | None = None
