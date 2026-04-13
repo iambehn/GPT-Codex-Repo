@@ -89,6 +89,9 @@ def _get_pending_clips() -> list[dict]:
                 continue
 
             processed = Path(processed_path_str)
+            # Resolve legacy relative paths written before absolute-path fix
+            if not processed.is_absolute():
+                processed = (project_root / processed).resolve()
             # Must still live inside the processing/ tree (not moved yet)
             if not processed.exists():
                 continue

@@ -554,6 +554,13 @@ def run_processing(clip_path: str, template: dict, metadata: dict, config: dict)
     # Idempotency: skip if already processed
     if output_path.exists():
         logger.debug(f"Already processed: {output_path.name} — skipping.")
+        # Ensure meta.json has the current absolute path (fixes legacy relative paths)
+        meta_path = clip.with_suffix(".meta.json")
+        if meta_path.exists():
+            meta = json.loads(meta_path.read_text())
+            if meta.get("processed_path") != str(output_path):
+                meta["processed_path"] = str(output_path)
+                meta_path.write_text(json.dumps(meta, indent=2))
         return str(output_path)
 
     logger.info(
