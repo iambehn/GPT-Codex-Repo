@@ -417,6 +417,10 @@ def _build_ffmpeg_cmd(
     strategy = tl.get("target_duration_strategy", "trim_end")
     has_audio = metadata.get("has_audio", True)
 
+    # Audio mode from config (original | mute | replace)
+    # See config.yaml [audio] section for documentation and ACRCloud setup.
+    audio_mode = metadata.get("_audio_mode", "original")
+
     srt_path = Path(metadata["srt_path"]) if metadata.get("srt_path") else None
 
     # ---- Build video filter graph ----------------------------------------
@@ -437,6 +441,23 @@ def _build_ffmpeg_cmd(
     # ---- Build audio filter graph ----------------------------------------
     audio_parts: list[str] = []
     final_audio_label: str | None = None
+    replacement_track: str | None = None  # set below for "replace" mode
+
+    if audio_mode == "mute":
+        # Strip all source audio — no audio output
+        has_audio = False
+
+    elif audio_mode == "replace":
+        # Replace source audio with a royalty-free track.
+        # The replacement file path comes from metadata (resolved in run_processing).
+        replacement_track = metadata.get("_replacement_track")
+        if not replacement_track or not Path(replacement_track).exists():
+            logger.warning(
+                "audio_mode=replace but no valid _replacement_track path — "
+                "falling back to original audio."
+            )
+        else:
+            has_audio = False  # suppress original audio stream in filter graph
 
     if has_audio:
         orig_audio = audio_cfg.get("original_audio", {})
@@ -477,8 +498,15 @@ def _build_ffmpeg_cmd(
     # Inputs
     cmd += ["-i", str(clip_path)]
     bg_music = audio_cfg.get("background_music", {})
-    if bg_music.get("enabled") and bg_music.get("asset_path"):
+    has_bg_music = bg_music.get("enabled") and bg_music.get("asset_path")
+    if has_bg_music:
         cmd += ["-i", bg_music["asset_path"]]
+
+    # Replacement track input (audio_mode=replace)
+    replacement_input_idx: int | None = None
+    if replacement_track:
+        replacement_input_idx = 2 if has_bg_music else 1
+        cmd += ["-i", replacement_track]
 
     # Filter complex
     if filter_complex_str:
@@ -488,7 +516,10 @@ def _build_ffmpeg_cmd(
     cmd += ["-map", f"[{final_video_label}]" if final_video_label != "0:v" else "0:v"]
 
     # Audio output mapping
-    if has_audio:
+    if replacement_track and replacement_input_idx is not None:
+        # Map replacement audio, trim to video duration with loudnorm
+        cmd += ["-map", f"{replacement_input_idx}:a"]
+    elif has_audio:
         if final_audio_label:
             cmd += ["-map", f"[{final_audio_label}]"]
         elif not audio_parts:
@@ -547,6 +578,40 @@ def run_processing(clip_path: str, template: dict, metadata: dict, config: dict)
     game = metadata.get("game") or get_game_from_path(clip) or "unknown"
     clip_id = metadata.get("clip_id", clip.stem)
     today = date.today().strftime("%Y%m%d")
+
+    # ---- Resolve audio mode from config ----------------------------------
+    # Inject _audio_mode and _replacement_track into metadata so _build_ffmpeg_cmd
+    # can read them without needing the full config dict.
+    #
+    # COPYRIGHT DETECTION (future):
+    #   When config["audio"]["detection"]["enabled"] is True, call an ACRCloud
+    #   fingerprint check here before deciding the mode. ACRCloud returns a
+    #   confidence score (0-100) for any matched song. If confidence >=
+    #   config["audio"]["detection"]["confidence_threshold"], apply the
+    #   configured mode (mute or replace). Otherwise keep "original".
+    #
+    #   ACRCloud Python SDK: pip install pyacrcloud
+    #   Sign up for a free key (100 recognitions/day) at acrcloud.com.
+    #   Sample integration:
+    #       from acrcloud.recognizer import ACRCloudRecognizer
+    #       recognizer = ACRCloudRecognizer({
+    #           "access_key": os.getenv("ACRCLOUD_ACCESS_KEY"),
+    #           "access_secret": os.getenv("ACRCLOUD_ACCESS_SECRET"),
+    #           "host": os.getenv("ACRCLOUD_HOST", "identify-eu-west-1.acrcloud.com"),
+    #       })
+    #       result = json.loads(recognizer.recognize_by_file(str(clip), 0))
+    #       status = result.get("status", {}).get("code")
+    #       if status == 0:  # match found
+    #           confidence = result["metadata"]["music"][0]["score"]
+    #           if confidence >= threshold:
+    #               audio_mode = configured_mode  # "mute" or "replace"
+    audio_cfg_global = config.get("audio", {})
+    audio_mode = audio_cfg_global.get("mode", "original")
+    replacement_track = audio_cfg_global.get("replacement_track")
+    metadata = dict(metadata)  # shallow copy — don't mutate caller's dict
+    metadata["_audio_mode"] = audio_mode
+    if replacement_track:
+        metadata["_replacement_track"] = str(Path(replacement_track).resolve())
 
     output_dir = (Path(config["paths"]["processing"]) / game).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)

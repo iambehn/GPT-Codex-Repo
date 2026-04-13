@@ -59,6 +59,58 @@ distribution:
 
 default_template_id: "fast_hype"  # all clips use this template; change here to switch
 
+# ---------------------------------------------------------------------------
+# Audio copyright handling
+# ---------------------------------------------------------------------------
+# mode options:
+#   "original"  — keep the clip's audio as-is (default; copyright risk on Twitch clips)
+#   "mute"      — strip all audio (safe; silent video)
+#   "replace"   — replace audio with a royalty-free track from replacement_track path
+#
+# Copyright detection (optional — requires ACRCloud account):
+#   Set ACRCLOUD_ACCESS_KEY and ACRCLOUD_ACCESS_SECRET in .env, then set
+#   detection.enabled: true. When a fingerprint match is found above
+#   confidence_threshold, the mode above is applied automatically.
+#   Without detection enabled, mode is applied to ALL clips unconditionally.
+#
+# ACRCloud free tier: 100 recognitions/day — sufficient for a personal pipeline.
+# Sign up at: https://www.acrcloud.com
+audio:
+  mode: "original"            # original | mute | replace
+  replacement_track: null     # e.g. "assets/music/royalty_free_hype.mp3"
+  detection:
+    enabled: false            # set true + add ACRCLOUD_* env vars to activate
+    provider: "acrcloud"
+    confidence_threshold: 80  # 0–100; treat as copyrighted if score >= this
+
+# ---------------------------------------------------------------------------
+# Analytics — Google Sheets logging
+# ---------------------------------------------------------------------------
+# Required env vars (set in .env):
+#   GOOGLE_SERVICE_ACCOUNT_JSON  — /path/to/your-service-account-key.json
+#   GOOGLE_SHEETS_ID             — the ID from the spreadsheet URL:
+#                                  docs.google.com/spreadsheets/d/<ID>/edit
+#
+# Setup: create a Service Account in Google Cloud Console, download its JSON
+# key, share your spreadsheet with the service account email as Editor.
+# The "Analytics" tab and header row are created automatically on first run.
+analytics:
+  enabled: true   # set false to disable without removing env vars
+
+# ---------------------------------------------------------------------------
+# Backup — Google Drive
+# ---------------------------------------------------------------------------
+# Required env vars (set in .env):
+#   GOOGLE_SERVICE_ACCOUNT_JSON    — same key file as analytics
+#   GOOGLE_DRIVE_BACKUP_FOLDER_ID  — folder ID from the Drive URL:
+#                                    drive.google.com/drive/folders/<ID>
+#
+# Setup: create a folder in Drive, share it with the service account email
+# as Editor, copy the folder ID from the URL.
+# Uploads the .mp4 and .meta.json for each approved clip. Idempotent.
+backup:
+  enabled: true   # set false to disable without removing env vars
+
 pipeline:
   watch_interval_seconds: 30
 
