@@ -319,11 +319,12 @@ def _srt_to_ass(srt_content: str, style: dict, out_w: int, out_h: int) -> str:
 def _add_captions(parts: list[str], current: str, cap_cfg: dict,
                   srt_path: Path | None, tmp_dir: str,
                   out_w: int = 1080, out_h: int = 1920) -> str:
-    """Burn captions into the video using the FFmpeg ass= filter.
+    """Burn captions into the video using the FFmpeg subtitles filter.
 
-    Generates an ASS file with style baked in rather than using the
-    subtitles filter's force_style option, which breaks in filter_complex
-    due to commas and equals signs in the value.
+    Generates an ASS file with style baked in so that no force_style option
+    is needed — avoiding all quoting issues in filter_complex.  The subtitles
+    filter (unlike ass=) accepts a positional filename argument reliably across
+    FFmpeg versions.
     """
     if not cap_cfg.get("enabled", False):
         return current
@@ -354,7 +355,7 @@ def _add_captions(parts: list[str], current: str, cap_cfg: dict,
 
     escaped_path = _escape_filter_path(str(ass_path))
     out = "vcap"
-    parts.append(f"[{current}]ass={escaped_path}[{out}]")
+    parts.append(f"[{current}]subtitles={escaped_path}[{out}]")
     return out
 
 
