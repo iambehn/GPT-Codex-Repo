@@ -124,7 +124,7 @@ def run_distribution_for_all(config: dict) -> None:
             # Reload metadata after distribution (it may have been updated)
             metadata = json.loads(meta_path.read_text())
 
-            log_clip(metadata, dist_results)
+            log_clip(metadata, dist_results, config)
             backup_clip(str(clip_file), metadata, config)
             distributed += 1
 

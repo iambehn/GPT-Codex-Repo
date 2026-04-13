@@ -224,6 +224,79 @@ See [TOOLS.md](./TOOLS.md) for a full reference of all tools in the ecosystem �
 
 ---
 
+## Backlog — Copyright Music Detection
+
+> Not yet implemented. Come back to this before enabling distribution on YouTube or TikTok.
+
+### Why it matters
+Twitch clips often contain licensed music (in-game soundtracks, streamer background music). YouTube Content ID and TikTok's matching system use audio fingerprinting and will automatically mute, monetize against, or remove flagged videos.
+
+### Current interim solution
+`config.yaml → audio.mode` can be set to `"mute"` (strip all audio) or `"replace"` (swap in a royalty-free track). This is a blanket policy — no detection, applies to all clips. Safe but removes all original audio.
+
+### Recommended detection approach: ACRCloud
+ACRCloud is the industry-standard audio fingerprinting service. Used by Twitch, SoundCloud, and Deezer. Free tier: 100 recognitions/day — sufficient for a personal pipeline.
+
+**Sign up:** https://www.acrcloud.com
+
+**How it works:**
+1. Extract 10–15 seconds of audio from the clip as an audio fingerprint
+2. Send to ACRCloud API — returns: matched song title, artist, confidence score (0–100)
+3. If confidence ≥ threshold (e.g. 80) → apply configured `audio.mode` (mute or replace)
+4. If no match → keep original audio
+
+**Python integration:**
+```bash
+pip install pyacrcloud
+```
+The integration stub is already in `pipeline/processing.py` as detailed comments in `run_processing()`. Add these to `.env` to activate:
+```
+ACRCLOUD_ACCESS_KEY=...
+ACRCLOUD_ACCESS_SECRET=...
+ACRCLOUD_HOST=identify-eu-west-1.acrcloud.com
+```
+Then set `config.yaml → audio.detection.enabled: true`.
+
+**Alternative:** AudD.io — simpler REST API, 100 free recognitions/month, then $20/month.
+
+---
+
+## Backlog — Quality of Life Features
+
+> Prioritized list of improvements to implement after core pipeline is stable.
+
+### High priority
+
+1. **Language filter** — Most impactful near-term fix. Whisper detects the transcript language on every clip. Add `transcription.language_filter: "en"` to config. After transcription, check the detected language; if it doesn't match, skip the clip and log a warning. Eliminates all the Russian/Cyrillic/non-English clips currently cluttering the queue. One check in `pipeline/transcription.py`, ~5 lines of code.
+
+2. **`--watch` mode** — Add a `python run.py --watch` flag that loops continuously: run pipeline for all games → sleep `pipeline.watch_interval_seconds` → repeat. Makes the pipeline truly hands-free. Currently requires manual re-triggering.
+
+3. **`--dry-run` flag** — Process clips and show what WOULD be distributed (platforms, titles, scores) without actually uploading anywhere. Essential for testing new platform setups without burning API quota or posting test content publicly.
+
+4. **Clip freshness filter** — Twitch's top clips by view count are largely the same week over week. Add `ingestion.max_clip_age_hours: 72` to config. Use the Twitch Helix clips API's `started_at` field (already returned) to skip clips older than the threshold. Prevents re-downloading stale viral clips on every run.
+
+### Medium priority
+
+5. **Thumbnail generation for YouTube** — YouTube rewards videos with custom thumbnails. Extract a keyframe from the highest-motion moment using FFmpeg (`-vf select='gt(scene,0.4)'`) and pass it to the YouTube API's `thumbnails.set()` endpoint. Big engagement lift for essentially no extra work.
+
+6. **Video thumbnails in review UI** — The review queue shows filenames only. Use FFmpeg to extract a single frame at the 3-second mark for each clip in `processing/` and serve it as an `<img>` in the queue. Makes clip selection much faster.
+
+7. **TikTok publish_id polling** — After uploading to TikTok, the URL is not returned immediately (TikTok processes the video async). Add a background polling function that checks `POST /v2/post/publish/status/fetch/` using the stored `publish_id` and updates the meta.json with the final URL once it's available. Completes the analytics picture.
+
+8. **Reddit flair auto-detection** — Some subreddits require a flair tag or they auto-remove the post. Add a one-time config step: for each configured subreddit, call `subreddit.flair.link_templates` via PRAW and store the correct flair ID in `config.yaml`. Apply on `submit_video()`. Prevents silent post removals.
+
+### Lower priority
+
+9. **Retry failed distributions** — Add `python run.py --retry-failed` that re-runs distribution only for clips in `accepted/` that have `distribution.{platform}.success: false` in their meta.json. Avoids re-running the full pipeline just to retry an API timeout.
+
+10. **Clip deduplication** — Twitch clips have stable IDs in their URLs. Store seen clip IDs in a local `seen_clips.json` file and skip re-downloading on subsequent runs. Currently the idempotency check relies on the filename already existing in `inbox/`, which is fragile if files are renamed or moved.
+
+11. **Email/desktop notification** — Send a notification when a batch run completes (e.g. "12 clips processed, 3 failed"). On macOS: `osascript -e 'display notification "..." with title "ClipBot"'`. Useful for long overnight runs.
+
+12. **Aggregate stats in review UI** — Add a `/stats` route to the Flask review app showing: total clips by game, acceptance rate, average highlight score, top keywords, clips distributed per platform. Basic analytics without needing to open the Google Sheet.
+
+---
+
 ## Changelog
 
 | Date       | Change                          |
@@ -232,6 +305,8 @@ See [TOOLS.md](./TOOLS.md) for a full reference of all tools in the ecosystem �
 | 2026-04-05 | Corrected pipeline order: AI Scoring moved after Processing; Decision Engine uses metadata only |
 | 2026-04-05 | Template library created: schema + 5 starter templates. Music disabled pending music library. Blur pillarbox set as default vertical fill. |
 | 2026-04-12 | Brainstorming: Scalable Faceless Content System notes added (see bottom of document) |
+| 2026-04-13 | Analytics logging (Google Sheets), Drive backup, audio copyright mode added |
+| 2026-04-13 | Backlog notes added: copyright detection (ACRCloud) and QoL feature roadmap |
 
 ---
 

@@ -85,20 +85,26 @@ def _ensure_headers(worksheet) -> None:
         worksheet.append_row(_HEADERS, value_input_option="RAW")
 
 
-def log_clip(metadata: dict, distribution_results: dict) -> bool:
+def log_clip(metadata: dict, distribution_results: dict, config: dict | None = None) -> bool:
     """Append one analytics row for a clip to the configured Google Sheet.
 
-    Skips silently if GOOGLE_SHEETS_ID is not set (analytics is optional).
-    Never raises — logs the error and returns False on failure so the
+    Skips silently if analytics is disabled in config or GOOGLE_SHEETS_ID is
+    not set. Never raises — logs the error and returns False on failure so the
     pipeline continues uninterrupted.
 
     Args:
         metadata:             Full clip metadata dict (all pipeline stages merged).
         distribution_results: Platform → {success, url, error} from run_distribution.
+        config:               Full parsed config.yaml dict (optional). Used to check
+                              config["analytics"]["enabled"].
 
     Returns:
         True on success or if analytics is not configured; False on failure.
     """
+    if config is not None and not config.get("analytics", {}).get("enabled", True):
+        logger.debug("Analytics disabled in config — skipping.")
+        return True
+
     sheets_id = os.getenv("GOOGLE_SHEETS_ID")
     if not sheets_id:
         logger.debug("GOOGLE_SHEETS_ID not set — analytics logging skipped.")

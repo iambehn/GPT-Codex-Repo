@@ -353,9 +353,12 @@ def _add_captions(parts: list[str], current: str, cap_cfg: dict,
     ass_path = Path(tmp_dir) / "captions.ass"
     ass_path.write_text(ass_content, encoding="utf-8")
 
+    # Use explicit "filename=" keyword — FFmpeg 8.x does not accept positional
+    # (unnamed) arguments for the subtitles filter in filter_complex.
+    # The path must not contain ":" or "=" (macOS temp paths are clean).
     escaped_path = _escape_filter_path(str(ass_path))
     out = "vcap"
-    parts.append(f"[{current}]subtitles={escaped_path}[{out}]")
+    parts.append(f"[{current}]subtitles=filename={escaped_path}[{out}]")
     return out
 
 

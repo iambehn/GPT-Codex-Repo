@@ -121,6 +121,10 @@ def backup_clip(clip_path: str, metadata: dict, config: dict) -> bool:
     Returns:
         True on success or if backup is not configured; False on failure.
     """
+    if not config.get("backup", {}).get("enabled", True):
+        logger.debug("Backup disabled in config — skipping.")
+        return True
+
     root_folder_id = os.getenv("GOOGLE_DRIVE_BACKUP_FOLDER_ID")
     if not root_folder_id:
         logger.debug("GOOGLE_DRIVE_BACKUP_FOLDER_ID not set — Drive backup skipped.")
