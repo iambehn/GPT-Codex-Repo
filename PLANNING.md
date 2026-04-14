@@ -320,6 +320,91 @@ Three additional channel types documented for later reference.
 
 ---
 
+## Game Scouting Dashboard
+
+The goal is to detect momentum early and act faster than everyone else — treating games as attention assets the same way a trader tracks stocks.
+
+### Signals to Track
+
+| Signal | What to monitor |
+|---|---|
+| Twitch (primary) | Current viewers, peak viewers, # of active streamers |
+| YouTube | New uploads per day, views on top clips |
+| TikTok | Clip frequency, viral videos emerging |
+| Google Trends | Search volume spikes |
+
+### Game Status States
+
+`Upcoming → Beta/Playtest → Newly Released → Trending → Declining → Dead`
+
+---
+
+### Breakout Pattern
+
+Most breakout games follow: small baseline → big streamer plays it → sudden viewer spike → algorithm amplifies clips → other streamers pile in.
+
+**Entry signal:** game jumps from ~500 → 10k+ viewers overnight with a notable streamer playing it.
+
+---
+
+### Real Breakout vs. One-Time Spike
+
+| Type | Characteristics |
+|---|---|
+| **Real breakout** | Multiple streamers join over days, viewer base stabilizes after spike, clips spread across platforms |
+| **One-time spike** | Single streamer, drops 70–90% next day, no spread to other streamers |
+
+**Rule:** If interest spreads → it's real. If it stays concentrated → it's temporary.
+
+---
+
+### Flavor of the Week (Important Caveat)
+
+Some games attract massive multi-streamer attention very quickly but the viewership comes in huge waves and collapses just as fast. This is driven by novelty rather than gameplay depth — every big streamer plays it on day 1 and drops it by day 3.
+
+This pattern is **less common in FPS games** because competitive shooters have a skill ceiling that keeps players engaged long-term. A new battle royale or survival novelty game burns fast; a mechanically deep FPS tends to retain a core audience.
+
+**Warning signs that a spike is flavor-of-the-week:**
+- All major streamers appear simultaneously on launch day (coordinated hype, not organic discovery)
+- The game has no ranked mode, competitive scene, or meaningful skill progression
+- Viewership collapses within 72 hours even with multiple streamers still playing
+- Clips are funny/reaction content rather than skill-based highlights
+
+**What this means for the pipeline:** It's still worth creating a channel early — you can capture the spike traffic — but don't invest heavily in long-term channel development until the game shows a stable post-hype baseline (at least 2 weeks of sustained Twitch presence after the initial wave).
+
+---
+
+### Scoring System
+
+**Trend Score (0–10):** +3 Twitch viewer growth, +2 multiple streamers, +2 YouTube clip activity, +2 TikTok presence, +1 Google Trends spike
+
+**Longevity Score (0–10):** +3 competitive/skill-based gameplay, +3 replayability, +2 active community, +2 developer support/roadmap
+
+**Action thresholds:** Trend ≥ 6 AND Longevity ≥ 5 → pursue aggressively. High Trend + Low Longevity → capture the spike, don't build long-term.
+
+---
+
+### Daily Scouting Workflow (15–30 min)
+
+1. Check Twitch categories for new games and sudden viewer spikes
+2. Update game scores; flag immediate-action opportunities
+3. Weekly: review which games are rising vs. dying; cut anything 2+ weeks below baseline
+
+---
+
+### First-Mover Response
+
+When a confirmed real breakout is detected — act within 24–48 hours: create the channel, upload 5–15 clips/day. Early phase = low competition + algorithm curiosity boost for new topics.
+
+---
+
+### Implementation
+
+- **Start:** Google Sheets — game list, scores, trend notes updated manually each day
+- **Later:** Python + Twitch Helix API — scrape viewer counts on a schedule, store in a local database, plot trends, trigger alerts on spikes. Integrates naturally with the existing pipeline's Twitch API auth.
+
+---
+
 ## Changelog
 
 | Date       | Change |
@@ -332,3 +417,4 @@ Three additional channel types documented for later reference.
 | 2026-04-13 | Copyright detection (ACRCloud) and QoL backlog added |
 | 2026-04-14 | Strategic direction finalized: FPS multi-channel first-mover model |
 | 2026-04-14 | Full document condensed; future archetypes collapsed; monetization and sponsorship roadmap added |
+| 2026-04-14 | Game scouting dashboard added: signals, scoring system, breakout detection, flavor-of-the-week warning |
