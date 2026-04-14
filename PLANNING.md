@@ -694,6 +694,163 @@ This archetype has strong copyright defense:
 
 ### Optional Next Steps (Future)
 
-- Design a CapCut template layout (layer-by-layer blueprint)
-- Define a data-driven hand tagging system (tag hands by type, stakes, outcome) and track which formats perform best in analytics
+- Design a CapCut template layout (layer-by-layer blueprint) → **see section below**
+- Define a data-driven hand tagging system (tag hands by type, stakes, outcome) and track which formats perform best in analytics → **see section below**
+
+---
+
+## Brainstorming: Poker Channel — CapCut Template Blueprint + Automation Layer
+
+> Detailed implementation notes. Not current build scope.
+
+### Reality Check: CapCut + Automation
+
+CapCut has no scripting API. Automation happens **before** CapCut, not inside it.
+
+```
+[AI + Scripts + Clip Detection] → [Assets Ready] → [CapCut Template Assembly]
+```
+
+CapCut = execution layer (manual but fast). Templates reduce assembly to **2–5 minutes per video** once built. You are not building each video from scratch — you are replacing the base clip, adjusting mask position, and updating text.
+
+---
+
+### CapCut Template Layout — Layer-by-Layer Blueprint
+
+Design once → reuse forever.
+
+| Track | Purpose | Notes |
+|---|---|---|
+| 1 | Base video | Poker clip, cropped/zoomed on table |
+| 2 | Mask layer | Rectangle/blur overlay on hole cards; keyframe if camera moves |
+| 3 | Question prompt | "What does Player A have?" — appears at ~2s |
+| 4 | Multiple choice UI | A/B/C/D text layers, consistent position every video |
+| 5 | Timer / tension | Countdown 3→2→1 or animated progress bar |
+| 6 | Elimination animation | Option D fades at 2s, Option B fades at 4s (pre-built) |
+| 7 | Reveal layer | Remove mask OR hard cut to uncensored clip |
+| 8 | Result highlight | Correct answer glows green, wrong answers dim |
+| 9 | Audio | Background music + optional narration track |
+
+---
+
+### Why CapCut Over FFmpeg for This Archetype
+
+| Task | Tool |
+|---|---|
+| Batch cropping and encoding | FFmpeg |
+| Interactive UI overlays | CapCut |
+| Animation timing | CapCut |
+| Visual iteration | CapCut |
+
+FFmpeg has no visual timeline. Animations and UI effects require it.
+
+---
+
+### Card Detection Automation (Advanced — Future Work)
+
+Three tiers of complexity:
+
+**Tier 1 — Manual (Baseline, Start Here)**
+- Place mask once in the template
+- Reuse coordinates across clips
+- Works well when layout is consistent (fixed-camera streams)
+
+**Tier 2 — Semi-Automated (Practical)**
+- Standardize your crop/zoom so card positions are always the same
+- Predefine mask coordinates in a config file
+- Apply programmatically via FFmpeg or an image overlay script
+
+**Tier 3 — Full Automation (Advanced, High Setup Cost)**
+- OpenCV + YOLO object detection to detect and track card regions frame-by-frame
+- Automatically generate keyframed blur boxes
+- Requires training data and significant upfront ML work — overkill initially
+
+---
+
+### AI Tools for Clip Detection
+
+This archetype benefits from automated highlight detection to surface the best hands.
+
+**What to detect:**
+- Big pots / all-ins / showdowns
+- Emotional reactions from streamer
+- Rapid action sequences
+
+**Tool options:**
+
+| Tool | Use |
+|---|---|
+| Whisper | Detect excitement spikes in commentary audio |
+| PySceneDetect | Detect cuts and transitions (useful for showdown moments) |
+| Custom classifier (long-term) | Train on pot size changes, action frequency, commentary intensity |
+
+**Practical starting point:** manual scanning + timestamping. Evolve toward semi-automated detection once content volume justifies it.
+
+---
+
+### AI Narration Workflow
+
+Narration adds context and tension without requiring screen presence.
+
+**Use cases:**
+- Explain action: "He 3-bets preflop… barrels the turn…"
+- Build tension: "This decision changes everything…"
+
+**Workflow:**
+1. Generate script (ChatGPT using the fixed prompt template)
+2. Convert to voice (ElevenLabs for quality; CapCut TTS for speed)
+3. Drop audio into Track 9 of template
+
+---
+
+### Data Tagging System (Analytics Edge)
+
+Structured database of clips — this is where a poker/statistics background turns into a content advantage.
+
+**Schema (per clip):**
+
+| Field | Examples |
+|---|---|
+| Hand type | Bluff, value bet, set, draw, trap, hero call |
+| Situation | 3-bet pot, river shove, flip, cooler |
+| Position | BTN, BB, CO, UTG |
+| Action type | 3-bet, check-raise, overbet, fold equity |
+| Result | Win / Lose |
+| Hook type | Question, statement, statistic |
+| Question format | Multiple choice, open-ended, range |
+| Reveal style | Hard cut, mask remove, freeze frame |
+| Views | From platform analytics |
+| Watch time % | From platform analytics |
+| Comments / engagement | From platform analytics |
+
+**What the data answers over time:**
+- Do bluff clips outperform value-hand clips?
+- Do multiple-choice formats beat open-ended questions?
+- Which hook types (question vs. statement) drive more views?
+- Which hand types generate the most comments?
+
+This maps directly into the existing analytics spreadsheet infrastructure already built for the gaming channel — the same Google Sheets setup can log poker clip data with a separate tab.
+
+---
+
+### Full Pipeline Overview
+
+```
+1. Source poker VOD (Twitch / YouTube / replay site)
+2. Detect interesting clips (manual → semi-automated over time)
+3. Tag clips in database (hand type, situation, action)
+4. Generate script (ChatGPT prompt template)
+5. Generate narration (ElevenLabs / CapCut TTS)
+6. Load into CapCut template (replace clip + adjust mask + update text)
+7. Export + distribute
+```
+
+---
+
+### Housekeeping Note
+
+When `PLANNING.md` becomes too long to navigate comfortably, split into:
+- `PLANNING.md` — core pipeline (Stages 1–9)
+- `BRAINSTORMING.md` — channel archetypes and system design notes
+- `BACKLOG.md` — QoL feature list and copyright detection roadmap
 
