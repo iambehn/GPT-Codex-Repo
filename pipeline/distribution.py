@@ -36,6 +36,8 @@ Distribution results are stored in .meta.json under "distribution":
 
 import json
 import os
+import subprocess
+import tempfile
 from pathlib import Path
 
 from utils.logger import get_logger
@@ -56,6 +58,67 @@ _NOT_CONFIGURED = lambda platform, var: {
     "url": None,
     "error": f"{var} not set — configure in .env to enable {platform} uploads.",
 }
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _extract_thumbnail(clip_path: Path) -> Path | None:
+    """Extract the highest-motion keyframe from a clip as a JPEG.
+
+    Uses FFmpeg's scene-change detection to find the most visually active
+    frame (scene change score > 0.3). Falls back to the frame at 3 seconds
+    if no high-motion frame is found.
+
+    Returns the path to a temporary JPEG file, or None on failure.
+    The caller is responsible for deleting the file after use.
+    """
+    tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+    tmp.close()
+    thumb_path = Path(tmp.name)
+
+    # Try highest-motion frame first
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", str(clip_path),
+                "-vf", "select=gt(scene\\,0.3),scale=1280:720",
+                "-frames:v", "1",
+                "-q:v", "2",
+                str(thumb_path),
+            ],
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode == 0 and thumb_path.stat().st_size > 0:
+            return thumb_path
+    except Exception:
+        pass
+
+    # Fallback: frame at 3 seconds
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-ss", "3",
+                "-i", str(clip_path),
+                "-frames:v", "1",
+                "-q:v", "2",
+                "-vf", "scale=1280:720",
+                str(thumb_path),
+            ],
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode == 0 and thumb_path.stat().st_size > 0:
+            return thumb_path
+    except Exception:
+        pass
+
+    thumb_path.unlink(missing_ok=True)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +215,22 @@ def _upload_youtube_shorts(clip_path: Path, metadata: dict, cfg: dict) -> dict:
         video_id = response.get("id", "")
         url = f"https://youtu.be/{video_id}"
         logger.info(f"YouTube Shorts uploaded: {url}")
+
+        # Upload custom thumbnail (best-effort — non-fatal if it fails)
+        thumb_path = _extract_thumbnail(clip_path)
+        if thumb_path:
+            try:
+                thumb_media = MediaFileUpload(str(thumb_path), mimetype="image/jpeg")
+                youtube.thumbnails().set(
+                    videoId=video_id,
+                    media_body=thumb_media,
+                ).execute()
+                logger.debug(f"YouTube thumbnail uploaded for {video_id}")
+            except Exception as thumb_err:
+                logger.warning(f"YouTube thumbnail upload failed (non-fatal): {thumb_err}")
+            finally:
+                thumb_path.unlink(missing_ok=True)
+
         return {"success": True, "url": url, "error": None}
 
     except Exception as e:
@@ -255,6 +334,95 @@ def _upload_tiktok(clip_path: Path, metadata: dict, cfg: dict) -> dict:
     except Exception as e:
         logger.error(f"TikTok upload failed: {e}")
         return {"success": False, "url": None, "error": str(e)}
+
+
+def _poll_tiktok_publish_status(publish_id: str, access_token: str) -> str | None:
+    """Check the processing status of a TikTok upload and return the video URL if ready.
+
+    Returns the video URL string if processing is complete, or None if still
+    processing or on error.
+
+    API docs: https://developers.tiktok.com/doc/content-posting-api-reference-direct-post
+    """
+    try:
+        import requests as req
+    except ImportError:
+        return None
+
+    try:
+        resp = req.post(
+            "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
+            json={"publish_id": publish_id},
+            timeout=15,
+        )
+        data = resp.json()
+        status_data = data.get("data", {})
+        status = status_data.get("status", "")
+
+        if status == "PUBLISH_COMPLETE":
+            # TikTok returns the post URL in publicaly_available_post_id
+            post_id = status_data.get("publicaly_available_post_id", [])
+            if post_id:
+                return f"https://www.tiktok.com/@me/video/{post_id[0]}"
+        elif status in ("FAILED", "PUBLISH_FAILED"):
+            logger.warning(f"TikTok publish failed for {publish_id}: {status_data.get('fail_reason')}")
+
+    except Exception as e:
+        logger.debug(f"TikTok status poll error for {publish_id}: {e}")
+
+    return None
+
+
+def poll_tiktok_pending(config: dict) -> None:
+    """Scan all meta.json files for TikTok uploads that have a publish_id but no URL yet.
+
+    For each such clip, queries the TikTok status API and updates meta.json
+    with the final URL if processing is complete.
+    """
+    access_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+    if not access_token:
+        logger.error("TIKTOK_ACCESS_TOKEN not set — cannot poll TikTok status.")
+        return
+
+    inbox_root = Path(config["paths"]["inbox"])
+    updated = 0
+    pending = 0
+
+    for game in config.get("games", {}):
+        inbox_dir = inbox_root / game
+        if not inbox_dir.exists():
+            continue
+        for meta_file in inbox_dir.glob("*.meta.json"):
+            try:
+                meta = json.loads(meta_file.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+
+            dist = meta.get("distribution", {})
+            tiktok = dist.get("tiktok", {})
+            if not tiktok.get("success"):
+                continue
+            if tiktok.get("url"):
+                continue  # Already resolved
+            publish_id = tiktok.get("publish_id")
+            if not publish_id:
+                continue
+
+            pending += 1
+            url = _poll_tiktok_publish_status(publish_id, access_token)
+            if url:
+                meta["distribution"]["tiktok"]["url"] = url
+                meta_file.write_text(json.dumps(meta, indent=2))
+                logger.info(f"TikTok URL resolved: {meta.get('clip_id')} → {url}")
+                updated += 1
+            else:
+                logger.debug(f"TikTok still processing: {meta.get('clip_id')} (publish_id={publish_id})")
+
+    logger.info(f"TikTok poll complete: {updated}/{pending} URL(s) resolved.")
 
 
 # ---------------------------------------------------------------------------
@@ -444,13 +612,25 @@ def _upload_reddit(clip_path: Path, metadata: dict, cfg: dict, game: str) -> dic
         )
 
         subreddit = reddit.subreddit(subreddit_name.lstrip("r/"))
-        submission = subreddit.submit_video(
-            title=title,
-            video_path=str(clip_path),
-            videogif=False,
-            nsfw=False,
-            spoiler=False,
-        )
+
+        # Flair support: per-subreddit flair_id in config (run --list-reddit-flairs to discover)
+        subreddit_cfg = cfg.get("subreddit_config", {}).get(game, {})
+        flair_id = subreddit_cfg.get("flair_id")
+        flair_text = subreddit_cfg.get("flair_text")
+
+        submit_kwargs = {
+            "title": title,
+            "video_path": str(clip_path),
+            "videogif": False,
+            "nsfw": False,
+            "spoiler": False,
+        }
+        if flair_id:
+            submit_kwargs["flair_id"] = flair_id
+        if flair_text:
+            submit_kwargs["flair_text"] = flair_text
+
+        submission = subreddit.submit_video(**submit_kwargs)
 
         url = f"https://reddit.com{submission.permalink}"
         logger.info(f"Reddit posted: {url}")
@@ -459,6 +639,65 @@ def _upload_reddit(clip_path: Path, metadata: dict, cfg: dict, game: str) -> dic
     except Exception as e:
         logger.error(f"Reddit upload failed: {e}")
         return {"success": False, "url": None, "error": str(e)}
+
+
+def list_reddit_flairs(config: dict) -> None:
+    """Print available link flairs for each configured subreddit.
+
+    Run this once with: python run.py --list-reddit-flairs
+    Then add the desired flair_id to config.yaml under:
+      distribution.platforms.reddit.subreddit_config.<game>.flair_id
+
+    Required env vars: REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET,
+                       REDDIT_USERNAME, REDDIT_PASSWORD
+    """
+    client_id = os.getenv("REDDIT_CLIENT_ID")
+    client_secret = os.getenv("REDDIT_CLIENT_SECRET")
+    username = os.getenv("REDDIT_USERNAME")
+    password = os.getenv("REDDIT_PASSWORD")
+
+    missing = [v for v, k in [
+        ("REDDIT_CLIENT_ID", client_id), ("REDDIT_CLIENT_SECRET", client_secret),
+        ("REDDIT_USERNAME", username), ("REDDIT_PASSWORD", password),
+    ] if not k]
+    if missing:
+        logger.error(f"Missing Reddit env vars: {', '.join(missing)}")
+        return
+
+    try:
+        import praw
+    except ImportError:
+        logger.error("Missing package. Run: pip install praw")
+        return
+
+    reddit = praw.Reddit(
+        client_id=client_id,
+        client_secret=client_secret,
+        username=username,
+        password=password,
+        user_agent=f"ClipBot/1.0 (by u/{username})",
+    )
+
+    subreddits_cfg = config.get("distribution", {}).get("platforms", {}).get("reddit", {}).get("subreddits", {})
+    for game, subreddit_name in subreddits_cfg.items():
+        print(f"\n--- r/{subreddit_name} ({game}) ---")
+        try:
+            subreddit = reddit.subreddit(subreddit_name.lstrip("r/"))
+            flairs = list(subreddit.flair.link_templates)
+            if not flairs:
+                print("  (no link flairs configured)")
+            for f in flairs:
+                print(f"  id={f['id']!r}  text={f['text']!r}  type={f.get('type','')}")
+        except Exception as e:
+            print(f"  Error fetching flairs: {e}")
+
+    print("\nTo apply a flair, add to config.yaml:")
+    print("  distribution:")
+    print("    platforms:")
+    print("      reddit:")
+    print("        subreddit_config:")
+    print("          <game>:")
+    print("            flair_id: \"<id from above>\"")
 
 
 # ---------------------------------------------------------------------------

@@ -20,12 +20,14 @@ Launch:
 
 import json
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
 import yaml
 from flask import (
     Flask,
+    Response,
     abort,
     redirect,
     render_template,
@@ -214,6 +216,57 @@ def serve_video(game: str, filename: str):
     project_root = Path(__file__).parent.parent.parent
     video_dir = (project_root / CONFIG["paths"]["processing"] / game).resolve()
     return send_from_directory(str(video_dir), filename, mimetype="video/mp4")
+
+
+@app.route("/thumb/<game>/<stem>")
+def serve_thumb(game: str, stem: str):
+    """Return a JPEG thumbnail for a clip in processing/.
+
+    Extracts a frame at the 3-second mark using FFmpeg on first request,
+    caches it as a .thumb.jpg sidecar next to the video, and serves it.
+    Returns a 1x1 transparent GIF if the clip doesn't exist or FFmpeg fails.
+    """
+    project_root = Path(__file__).parent.parent.parent
+    processing_dir = (project_root / CONFIG["paths"]["processing"] / game).resolve()
+    clip_path = processing_dir / f"{stem}.mp4"
+    thumb_path = processing_dir / f"{stem}.thumb.jpg"
+
+    if not clip_path.exists():
+        # Return a 1×1 transparent GIF placeholder
+        return Response(
+            b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!"
+            b"\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02"
+            b"\x02D\x01\x00;",
+            mimetype="image/gif",
+        )
+
+    if not thumb_path.exists():
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg", "-y",
+                    "-ss", "3",
+                    "-i", str(clip_path),
+                    "-frames:v", "1",
+                    "-q:v", "4",
+                    "-vf", "scale=160:-1",
+                    str(thumb_path),
+                ],
+                capture_output=True,
+                timeout=15,
+            )
+        except Exception:
+            pass
+
+    if thumb_path.exists():
+        return send_from_directory(str(processing_dir), thumb_path.name, mimetype="image/jpeg")
+
+    return Response(
+        b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!"
+        b"\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02"
+        b"\x02D\x01\x00;",
+        mimetype="image/gif",
+    )
 
 
 # ---------------------------------------------------------------------------

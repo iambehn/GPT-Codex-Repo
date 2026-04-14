@@ -43,7 +43,7 @@ from pipeline.feature_extraction import run_feature_extraction
 from pipeline.decision_engine import select_template
 from pipeline.processing import run_processing
 from pipeline.scoring import run_scoring
-from pipeline.distribution import run_distribution
+from pipeline.distribution import run_distribution, poll_tiktok_pending, list_reddit_flairs
 
 logger = get_logger(__name__)
 
@@ -200,6 +200,18 @@ def main() -> None:
         action="store_true",
         help="Continuously run the pipeline for all games on a loop (interval set by pipeline.watch_interval_seconds in config).",
     )
+    group.add_argument(
+        "--poll-tiktok",
+        action="store_true",
+        dest="poll_tiktok",
+        help="Check TikTok processing status for uploaded clips that don't have a URL yet.",
+    )
+    group.add_argument(
+        "--list-reddit-flairs",
+        action="store_true",
+        dest="list_reddit_flairs",
+        help="Print available link flairs for each configured subreddit, then exit.",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -217,6 +229,10 @@ def main() -> None:
 
     if args.distribute:
         run_distribution_for_all(config, dry_run=args.dry_run)
+    elif args.poll_tiktok:
+        poll_tiktok_pending(config)
+    elif args.list_reddit_flairs:
+        list_reddit_flairs(config)
     elif args.watch:
         interval = config.get("pipeline", {}).get("watch_interval_seconds", 300)
         logger.info(f"Watch mode active — running all games every {interval}s. Ctrl+C to stop.")

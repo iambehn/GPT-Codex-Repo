@@ -58,6 +58,15 @@ distribution:
         arc_raiders: "ArcRaiders"
         marvel_rivals: "MarvelRivals"
         deadlock: "DeadlockTheGame"
+      # Optional flair per subreddit — run: python run.py --list-reddit-flairs
+      # to discover available flair IDs, then add them here.
+      subreddit_config:
+        arc_raiders:
+          flair_id: null    # e.g. "abc123-..."
+        marvel_rivals:
+          flair_id: null
+        deadlock:
+          flair_id: null
 
 default_template_id: "fast_hype"  # all clips use this template; change here to switch
 

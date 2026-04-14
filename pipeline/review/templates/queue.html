@@ -50,9 +50,19 @@ td {
   vertical-align: middle;
 }
 
+.thumb-cell { width: 80px; padding: 6px 12px; }
+.thumb-cell img {
+  width: 80px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--surface);
+  display: block;
+}
+
 .clip-title {
   font-weight: 500;
-  max-width: 360px;
+  max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -103,6 +113,7 @@ td {
   <table>
     <thead>
       <tr>
+        <th style="width:80px;"></th>
         <th style="width:52px;">Score</th>
         <th>Title / Clip ID</th>
         <th>Game</th>
@@ -118,6 +129,12 @@ td {
       {% set score_class = 'score-high' if score >= 70 else ('score-medium' if score >= 40 else 'score-low') %}
       {% set badge_class = 'badge-high' if clip.motion_level == 'high' else ('badge-medium' if clip.motion_level == 'medium' else 'badge-low') %}
       <tr>
+        <td class="thumb-cell">
+          <a href="{{ url_for('review_clip', game=clip.game, stem=clip.stem) }}">
+            <img src="{{ url_for('serve_thumb', game=clip.game, stem=clip.stem) }}"
+                 alt="preview" loading="lazy">
+          </a>
+        </td>
         <td>
           <div class="score-pill {{ score_class }}">{{ score }}</div>
         </td>
