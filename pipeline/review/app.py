@@ -19,6 +19,7 @@ Launch:
 """
 
 import json
+import os
 import shutil
 import subprocess
 from datetime import datetime
@@ -31,6 +32,7 @@ from flask import (
     abort,
     redirect,
     render_template,
+    request,
     send_from_directory,
     url_for,
 )
@@ -273,11 +275,112 @@ def serve_thumb(game: str, stem: str):
 # Entry point
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Scout routes
+# ---------------------------------------------------------------------------
+
+@app.route("/scout")
+def scout():
+    from pipeline.scout.tracker import load_cache
+    cache = load_cache()
+    thresholds = CONFIG.get("scout", {}).get("thresholds", {})
+    trend_min = thresholds.get("trend_score_min", 6)
+    longevity_min = thresholds.get("longevity_score_min", 5)
+
+    games_data = []
+    for name, data in cache.get("games", {}).items():
+        latest = data.get("latest", {})
+        prev_score = data.get("previous_trend_score")
+        curr_score = latest.get("trend_score", 0) if latest else 0
+
+        if prev_score is None or not latest:
+            direction = None
+        elif curr_score > prev_score:
+            direction = "up"
+        elif curr_score < prev_score:
+            direction = "down"
+        else:
+            direction = "flat"
+
+        games_data.append({
+            "name": name,
+            "longevity_score": data.get("longevity_score", 5),
+            "latest": latest or {},
+            "previous_trend_score": prev_score,
+            "flagged": latest.get("flagged", False) if latest else False,
+            "direction": direction,
+        })
+
+    games_data.sort(key=lambda g: (-int(g["flagged"]), -g["latest"].get("trend_score", 0)))
+
+    return render_template(
+        "scout.html",
+        games=games_data,
+        last_poll=cache.get("last_poll"),
+        trend_min=trend_min,
+        longevity_min=longevity_min,
+    )
+
+
+@app.route("/scout/poll", methods=["POST"])
+def scout_poll():
+    """Trigger an immediate background poll of all tracked games."""
+    import threading as _t
+    from pipeline.scout.tracker import poll_all_games
+    _t.Thread(target=poll_all_games, args=(CONFIG,), daemon=True).start()
+    return redirect(url_for("scout"))
+
+
+@app.route("/scout/game/add", methods=["POST"])
+def scout_add_game():
+    from pipeline.scout.tracker import add_game, poll_game
+    name = request.form.get("game_name", "").strip()
+    longevity = int(request.form.get("longevity_score", 5))
+    if name:
+        add_game(name, longevity)
+        # Poll immediately so the row has data on first load
+        import threading as _t
+        _t.Thread(target=poll_game, args=(name, CONFIG), daemon=True).start()
+    return redirect(url_for("scout"))
+
+
+@app.route("/scout/game/remove", methods=["POST"])
+def scout_remove_game():
+    from pipeline.scout.tracker import remove_game
+    name = request.form.get("game_name", "").strip()
+    if name:
+        remove_game(name)
+    return redirect(url_for("scout"))
+
+
+@app.route("/scout/game/longevity", methods=["POST"])
+def scout_set_longevity():
+    from pipeline.scout.tracker import set_longevity
+    name = request.form.get("game_name", "").strip()
+    score = request.form.get("longevity_score", 5)
+    if name:
+        set_longevity(name, score, CONFIG)
+    return redirect(url_for("scout"))
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
 if __name__ == "__main__":
     cfg = _load_config()
     review_cfg = cfg.get("review", {})
+    debug = review_cfg.get("debug", False)
+
+    # Start background scout polling.
+    # In debug mode, Werkzeug runs the script twice (reloader parent + worker).
+    # Only start the thread in the actual worker subprocess to avoid duplicates.
+    if not debug or os.environ.get("WERKZEUG_RUN_MAIN"):
+        from pipeline.scout.tracker import start_background_polling
+        start_background_polling(cfg)
+
     app.run(
         host=review_cfg.get("host", "127.0.0.1"),
         port=review_cfg.get("port", 5000),
-        debug=review_cfg.get("debug", False),
+        debug=debug,
     )

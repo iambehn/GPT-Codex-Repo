@@ -86,8 +86,9 @@
 <body>
   <header>
     <span class="logo">⬡ ClipBot</span>
-    <nav>
-      <a href="{{ url_for('queue') }}">← Queue</a>
+    <nav style="display:flex;gap:20px;">
+      <a href="{{ url_for('queue') }}">Queue</a>
+      <a href="{{ url_for('scout') }}">Scout</a>
     </nav>
     {% block header_extra %}{% endblock %}
   </header>

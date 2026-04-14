@@ -122,6 +122,38 @@ analytics:
 backup:
   enabled: true   # set false to disable without removing env vars
 
+# ---------------------------------------------------------------------------
+# Game Scouting Dashboard
+# ---------------------------------------------------------------------------
+# Tracks emerging FPS games via Twitch, YouTube, and Google Trends.
+# Results are displayed at http://127.0.0.1:5000/scout and logged to the
+# "Scout" tab in the existing Google Sheets spreadsheet.
+#
+# Required env vars:
+#   TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET  — already used for ingestion
+#   YOUTUBE_API_KEY                           — read-only API key from Google Cloud
+#                                              Console (separate from OAuth upload key)
+#                                              Enable: YouTube Data API v3, restrict to key
+#   GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_SHEETS_ID — already used for analytics
+#
+# pytrends (Google Trends) requires no API key but is rate-limited.
+# A 6-hour poll interval on ≤20 games is safe.
+scout:
+  enabled: true
+  poll_interval_hours: 6
+  thresholds:
+    trend_score_min: 6      # flag when trend_score >= this ...
+    longevity_score_min: 5  # ... AND longevity_score >= this
+  # Seed game list — loaded into scout_cache.json on first run.
+  # After first run, add/remove games via the Scout dashboard UI.
+  games:
+    - name: "Arc Raiders"
+      longevity_score: 7
+    - name: "Deadlock"
+      longevity_score: 8
+    - name: "Marvel Rivals"
+      longevity_score: 7
+
 pipeline:
   watch_interval_seconds: 30
 
