@@ -24,14 +24,16 @@ paths:
 
 ingestion:
   max_clips_per_run: 20
+  max_clip_age_hours: 72    # skip clips older than this; set null to disable
   quality_thresholds:
     min_duration_seconds: 5
     max_duration_seconds: 600
     min_resolution_height: 480
 
 transcription:
-  model: "medium"  # options: tiny | base | small | medium | large-v3
-  language: "en"
+  model: "medium"      # options: tiny | base | small | medium | large-v3
+  language: "en"       # hint passed to Whisper during transcription
+  language_filter: "en"  # skip clips where Whisper detects a different language; set null to disable
 
 scoring:
   model: "claude-haiku-4-5-20251001"  # haiku: fast + cheap; swap to claude-sonnet-4-6 for higher quality

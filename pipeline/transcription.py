@@ -196,4 +196,13 @@ def run_transcription(clip_path: str, config: dict) -> dict:
         f"~{word_count} word(s), language={clean_result['language']}"
     )
 
+    # Language filter: skip clip if detected language doesn't match the filter
+    language_filter = config["transcription"].get("language_filter")
+    if language_filter and clean_result["language"] != language_filter:
+        logger.warning(
+            f"Language filter: {clip.name} detected as '{clean_result['language']}' "
+            f"(expected '{language_filter}') — skipping clip."
+        )
+        return None
+
     return clean_result

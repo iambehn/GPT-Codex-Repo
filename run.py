@@ -26,6 +26,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 import yaml
@@ -73,6 +74,9 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
         logger.info(f"Processing clip: {clip_path}")
 
         transcript = run_transcription(clip_path, config)
+        if transcript is None:
+            logger.info(f"Skipping clip (language filter): {clip_path}")
+            continue
         metadata = run_feature_extraction(clip_path, transcript, config)
         template = select_template(metadata, config)
         processed_path = run_processing(clip_path, template, metadata, config)
@@ -86,12 +90,14 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
     logger.info(f"Pipeline complete for {game}. Launch review UI: python -m pipeline.review.app")
 
 
-def run_distribution_for_all(config: dict) -> None:
+def run_distribution_for_all(config: dict, dry_run: bool = False) -> None:
     """Distribute all approved clips that have not yet been posted.
 
     Scans accepted/{game}/ for .mp4 files, loads their metadata from
     inbox/{game}/, then runs distribution → analytics → backup in sequence.
     Fully idempotent: already-distributed platforms are skipped.
+
+    When dry_run=True, logs what would be distributed without uploading anything.
     """
     accepted_root = Path(config["paths"]["accepted"])
     inbox_root = Path(config["paths"]["inbox"])
@@ -105,8 +111,6 @@ def run_distribution_for_all(config: dict) -> None:
 
         for clip_file in sorted(game_dir.glob("*.mp4")):
             total += 1
-            # Find the matching meta.json in inbox/
-            # Meta files are named after clip_id; try to match by stem components
             meta_path = _find_meta_for_clip(clip_file, inbox_root / game)
             if meta_path is None:
                 logger.warning(f"No meta.json found for {clip_file.name} — skipping distribution.")
@@ -116,6 +120,19 @@ def run_distribution_for_all(config: dict) -> None:
 
             # Only distribute accepted clips
             if metadata.get("review_status") != "accepted":
+                continue
+
+            if dry_run:
+                enabled_platforms = [
+                    p for p, cfg in config.get("distribution", {}).get("platforms", {}).items()
+                    if cfg.get("enabled")
+                ]
+                score = metadata.get("scoring", {}).get("highlight_score", "n/a")
+                logger.info(
+                    f"[DRY RUN] {clip_file.name} | score={score} "
+                    f"| platforms={enabled_platforms or ['none enabled']}"
+                )
+                distributed += 1
                 continue
 
             logger.info(f"Distributing: {clip_file.name}")
@@ -128,7 +145,10 @@ def run_distribution_for_all(config: dict) -> None:
             backup_clip(str(clip_file), metadata, config)
             distributed += 1
 
-    logger.info(f"Distribution complete: {distributed}/{total} clip(s) processed.")
+    if dry_run:
+        logger.info(f"[DRY RUN] {distributed}/{total} clip(s) would be distributed.")
+    else:
+        logger.info(f"Distribution complete: {distributed}/{total} clip(s) processed.")
     if distributed == 0 and total == 0:
         logger.info("No clips in accepted/ yet. Run the pipeline then approve clips in the review UI.")
 
@@ -175,6 +195,16 @@ def main() -> None:
         action="store_true",
         help="Upload all approved clips from accepted/ to social media, log analytics, and back up to Drive.",
     )
+    group.add_argument(
+        "--watch",
+        action="store_true",
+        help="Continuously run the pipeline for all games on a loop (interval set by pipeline.watch_interval_seconds in config).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="With --distribute: show what would be uploaded without actually posting anything.",
+    )
     parser.add_argument(
         "--config",
         default="config.yaml",
@@ -186,7 +216,15 @@ def main() -> None:
     ensure_dirs(config)
 
     if args.distribute:
-        run_distribution_for_all(config)
+        run_distribution_for_all(config, dry_run=args.dry_run)
+    elif args.watch:
+        interval = config.get("pipeline", {}).get("watch_interval_seconds", 300)
+        logger.info(f"Watch mode active — running all games every {interval}s. Ctrl+C to stop.")
+        while True:
+            for game in config["games"]:
+                run_pipeline_for_game(game, config)
+            logger.info(f"Watch mode: next run in {interval}s...")
+            time.sleep(interval)
     elif args.game == "all":
         for game in config["games"]:
             run_pipeline_for_game(game, config)

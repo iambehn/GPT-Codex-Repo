@@ -23,7 +23,7 @@ Sidecar .meta.json fields:
 import json
 import os
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import requests
@@ -76,8 +76,14 @@ def _get_game_id(display_name: str, client_id: str, token: str) -> str | None:
     return game_id
 
 
-def _fetch_clip_urls(game_id: str, client_id: str, token: str, count: int) -> list[str]:
-    """Return up to `count` clip URLs for a game, sorted by view count."""
+def _fetch_clip_urls(
+    game_id: str, client_id: str, token: str, count: int, max_age_hours: float | None = None
+) -> list[str]:
+    """Return up to `count` clip URLs for a game, sorted by view count.
+
+    If max_age_hours is set, clips older than that threshold are excluded using
+    the started_at field returned by the Twitch Helix API.
+    """
     resp = requests.get(
         _TWITCH_CLIPS_URL,
         params={"game_id": game_id, "first": min(count, 100)},
@@ -86,7 +92,23 @@ def _fetch_clip_urls(game_id: str, client_id: str, token: str, count: int) -> li
     )
     resp.raise_for_status()
     clips = resp.json().get("data", [])
-    urls = [c["url"] for c in clips if c.get("url")]
+
+    urls = []
+    skipped_stale = 0
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours) if max_age_hours else None
+
+    for c in clips:
+        if not c.get("url"):
+            continue
+        if cutoff and c.get("started_at"):
+            clip_time = datetime.fromisoformat(c["started_at"].replace("Z", "+00:00"))
+            if clip_time < cutoff:
+                skipped_stale += 1
+                continue
+        urls.append(c["url"])
+
+    if skipped_stale:
+        logger.debug(f"Freshness filter: skipped {skipped_stale} clip(s) older than {max_age_hours}h.")
     logger.debug(f"Fetched {len(urls)} clip URL(s) from Twitch API.")
     return urls
 
@@ -228,7 +250,8 @@ def run_ingestion(game: str, config: dict) -> list[dict]:
         game_id = _get_game_id(display_name, client_id, token)
         if not game_id:
             return []
-        clip_urls = _fetch_clip_urls(game_id, client_id, token, max_clips)
+        max_age_hours = config["ingestion"].get("max_clip_age_hours")
+        clip_urls = _fetch_clip_urls(game_id, client_id, token, max_clips, max_age_hours)
     except requests.RequestException as e:
         logger.error(f"[{game}] Twitch API error: {e}")
         return []
