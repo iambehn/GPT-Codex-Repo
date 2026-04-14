@@ -24,6 +24,7 @@ Output naming: processing/{game}/{game}_{YYYYMMDD}_{clip_id}.mp4
 
 import functools
 import json
+import os
 import subprocess
 import tempfile
 from datetime import date
@@ -33,6 +34,101 @@ from utils.file_utils import get_game_from_path
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _detect_copyright(clip_path: Path, config: dict) -> tuple[str, str | None]:
+    """Fingerprint a clip against ACRCloud and return the effective audio mode.
+
+    Returns:
+        (audio_mode, match_description)
+        - audio_mode: "original" | "mute" | "replace" (from config)
+        - match_description: human-readable string if a match was found, else None
+
+    When detection is disabled or fails, falls back to the configured audio mode
+    so the pipeline always proceeds safely.
+    """
+    audio_cfg = config.get("audio", {})
+    configured_mode = audio_cfg.get("mode", "original")
+    detection = audio_cfg.get("detection", {})
+
+    if not detection.get("enabled", False):
+        return configured_mode, None
+
+    access_key = os.getenv("ACRCLOUD_ACCESS_KEY")
+    access_secret = os.getenv("ACRCLOUD_ACCESS_SECRET")
+    if not access_key or not access_secret:
+        logger.warning(
+            "ACRCloud detection enabled but ACRCLOUD_ACCESS_KEY / "
+            "ACRCLOUD_ACCESS_SECRET not set — skipping copyright check."
+        )
+        return configured_mode, None
+
+    try:
+        from acrcloud.recognizer import ACRCloudRecognizer
+    except ImportError:
+        logger.warning(
+            "pyacrcloud not installed (pip install pyacrcloud) — "
+            "skipping copyright check."
+        )
+        return configured_mode, None
+
+    host = os.getenv("ACRCLOUD_HOST", "identify-eu-west-1.acrcloud.com")
+    recognizer = ACRCloudRecognizer({
+        "access_key": access_key,
+        "access_secret": access_secret,
+        "host": host,
+        "timeout": 10,
+    })
+
+    try:
+        raw = recognizer.recognize_by_file(str(clip_path), 10)
+        result = json.loads(raw)
+    except Exception as exc:
+        logger.warning(f"ACRCloud request failed for {clip_path.name}: {exc} — "
+                       f"falling back to mode='{configured_mode}'.")
+        return configured_mode, None
+
+    status = result.get("status", {})
+    status_code = status.get("code")
+
+    if status_code == 3003:
+        logger.warning("ACRCloud quota exceeded — skipping copyright check for this clip.")
+        return configured_mode, None
+
+    if status_code == 1001:
+        # No match — audio is clear
+        return "original", None
+
+    if status_code != 0:
+        logger.debug(f"ACRCloud returned status {status_code}: {status.get('msg')} — "
+                     f"treating as no match.")
+        return "original", None
+
+    # status_code == 0: match found
+    try:
+        music_entry = result["metadata"]["music"][0]
+        title = music_entry.get("title", "Unknown")
+        artist = ", ".join(a["name"] for a in music_entry.get("artists", []))
+        score = int(music_entry.get("score", 0))
+    except (KeyError, IndexError, ValueError):
+        logger.warning(f"ACRCloud matched but response parsing failed for {clip_path.name}.")
+        return configured_mode, None
+
+    threshold = int(detection.get("confidence_threshold", 80))
+    if score >= threshold:
+        match_desc = f"'{title}' by {artist} (confidence {score})"
+        logger.info(
+            f"Copyright match for {clip_path.name}: {match_desc} — "
+            f"applying audio mode='{configured_mode}'."
+        )
+        return configured_mode, match_desc
+
+    # Match found but below confidence threshold — treat as clear
+    logger.debug(
+        f"ACRCloud low-confidence match ({score} < {threshold}) for "
+        f"{clip_path.name} — keeping original audio."
+    )
+    return "original", None
 
 
 @functools.lru_cache(maxsize=1)
@@ -617,31 +713,10 @@ def run_processing(clip_path: str, template: dict, metadata: dict, config: dict)
     # ---- Resolve audio mode from config ----------------------------------
     # Inject _audio_mode and _replacement_track into metadata so _build_ffmpeg_cmd
     # can read them without needing the full config dict.
-    #
-    # COPYRIGHT DETECTION (future):
-    #   When config["audio"]["detection"]["enabled"] is True, call an ACRCloud
-    #   fingerprint check here before deciding the mode. ACRCloud returns a
-    #   confidence score (0-100) for any matched song. If confidence >=
-    #   config["audio"]["detection"]["confidence_threshold"], apply the
-    #   configured mode (mute or replace). Otherwise keep "original".
-    #
-    #   ACRCloud Python SDK: pip install pyacrcloud
-    #   Sign up for a free key (100 recognitions/day) at acrcloud.com.
-    #   Sample integration:
-    #       from acrcloud.recognizer import ACRCloudRecognizer
-    #       recognizer = ACRCloudRecognizer({
-    #           "access_key": os.getenv("ACRCLOUD_ACCESS_KEY"),
-    #           "access_secret": os.getenv("ACRCLOUD_ACCESS_SECRET"),
-    #           "host": os.getenv("ACRCLOUD_HOST", "identify-eu-west-1.acrcloud.com"),
-    #       })
-    #       result = json.loads(recognizer.recognize_by_file(str(clip), 0))
-    #       status = result.get("status", {}).get("code")
-    #       if status == 0:  # match found
-    #           confidence = result["metadata"]["music"][0]["score"]
-    #           if confidence >= threshold:
-    #               audio_mode = configured_mode  # "mute" or "replace"
     audio_cfg_global = config.get("audio", {})
-    audio_mode = audio_cfg_global.get("mode", "original")
+    audio_mode, copyright_match = _detect_copyright(clip, config)
+    if copyright_match:
+        logger.info(f"Copyright music detected: {copyright_match}")
     replacement_track = audio_cfg_global.get("replacement_track")
     metadata = dict(metadata)  # shallow copy — don't mutate caller's dict
     metadata["_audio_mode"] = audio_mode

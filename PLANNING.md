@@ -126,19 +126,15 @@ Post-distribution: analytics logged to Google Sheets, clip backed up to Google D
 
 ---
 
-## Backlog — Copyright Music Detection
-
-> Not yet implemented. Enable before turning on YouTube/TikTok distribution.
+## Backlog — Copyright Music Detection ✓ Implemented
 
 Twitch clips often contain licensed music. YouTube Content ID and TikTok will mute, monetize against, or remove flagged videos.
 
-**Interim:** Set `config.yaml → audio.mode: "mute"` or `"replace"` as a blanket policy (no detection, applies to all clips).
+**How it works:** `pipeline/processing.py` calls ACRCloud before applying any template. A 10-second fingerprint is taken at the 10-second mark of each clip and sent to the ACRCloud API. If confidence ≥ threshold (default 80), the configured `audio.mode` is applied to that clip. If no match, original audio is kept regardless of mode setting.
 
-**Recommended detection: ACRCloud** (industry standard; free tier: 100 recognitions/day)
-1. Extract 10–15s audio fingerprint from clip
-2. Query ACRCloud API → returns title, artist, confidence (0–100)
-3. If confidence ≥ 80 → apply `audio.mode`; else keep original audio
+**Fallback behaviour:** if detection fails (quota exceeded, network error, missing library) the configured `audio.mode` is applied as a blanket policy.
 
+**Setup:**
 ```
 pip install pyacrcloud
 # .env:
@@ -146,9 +142,34 @@ ACRCLOUD_ACCESS_KEY=...
 ACRCLOUD_ACCESS_SECRET=...
 ACRCLOUD_HOST=identify-eu-west-1.acrcloud.com
 ```
-Set `config.yaml → audio.detection.enabled: true`. Integration stub already in `pipeline/processing.py`.
+```yaml
+# config.yaml:
+audio:
+  mode: "mute"           # applied when copyright is detected
+  detection:
+    enabled: true
+    confidence_threshold: 80
+```
+Free tier: 100 recognitions/day. Sign up at https://www.acrcloud.com
 
-**Alternative:** AudD.io — simpler REST API, 100 free/month, then $20/month.
+**Alternative:** AudD.io — simpler REST API, 100 free/month then $20/month.
+
+---
+
+## Setup Notes
+
+### YouTube API Key (Scout Dashboard + Thumbnails)
+The scout dashboard needs a **read-only API key** (not OAuth) for the YouTube signal. This is separate from the OAuth credentials used to upload Shorts.
+
+1. Go to Google Cloud Console → APIs & Services → Credentials
+2. Create API key → restrict it to **YouTube Data API v3** only
+3. Add to `.env`:
+```
+YOUTUBE_API_KEY=AIza...
+```
+Free quota: 10,000 units/day. Each scout search = 100 units. Polling 10 games every 6h = 40 requests/day — well within the free limit.
+
+The existing OAuth credentials (`YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET`) are only needed for uploading videos and are unrelated to this key.
 
 ---
 
@@ -416,3 +437,4 @@ When a confirmed real breakout is detected — act within 24–48 hours: create 
 | 2026-04-14 | Strategic direction finalized: FPS multi-channel first-mover model |
 | 2026-04-14 | Full document condensed; future archetypes collapsed; monetization and sponsorship roadmap added |
 | 2026-04-14 | Game scouting dashboard added: signals, scoring system, breakout detection, flavor-of-the-week warning |
+| 2026-04-14 | ACRCloud copyright detection implemented: _detect_copyright() in processing.py; pyacrcloud added to requirements |

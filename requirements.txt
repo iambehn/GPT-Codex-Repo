@@ -35,5 +35,8 @@ gspread>=6.0.0
 # Game Scouting Dashboard — Google Trends
 pytrends>=4.9.2
 
+# Audio copyright detection — ACRCloud fingerprinting
+pyacrcloud>=1.0.0
+
 # Utilities
 tqdm>=4.66.0
