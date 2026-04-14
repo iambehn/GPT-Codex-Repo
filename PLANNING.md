@@ -854,3 +854,160 @@ When `PLANNING.md` becomes too long to navigate comfortably, split into:
 - `BRAINSTORMING.md` — channel archetypes and system design notes
 - `BACKLOG.md` — QoL feature list and copyright detection roadmap
 
+---
+
+## Brainstorming: Monetization Strategy — Archetype Comparison + Brand Deals
+
+> Business strategy notes for future reference — not current build scope.
+
+### Revenue Reality
+
+Platform payouts (CPM/RPM) are typically not the primary income source:
+- TikTok / Instagram Reels: very low or inconsistent
+- YouTube Shorts: improved but still modest compared to long-form
+
+**Where the money actually comes from:**
+- **Brand deals / sponsorships** — the majority of income once you have traction
+- **Affiliates / products** — meaningful in niches with high-converting audiences (poker tools, coaching)
+
+**Rule of thumb by stage:**
+- Early: ~100% platform payouts (small absolute numbers)
+- Growth: 60–90% from sponsorships, rest from platform + affiliates
+
+---
+
+### Archetype Monetization Comparison
+
+| Archetype | Views ceiling | CPM quality | Sponsor appeal | Best for |
+|---|---|---|---|---|
+| Gaming clips | Highest | Low–medium | Medium (peripherals, energy drinks, game launches) | Growth + volume |
+| Lore / narration | Medium | Medium–high | High (books, subscriptions, games, broad brands) | Balanced growth + monetization |
+| Poker | Lower baseline, spiky upside | High (finance-adjacent) | Very high (training sites, poker tools, fintech crossover) | High-value niche monetization |
+
+**Key insight:** highest views ≠ highest money. Monetization depends on who watches, how long they watch, and how easy it is for brands to plug into your format.
+
+- Gaming = attention engine
+- Poker = monetization engine
+- Lore = brand + longevity engine
+
+If the goal is **money per view**, poker or lore outperform gaming. If the goal is **audience growth and top-of-funnel volume**, gaming wins.
+
+---
+
+### Recommended Sequencing (Given This Setup)
+
+1. **Gaming clips** — build volume, prove the system, establish posting consistency
+2. **Poker channel** — target the high-value niche, start monetization earlier with smaller audience
+3. **Lore channel** — long-term brand deal asset once infrastructure is mature
+
+---
+
+### What Advertisers Actually Look At
+
+They don't buy views. They buy:
+
+- Average views per video (last 10–20 posts) — consistency matters more than one viral hit
+- **Watch time / retention %** — the most important single metric for brand pitch
+- Engagement rate (likes, comments, shares)
+- Audience demographics (age, country) — this is why poker CPM is high; the audience is older, analytical, and higher spending
+- Posting frequency — brands want to know you won't go dormant
+
+---
+
+### How Brand Deals Happen (by Stage)
+
+| Stage | Followers | Dynamic |
+|---|---|---|
+| Early | 0–50k | You reach out; small affiliate deals |
+| Mid | 50k–250k | Mix of inbound + outbound; first real sponsorships |
+| Established | 250k+ | Brands approach consistently; agencies make contact |
+
+---
+
+### Making Yourself Visible to Advertisers (Do This Early)
+
+**1. Media kit** — a simple one-page document:
+- Channel description and niche
+- Audience demographics
+- Average views and engagement rate
+- Example videos
+
+**2. Contact info everywhere:**
+- Bio: "Business inquiries: [email]"
+- Linktree or landing page
+
+**3. Be brand-friendly in content:**
+- Clean editing, consistent format, clear niche identity
+
+**4. Tag relevant brands subtly** — especially in gaming and poker niches
+
+---
+
+### Outreach Pitch Structure
+
+When reaching out to brands yourself:
+1. Who you are + your channel niche
+2. Your audience (size, demographics, engagement)
+3. Why you fit their brand specifically
+4. One simple proposal (1 post, 1 integration)
+
+Contact targets: marketing email, creator partnership managers, talent agencies
+
+---
+
+### Data to Track for Negotiation Leverage
+
+Build a simple running table:
+
+| Video | Views | Watch % | Shares | Format |
+|---|---|---|---|---|
+| example | 80k | 92% | 1.2k | Multiple choice |
+
+When you can say "this format averages 80k views with 92% retention," you have pricing leverage. This feeds directly into the analytics Google Sheet already built — add watch time % as a column once platform analytics APIs are connected.
+
+---
+
+### Pricing Framework (Early Stage)
+
+| Creator stage | Range per post |
+|---|---|
+| Small | $50–$300 |
+| Growing | $300–$2,000 |
+| Established | $2,000+ |
+
+**Formula:** `Avg Views ÷ 1,000 × $5–$20` (CPM-equivalent)
+
+---
+
+### Negotiation Mindset
+
+You are selling audience attention and conversion potential, not a video.
+
+**Things to negotiate:**
+- Usage rights — can they repurpose your clip in their own ads? (Charge more if yes)
+- Number of posts in the deal
+- Exclusivity — avoid category exclusivity early; it limits future deals
+- Payment terms — net-30 is standard, push for 50% upfront on large deals
+
+**Common early-stage traps to avoid:**
+- Lowball deals framed as "exposure"
+- Commission-only affiliate arrangements with no guaranteed minimum
+- Long-term contracts with usage rights you don't fully understand
+
+---
+
+### When to Bring in Professionals
+
+- **Early stage:** not necessary; use common sense and simple written agreements
+- **Deals over $1,000–$5,000:** consider a one-time lawyer contract review
+- **Long-term or exclusivity contracts:** always get legal review
+- **Revenue growing:** accountant for tax structure (content creation income has specific considerations)
+
+---
+
+### Future Assets to Build
+
+- **Media kit template** — a one-page PDF with channel stats, audience demographics, example placements, and contact info. Build this once stats are meaningful (target: after first 30 days of consistent posting).
+- **First sponsor pitch template** — short outreach email tailored to the poker channel's natural sponsor set (training sites, HUD tools, online platforms).
+
+
