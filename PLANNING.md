@@ -454,3 +454,112 @@ CapCut is a template-driven system, not a programmable tool. Automation is achie
 - Test and rank video performance
 - Iterate templates based on analytics
 
+---
+
+## Brainstorming: Channel Archetype — Story-Based / Lore Narration Shorts
+
+> Additional notes for future reference — not current build scope.
+
+### Core Concept
+
+**Content Type:** Short-form narrated stories (20–60 seconds)
+
+**Topics:**
+- History (events, figures, mysteries)
+- Fictional lore (fantasy / sci-fi worlds)
+
+**Examples:**
+- League of Legends lore
+- Warhammer 40,000 factions
+- World of Warcraft characters
+
+---
+
+### Content Paradigm (Strict Ruleset)
+
+**Structure (non-negotiable):**
+
+1. **Hook** (0–2s) — "This character wiped out an entire army alone…" / "This empire collapsed in 3 days…"
+2. **Context** (2–5s) — Who / where / when
+3. **Story** (5–40s) — Key events only (compressed storytelling)
+4. **Ending** — Cliffhanger or twist; encourages looping
+
+**Visual System:**
+- Slideshow style (image changes every 2–4 seconds)
+- Subtle motion (zoom / pan)
+- Dark / cinematic tone
+- Consistent font and caption style
+
+**Audio System:**
+- AI narration (calm, dramatic tone)
+- Background music (low volume, cinematic)
+- Optional ambient sound effects
+
+---
+
+### Tool Stack (Optimized for Simplicity + Scale)
+
+| Purpose | Primary Tool | Alternatives |
+|---|---|---|
+| Script generation | ChatGPT (structured prompt) | Notion for idea/script storage |
+| Voice generation | ElevenLabs | CapCut TTS (simpler, faster) |
+| Visual assets | Midjourney, DALL·E | Wiki pages, game lore archives |
+| Editing / assembly | CapCut (template-based slideshow, auto captions) | — |
+| Automation layer | n8n, Python + FFmpeg | — |
+
+---
+
+### Content Sourcing System
+
+#### A. Structured Source Pools
+
+**1. Fictional Lore**
+- Official wikis: League of Legends, World of Warcraft, Warhammer
+- Character pages, event timelines
+- Each page generates content for multiple videos
+
+**2. Historical Content**
+- Wikipedia: "Obscure history" lists, battle pages, biography articles
+- Topic categories:
+  - Mafia / gangsters / Yakuza
+  - Ancient empires and collapses
+  - Forgotten wars and sieges
+  - Mysterious historical figures
+
+**3. Community Sources**
+- Reddit:
+  - r/AskHistorians
+  - r/40kLore
+  - r/leagueoflegends lore threads
+
+#### B. Content Extraction Method
+
+For each source:
+- Identify the character / event
+- Extract 3–5 key moments
+- Convert into a short narrative script
+
+---
+
+### Script Generation Framework
+
+**Fixed prompt template:**
+> "Summarize [topic] into a 30-second story with: a strong hook, clear narrative progression, and a dramatic or surprising ending. Keep sentences short and engaging."
+
+**Output format:**
+- 5–8 sentences maximum
+- Each sentence = one visual scene
+
+---
+
+### Visual Production System
+
+**Per video:**
+- 5–10 images total
+- Types: characters, landscapes/cities, battle scenes
+
+**Consistency rules:**
+- Same art style per channel
+- Same color tone (dark fantasy, etc.)
+- Same motion style (slow zoom)
+
