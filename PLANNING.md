@@ -1010,4 +1010,127 @@ You are selling audience attention and conversion potential, not a video.
 - **Media kit template** — a one-page PDF with channel stats, audience demographics, example placements, and contact info. Build this once stats are meaningful (target: after first 30 days of consistent posting).
 - **First sponsor pitch template** — short outreach email tailored to the poker channel's natural sponsor set (training sites, HUD tools, online platforms).
 
+---
+
+## Strategic Direction: FPS Gaming — Multi-Channel, First-Mover Model
+
+> Core strategic decisions. This section defines the operating model for the project.
+
+### Chosen Direction
+
+**One channel per game. FPS-focused. First-mover advantage over editing skill.**
+
+Channel naming convention examples:
+- Arc Raiders Daily
+- Deadlock Moments
+- Top Marvel Rivals Clips
+
+The competitive edge is not editing quality — it's being **first** in the channel namespace for newer games before established creators claim the territory. This is a systems advantage: the pipeline allows launching a new game channel faster than a manual creator can, and exiting a dead game with zero sunk cost.
+
+---
+
+### Why This Works Against Established Niches
+
+Games like Fortnite, Call of Duty, Rainbow Six Siege, and Valorant already have:
+- Large established YouTube channels with loyal audiences
+- Experienced editors producing higher-quality content
+- Brand relationships and sponsorships locked in
+- Algorithm history and search authority built over years
+
+**Don't compete there.** The opportunity is in games that are:
+- Newly released or in early access (no established channels yet)
+- Growing but not yet saturated (Arc Raiders, Deadlock, Marvel Rivals)
+- Emerging from a major update or esports scene development
+
+The goal is to be the default channel for a game before anyone else is.
+
+---
+
+### Game Lifecycle Model
+
+Each game goes through a lifecycle. The pipeline should track it and respond:
+
+| Phase | Signal | Action |
+|---|---|---|
+| **Launch / Hype** | Twitch viewer count rising, clip volume increasing | Add to pipeline immediately, post daily |
+| **Growth** | Consistent clip engagement, growing subreddit | Maintain posting frequency, refine content |
+| **Stable** | Plateau in views, consistent but not growing | Keep running, reduce manual attention |
+| **Declining** | Clip view counts dropping, Twitch concurrent viewers falling | Reduce posting frequency |
+| **Dead** | Near-zero Twitch presence, clips getting no traction | Remove from pipeline, archive channel |
+
+**Signals to watch (available from Twitch Helix API):**
+- `view_count` on returned clips — if top clips are getting fewer views week over week, the game is cooling
+- Twitch concurrent viewers (separate endpoint: `GET /helix/streams`) — the most direct health signal
+- Reddit post activity on game-specific subreddits
+
+**Adding a new game:** one config.yaml entry. The pipeline handles the rest automatically.
+
+**Exiting a game:** flip `enabled: false` in config or remove the entry entirely. No content is deleted, no infrastructure changes needed.
+
+---
+
+### Sponsorship Roadmap
+
+**Stage 1 — Gaming peripherals (natural first target):**
+- Headsets, gaming chairs, keyboards, mice, monitors, mousepads
+- These companies actively sponsor game-specific channels at modest follower counts (10k–50k)
+- Game-specific channels are ideal because the audience has demonstrated they are active gamers
+- Target brands: SteelSeries, HyperX, Logitech G, Corsair, Secretlab, DXRacer
+
+**Stage 2 — Game publishers and developers:**
+- Developers of the games you're covering may offer: game keys, early access, direct sponsorships
+- Arc Raiders (Embark Studios), Marvel Rivals (NetEase), Deadlock (Valve — unlikely to sponsor but others will)
+- This is a realistic early-stage partnership because developers want coverage of their games
+- Approach: email the community/marketing team directly with channel stats
+
+**Stage 3 — Hardware manufacturers (longer-term):**
+- NVIDIA, Intel, AMD, ASUS ROG, MSI
+- These companies sponsor at scale — realistic once channels have 50k–100k+ combined subscribers
+- FPS gaming is their core demographic; the pitch writes itself
+
+**What to avoid early:**
+- Energy drink / food brands — these require large audiences and are often approached rather than outreached
+- Broad consumer brands with no gaming connection — poor audience fit, poor conversion, poor rates
+- Exclusivity deals that lock out the peripheral/hardware tier
+
+---
+
+### Pipeline Architecture Implications
+
+The current system already supports this model well:
+
+**What works today:**
+- Adding a new game = one config.yaml entry (`games:` block + subreddit mapping)
+- Twitch Helix API resolves any game by display name automatically
+- Each game processes independently via `python run.py --game <name>`
+- Distribution already routes by game (Reddit subreddit per game, platform tags)
+
+**What needs to be built for multi-channel:**
+- **Per-game YouTube / TikTok channel credentials** — the current distribution assumes one set of API tokens. Supporting separate channels per game requires storing one OAuth token per channel and routing by game at upload time. This is a moderate architecture change to `distribution.py`.
+- **Per-game channel config** — extend `config.yaml` to allow each game entry to specify which platform channel ID to post to
+- **Game health monitoring** — a lightweight scheduled check that pulls Twitch concurrent viewers for each configured game and logs it to the analytics sheet. Flags games below a threshold automatically.
+
+**What doesn't need to change:**
+- Ingestion, transcription, feature extraction, AI scoring, manual review — all game-agnostic already
+- Analytics spreadsheet — add a per-channel tab or filter by game column
+
+---
+
+### Decision Framework for Adding / Dropping Games
+
+**Add a game when:**
+- It has Twitch presence (top game directory has clips being created)
+- No established dedicated short-form channel exists yet (quick YouTube search)
+- It's FPS or action-adjacent (fits the existing template system)
+- The game has a subreddit with active engagement
+
+**Drop a game when:**
+- Clips are averaging fewer than X views after 30 days of posting (set X based on your baseline)
+- Twitch concurrent viewers have dropped below a threshold for 2+ consecutive weeks
+- The subreddit is inactive or posts are being removed
+- A larger established channel has claimed the space and is outperforming significantly
+
+The key principle: **zero emotional attachment to a game**. The channel is an asset, not a hobby. If the data says exit, exit.
+
+
 
