@@ -563,3 +563,137 @@ For each source:
 - Same color tone (dark fantasy, etc.)
 - Same motion style (slow zoom)
 
+---
+
+## Brainstorming: Channel Archetype — Interactive Poker Clips (Guess the Hand / Range)
+
+> Additional notes for future reference — not current build scope.
+
+### Core Concept
+
+**Content Type:** Short-form interactive poker clips (20–45 seconds)
+
+**Engagement mechanic:** viewer guesses hidden information — hand, card, or outcome
+
+**Format variations:**
+- Hide one player's full hole cards
+- Hide one card (turn or river suspense build)
+- Hide both hands → reveal winner at the end
+- Range guessing (e.g., suited connectors vs. premium pairs)
+
+---
+
+### Content Paradigm (Strict Ruleset)
+
+**Structure:**
+
+1. **Hook (0–2s)** — "Can you guess this hand from the action?" / "Only pros get this right…"
+2. **Setup (2–6s)** — Stakes, positions, preflop action
+3. **Hand Progression (6–25s)** — Flop → turn → river with key bets highlighted
+4. **Interactive Phase** — Prompt appears: "What is Player A holding?" with multiple choice answers
+5. **Reveal (final 3–5s)** — Cards shown, optional quick explanation
+
+---
+
+### Engagement Mechanics (Core Differentiator)
+
+**A. Hidden Information System**
+- Mask hole cards, a single card, or the entire board (rare variant)
+- Keyframed blur or overlay shape follows card movement
+
+**B. Multiple Choice System**
+
+Basic version:
+- A: AK  B: QQ  C: 76s  D: Bluff
+
+Advanced variant:
+- Options eliminate over time (Progressive Elimination Effect)
+- Countdown timer builds tension
+
+**C. Range-Based Questions**
+- "Which range does this belong to?" → Value / Bluff / Draw / Trap
+- Aligns well with poker / statistics background — natural content angle
+
+---
+
+### Content Sourcing System
+
+**Primary sources:**
+- Twitch VODs (downloaded early — live VODs can be deleted, archive locally)
+- YouTube tournament streams
+- Online poker replay sites
+
+**Clip extraction strategy (per stream):**
+- Long streams (4–8 hours) → identify 20–50 hands
+- Target: big pots, all-ins, unusual lines, hero calls
+- Extract: 20–40 second segments per hand
+- 1 stream = 20–50 clips
+
+---
+
+### Editing System (Template-Based)
+
+Primary tool: **CapCut** (not FFmpeg — animation and UI effects are visual timeline work)
+
+**Template layers:**
+1. **Base video** — cropped poker table footage
+2. **Masking / censoring** — blur or shape overlay on cards, keyframed to follow movement
+3. **UI overlay** — text prompts, multiple choice answers, countdown timer
+4. **Reveal layer** — mask removed OR hard cut to uncensored version
+
+**CapCut implementation methods:**
+
+| Method | How |
+|---|---|
+| Simple Overlay | Text layers A/B/C/D, fade in at start, fade out incorrect answers |
+| Progressive Elimination | All answers appear → timed animations remove wrong options at 2s, 4s, etc. |
+| Countdown Timer | Animated 3→2→1 countdown synced with music buildup |
+| Correct Answer Highlight | Post-reveal glow effect or color change (green = correct, red = wrong) |
+
+**FFmpeg role in this archetype:**
+- Batch cropping and encoding (yes)
+- Interactive visuals and UI effects (no — use CapCut for those)
+
+---
+
+### Repeatable Workflow
+
+1. **Source** — Download VOD
+2. **Select** — Identify 10–20 hands per stream
+3. **Edit** — Drop into template, add mask, add question + choice overlay
+4. **Export** — Standardized format for all platforms
+
+---
+
+### Consistency Rules
+
+- Same question format every video
+- Same answer layout and position
+- Same animation timing
+- Same reveal style
+
+---
+
+### Anti-Removal / Transformation Strategy
+
+This archetype has strong copyright defense:
+- Adds an interactive layer not present in the original
+- Changes the original context entirely
+- Introduces original editing, overlays, and optional narration
+- Qualifies as transformative use under most platform content policies
+
+---
+
+### Scaling Potential
+
+- Endless content from long streams (1 stream = 20–50 clips)
+- Multiple format variants: Guess the Hand, Guess the Range, Guess the Outcome
+- Natural expansion path: strategy explanation clips, hand history reviews
+
+---
+
+### Optional Next Steps (Future)
+
+- Design a CapCut template layout (layer-by-layer blueprint)
+- Define a data-driven hand tagging system (tag hands by type, stakes, outcome) and track which formats perform best in analytics
+
