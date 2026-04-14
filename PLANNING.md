@@ -154,17 +154,15 @@ Set `config.yaml → audio.detection.enabled: true`. Integration stub already in
 
 ## Backlog — Quality of Life Features
 
-### High Priority
-1. **Language filter** — After transcription, skip non-English clips. ~5 lines in `pipeline/transcription.py`. Eliminates Russian/Cyrillic clips from queue.
-2. **`--watch` mode** — Loop pipeline continuously with configurable sleep interval. Hands-free operation.
-3. **`--dry-run` flag** — Show what WOULD be distributed without uploading. Essential for testing new platform setups.
-4. **Clip freshness filter** — `ingestion.max_clip_age_hours: 72`. Use Twitch Helix `started_at` field to skip stale clips on repeat runs.
-
-### Medium Priority
-5. **YouTube thumbnail generation** — Extract highest-motion keyframe via FFmpeg; upload via `thumbnails.set()`.
-6. **Video thumbnails in review UI** — Extract 3-second frame per clip; show as `<img>` in queue.
-7. **TikTok publish_id polling** — Poll `/v2/post/publish/status/fetch/` after upload to capture final URL for analytics.
-8. **Reddit flair auto-detection** — Fetch flair templates via PRAW per subreddit; apply on submit to prevent silent removals.
+### Implemented ✓
+1. ~~**Language filter**~~ — Done. Whisper-detected language checked against `transcription.language_filter: "en"` in config.
+2. ~~**`--watch` mode**~~ — Done. `python run.py --watch` loops all games on `pipeline.watch_interval_seconds`.
+3. ~~**`--dry-run` flag**~~ — Done. `python run.py --distribute --dry-run` previews without uploading.
+4. ~~**Clip freshness filter**~~ — Done. `ingestion.max_clip_age_hours: 72` in config; filters by Twitch `started_at`.
+5. ~~**YouTube thumbnail generation**~~ — Done. Extracts highest-motion keyframe via FFmpeg scene detection; uploads via `thumbnails.set()`.
+6. ~~**Video thumbnails in review UI**~~ — Done. `/thumb/<game>/<stem>` route; cached `.thumb.jpg` sidecar; shown in queue.
+7. ~~**TikTok publish_id polling**~~ — Done. `python run.py --poll-tiktok` resolves pending TikTok URLs.
+8. ~~**Reddit flair auto-detection**~~ — Done. `python run.py --list-reddit-flairs`; apply via `config.yaml` subreddit_config.
 
 ### Lower Priority
 9. **Retry failed distributions** — `python run.py --retry-failed` for clips with `distribution.{platform}.success: false`.
