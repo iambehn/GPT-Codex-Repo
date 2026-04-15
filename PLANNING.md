@@ -213,6 +213,7 @@ Fast pre-filter — is this clip from a skilled player?
 **Heuristic Mode** (new games / no API):
 - **Title NLP:** If game age < 30 days, apply Skill Multiplier when title contains sweat keywords: `scrim`, `tourney`, `top 100`, `pro`, `ranked grind`, `elo`, `mmr`
 - **Social Rank Proxy:** Streamers with ≥ 50k followers (or high avg viewers) treated as Verified Skill
+- **Smurf detection:** If a high-follower streamer's title contains `smurf`, `bronze to gm`, `low elo`, or similar — Verified Skill proxy is voided; fall back to Title NLP scoring only
 
 Acceptance thresholds are adjusted dynamically by the Market Density Monitor (see §5).
 
@@ -230,6 +231,14 @@ Measures clip pool saturation for a game without downloading anything.
 | 50–5,000 | HEALTHY | Default thresholds |
 | < 50 | SCARCITY | Lower strictness |
 
+**Time-Decay Problem:** Raw view count on the 100th clip ignores velocity — those 5,000 views could be 6 months old. Always pair the view count check with a **Clips Per Day (CPD)** calculation using the `created_at` timestamps of the same 100 clips.
+
+```
+CPD = count of clips where created_at > (now − 24h)
+```
+
+**Deadly Plateau:** ABUNDANT by view count but CPD is declining week-over-week → the game is coasting on historical volume, not current momentum. Don't just raise strictness; flag for Exit Strategy review (see Game Lifecycle Model).
+
 ---
 
 ### 3. Kill-Feed Parser (OpenCV)
@@ -238,16 +247,32 @@ Ground-truth verification of mechanical action — runs before the AI to avoid u
 
 **Setup:**
 - Per-game bounding box defined in `config.yaml` under `kill_feed_coords`
+- **Resolution normalization:** Before any crop, resize every frame to 1080p internally (`cv2.resize`). Streamers use 1440p, ultrawide, or non-standard HUD scales — without this, ROI coordinates break constantly.
 - Crop to ~300×400 px ROI; sample at 5 FPS
 
 **Detection methods (in priority order):**
 1. **Color mask** — `cv2.inRange()` for headshot/kill-feed colors; flag events with ≥ 500% pixel spike in 2 seconds
 2. **Template match** — `cv2.matchTemplate()` for UI icons; score > 0.8 → skill event
-3. **Edge detection fallback** — `cv2.Canny()` for dynamic or transparent UIs
+3. **MOG2 background subtraction** — `cv2.createBackgroundSubtractorMOG2()` to detect text/icon *appearance* in the ROI, rather than relying on color alone; handles dynamic or semi-transparent UIs
+4. **Edge detection fallback** — `cv2.Canny()` as last resort
 
 **Sweat Score** (sliding 5-second window):
 - Kill = +10 pts · Headshot = +20 pts
-- Window total > 50 → promote clip to AI Classifier
+- Window total > 50 → promote clip to Audio Energy Check
+
+---
+
+### 3a. Audio Energy Check
+
+Lightweight gate between Kill-Feed Parser and AI Classifier. Mechanical skill on the kill-feed is not the same as a hype clip — a player getting three kills quietly in a corner will not go viral.
+
+**Method:** Extract audio waveform for the kill-feed window using FFmpeg (`volumedetect` or `astats` filter). If the mean dB in that window is below a threshold, the clip is deprioritised.
+
+**Rule:**
+- Kill-feed spike + audio spike (shouting, game "multi-kill" SFX, streamer reaction) → **promote to AI Classifier**
+- Kill-feed spike + flat audio → **lower Final_Score bonus** (still passes, just ranked lower)
+
+Audio spike = peak dB in the 5s window exceeds the clip's mean dB by ≥ 6 dB. This threshold is configurable per game in `config.yaml` (`audio_spike_db_delta`).
 
 ---
 
@@ -256,9 +281,9 @@ Ground-truth verification of mechanical action — runs before the AI to avoid u
 Qualitative verification of crosshair control, target switching, and movement — called only when Kill-Feed Parser promotes the clip.
 
 **Workflow:**
-1. Kill-Feed Parser provides kill timestamps
-2. Extract 3 frames per timestamp (t−1, t, t+1) via FFmpeg
-3. Send frames + prompt to Claude: rate sweat level 1–10 (crosshair snapping, low TTK, advanced movement)
+1. Kill-Feed Parser provides kill timestamps; Audio Energy Check confirms hype
+2. For each timestamp, compute **optical flow** (e.g., `cv2.calcOpticalFlowFarneback`) across t−1 → t → t+1 frames and select the frame with the highest mean flow magnitude — this is the frame most likely to show a flick or snap
+3. Send that frame (plus one frame of context on each side) + prompt to Claude: rate sweat level 1–10 (crosshair snapping, low TTK, advanced movement)
 
 **Final score formula:**
 ```
@@ -287,6 +312,8 @@ OVERSUPPLY multiplier: 1.2 · SCARCITY multiplier: 0.8
 
 **Vault/Stockpile:** Over-ingest during OVERSUPPLY; bank approved-but-unposted clips for SCARCITY periods.
 
+**Vault expiry:** Add a `meta_expiry` tag. Any vaulted clip older than 7 days that hasn't been posted must be re-evaluated or discarded. Fast-moving metas (Marvel Rivals, Deadlock patch weeks) make stale clips actively harmful — they signal the channel is out of touch. Freshness already identified as a High Priority signal (see Platform Algorithm & Retention).
+
 ---
 
 ### Integration Notes
@@ -300,12 +327,15 @@ OVERSUPPLY multiplier: 1.2 · SCARCITY multiplier: 0.8
 ### Implementation Checklist
 
 - [ ] Game-specific rank API hooks (Deadlock, Marvel Rivals / Tracker.gg)
-- [ ] Title NLP sweat keyword dictionary + Social Rank Proxy
+- [ ] Title NLP sweat keyword dictionary + Social Rank Proxy + smurf detection
 - [ ] Depth Sampling (100th clip view count → Market Condition)
-- [ ] OpenCV Kill-Feed Parser (ROI crop, color mask, template match, edge fallback)
-- [ ] 3-frame AI prompt + Final_Score formula
+- [ ] CPD (Clips Per Day) calculation + Deadly Plateau detection → Exit Strategy trigger
+- [ ] OpenCV Kill-Feed Parser (resolution normalization to 1080p, ROI crop, color mask, MOG2, template match, edge fallback)
+- [ ] Audio Energy Check: FFmpeg `volumedetect` on kill-feed window; configurable `audio_spike_db_delta` per game
+- [ ] Optical flow frame selection for AI Classifier (highest motion frame per timestamp)
+- [ ] AI prompt + Final_Score formula
 - [ ] Market Density Monitor + Strictness Slider
-- [ ] Vault/Stockpile clip banking logic
+- [ ] Vault/Stockpile clip banking logic with 7-day `meta_expiry` tag
 - [ ] Auto-tag distribution metadata from extracted keywords
 
 ---
@@ -314,10 +344,14 @@ OVERSUPPLY multiplier: 1.2 · SCARCITY multiplier: 0.8
 
 | Area | Risk | Mitigation |
 |---|---|---|
-| OpenCV color masks | High false positive rate from noisy overlays | Multi-signal voting: mask + template + audio spike |
-| Market Density Monitor | Noisy signal → overfitted thresholds → missed viral clips | Conservative decay; A/B feedback loop |
-| API rate limits / resolution variance | Edge cases on Twitch and Tracker.gg | Retries with backoff; resolution normalization |
-| Anti-fluke | Lucky multi-kills passing as skilled plays | Add scoreboard parsing + killcam replay detection |
+| OpenCV color masks | False positives from noisy/transparent overlays | MOG2 background subtraction + multi-signal voting |
+| Resolution variance | ROI coordinates break on 1440p / ultrawide streams | Normalize all frames to 1080p before any crop |
+| Anti-fluke (quiet kills) | Multi-kill on kill-feed ≠ hype clip (corner camper) | Audio Energy Check gates promotion to AI Classifier |
+| Smurf streamers | High-follower streamer in low-skill lobby → false Verified Skill | Smurf keyword check voids Social Rank Proxy |
+| Deadly Plateau | ABUNDANT view count but CPD declining → stale game flagged as active | CPD trend check; trigger Exit Strategy review |
+| Stale vault clips | 2-week-old meta clip makes channel look out of touch | 7-day `meta_expiry`; re-evaluate or discard |
+| Market Density Monitor | Overfitted thresholds → missed viral clips | Conservative decay; A/B feedback loop |
+| API rate limits | Twitch and Tracker.gg edge cases | Retries with backoff |
 
 **What's needed before this is production-ready:**
 - Structured decision logs per clip (scores at each stage, pass/fail reason)
@@ -606,3 +640,4 @@ All major platforms (YouTube, TikTok, Instagram) use staged distribution: conten
 | 2026-04-14 | ACRCloud copyright detection implemented: _detect_copyright() in processing.py; pyacrcloud added to requirements |
 | 2026-04-15 | Advanced Clip Intelligence backlog added: Rank Looker, Depth Sampling, Kill-Feed Parser, AI Classifier, Market Density Monitor |
 | 2026-04-15 | Platform Algorithm & Retention section added: metrics priority, frameworks, feedback loop guidance |
+| 2026-04-15 | Advanced Clip Intelligence refined: Audio Energy Check (§3a), CPD + Deadly Plateau, resolution normalization, MOG2, optical flow frame selection, Vault expiry, smurf detection |
