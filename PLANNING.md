@@ -193,6 +193,140 @@ The existing OAuth credentials (`YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET`) a
 
 ---
 
+## Backlog — Advanced Clip Intelligence
+
+A layered pre-filter system that gates clips on skill level and market conditions before committing to expensive processing. Cheap checks run first; AI runs last.
+
+**Pipeline insertion point:**
+```
+Rank Looker → Kill-Feed Parser → (pass) → Download 1080p → AI Classifier → Processing/Template
+```
+
+---
+
+### 1. Rank Looker
+
+Fast pre-filter — is this clip from a skilled player?
+
+**API Mode:** Query game-specific rank APIs where available (e.g., Deadlock MMR, Tracker.gg for Marvel Rivals).
+
+**Heuristic Mode** (new games / no API):
+- **Title NLP:** If game age < 30 days, apply Skill Multiplier when title contains sweat keywords: `scrim`, `tourney`, `top 100`, `pro`, `ranked grind`, `elo`, `mmr`
+- **Social Rank Proxy:** Streamers with ≥ 50k followers (or high avg viewers) treated as Verified Skill
+
+Acceptance thresholds are adjusted dynamically by the Market Density Monitor (see §5).
+
+---
+
+### 2. Depth Sampling (Market Density Proxy)
+
+Measures clip pool saturation for a game without downloading anything.
+
+**Procedure:** Fetch top 100 clips via Twitch API → inspect view count of the 100th clip.
+
+| 100th clip views | Market condition | Effect on thresholds |
+|---|---|---|
+| > 5,000 | ABUNDANT (oversupply) | Raise strictness |
+| 50–5,000 | HEALTHY | Default thresholds |
+| < 50 | SCARCITY | Lower strictness |
+
+---
+
+### 3. Kill-Feed Parser (OpenCV)
+
+Ground-truth verification of mechanical action — runs before the AI to avoid unnecessary API calls.
+
+**Setup:**
+- Per-game bounding box defined in `config.yaml` under `kill_feed_coords`
+- Crop to ~300×400 px ROI; sample at 5 FPS
+
+**Detection methods (in priority order):**
+1. **Color mask** — `cv2.inRange()` for headshot/kill-feed colors; flag events with ≥ 500% pixel spike in 2 seconds
+2. **Template match** — `cv2.matchTemplate()` for UI icons; score > 0.8 → skill event
+3. **Edge detection fallback** — `cv2.Canny()` for dynamic or transparent UIs
+
+**Sweat Score** (sliding 5-second window):
+- Kill = +10 pts · Headshot = +20 pts
+- Window total > 50 → promote clip to AI Classifier
+
+---
+
+### 4. AI Classifier & Decision Engine
+
+Qualitative verification of crosshair control, target switching, and movement — called only when Kill-Feed Parser promotes the clip.
+
+**Workflow:**
+1. Kill-Feed Parser provides kill timestamps
+2. Extract 3 frames per timestamp (t−1, t, t+1) via FFmpeg
+3. Send frames + prompt to Claude: rate sweat level 1–10 (crosshair snapping, low TTK, advanced movement)
+
+**Final score formula:**
+```
+Final_Score = (Kill_Density × 0.4) + (AI_Skill_Rating × 0.6)
+```
+Approve if `Final_Score >= Strictness_Threshold` (threshold set by Market Density Monitor).
+
+---
+
+### 5. Market Density Monitor & Dynamic Thresholding
+
+Daily pulse that adjusts how strict the pipeline is based on how saturated the clip pool is.
+
+**Daily pulse:** Fetch top 100 clips (last 24h) → Depth Sample → set `Market_Condition`.
+
+| Market Condition | Skill Threshold | Multi-Kill Req | Posting Frequency |
+|---|---|---|---|
+| OVERSUPPLY | 9+ | Triple kill+ | 3×/day |
+| HEALTHY | 7+ | Double kill+ | 1×/day |
+| SCARCITY | 5+ | Skilled single kill | 0.5×/day |
+
+```
+Threshold = Baseline_Strictness × Market_Multiplier
+```
+OVERSUPPLY multiplier: 1.2 · SCARCITY multiplier: 0.8
+
+**Vault/Stockpile:** Over-ingest during OVERSUPPLY; bank approved-but-unposted clips for SCARCITY periods.
+
+---
+
+### Integration Notes
+
+- Auto-inject Twitch tags and extracted keywords into distribution metadata (e.g., `#VenomMain`, `#MarvelRivalsStrategy`)
+- Keep `rank_looker.py` and `kill_feed.py` small, config-driven, and independently testable
+- Per-game parameters (`kill_feed_coords`, `pixel_threshold`, HSV ranges) live in `config.yaml`
+
+---
+
+### Implementation Checklist
+
+- [ ] Game-specific rank API hooks (Deadlock, Marvel Rivals / Tracker.gg)
+- [ ] Title NLP sweat keyword dictionary + Social Rank Proxy
+- [ ] Depth Sampling (100th clip view count → Market Condition)
+- [ ] OpenCV Kill-Feed Parser (ROI crop, color mask, template match, edge fallback)
+- [ ] 3-frame AI prompt + Final_Score formula
+- [ ] Market Density Monitor + Strictness Slider
+- [ ] Vault/Stockpile clip banking logic
+- [ ] Auto-tag distribution metadata from extracted keywords
+
+---
+
+### Risks & Production Gaps
+
+| Area | Risk | Mitigation |
+|---|---|---|
+| OpenCV color masks | High false positive rate from noisy overlays | Multi-signal voting: mask + template + audio spike |
+| Market Density Monitor | Noisy signal → overfitted thresholds → missed viral clips | Conservative decay; A/B feedback loop |
+| API rate limits / resolution variance | Edge cases on Twitch and Tracker.gg | Retries with backoff; resolution normalization |
+| Anti-fluke | Lucky multi-kills passing as skilled plays | Add scoreboard parsing + killcam replay detection |
+
+**What's needed before this is production-ready:**
+- Structured decision logs per clip (scores at each stage, pass/fail reason)
+- Unit tests for ROI cropping, HSV masks, and template matching (use recorded sample clips)
+- Config schema validation for per-game parameters
+- Pass/fail rate metrics + a small debug dashboard
+
+---
+
 ## Strategic Direction — FPS Multi-Channel, First-Mover Model
 
 ### Core Model
@@ -424,6 +558,38 @@ When a confirmed real breakout is detected — act within 24–48 hours: create 
 
 ---
 
+## Platform Algorithm & Retention
+
+All major platforms (YouTube, TikTok, Instagram) use staged distribution: content is shown to a small test audience first, performance is measured in the first minutes/hours, and distribution expands only if metrics are strong. Editing quality matters far less than attention retention.
+
+**Priority order:** Retention > Shares > Watch Time > Likes
+
+### Core Metrics
+
+| Metric | What it measures |
+|---|---|
+| Retention % | Percent of the video actually watched — the single most important signal |
+| Hook strength | Drop-off rate in the first 1–3 seconds |
+| Engagement rate | (Likes + Comments + Shares) ÷ Views |
+| Share / Save rate | High-intent signal; heavily weighted by all three platforms |
+| Rewatch rate | Loopable endings drive replays and multiply watch time |
+| Scroll-stop rate | Views ÷ Impressions — how often the thumbnail/opening stops the scroll |
+
+### Frameworks
+
+- **Hook–Retention–Reward** — strong opening, sustained attention, clear payoff at the end
+- **Retention curve optimization** — identify specific drop-off points in the edit and fix them
+- **Loopability** — seamless endings encourage replays, compounding rewatch signals
+
+### For This System
+
+- Tag clips by type (clutch, funny, fail, multi-kill) and log performance per template
+- Track per clip: retention %, watch time, engagement rate, shares
+- A/B test template variants one variable at a time; feed results back into AI scoring weights
+- The pipeline's AI scoring model should eventually be tuned against real engagement data, not just editorial intuition
+
+---
+
 ## Changelog
 
 | Date       | Change |
@@ -438,3 +604,5 @@ When a confirmed real breakout is detected — act within 24–48 hours: create 
 | 2026-04-14 | Full document condensed; future archetypes collapsed; monetization and sponsorship roadmap added |
 | 2026-04-14 | Game scouting dashboard added: signals, scoring system, breakout detection, flavor-of-the-week warning |
 | 2026-04-14 | ACRCloud copyright detection implemented: _detect_copyright() in processing.py; pyacrcloud added to requirements |
+| 2026-04-15 | Advanced Clip Intelligence backlog added: Rank Looker, Depth Sampling, Kill-Feed Parser, AI Classifier, Market Density Monitor |
+| 2026-04-15 | Platform Algorithm & Retention section added: metrics priority, frameworks, feedback loop guidance |
