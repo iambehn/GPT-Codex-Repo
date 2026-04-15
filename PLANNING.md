@@ -624,6 +624,107 @@ All major platforms (YouTube, TikTok, Instagram) use staged distribution: conten
 
 ---
 
+## Interview Preparation — System Design
+
+These notes cover the questions a technical interviewer (or CTO evaluating the project) is likely to ask, the answers that demonstrate production-system thinking, and the things to avoid saying.
+
+---
+
+### Anticipated Attack Vectors
+
+**"Isn't this over-engineered?"**
+> "The design is modular. The MVP is ingestion + basic scoring + rendering — everything else is a planned extension. The complexity is the cost of entry for a system that can scale to fifty channels without proportional manual effort."
+
+**"Why not just use a vision model for everything?"**
+> "That's a scaling trap. Running 24/7 video through a multimodal LLM is economically non-viable for this niche. Traditional CV is deterministic, costs nothing per frame, and handles 90% of the filtering. The AI is reserved for the 10% of clips that pass the cheap gates — that's where its cost is justified."
+
+**"How many clips per hour can this process?"**
+Throughput is bounded by AI API latency. Non-AI stages (ingestion, FFprobe, OpenCV, audio analysis) run near real-time. A rough estimate: if average AI call takes 3 seconds and parallelism is N, throughput ≈ N × 1,200 clips/hour before AI becomes the bottleneck. Have a number; even a rough one is better than no answer.
+
+**"How do you debug a failure in production?"**
+> "Structured JSON logs per stage, keyed by clip ID. Each stage emits a pass/fail result with the reason. That gives per-game pass rate metrics and makes it trivial to find where in the funnel a clip died."
+
+**"What if you suddenly get 10× more clips?"**
+> "Ingestion is decoupled from processing by the queue of manifests. The Vault absorbs approved-but-unprocessed clips during oversupply. If the AI API slows down, backpressure is contained at the processing stage — ingestion keeps running and nothing is lost."
+
+**"What exactly are you testing?"**
+- OpenCV ROI accuracy against a labelled gold set (see Precision & Recall below)
+- Scoring logic with fixed inputs
+- Distribution API calls via mocks (no real posts during tests)
+
+---
+
+### Tradeoff Framing (Core Principle)
+
+Every answer should explain *why* a choice was made, not just *what* was built.
+
+| Instead of | Say |
+|---|---|
+| "I use OpenCV" | "I chose OpenCV for deterministic filtering before expensive AI calls to control cost and latency" |
+| "AI just handles it" | "AI is a recommendation layer, not a final decider — that's what the Manual Review stage is for" |
+| "It should work" | "Current precision is X%, validated against a 50-clip gold set" |
+| "This detects kills" | "The kill-feed parser uses color mask + MOG2 + audio energy gate to reduce false positives before any API call is made" |
+
+Red flags that signal inexperience: vague accuracy claims, no cost awareness, "AI handles it" as a catch-all, no explanation of failure modes.
+
+---
+
+### Unit Economics
+
+A CTO will ask why this is better than a $15/hr human editor.
+
+- Pipeline cost: ~$0.08 per final clip (AI tokens + compute)
+- Human editor cost: ~$5.00 per clip
+- Result: ~60× cheaper, ~100× faster at consistent volume
+- False positive rate: ~15% — mitigated by the Manual Review layer, which acts as a quality gate before any clip is posted
+
+Track `token_usage` and `execution_time` per clip in the manifest so this number is real, not estimated.
+
+---
+
+### Precision & Recall — Gold Set
+
+Don't claim accuracy; demonstrate it.
+
+- Create `tests/eval/` with ~50 clips where the correct answer is already known
+- Run the full OpenCV + AI pipeline against them and measure:
+  - **Precision** (of clips flagged as good, how many actually are?) — target: 92%
+  - **Recall** (of all good clips, how many did we catch?) — target: 75%
+- Deliberately accepting lower recall saves money; that's a design choice, not a flaw
+- Run this suite before any significant pipeline change (regression testing)
+
+---
+
+### Failure Mode Registry
+
+An interviewer will ask: "What if the game releases a patch that moves the HUD?"
+
+- Add a `ui_version_hash` per game to `config.yaml`; update it when the HUD changes
+- If detection confidence drops below a 24-hour rolling baseline → **circuit breaker** pauses that game's pipeline and alerts
+- ROI coordinates need roughly 2 minutes to update when a game patches its HUD
+- This makes the brittleness of OpenCV a *managed* risk, not an unacknowledged one
+
+---
+
+### Architecture Summary (Whiteboard / README_ARCH.md)
+
+**System philosophy:** High-throughput, low-latency filtering pipeline. "Funnel of costs" — 90% of clips are discarded by near-zero-cost (OpenCV + audio) filters; only 10% reach the AI scoring stage.
+
+**Decision stack:**
+
+| Component | Choice | Tradeoff |
+|---|---|---|
+| Filtering | OpenCV + audio energy check | Pro: deterministic, $0/frame. Con: brittle to UI changes — mitigated by config-driven ROIs + circuit breaker |
+| Validation | Claude AI Classifier | Pro: qualitative reasoning on movement/APM. Con: latency + cost — mitigated by kill-feed gate that routes only promoted clips |
+| State | JSON manifest sidecars + folder structure | Pro: human-readable, simple. Con: not atomic — upgrade path is SQLite for multi-process production use |
+
+**Operational resilience:**
+- **Idempotency:** Every clip has a `.meta.json` sidecar. The pipeline can crash at any point and resume without re-downloading or double-spending API credits.
+- **Backpressure:** Queue-based ingestion is decoupled from processing. If the AI API slows, the Vault absorbs the backlog without data loss.
+- **Observability:** Structured JSON logs keyed by clip ID enable real-time dashboards on pass/fail rates, processing time, and cost per stage.
+
+---
+
 ## Changelog
 
 | Date       | Change |
@@ -641,3 +742,4 @@ All major platforms (YouTube, TikTok, Instagram) use staged distribution: conten
 | 2026-04-15 | Advanced Clip Intelligence backlog added: Rank Looker, Depth Sampling, Kill-Feed Parser, AI Classifier, Market Density Monitor |
 | 2026-04-15 | Platform Algorithm & Retention section added: metrics priority, frameworks, feedback loop guidance |
 | 2026-04-15 | Advanced Clip Intelligence refined: Audio Energy Check (§3a), CPD + Deadly Plateau, resolution normalization, MOG2, optical flow frame selection, Vault expiry, smurf detection |
+| 2026-04-15 | Interview preparation section added: attack vectors, tradeoff framing, unit economics, gold set, failure mode registry, architecture summary |
