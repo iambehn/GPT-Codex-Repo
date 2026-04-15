@@ -193,6 +193,62 @@ The existing OAuth credentials (`YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET`) a
 
 ---
 
+## Backlog — Pipeline Scaling & Orchestration
+
+The current pipeline is single-threaded, sequential, and uses filesystem + `.meta.json` sidecars as its state store. This is correct for the current scale. The notes below document the upgrade path when volume or reliability requirements grow.
+
+### Current vs. Target
+
+| Concern | Current | Target (at scale) |
+|---|---|---|
+| State store | `.meta.json` sidecars + folder structure | SQLite → Postgres |
+| Execution | Sequential, single-threaded | Parallel workers via queue |
+| Retry logic | None — pipeline stops on stage failure | Exponential backoff per stage |
+| Scheduling | `--watch` polling loop | cron / n8n DAG trigger |
+| Orchestration | `run.py` monolith | Airflow / Prefect for complex multi-game DAGs |
+
+### Clip State Machine
+
+Currently approximated by folder location (`inbox/` → `processing/` → `accepted/`). A DB status column makes the state explicit and queryable:
+
+```
+DOWNLOADED → TRANSCRIBED → PROCESSED → SCORED → REVIEWED → UPLOADED
+```
+
+### Retry Strategy
+
+Never crash the whole pipeline over one clip failure — log it, mark the clip failed, continue.
+
+```
+retry_delay = base_delay × (2 ^ retry_count)
+```
+
+| Attempt | Delay |
+|---|---|
+| 1 | 1 min |
+| 2 | 2 min |
+| 3 | 4 min |
+
+### Throughput Reference
+
+```
+clips_per_day = vods_per_day × clips_per_vod  →  3 × 40 = 120 clips/day
+```
+
+Bottleneck is AI scoring (~3s/clip). FFprobe, FFmpeg, and transcription are all faster. Parallelising the scoring stage gives the biggest throughput gain.
+
+### Phased Scaling Path
+
+**Phase 1 (current):** Filesystem + `.meta.json` state; sequential; `--watch` trigger. Correct for single-machine, low-volume use.
+
+**Phase 2:** SQLite replaces `.meta.json` as the canonical state store. Exponential backoff retries per stage. Structured metrics logging (timing + token cost per clip).
+
+**Phase 3:** Worker pool for AI scoring; Vault/Stockpile logic tied to Market Density Monitor; auto-trigger from Scout alerts.
+
+**Phase 4 (optional):** Airflow or Prefect for full DAG orchestration — built-in retries, monitoring UI, dependency graphs. Only worth the overhead at 10+ concurrent games.
+
+---
+
 ## Backlog — Advanced Clip Intelligence
 
 A layered pre-filter system that gates clips on skill level and market conditions before committing to expensive processing. Cheap checks run first; AI runs last.
@@ -743,3 +799,4 @@ An interviewer will ask: "What if the game releases a patch that moves the HUD?"
 | 2026-04-15 | Platform Algorithm & Retention section added: metrics priority, frameworks, feedback loop guidance |
 | 2026-04-15 | Advanced Clip Intelligence refined: Audio Energy Check (§3a), CPD + Deadly Plateau, resolution normalization, MOG2, optical flow frame selection, Vault expiry, smurf detection |
 | 2026-04-15 | Interview preparation section added: attack vectors, tradeoff framing, unit economics, gold set, failure mode registry, architecture summary |
+| 2026-04-15 | Pipeline Scaling & Orchestration backlog added: state machine model, retry strategy, throughput reference, phased scaling path |
