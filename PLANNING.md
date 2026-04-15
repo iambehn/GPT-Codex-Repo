@@ -779,6 +779,62 @@ An interviewer will ask: "What if the game releases a patch that moves the HUD?"
 - **Backpressure:** Queue-based ingestion is decoupled from processing. If the AI API slows, the Vault absorbs the backlog without data loss.
 - **Observability:** Structured JSON logs keyed by clip ID enable real-time dashboards on pass/fail rates, processing time, and cost per stage.
 
+### Terminology Reference
+
+Use precise terminology when describing the system — it signals familiarity with production patterns, not just working code.
+
+| Informal | Precise |
+|---|---|
+| "It retries when it breaks" | Exponential backoff with jitter |
+| "It does many things at once" | Horizontal scaling / parallel workers |
+| "It keeps track of clips" | Persistent state management |
+| "It's easy to update one part" | Decoupled service boundaries |
+| "Clips that fail get set aside" | Dead Letter Queue (DLQ) |
+| "We know when something goes wrong" | Structured observability + alerting |
+
+---
+
+## Backlog — Production Hardening
+
+Targeted additions that move the system from "runs reliably on one machine" to "observable and maintainable in production."
+
+### Dead Letter Queue (DLQ)
+
+After 3 retry attempts, a clip should move to a permanent `failed` / DLQ state rather than being silently dropped or retried forever. A separate diagnostic script inspects DLQ items — humans decide whether to re-queue, discard, or flag the root cause.
+
+The quarantine folder already handles FFprobe failures at ingestion. The DLQ extends this concept to every stage: transcription errors, AI scoring failures, distribution rejections.
+
+### Task Audit Log
+
+An append-only log table (or per-clip JSON audit trail) that records every stage transition:
+
+| Field | Purpose |
+|---|---|
+| `task_type` | Which stage: ingest / transcribe / score / upload |
+| `clip_id` | Links to the clip manifest |
+| `status` | success / failed / retried |
+| `start_time` / `end_time` | Duration per stage |
+| `error_message` | Null on success; full traceback on failure |
+
+This is the "paper trail" — if something breaks, you can prove exactly when and at which stage, without grepping logs.
+
+### Health Check Metrics
+
+Key metrics to surface in the review UI (`/health` endpoint or stats page):
+
+| Metric | Formula |
+|---|---|
+| Success rate | Successful uploads ÷ total attempts |
+| End-to-end latency | Time from clip downloaded → clip posted |
+| Cost per clip | AI token spend ÷ clips processed |
+| DLQ depth | Count of clips in failed / quarantine state |
+
+### Containerisation
+
+A `Dockerfile` + `docker-compose.yml` eliminates "works on my machine" risk and makes the system deployable to any VPS or cloud instance without environment setup.
+
+Minimum compose services: `app` (pipeline runner), `redis` (queue broker, when Phase 2 scaling is added), `db` (SQLite file mount or Postgres container).
+
 ---
 
 ## Changelog
@@ -800,3 +856,4 @@ An interviewer will ask: "What if the game releases a patch that moves the HUD?"
 | 2026-04-15 | Advanced Clip Intelligence refined: Audio Energy Check (§3a), CPD + Deadly Plateau, resolution normalization, MOG2, optical flow frame selection, Vault expiry, smurf detection |
 | 2026-04-15 | Interview preparation section added: attack vectors, tradeoff framing, unit economics, gold set, failure mode registry, architecture summary |
 | 2026-04-15 | Pipeline Scaling & Orchestration backlog added: state machine model, retry strategy, throughput reference, phased scaling path |
+| 2026-04-15 | Production Hardening backlog added: DLQ, task audit log, health metrics, containerisation; terminology reference added to interview prep |
