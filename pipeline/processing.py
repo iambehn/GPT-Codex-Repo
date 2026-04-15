@@ -148,11 +148,14 @@ def _subtitles_filter_available() -> bool:
             text=True,
             timeout=10,
         )
-        available = " subtitles " in result.stdout or "\tsubtitles " in result.stdout
+        available = "subtitles" in result.stdout
         if not available:
             logger.warning(
                 "FFmpeg subtitles filter not available — libass is not compiled in. "
-                "Captions will be skipped. Fix: brew upgrade ffmpeg"
+                "Captions will be skipped.\n"
+                "  Linux fix:  sudo apt-get install ffmpeg  (Ubuntu/Debian)\n"
+                "              or build FFmpeg from source with --enable-libass\n"
+                "  macOS fix:  brew install ffmpeg  (Homebrew build includes libass)"
             )
         return available
     except Exception:
@@ -233,7 +236,10 @@ def _add_trim(parts: list[str], current: str, target_dur: float,
     if strategy == "trim_end":
         if actual_dur > target_dur:
             parts.append(f"[{current}]trim=end={target_dur},setpts=PTS-STARTPTS[{out}]")
-            return out, []
+            # Also trim audio to the same duration so video and audio end together.
+            # Without this the audio stream runs to its original length while the
+            # video freezes on the last frame.
+            return out, [f"atrim=end={target_dur},asetpts=PTS-STARTPTS"]
         # Clip is already shorter than target — keep as-is
         return current, []
 
@@ -596,13 +602,14 @@ def _build_ffmpeg_cmd(
         normalize = orig_audio.get("normalize", True)
 
         a_filters: list[str] = []
+        # Trim / speed adjustments must come first so loudnorm only sees the
+        # final audio duration, not the full original clip length.
+        if audio_speed_filters:
+            a_filters.extend(audio_speed_filters)
         if vol_db != 0.0:
             a_filters.append(f"volume={vol_db:.1f}dB")
         if normalize:
             a_filters.append("loudnorm=I=-14:TP=-1.5:LRA=11")
-        if audio_speed_filters:
-            a_filters.append(audio_speed_filters[0] if len(audio_speed_filters) == 1
-                              else ",".join(audio_speed_filters))
 
         bg_music = audio_cfg.get("background_music", {})
         if bg_music.get("enabled") and bg_music.get("asset_path"):
