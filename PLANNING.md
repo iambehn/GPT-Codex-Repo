@@ -712,6 +712,36 @@ if condition_met → execute_predefined_action
 
 That's the shift from doing work manually to managing systems that do the work.
 
+### Layered Architecture
+
+The real power comes from stacking filters and templates in layers, where each layer solves a smaller, more specific problem and reduces the complexity passed to the next stage.
+
+```
+Input → Filter Layer 1 → Filter Layer 2 → Transform → Template → Delivery
+```
+
+**Filter layers narrow scope progressively:**
+
+| Layer | Job | Example |
+|---|---|---|
+| Schema / validity | Only well-formed data enters | Format checks, duration minimums, resolution threshold |
+| Business logic | Only high-value items proceed | Engagement score, profitability, rank threshold |
+| Contextual | Only items matching current goal | Viral mode vs. retention mode vs. budget audience |
+
+Each layer removes edge cases before the next stage sees them. Later stages never have to handle messy inputs because earlier stages already cleaned them out.
+
+**Template layers handle output variation without multiplying complexity:**
+
+- **Base template** — universal structure (e.g., hook → content → CTA on every video)
+- **Variant templates** — structural adjustments per context (short-form vs. long-form, TikTok vs. YouTube Shorts)
+- **Dynamic fields** — placeholders filled from filtered attributes (tone, topic, performance score)
+
+Result: one coherent system instead of N separate workflows for N contexts.
+
+**The transformation layer** sits between filters and templates. This is where ranking algorithms sort by priority, scoring systems assign weights (viral score, skill score, profitability score), and multiple signals are combined into a single decision variable. Filters decide *what survives*. Transforms decide *what matters*. Templates decide *how it is expressed*.
+
+**Separation of concerns is what makes this scalable.** Each layer is independently tunable — you can adjust scoring weights without touching templates, or update template variants without changing filter logic. The system feels intelligent because inputs arrive pre-qualified, decisions are partially automated before execution, and output is standardised regardless of volume. Each layer reduces complexity until the final step is almost trivial: fill structured fields and ship.
+
 ---
 
 ## Interview Preparation — System Design
