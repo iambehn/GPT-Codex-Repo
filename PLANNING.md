@@ -742,6 +742,25 @@ Result: one coherent system instead of N separate workflows for N contexts.
 
 **Separation of concerns is what makes this scalable.** Each layer is independently tunable — you can adjust scoring weights without touching templates, or update template variants without changing filter logic. The system feels intelligent because inputs arrive pre-qualified, decisions are partially automated before execution, and output is standardised regardless of volume. Each layer reduces complexity until the final step is almost trivial: fill structured fields and ship.
 
+### Designing and Refining Combinations
+
+Systems don't start with optimal filter-template pairings. They start with reasonable assumptions and improve through measurement.
+
+**Stage 1 — Human-designed pairings.** Early on, pairings are chosen by domain understanding: "high-engagement clips → viral short-form template." Someone guesses what high-engagement means, guesses what viral structure looks like, and the system executes consistently. This already outperforms ad-hoc decision-making even before any optimisation.
+
+**Stage 2 — Feedback loops.** The real upgrade isn't intelligence at the start — it's measurement. Once you track outcomes, you can ask: which filter thresholds produce better results? Which template gets higher retention? Which pairing performs best under which conditions? Adjustment becomes evidence-based. This can be as simple as A/B testing templates or manually comparing filter thresholds — no ML required.
+
+**Stage 3 — ML (only when necessary).** Machine learning becomes useful when there are too many combinations to test manually, or the system needs to adapt continuously. Conceptually it's the same loop — filter → transform → template → outcome → feedback → adjustment — ML just compresses the feedback and decision step. It's automation of the tuning process, not a different process.
+
+**Filters and templates are coupled, not independent.** In practice, a filter is designed with a specific template in mind:
+- "Fast viral short" template → filter for high-energy moments
+- "Educational breakdown" template → filter for clarity and structure
+- "Product promo" template → filter for clear object visibility
+
+This coupling means you're not exploring all combinations blindly — you're defining "this filter exists to feed this type of template," which collapses the problem space dramatically.
+
+**The scaling trick is constraint design, not optimisation.** The biggest leverage is narrowing the space so only sensible combinations are possible. Instead of 50 filters × 50 templates = 2,500 combinations, you design 5 filters each mapped to 1–2 templates. The system becomes stable and predictable without needing intelligence overhead to manage it.
+
 ---
 
 ## Interview Preparation — System Design
