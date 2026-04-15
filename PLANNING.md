@@ -680,6 +680,40 @@ All major platforms (YouTube, TikTok, Instagram) use staged distribution: conten
 
 ---
 
+## Systems Thinking — Filters and Templates
+
+Filters and templates are two mechanisms for removing human decision points from a workflow so work becomes repeatable instead of constantly re-decided.
+
+**Filters solve the selection problem.** They define what gets processed and what doesn't, based on rules — automatically. Without filters, someone evaluates every incoming item manually: should I act on this? That micro-decision, repeated at scale, is where most cognitive load accumulates.
+
+Examples:
+- Only process clips longer than 20 seconds with engagement above threshold
+- Only route support tickets tagged "billing" to a specific queue
+- Only ingest clips from streamers with ≥ 50k followers
+
+**Templates solve the execution problem.** Once something qualifies, a template defines exactly how it gets handled — title format, editing steps, hashtag rules, posting schedule, required fields. Execution becomes filling in variables, not re-inventing the process each time.
+
+**Together:**
+
+> Filters reduce *what* you think about. Templates reduce *how* you think about it.
+
+That combination creates scalability:
+- New items flow in continuously — no manual sorting bottleneck
+- Processing output is standardised — no variability from operator to operator
+- Volume increases translate to throughput increases, not decision fatigue
+
+Without filters and templates, more volume means more decisions, more fatigue, and more errors. With them, the same cognitive overhead handles 10× the work.
+
+The goal in any automated pipeline — content clipping, FBA listing, marketing workflows — is to push as much work as possible into:
+
+```
+if condition_met → execute_predefined_action
+```
+
+That's the shift from doing work manually to managing systems that do the work.
+
+---
+
 ## Interview Preparation — System Design
 
 These notes cover the questions a technical interviewer (or CTO evaluating the project) is likely to ask, the answers that demonstrate production-system thinking, and the things to avoid saying.
@@ -857,3 +891,4 @@ Minimum compose services: `app` (pipeline runner), `redis` (queue broker, when P
 | 2026-04-15 | Interview preparation section added: attack vectors, tradeoff framing, unit economics, gold set, failure mode registry, architecture summary |
 | 2026-04-15 | Pipeline Scaling & Orchestration backlog added: state machine model, retry strategy, throughput reference, phased scaling path |
 | 2026-04-15 | Production Hardening backlog added: DLQ, task audit log, health metrics, containerisation; terminology reference added to interview prep |
+| 2026-04-15 | Systems Thinking section added: filters vs. templates as the core design philosophy behind repeatable automated workflows |
