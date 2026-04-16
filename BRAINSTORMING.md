@@ -413,3 +413,53 @@ High-retention clips → increase weight on their contributing signals. Low-rete
 ### The Key Insight
 
 Detection isn't about finding cool moments. It's about **finding moments that perform well in the distribution algorithm**. Most people optimize for gameplay excitement; the target should be viewer retention behavior.
+
+---
+
+## FFmpeg Beyond Cutting — Advanced Filter Techniques
+
+The real power of FFmpeg is its filtergraph (`-filter_complex`), which treats video frames as raw data manipulable like a professional NLE. For FPS clips the goal is **information density**: removing dead space while highlighting mechanical skill and reaction time.
+
+### High-Level Effects
+
+- **Dynamic remapping (`remap`)** — pixel-map warping for lens correction or fish-eye POV; makes fast movement feel even faster
+- **Motion interpolation (`minterpolate`)** — generates synthetic frames to smooth 30 FPS clips: `minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc`
+- **LUT color grading (`lut3d`)** — apply professional `.cube` LUTs instead of simple brightness/contrast adjustments
+- **Audio ducking (`sidechaincompress`)** — automatically lower game audio when a kill SFX or streamer voice triggers
+
+### Effects That Look Complex But Aren't
+
+- **Dynamic zoom / Ken Burns (`zoompan`)** — programmatic zoom centered on a HUD coordinate at the moment a shot fires; use the `d` (duration) and `x`/`y` expressions to target the kill feed
+- **Chroma key HUD isolation (`colorkey`)** — turn specific RGB values transparent to isolate and reposition UI elements like the kill feed or health bar
+- **Progress bar overlay (`drawbox`)** — duration-tracking bar using the `t` variable to drive box width; no extra assets needed
+
+### FPS Short-Form Power Combinations
+
+The three filters most used by top FPS TikTok/Shorts channels:
+
+1. **Vertical blur-stack (9:16 crop)** — duplicate the 16:9 clip, blur the background copy, center the original on top:
+   ```
+   [0:v]split[bg][fg];[bg]scale=384:684,boxblur=20:10[bgout];[fg]scale=384:-1[fgout];[bgout][fgout]overlay=(W-w)/2:(H-h)/2
+   ```
+2. **Kill-zoom** — 1.1× zoom triggered for ~0.5 seconds on a headshot; creates visual impact that syncs with game audio
+3. **Crosshair / hitmarker overlay** — `overlay` filter with a custom high-contrast hitmarker PNG, making action legible on small mobile screens
+
+### FPS Pipeline Cheat Sheet
+
+| Function | Flag / Filter | Use Case |
+|---|---|---|
+| Fast seek / cut | `-ss [time] -to [time]` | Cut VODs without re-encoding |
+| Silence detection | `silencedetect` | Find dead air; auto-trim rotations |
+| Metadata injection | `-metadata title="Clutch"` | Platform SEO tags before upload |
+| Timestamp burn-in | `drawtext=text='%{pts\:hms}'` | Burn timestamps for reviewing gold sets |
+| Hardware acceleration | `-hwaccel nvdec` | GPU decoding; ~10× faster than CPU |
+
+### Companion Tools
+
+| Tool | Role |
+|---|---|
+| OpenCV | Locates kill-feed pixels and hitmarkers; tells FFmpeg where to cut |
+| yt-dlp | Pulls high-quality VODs from Twitch/YouTube |
+| SoX | Advanced audio spike detection; finds the exact frame a weapon fires |
+| ImageMagick | Generates dynamic text overlay PNGs ("Clutch", "Top 5") before FFmpeg layers them |
+| Whisper | Generates `.srt` subtitle files that FFmpeg burns in via the `subtitles` filter |
