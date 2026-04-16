@@ -297,6 +297,7 @@ def run_ingestion(game: str, config: dict) -> list[dict]:
             if bid not in follower_cache:
                 follower_cache[bid] = _get_follower_count(bid, client_id, token)
             meta["broadcaster_follower_count"] = follower_cache[bid]
+            meta["game"] = game
             result = rank_check(meta, config)
             if result["passed"]:
                 passing_metas.append(meta)
