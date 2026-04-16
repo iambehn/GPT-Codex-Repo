@@ -566,56 +566,69 @@ Tools by approach:
 
 ## Modular Title Engine
 
-OpenCV extracts signal; a title engine turns that signal into natural language. The same filter-then-template logic that governs the clip pipeline applies here — the CV layer provides accuracy, templates provide scale, the LLM provides variety.
+The core idea: OpenCV reads the HUD to identify which gun or hero the player is using, then injects that name directly into the post title. A generic template becomes a specific, searchable, real claim about the clip.
 
-### Title Strategy Matrix
+**Example:**
+1. Template library holds: `"The {weapon} is absolutely BROKEN right now"`
+2. OpenCV crops the weapon-icon ROI and runs `matchTemplate` → identifies "Sniper Rifle"
+3. Engine substitutes: `"The Sniper Rifle is absolutely BROKEN right now"`
 
-Organize titles by category rather than a flat list. The job manager selects a category based on clip metadata (kill count, event type, market condition):
+Without the CV detection step, you're left posting generic titles ("This gun is broken") that are low-SEO and indistinguishable from every other gaming channel. With it, every clip auto-generates a title that names the exact weapon or hero — which is what viewers search for.
+
+### How the Detection → Injection Pipeline Works
+
+1. **OpenCV layer** — during clip processing, the Weapon Detector crops the HUD weapon-icon ROI and runs template matching against a library of 64×64 PNG reference images. The best match above a confidence threshold is written to `meta.json` as `weapon_detection.weapon_id` and `weapon_detection.display_name`.
+
+2. **Context layer** — the Title Engine reads `meta.json` after all CV stages complete. It has access to: detected weapon/hero name, kill count, headshot count, sweat score.
+
+3. **Selector layer** — maps CV signals to a title category:
+   - headshots + multi-kill, or `sweat_score > 50` → `aggressive`
+   - fallback → alternates `educational` ↔ `engagement_bait`
+
+4. **Substitution layer** — picks a template from the selected category and fills `{weapon}` (and any other variables) using the CV-detected data:
+   ```
+   "Why every pro is switching to the {weapon}"
+   → "Why every pro is switching to the Rail Gun"
+   ```
+
+### Template Categories
 
 ```yaml
 categories:
-  educational:
-    - "Why every pro is switching to the {weapon}"
-    - "The secret to mastering {hero} in this patch"
   aggressive:
     - "The {weapon} is actually UNFAIR right now"
-    - "POV: You finally learned how to play {hero}"
+    - "Nobody talks about how strong {weapon} is"
+    - "{kill_count} kills with {weapon} — this is insane"
+  educational:
+    - "Why every pro is switching to the {weapon}"
+    - "The secret to mastering {weapon} this patch"
   engagement_bait:
-    - "Is the {weapon} getting a nerf soon?"
-    - "I can't believe this worked with {hero}"
+    - "Is the {weapon} getting nerfed soon?"
+    - "I can't believe this worked with {weapon}"
 ```
 
-### Construction Logic
+The same `{weapon}` placeholder also populates hashtags (`#SniperRifle`, `#Deadlock`) and the video description automatically — one CV read, multiple surfaces filled.
 
-Title generation follows a hierarchy:
+### LLM Hybrid (Optional Upgrade)
 
-1. **OpenCV layer** — detects `{weapon: "Sniper", hero: "Venom"}` from HUD ROI
-2. **Context layer** — reads clip metadata (`multi_kill: True`, `sweat_score: 80`)
-3. **Selector layer** — maps context to category (`multi_kill → aggressive`)
-4. **Formatting layer** — string interpolation: `"The Sniper is actually UNFAIR right now"`
+When template substitution isn't varied enough, pass the structured CV data to Claude instead of doing string interpolation:
 
-### LLM Post-Processing (Hybrid Approach)
+- **Input:** `{"weapon": "Rail Gun", "kill_count": 4, "event": "headshot_streak"}`
+- **Prompt:** "Write 3 viral short-form titles under 50 characters using these facts."
+- **Why CV first:** The LLM is grounded in real detected data, so it can't hallucinate ("calling a sniper clip an SMG clip"). CV provides accuracy; LLM provides phrasing variety.
 
-For titles that need more variety than template substitution allows, feed structured CV data directly into a prompt:
+### What You Need to Build the Icon Library
 
-- **Input:** `{"weapon": "Venom SMG", "map": "Tokyo", "event": "1v4 Clutch"}`
-- **Prompt:** "Generate 3 viral TikTok titles under 50 characters for a gaming clip with these variables."
-- **Key advantage:** Grounding the LLM in structured CV data prevents factual hallucinations (calling a sniper clip an SMG clip). CV provides accuracy; LLM provides variety.
+- Save a 64×64 PNG crop of each weapon/hero icon from an actual game frame
+- Place under `assets/weapon_icons/{game}/{weapon_id}.png`
+- Add `weapon_id: "Display Name"` to `config.yaml → weapon_detector.games.{game}.weapons`
+- The Weapon Detector handles the rest at runtime
 
-### Handling Variety at Scale
+### Preventing Repetition
 
-Three mechanisms that prevent repetition without manual intervention:
-
-1. **Dynamic substitution** — 50+ weapon/hero variables × 20+ hooks = 1,000+ combinations from a small template set
-2. **A/B feedback loop** — log which hook style gets higher retention per game; adjust category selection weights automatically
-3. **Metadata auto-tagging** — the same CV signals that drive title selection populate hashtags and descriptions for platform SEO
-
-### Implementation Checklist
-
-- [ ] Save 64×64 PNG reference images for each weapon icon in Deadlock and Marvel Rivals
-- [ ] Add weapon icon detection to the pipeline: crop `weapon_icon` ROI, run `cv2.matchTemplate`
-- [ ] Create a `weapon_id → display_name` mapper (e.g., `smg_01 → "Rapid Fire SMG"`)
-- [ ] Log the selected title in the clip manifest to prevent back-to-back repeats
+- Title history is tracked per game in `assets/title_history.json` (last N templates used)
+- The selector skips recently used templates before picking, so adjacent posts don't share the same hook
+- 50+ weapon variables × 20+ hooks = 1,000+ combinations before any LLM involvement
 
 ---
 
