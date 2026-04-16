@@ -616,3 +616,50 @@ Three mechanisms that prevent repetition without manual intervention:
 - [ ] Add weapon icon detection to the pipeline: crop `weapon_icon` ROI, run `cv2.matchTemplate`
 - [ ] Create a `weapon_id → display_name` mapper (e.g., `smg_01 → "Rapid Fire SMG"`)
 - [ ] Log the selected title in the clip manifest to prevent back-to-back repeats
+
+---
+
+## Proxy Signal Detection — Cheap Alternatives to Frame-by-Frame Analysis
+
+Processing a full-resolution VOD frame-by-frame to find clips is computationally expensive. Professional systems avoid this by using proxy signals — data sources that are orders of magnitude cheaper than video but highly correlated with hype and action.
+
+### 1. Chat Velocity (IRC Log Analysis)
+
+Twitch chat messages are plain text. Processing 8 hours of chat takes milliseconds; processing 8 hours of video takes hours.
+
+- Pull the IRC chat log for a VOD via the Twitch API
+- Track messages per second; identify spikes, especially keywords: "LUL", "OMG", "???", "CLIP IT", "POG"
+- Use spike timestamps as bookmarks — pass only those 30-second windows to OpenCV rather than the full VOD
+- A sudden message-rate spike is a ~90% indicator that something clip-worthy occurred
+
+### 2. Audio Peak Detection
+
+Audio data is significantly lighter than video. Extract audio with FFmpeg `astats` or `showwaves`, measure dB levels, and flag windows where the peak exceeds a threshold. Silent or flat audio means no action. Loud spikes (gunshots, explosions, streamer shouting) correlate directly with highlight moments.
+
+```bash
+ffmpeg -i vod.mp4 -af "astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level" -f null -
+```
+
+### 3. API Markers and User-Generated Clips
+
+- **Stream markers** — many streamers press a physical "marker" button when something notable happens; pull these via `GET /helix/streams/markers` with the VOD ID
+- **Viewer clips** — if viewers manually created clips during the stream, those timestamps are public; a cluster of manual clips at the same time stamp is a strong signal without any video analysis at all
+
+### 4. Low-Resolution Pre-Scanning
+
+When video analysis is necessary (e.g., kill-feed or weapon icon detection), downscale the VOD to 360p or 144p for the detection pass. OpenCV matchTemplate works equally well on low-res frames for HUD icons and UI elements, at roughly 1/10th the processing cost. Only upscale to 1080p for the final clip extraction.
+
+### 5. Frame Skipping (Temporal Sampling)
+
+Sample 1 frame every 2 seconds instead of every frame. For a 30-second clip: 1,800 frames vs. 15 frames. Once the weapon icon or kill-feed event is confirmed in a sampled frame, run high-detail analysis only on that specific window.
+
+### The Funnel Approach
+
+```text
+1. Chat log scan       → identify ~10 hype moments    (cost: near zero)
+2. Audio spike check   → confirm energy at those moments (cost: very low)
+3. Low-res OpenCV scan → weapon/kill detection at 360p   (cost: low)
+4. 1080p clip extract  → FFmpeg cut only the winners     (cost: moderate)
+```
+
+This funnel reduces computational cost by ~95% compared to scanning the full VOD at native resolution.
