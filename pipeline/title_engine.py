@@ -120,19 +120,24 @@ def generate_title(clip_path: Path, game: str, config: dict) -> dict:
     history = _load_history(te_cfg, game)
     template_str = _pick_template(templates, history, te_cfg)
     title = _safe_format(template_str, variables)
+    hashtags = _generate_hashtags(clip_meta, game, config)
 
     result = {
         "title":         title,
         "category":      category,
         "template_used": template_str,
         "variables":     {k: v for k, v in variables.items() if v != ""},
+        "hashtags":      hashtags,
         "generated_at":  datetime.now().isoformat(timespec="seconds"),
     }
 
     _update_history(te_cfg, game, template_str)
     _write_result(meta_path, result)
 
-    logger.info(f"[title_engine] '{title}' (category={category}, game={game})")
+    logger.info(
+        f"[title_engine] '{title}' (category={category}, game={game})\n"
+        f"  hashtags: {' '.join(hashtags)}"
+    )
     return result
 
 
@@ -160,6 +165,66 @@ def _extract_variables(clip_meta: dict, game: str, config: dict) -> dict:
         "map":           "",    # future: minimap or loading screen detection
         "season":        "",    # future: config field or patch-notes lookup
     }
+
+
+# ---------------------------------------------------------------------------
+# Hashtag generation
+# ---------------------------------------------------------------------------
+
+def _generate_hashtags(clip_meta: dict, game: str, config: dict) -> list[str]:
+    """Build a hashtag list from detected signals for use in post descriptions.
+
+    Sources:
+      - Game name and a condensed variant (e.g., #MarvelRivals #MarvelRivalsClips)
+      - Detected weapon display name (e.g., #SniperRifle)
+      - Kill-feed events (#TripleKill, #Headshot, #Clutch, #MultiKill)
+    """
+    tags: list[str] = []
+    game_display = config.get("games", {}).get(game, {}).get("display_name", game)
+
+    # Game tags
+    game_tag = "#" + game_display.replace(" ", "")
+    tags.append(game_tag)
+    tags.append(game_tag + "Clips")
+
+    # Weapon tag
+    wd = clip_meta.get("weapon_detection", {})
+    if wd.get("display_name"):
+        weapon_tag = "#" + wd["display_name"].replace(" ", "")
+        tags.append(weapon_tag)
+
+    # Kill-feed event tags
+    kf = clip_meta.get("kill_feed", {})
+    kill_count = kf.get("kill_count", 0)
+    headshot_count = kf.get("headshot_count", 0)
+
+    if kill_count >= 5:
+        tags.append("#Ace")
+    elif kill_count >= 4:
+        tags.append("#QuadKill")
+    elif kill_count >= 3:
+        tags.append("#TripleKill")
+    elif kill_count >= 2:
+        tags.append("#MultiKill")
+    elif kill_count == 1:
+        tags.append("#Clutch")
+
+    if headshot_count > 0:
+        tags.append("#Headshot")
+    if headshot_count >= 2:
+        tags.append("#MultiHeadshot")
+
+    # Universal gaming tags
+    tags.extend(["#Gaming", "#GamingClips", "#FPS"])
+
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    result = []
+    for t in tags:
+        if t not in seen:
+            seen.add(t)
+            result.append(t)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -282,6 +347,7 @@ def _empty(reason: str) -> dict:
         "category":      None,
         "template_used": None,
         "variables":     {},
+        "hashtags":      [],
         "generated_at":  datetime.now().isoformat(timespec="seconds"),
         "reason":        reason,
     }

@@ -299,6 +299,7 @@ weapon_detector:
   enabled: false
   confidence_threshold: 0.80
   frame_sample: "middle"
+  match_mode: "color"       # "color" | "grayscale" (use grayscale for semi-transparent HUDs)
   icon_dir: "assets/weapon_icons"
   games:
     deadlock:

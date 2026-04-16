@@ -98,7 +98,8 @@ def run_weapon_detector(clip_path: Path, game: str, config: dict) -> dict:
 
     icon_dir = Path(wd_cfg.get("icon_dir", _DEFAULT_ICON_DIR)) / game
     weapon_names = game_cfg.get("weapons", {})
-    templates = _load_templates(icon_dir, weapon_names)
+    match_mode = wd_cfg.get("match_mode", "color")   # "color" | "grayscale"
+    templates = _load_templates(icon_dir, weapon_names, match_mode)
 
     if not templates:
         logger.debug(f"[weapon_detector] No icons in {icon_dir} — skipping.")
@@ -118,7 +119,7 @@ def run_weapon_detector(clip_path: Path, game: str, config: dict) -> dict:
         except (json.JSONDecodeError, OSError):
             pass
 
-    result = _detect(clip_path, roi, templates, threshold, frame_sample, kill_timestamps)
+    result = _detect(clip_path, roi, templates, threshold, frame_sample, kill_timestamps, match_mode)
     _write_and_return(meta_path, result)
 
     if result["weapon_id"]:
@@ -143,6 +144,7 @@ def _detect(
     threshold: float,
     frame_sample: str,
     kill_timestamps: list[float],
+    match_mode: str = "color",
 ) -> dict:
     """Open the clip, extract frames, and return the best template match."""
     cap = cv2.VideoCapture(str(clip_path))
@@ -184,11 +186,19 @@ def _detect(
             if roi_bgr.size == 0:
                 continue
 
+            # Grayscale mode: reduces sensitivity to background colour shifts
+            # caused by semi-transparent or game-world-tinted HUD elements.
+            search_frame = (
+                cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2GRAY)
+                if match_mode == "grayscale"
+                else roi_bgr
+            )
+
             for tmpl in templates:
                 img = tmpl["image"]
-                if img.shape[0] > roi_bgr.shape[0] or img.shape[1] > roi_bgr.shape[1]:
+                if img.shape[0] > search_frame.shape[0] or img.shape[1] > search_frame.shape[1]:
                     continue
-                res = cv2.matchTemplate(roi_bgr, img, cv2.TM_CCOEFF_NORMED)
+                res = cv2.matchTemplate(search_frame, img, cv2.TM_CCOEFF_NORMED)
                 _, max_val, _, _ = cv2.minMaxLoc(res)
                 if max_val > best_conf:
                     best_conf = max_val
@@ -219,20 +229,25 @@ def _detect(
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _load_templates(icon_dir: Path, weapon_name_map: dict) -> list[dict]:
-    """Load weapon PNG reference images from the icon directory."""
+def _load_templates(icon_dir: Path, weapon_name_map: dict, match_mode: str = "color") -> list[dict]:
+    """Load weapon PNG reference images from the icon directory.
+
+    When match_mode is "grayscale", templates are loaded as single-channel
+    images to match the grayscale ROI crop used during detection.
+    """
+    read_flag = cv2.IMREAD_GRAYSCALE if match_mode == "grayscale" else cv2.IMREAD_COLOR
     templates = []
     if not icon_dir.exists():
         return templates
     for ext in ("*.png", "*.jpg", "*.jpeg"):
         for path in sorted(icon_dir.glob(ext)):
-            img = cv2.imread(str(path), cv2.IMREAD_COLOR)
+            img = cv2.imread(str(path), read_flag)
             if img is None:
                 continue
             weapon_id = path.stem
             display_name = weapon_name_map.get(weapon_id, weapon_id.replace("_", " ").title())
             templates.append({"weapon_id": weapon_id, "display_name": display_name, "image": img})
-            logger.debug(f"[weapon_detector] Loaded: {path.name} → '{display_name}'")
+            logger.debug(f"[weapon_detector] Loaded ({match_mode}): {path.name} → '{display_name}'")
     return templates
 
 

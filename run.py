@@ -36,6 +36,7 @@ from utils.analytics import log_clip
 from utils.backup import backup_clip
 from utils.file_utils import ensure_dirs
 from utils.logger import get_logger
+from utils.metadata_injector import inject_metadata
 
 from pipeline.ingestion import run_ingestion
 from pipeline.kill_feed import run_kill_feed_parser
@@ -104,6 +105,8 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
         if config.get("title_engine", {}).get("enabled", False):
             title_result = generate_title(Path(clip_path), game, config)
             logger.info(f"[title_engine] Proposed title: '{title_result.get('title')}'")
+            # Embed title and hashtags into the processed MP4 file tags.
+            inject_metadata(Path(processed_path), Path(clip_path), config)
 
         logger.info(
             f"Clip ready for review — score: {score.get('highlight_score', 'n/a')} "
