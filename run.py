@@ -48,6 +48,7 @@ from pipeline.decision_engine import select_template
 from pipeline.processing import run_processing
 from pipeline.scoring import run_scoring
 from pipeline.distribution import run_distribution, poll_tiktok_pending, list_reddit_flairs
+from pipeline.montage import run_montage
 
 logger = get_logger(__name__)
 
@@ -238,6 +239,11 @@ def main() -> None:
         dest="list_reddit_flairs",
         help="Print available link flairs for each configured subreddit, then exit.",
     )
+    group.add_argument(
+        "--montage",
+        metavar="GAME",
+        help="Assemble a montage from accepted clips for GAME (or 'all'). Requires montage.enabled: true in config.",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -253,7 +259,14 @@ def main() -> None:
     config = load_config(args.config)
     ensure_dirs(config)
 
-    if args.distribute:
+    if args.montage:
+        games_to_process = list(config["games"].keys()) if args.montage == "all" else [args.montage]
+        for game in games_to_process:
+            if game not in config["games"]:
+                logger.error(f"Unknown game '{game}'. Valid options: {list(config['games'].keys())}")
+                sys.exit(1)
+            run_montage(game, config)
+    elif args.distribute:
         run_distribution_for_all(config, dry_run=args.dry_run)
     elif args.poll_tiktok:
         poll_tiktok_pending(config)

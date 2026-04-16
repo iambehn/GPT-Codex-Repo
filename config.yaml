@@ -342,3 +342,28 @@ review:
   host: "127.0.0.1"
   port: 5000
   debug: false
+
+# ---------------------------------------------------------------------------
+# Montage Assembler
+# ---------------------------------------------------------------------------
+# Selects accepted clips by kill_feed.sweat_score (highest first), trims each
+# to its peak action window, and concatenates them until target_duration_seconds
+# is reached.
+#
+# Usage:  python run.py --montage arc_raiders
+#         python run.py --montage all
+#
+# require_kill_feed: true  — skip clips with no kill_feed data (default)
+# require_kill_feed: false — include them trimmed to the clip midpoint instead
+montage:
+  enabled: false
+  target_duration_seconds: 45
+  transition: "flash"            # "cut" | "flash"
+  flash_color: "white"           # "white" | "black"
+  flash_duration_seconds: 0.067  # ~2 frames at 30 fps
+  clip_window_seconds: 5         # action window per clip
+  clip_padding_seconds: 2        # context before/after window
+  min_sweat_score: 0             # minimum kill_feed.sweat_score to include
+  require_kill_feed: true        # skip clips without kill_feed data
+  output_dir: "montage"
+  max_clips: 10                  # safety cap
