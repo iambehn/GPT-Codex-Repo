@@ -309,3 +309,107 @@ System handles: auto-select (filters), auto-apply template, auto-post, log metri
 Human handles: template refinement, reviewing top performers, adjusting filter rules.
 
 The long-term edge isn't posting more or fancier editing — it's **consistently passing the initial distribution test**.
+
+---
+
+## Clip Detection — What It Actually Means and How to Build It
+
+Great clips are necessary but not sufficient. If detection is poor, nothing else matters. If detection is strong but hooks and editing are weak, clips still die in the first test batch. Detection needs to be paired with a template that guarantees a strong first 1–2 seconds.
+
+### What "Optimized Detection" Actually Means
+
+Not just "find kills." The real goal:
+
+```text
+High-signal moment detection
++ correct timing (start/end)
++ consistency across games
++ low false positives
++ low cost per clip
+```
+
+The objective: maximize the % of clips that pass the algorithm's first-stage distribution test.
+
+### Paid / Subscription Tools
+
+These are AI highlight generators, not raw detectors. They train models on highlight datasets and combine visual cues, audio spikes, and engagement patterns with continuous user-feedback refinement.
+
+- **Eklipse.gg** — gaming-focused; detects stream highlights, auto-clips and exports
+- **Sizzle.gg** — FPS/esports-oriented; AI + heuristics for exciting moments
+- **Opus Clip** — general (not gaming-specific); targets "viral moments"
+- **Medal.tv** — local detection via hotkeys and auto-clipping; less AI-driven
+
+Downside: limited control, black-box behavior, harder to integrate into a custom pipeline.
+
+### Open-Source Stack
+
+No single tool handles everything — you build a stack:
+
+| Tool | Role |
+|---|---|
+| OpenCV | Kill feed / HUD detection; template and feature matching |
+| PySceneDetect | Scene change detection; useful for cuts/transitions |
+| librosa / pydub | Audio analysis; volume and intensity spikes |
+| OpenAI Whisper | Speech keyword detection ("clutch", "oh my god", reactions) |
+| FFmpeg | Frame extraction, clip segmentation, preprocessing |
+
+### How Multi-Signal Detection Works
+
+Most systems are pipelines, not single models:
+
+```text
+Video
+  ↓
+Preprocess (normalize resolution + audio)
+  ↓
+Feature extraction (visual + audio + speech)
+  ↓
+Scoring engine
+  ↓
+Clip selection
+```
+
+Common scoring rules:
+
+```text
+score = (kills × 2) + (headshots × 3) + (audio_spike × 5) + (event_density × 2)
+if score > threshold → keep clip
+```
+
+Context modifiers: late-game scenarios and clutch situations get score multipliers.
+
+### Must-Have Features for a Custom Detector
+
+1. **Preprocessing** — normalize resolution and audio levels before any analysis
+2. **Multi-signal detection** — visual + audio + speech running in parallel
+3. **Configurable scoring engine** — weighted rules with adjustable thresholds per game
+4. **Clip boundary logic** — define start/end windows carefully; avoid cutting too early/late
+5. **Deduplication** — skip already-processed clips
+6. **Logging and metrics** — track scores, pass/fail rates, false positive rate
+
+Example config shape:
+
+```yaml
+game: deadlock
+kill_weight: 2
+audio_threshold_db: -10
+min_score: 8
+```
+
+### How Filters and Templates Help Detection
+
+Filters simplify detection by removing low-quality input early (duration, resolution, audio threshold), reducing the search space, and stabilizing outputs. Templates help indirectly: if every clip starts near the action with consistent pacing, the scoring model is easier to tune and less likely to misclassify.
+
+### Iterative Optimization
+
+Detection improves through feedback:
+
+```text
+Detect → Post → Measure → Adjust weights → Repeat
+```
+
+High-retention clips → increase weight on their contributing signals. Low-retention clips → decrease. Over time the scoring model aligns with what the algorithm rewards, not just what looks exciting in gameplay.
+
+### The Key Insight
+
+Detection isn't about finding cool moments. It's about **finding moments that perform well in the distribution algorithm**. Most people optimize for gameplay excitement; the target should be viewer retention behavior.
