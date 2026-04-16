@@ -463,3 +463,46 @@ The three filters most used by top FPS TikTok/Shorts channels:
 | SoX | Advanced audio spike detection; finds the exact frame a weapon fires |
 | ImageMagick | Generates dynamic text overlay PNGs ("Clutch", "Top 5") before FFmpeg layers them |
 | Whisper | Generates `.srt` subtitle files that FFmpeg burns in via the `subtitles` filter |
+
+---
+
+## Managing FFmpeg at Scale — Library and Orchestration Patterns
+
+### Filter vs. Filtergraph vs. filter_complex
+
+- **Filter** — a single atomic operation (`scale`, `boxblur`, `transpose`); one input, one output
+- **Simple filtergraph** (`-vf` / `-af`) — a chain of filters; one input, one output. Example: `scale=1280:-1,format=yuv420p`
+- **filter_complex** — handles multiple inputs and multiple outputs; required for overlays, kill-zooms that split a stream into branches and merge them back, side-by-side compositions
+
+### Community and "Marketplace"
+
+FFmpeg has no centralized template store. Logic is shared as snippets:
+
+- **GitHub Gists** — search `#ffmpeg-snippets`, `#ffmpeg-filter-complex`
+- **Stack Overflow / SuperUser** — where complex filter logic is effectively traded
+- **Reddit r/ffmpeg** — primary community hub
+- **Doom9 Forums** — high-level video encoding veterans
+- **VideoHelp Forums** — "how do I achieve this look" threads
+
+Paid options exist at the abstraction layer, not the command level. Services like Shotstack and Creatomate are cloud APIs that wrap FFmpeg filtergraphs — you pay for the engine, not the command string.
+
+### How Pros Manage Their Filter Library
+
+Rather than storing commands in a document, experienced editors build modular components:
+
+- **YAML/JSON config files** — store filter *parameters*; Python injects them into command strings at runtime (this is what `config.yaml` already does for templates)
+- **HUD library** — normalized ROI coordinates per game (Warzone, Deadlock, Valorant) that define kill-feed position; updated when a game patches its HUD
+- **Python/Node wrappers** — small functions like `apply_vertical_blur(input_file)` that abstract the raw FFmpeg string
+- **Snippet managers** — Raycast, Alfred, or VS Code snippets for quick recall of standard commands (9:16 crop, loudnorm, etc.)
+- **Docker images** — ensure custom-compiled filter builds (frei0r, vapoursynth) work consistently across machines
+
+### The Orchestrator Pattern
+
+At scale you don't run FFmpeg directly — you dispatch jobs:
+
+1. **Selection** — a job manager picks a clip and reads its `game` tag
+2. **Assembly** — pulls the corresponding `filter_complex` snippet from the library
+3. **Variable injection** — replaces placeholders (`{{STRICTNESS}}`, `{{CROP_X}}`) with live values from config or the Market Density Monitor
+4. **Execution** — the assembled command is dispatched to a worker
+
+This is the pattern that makes templates reusable and the pipeline independent of any specific clip or game.
