@@ -284,12 +284,23 @@ kill_feed:
 # Identifies the active weapon by matching the weapon-icon ROI against PNG
 # reference images in assets/weapon_icons/{game}/{weapon_id}.png.
 #
-# Building the icon library:
-#   1. Run with kill_feed.enabled: true so kill_timestamps are in meta.json.
-#   2. Set frame_sample: "kill_timestamps" to land on action frames.
-#   3. Crop the weapon icon from a captured frame and save as a 64×64 PNG:
-#          assets/weapon_icons/{game}/{weapon_id}.png
-#   4. Add weapon_id: "Display Name" to the weapons map below.
+# Step-by-step setup:
+#   1. Preview ROI placement on a real clip:
+#          python tools/preview_roi.py --clip inbox/{game}/clip.mp4 --game {game}
+#      Opens assets/roi_preview_{game}.png — adjust roi coords below if needed.
+#
+#   2. Extract an icon for each weapon you want to detect:
+#          python tools/extract_weapon_icon.py \
+#              --clip inbox/{game}/clip.mp4 \
+#              --game {game} \
+#              --weapon-id sniper_rifle \
+#              --display-name "Sniper Rifle"
+#      Saves assets/weapon_icons/{game}/sniper_rifle.png automatically.
+#
+#   3. Add the weapon_id → display_name mapping under weapons: below.
+#
+#   4. Set enabled: true and run the pipeline.
+#      The title engine will substitute {weapon} in post titles automatically.
 #
 # frame_sample options:
 #   "middle"           — analyse the middle frame only (fast, default)
