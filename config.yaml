@@ -26,7 +26,7 @@ ingestion:
   max_clips_per_run: 20
   max_clip_age_hours: 72    # skip clips older than this; set null to disable
   quality_thresholds:
-    min_duration_seconds: 5
+    min_duration_seconds: 8
     max_duration_seconds: 600
     min_resolution_height: 480
 
@@ -153,6 +153,53 @@ scout:
       longevity_score: 8
     - name: "Marvel Rivals"
       longevity_score: 7
+
+# ---------------------------------------------------------------------------
+# Rank Looker — pre-download skill filter
+# ---------------------------------------------------------------------------
+# Runs on Twitch clip metadata (title, broadcaster follower count) BEFORE
+# downloading anything. Skips clips that show no skill signals.
+#
+# mode: "heuristic" — title NLP + follower count proxy; no extra API key needed
+# mode: "api"       — Tracker.gg rank lookup (future; requires TRACKER_GG_API_KEY)
+#
+# Heuristic logic (in order):
+#   1. Smurf keyword in title          → reject (overrides follower count)
+#   2. Follower count >= threshold     → accept (Verified Skill proxy)
+#   3. Sweat keyword in title          → accept
+#   4. No skill signals, strict: false → accept (permissive default)
+#   4. No skill signals, strict: true  → reject
+#
+# Mid-tier rank thresholds per game (used when mode: "api" is implemented):
+#   marvel_rivals: platinum and above  (gold < platinum < diamond < grandmaster ...)
+#   deadlock:      emissary and above  (ritualist < emissary < archon < oracle ...)
+#   arc_raiders:   no ranked mode yet; heuristic only
+rank_looker:
+  enabled: false          # set true to activate
+  mode: "heuristic"       # "heuristic" | "api"
+  tracker_gg_api_key: null  # set or use TRACKER_GG_API_KEY env var for api mode
+  strict: false           # true = reject clips with no skill signals
+  min_follower_count: 50000
+  game_rank_thresholds:
+    marvel_rivals: "platinum"
+    deadlock: "emissary"
+    arc_raiders: null
+  sweat_keywords:
+    - "scrim"
+    - "tourney"
+    - "tournament"
+    - "top 100"
+    - "pro"
+    - "ranked"
+    - "elo"
+    - "mmr"
+    - "competitive"
+  smurf_keywords:
+    - "smurf"
+    - "bronze to gm"
+    - "low elo"
+    - "stomping"
+    - "easy lobby"
 
 pipeline:
   watch_interval_seconds: 30

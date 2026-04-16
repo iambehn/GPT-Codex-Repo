@@ -8,7 +8,7 @@
 
   "timeline": {
     "input_mode": "single",
-    "target_duration_seconds": 25.0,
+    "target_duration_seconds": 75.0,
     "target_duration_strategy": "trim_end",
     "intro": {
       "enabled": false,

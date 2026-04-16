@@ -76,13 +76,13 @@ def _get_game_id(display_name: str, client_id: str, token: str) -> str | None:
     return game_id
 
 
-def _fetch_clip_urls(
+def _fetch_clip_metadata(
     game_id: str, client_id: str, token: str, count: int, max_age_hours: float | None = None
-) -> list[str]:
-    """Return up to `count` clip URLs for a game, sorted by view count.
+) -> list[dict]:
+    """Return metadata for up to `count` clips for a game, sorted by view count.
 
-    If max_age_hours is set, clips older than that threshold are excluded using
-    the started_at field returned by the Twitch Helix API.
+    Each dict contains the fields needed by the rank_looker and download stages:
+    url, broadcaster_id, broadcaster_name, title, view_count, duration, created_at.
     """
     resp = requests.get(
         _TWITCH_CLIPS_URL,
@@ -93,7 +93,7 @@ def _fetch_clip_urls(
     resp.raise_for_status()
     clips = resp.json().get("data", [])
 
-    urls = []
+    metas = []
     skipped_stale = 0
     cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours) if max_age_hours else None
 
@@ -105,12 +105,36 @@ def _fetch_clip_urls(
             if clip_time < cutoff:
                 skipped_stale += 1
                 continue
-        urls.append(c["url"])
+        metas.append({
+            "url":                c["url"],
+            "broadcaster_id":     c.get("broadcaster_id", ""),
+            "broadcaster_name":   c.get("broadcaster_name", ""),
+            "title":              c.get("title", ""),
+            "view_count":         c.get("view_count", 0),
+            "duration":           c.get("duration", 0),
+            "created_at":         c.get("created_at", ""),
+        })
 
     if skipped_stale:
         logger.debug(f"Freshness filter: skipped {skipped_stale} clip(s) older than {max_age_hours}h.")
-    logger.debug(f"Fetched {len(urls)} clip URL(s) from Twitch API.")
-    return urls
+    logger.debug(f"Fetched metadata for {len(metas)} clip(s) from Twitch API.")
+    return metas
+
+
+def _get_follower_count(broadcaster_id: str, client_id: str, token: str) -> int:
+    """Return total follower count for a broadcaster. Returns 0 on any error."""
+    try:
+        resp = requests.get(
+            "https://api.twitch.tv/helix/channels/followers",
+            params={"broadcaster_id": broadcaster_id},
+            headers={"Client-Id": client_id, "Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return int(resp.json().get("total", 0))
+    except Exception as e:
+        logger.debug(f"Follower count lookup failed for broadcaster {broadcaster_id}: {e}")
+        return 0
 
 
 # ---------------------------------------------------------------------------
@@ -251,15 +275,49 @@ def run_ingestion(game: str, config: dict) -> list[dict]:
         if not game_id:
             return []
         max_age_hours = config["ingestion"].get("max_clip_age_hours")
-        clip_urls = _fetch_clip_urls(game_id, client_id, token, max_clips, max_age_hours)
+        clip_metas = _fetch_clip_metadata(game_id, client_id, token, max_clips, max_age_hours)
     except requests.RequestException as e:
         logger.error(f"[{game}] Twitch API error: {e}")
         return []
 
-    if not clip_urls:
+    if not clip_metas:
         logger.warning(f"[{game}] No clips returned from Twitch API.")
         return []
 
+    # --- Rank Looker: filter clips by skill signals before downloading ---
+    from pipeline.rank_looker import check_clip as rank_check
+    rl_enabled = config.get("rank_looker", {}).get("enabled", False)
+
+    if rl_enabled:
+        follower_cache: dict[str, int] = {}
+        passing_metas = []
+        skipped_rank = 0
+        for meta in clip_metas:
+            bid = meta["broadcaster_id"]
+            if bid not in follower_cache:
+                follower_cache[bid] = _get_follower_count(bid, client_id, token)
+            meta["broadcaster_follower_count"] = follower_cache[bid]
+            result = rank_check(meta, config)
+            if result["passed"]:
+                passing_metas.append(meta)
+            else:
+                skipped_rank += 1
+                logger.info(
+                    f"[rank_looker] Skipped '{meta['broadcaster_name']}' "
+                    f"({meta['title'][:60]}): {result['reason']}"
+                )
+        if skipped_rank:
+            logger.info(
+                f"[{game}] Rank Looker: {skipped_rank} clip(s) skipped, "
+                f"{len(passing_metas)} clip(s) passing."
+            )
+        clip_metas = passing_metas
+
+    if not clip_metas:
+        logger.info(f"[{game}] No clips passed rank filter.")
+        return []
+
+    clip_urls = [m["url"] for m in clip_metas]
     logger.info(f"[{game}] Downloading {len(clip_urls)} clip(s) for '{display_name}'...")
 
     # --- yt-dlp: download each clip URL ---
