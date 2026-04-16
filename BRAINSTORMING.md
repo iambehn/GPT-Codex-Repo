@@ -663,3 +663,25 @@ Sample 1 frame every 2 seconds instead of every frame. For a 30-second clip: 1,8
 ```
 
 This funnel reduces computational cost by ~95% compared to scanning the full VOD at native resolution.
+
+---
+
+## Montage Assembly — Multi-Clip Concatenation
+
+Stringing approved clips into a short montage creates a second content format from the same asset pool with minimal extra work. A 4-clip montage at 10–15 seconds per clip fits comfortably in a 45–60 second Short or TikTok.
+
+### Transition Choice: Hard Cut
+
+Hard cut (no transition) is the industry standard for FPS short-form montages. Crossfades and wipes interrupt the dopamine loop — any visual transition longer than ~2 frames gives the viewer a chance to scroll.
+
+**The one exception that works:** a 1–2 frame white or black flash between clips. Fast enough to maintain pace, explicit enough to signal a new clip is starting. Used as the default in this pipeline.
+
+**The real transition is audio:** cutting on the beat of a background music track matters more than any visual effect. A hard cut that lands on a snare or bass hit feels completely smooth. If a replacement track is configured (`audio.mode: "replace"`), cuts should be beat-aligned where possible.
+
+### Clip Selection
+
+Pull from `accepted/{game}/` — clips that have already passed manual review. Order by `kill_feed.sweat_score` descending (highest action first), fall back to recency if kill_feed data is unavailable.
+
+### Pipeline Integration
+
+Montage assembly runs as a separate trigger (`python run.py --montage`), not as part of the per-clip pipeline. Output goes through the review UI before distribution so the assembled montage can be approved or rejected as a unit.
