@@ -506,3 +506,58 @@ At scale you don't run FFmpeg directly — you dispatch jobs:
 4. **Execution** — the assembled command is dispatched to a worker
 
 This is the pattern that makes templates reusable and the pipeline independent of any specific clip or game.
+
+---
+
+## ROI Standardization and Modular Filtergraphs
+
+Treating video as a grid of data rather than an image is what makes clip processing scalable across games. Two systems enable this: a HUD coordinate library and a modular filtergraph template set.
+
+### HUD Coordinate Library
+
+In FPS games, HUD elements occupy fixed screen positions. Rather than hardcoding pixel coordinates in scripts, store them in config keyed by game and resolution:
+
+```yaml
+games:
+  deadlock:
+    resolution: 1080p
+    roi:
+      kill_feed:   [1450, 50, 450, 300]   # [x, y, w, h]
+      ammo_count:  [1700, 950, 150, 80]
+      weapon_icon: [1600, 950, 100, 80]
+  marvel_rivals:
+    resolution: 1080p
+    roi:
+      kill_feed:   [1500, 20, 400, 250]
+```
+
+This lets OpenCV and FFmpeg scripts read coordinates from config rather than being re-measured per game. When a game patches its HUD, one config update fixes every downstream script.
+
+### Five Core Filtergraph Modules
+
+A modular template is a collection of chainable functions, not a monolithic command string:
+
+1. **Vertical blur-stack** — fits 16:9 gameplay into a 9:16 frame by blurring a scaled background copy
+2. **Kill-zoom punch** — brief 1.2× scale-up centered on the crosshair during an event
+3. **Dynamic subtitle burner** — takes an `.srt` file and applies a game-specific font/color style
+4. **HUD overlay** — crops the kill-feed ROI and repositions it to screen center for mobile legibility
+5. **Loop transition** — crossfade or wipe that blends the last 0.5s of a clip with the first 0.5s
+
+### Weapon Detection via HUD Template Matching
+
+Don't detect the weapon in the 3D world (hard — it moves). Detect the **weapon icon in the HUD** (easy — it's static).
+
+Flow:
+1. FFmpeg extracts a single frame from the middle of the clip
+2. OpenCV crops to the `weapon_icon` ROI from the coordinate library
+3. `matchTemplate` compares the crop against a reference PNG library
+4. If confidence > 80% → returns `WEAPON_TYPE: SNIPER`
+5. Job manager uses that tag to pull from a title list and injects it into upload metadata
+
+Tools by approach:
+
+| Approach | Tool | Notes |
+|---|---|---|
+| Static HUD icon | OpenCV `matchTemplate` | Standard; works for fixed UI sprites |
+| In-world weapon (3D) | YOLO object detection | Requires training on FPS images; significantly more complex |
+| Text-based weapon name | Tesseract OCR | Reads text directly from HUD (CoD, Apex); no reference image needed |
