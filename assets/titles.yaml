@@ -1,0 +1,130 @@
+# Clip title templates for the Title Engine.
+#
+# Variables available for substitution:
+#   {weapon}         — detected weapon display name (e.g., "Sniper Rifle")
+#   {game}           — game display name (e.g., "Marvel Rivals")
+#   {kill_count}     — total kills detected by kill-feed parser
+#   {headshot_count} — total headshots detected
+#   {enemy_count}    — same as kill_count; used for "1v{enemy_count}" framing
+#   {hero}           — character name (future: hero/character detection)
+#   {map}            — map name (future: minimap detection)
+#   {season}         — current season (future: config field)
+#
+# Templates missing a variable will have the placeholder silently removed.
+# Add game-specific sections using config.yaml game keys.
+# Generic templates are used as fallback when no game-specific ones exist.
+#
+# Category selection (title_engine.py → _select_category):
+#   aggressive      → headshots + multi-kills, or high sweat score
+#   educational     → low-action clips (alternates with engagement_bait)
+#   engagement_bait → low-action clips (alternates with educational)
+
+# ---------------------------------------------------------------------------
+# Generic (applies to all games as fallback)
+# ---------------------------------------------------------------------------
+generic:
+  aggressive:
+    - "The {weapon} is BROKEN right now"
+    - "Nobody survives this {weapon} combo"
+    - "1v{enemy_count} and they never stood a chance"
+    - "Why is the {weapon} this strong??"
+    - "POV: you peaked too early"
+    - "They did NOT see that coming"
+    - "This is what {weapon} mastery looks like"
+    - "The {weapon} just ended their whole career"
+    - "Clean. Absolutely clean."
+    - "{kill_count} kills and it wasn't even close"
+    - "The {weapon} said no"
+    - "Okay but that {weapon} shot was NOT supposed to hit"
+
+  educational:
+    - "Why every pro is running {weapon} right now"
+    - "The {weapon} trick nobody talks about"
+    - "How to actually use {weapon} properly"
+    - "Stop sleeping on the {weapon}"
+    - "The most underrated {weapon} play you'll see today"
+    - "This is why {weapon} wins games"
+    - "{weapon} mechanics that took me 100 hours to learn"
+
+  engagement_bait:
+    - "Is {weapon} getting nerfed soon?"
+    - "I can't believe this {weapon} play worked"
+    - "Okay but HOW did that {weapon} hit?"
+    - "The {weapon} should NOT be this good"
+    - "Wait... is {weapon} actually broken?"
+    - "Comment if you've done this with {weapon}"
+    - "The {weapon} makes no sense and I love it"
+    - "Is this the best {weapon} clip this week?"
+
+# ---------------------------------------------------------------------------
+# Deadlock
+# ---------------------------------------------------------------------------
+deadlock:
+  aggressive:
+    - "The {weapon} build just won a 1v{enemy_count} in Deadlock"
+    - "Deadlock players are NOT ready for this {weapon}"
+    - "POV: you picked up {weapon} and went feral"
+    - "How is {weapon} legal in Deadlock??"
+    - "They surrendered after this {weapon} clip"
+    - "Deadlock 1v{enemy_count} — {weapon} diff"
+    - "The {weapon} said goodnight in Deadlock"
+
+  educational:
+    - "The {weapon} build pros don't want you to know"
+    - "Why you keep losing — {weapon} is the answer"
+    - "Best {weapon} tips for new Deadlock players"
+    - "Deadlock: stop ignoring the {weapon}"
+
+  engagement_bait:
+    - "Is {weapon} the most overpowered thing in Deadlock?"
+    - "Deadlock players: is {weapon} broken or balanced?"
+    - "Okay but WHO thought {weapon} was a good idea in Deadlock?"
+    - "Is {weapon} getting nerfed in the next Deadlock patch?"
+
+# ---------------------------------------------------------------------------
+# Marvel Rivals
+# ---------------------------------------------------------------------------
+marvel_rivals:
+  aggressive:
+    - "{weapon} just deleted their entire team in Marvel Rivals"
+    - "Marvel Rivals players fear this {weapon} combo"
+    - "1v{enemy_count} in Marvel Rivals and it wasn't close"
+    - "The {weapon} is actually UNFAIR in this meta"
+    - "They reported me after this {weapon} clip"
+    - "Marvel Rivals: the {weapon} is a problem"
+    - "{kill_count} kills with {weapon} — that's not okay"
+
+  educational:
+    - "Why every pro Marvel Rivals player builds {weapon}"
+    - "The {weapon} combo nobody is talking about"
+    - "How to master {weapon} in Marvel Rivals"
+    - "Marvel Rivals: the hidden strength of {weapon}"
+
+  engagement_bait:
+    - "Is {weapon} getting nerfed in Marvel Rivals?"
+    - "Marvel Rivals: is {weapon} broken or is it just me?"
+    - "I cannot explain how this {weapon} hit in Marvel Rivals"
+    - "Marvel Rivals players — is {weapon} fair?"
+
+# ---------------------------------------------------------------------------
+# Arc Raiders
+# ---------------------------------------------------------------------------
+arc_raiders:
+  aggressive:
+    - "Arc Raiders extraction with {weapon} goes completely wrong"
+    - "{weapon} just wiped a full squad in Arc Raiders"
+    - "1v{enemy_count} extraction — nobody expected this {weapon}"
+    - "The {weapon} is unstoppable in Arc Raiders right now"
+    - "Arc Raiders: the {weapon} is ending squads"
+
+  educational:
+    - "Best {weapon} loadout for Arc Raiders extraction"
+    - "Why {weapon} wins every Arc Raiders firefight"
+    - "Arc Raiders tip: {weapon} is better than you think"
+    - "The {weapon} build that's carrying Arc Raiders players"
+
+  engagement_bait:
+    - "Is {weapon} the best extraction weapon in Arc Raiders?"
+    - "Arc Raiders players: is {weapon} OP or am I just good?"
+    - "This {weapon} play in Arc Raiders was NOT planned"
+    - "Does {weapon} need a nerf in Arc Raiders?"

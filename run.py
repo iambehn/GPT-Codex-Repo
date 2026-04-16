@@ -39,6 +39,8 @@ from utils.logger import get_logger
 
 from pipeline.ingestion import run_ingestion
 from pipeline.kill_feed import run_kill_feed_parser
+from pipeline.weapon_detector import run_weapon_detector
+from pipeline.title_engine import generate_title
 from pipeline.transcription import run_transcription
 from pipeline.feature_extraction import run_feature_extraction
 from pipeline.decision_engine import select_template
@@ -75,9 +77,6 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
         logger.info(f"Processing clip: {clip_path}")
 
         # Kill-Feed Parser: analyse kill events in the ROI before expensive stages.
-        # Runs only when kill_feed.enabled: true in config. Permissive by default —
-        # clips that don't pass still proceed; the sweat_score is stored in meta.json
-        # and visible in the review UI for manual triage.
         if config.get("kill_feed", {}).get("enabled", False):
             kf_result = run_kill_feed_parser(Path(clip_path), game, config)
             if not kf_result["passed"]:
@@ -85,6 +84,11 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
                     f"[kill_feed] Low sweat score ({kf_result['sweat_score']}) "
                     f"for {Path(clip_path).name} — continuing with reduced priority."
                 )
+
+        # Weapon Detector: identify active weapon from HUD icon ROI.
+        # Uses kill_timestamps from kill_feed meta when frame_sample: "kill_timestamps".
+        if config.get("weapon_detector", {}).get("enabled", False):
+            run_weapon_detector(Path(clip_path), game, config)
 
         transcript = run_transcription(clip_path, config)
         if transcript is None:
@@ -94,6 +98,12 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
         template = select_template(metadata, config)
         processed_path = run_processing(clip_path, template, metadata, config)
         score = run_scoring(processed_path, metadata, config)
+
+        # Title Engine: generate upload title after scoring so sweat_score,
+        # kill_feed, and weapon_detection are all in meta.json.
+        if config.get("title_engine", {}).get("enabled", False):
+            title_result = generate_title(Path(clip_path), game, config)
+            logger.info(f"[title_engine] Proposed title: '{title_result.get('title')}'")
 
         logger.info(
             f"Clip ready for review — score: {score.get('highlight_score', 'n/a')} "

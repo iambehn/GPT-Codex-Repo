@@ -278,6 +278,62 @@ kill_feed:
           upper: [30, 255, 255]
       pixel_spike_threshold: 50
 
+# ---------------------------------------------------------------------------
+# Weapon Detector — HUD icon recognition (OpenCV matchTemplate)
+# ---------------------------------------------------------------------------
+# Identifies the active weapon by matching the weapon-icon ROI against PNG
+# reference images in assets/weapon_icons/{game}/{weapon_id}.png.
+#
+# Building the icon library:
+#   1. Run with kill_feed.enabled: true so kill_timestamps are in meta.json.
+#   2. Set frame_sample: "kill_timestamps" to land on action frames.
+#   3. Crop the weapon icon from a captured frame and save as a 64×64 PNG:
+#          assets/weapon_icons/{game}/{weapon_id}.png
+#   4. Add weapon_id: "Display Name" to the weapons map below.
+#
+# frame_sample options:
+#   "middle"           — analyse the middle frame only (fast, default)
+#   "kill_timestamps"  — analyse frames at kill events (most accurate)
+#   "all"              — sample every 2 seconds (slowest)
+weapon_detector:
+  enabled: false
+  confidence_threshold: 0.80
+  frame_sample: "middle"
+  icon_dir: "assets/weapon_icons"
+  games:
+    deadlock:
+      roi: {x: 1600, y: 950, w: 150, h: 80}   # 1080p-normalised; calibrate per patch
+      weapons: {}   # e.g., sniper_rifle: "Sniper Rifle" — add as you build the library
+    marvel_rivals:
+      roi: {x: 1650, y: 940, w: 200, h: 100}
+      weapons: {}
+    arc_raiders:
+      roi: {x: 1600, y: 950, w: 150, h: 80}
+      weapons: {}
+
+# ---------------------------------------------------------------------------
+# Title Engine — context-aware upload title generation
+# ---------------------------------------------------------------------------
+# Selects a title template from assets/titles.yaml based on kill-feed and
+# weapon-detection results. Substitutes {weapon}, {kill_count}, etc.
+# Tracks recently used templates per game to avoid back-to-back repeats.
+#
+# Category selection (in order):
+#   headshots + kills >= 3  → aggressive
+#   kills >= 2              → aggressive
+#   kills == 1 + headshot   → aggressive
+#   sweat_score > 50        → aggressive
+#   fallback                → engagement_bait / educational (alternating)
+#
+# mode: "template"  — pure template substitution (default)
+# mode: "llm"       — future: feeds structured CV data to Claude for variety
+title_engine:
+  enabled: false
+  mode: "template"
+  titles_path: "assets/titles.yaml"
+  history_path: "assets/title_history.json"
+  history_window: 20
+
 pipeline:
   watch_interval_seconds: 30
 
