@@ -38,6 +38,7 @@ from utils.file_utils import ensure_dirs
 from utils.logger import get_logger
 
 from pipeline.ingestion import run_ingestion
+from pipeline.kill_feed import run_kill_feed_parser
 from pipeline.transcription import run_transcription
 from pipeline.feature_extraction import run_feature_extraction
 from pipeline.decision_engine import select_template
@@ -72,6 +73,18 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
 
         clip_path = clip["clip_path"]
         logger.info(f"Processing clip: {clip_path}")
+
+        # Kill-Feed Parser: analyse kill events in the ROI before expensive stages.
+        # Runs only when kill_feed.enabled: true in config. Permissive by default —
+        # clips that don't pass still proceed; the sweat_score is stored in meta.json
+        # and visible in the review UI for manual triage.
+        if config.get("kill_feed", {}).get("enabled", False):
+            kf_result = run_kill_feed_parser(Path(clip_path), game, config)
+            if not kf_result["passed"]:
+                logger.debug(
+                    f"[kill_feed] Low sweat score ({kf_result['sweat_score']}) "
+                    f"for {Path(clip_path).name} — continuing with reduced priority."
+                )
 
         transcript = run_transcription(clip_path, config)
         if transcript is None:

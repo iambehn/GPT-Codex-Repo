@@ -201,6 +201,83 @@ rank_looker:
     - "stomping"
     - "easy lobby"
 
+# ---------------------------------------------------------------------------
+# Kill-Feed Parser — post-download skill gate (OpenCV)
+# ---------------------------------------------------------------------------
+# Analyses the kill-feed ROI of each downloaded clip before transcription or
+# AI scoring. Clips with a peak 5-second sweat score >= sweat_threshold are
+# promoted; others still proceed but carry a lower kill_feed score so you can
+# filter in the review UI.
+#
+# ROI calibration (run once per game / after HUD patches):
+#   1. Extract frame 0: python -c "import cv2,sys; cap=cv2.VideoCapture(sys.argv[1]);
+#          ok,f=cap.read(); cv2.imwrite('frame0.png',f)" inbox/<game>/<clip>.mp4
+#   2. Open frame0.png, note the pixel rectangle around the kill feed.
+#   3. Scale to 1920×1080:  x_norm = x_raw * 1920 // frame_width  (same for y/w/h)
+#   4. Update roi below.
+#
+# Color tuning (HSV — Hue 0-180, Sat 0-255, Val 0-255):
+#   Use the script tools/tune_colors.py (coming soon) or adjust manually.
+#   Kill feed text is usually near-white (low Sat, high Val).
+#   Headshot highlights are game-specific (orange/yellow for most titles).
+#
+# Template icons:
+#   Place PNG/JPG files under assets/kill_feed_templates/<game>/
+#     kill_<name>.png      — skull, elimination icon, etc.
+#     headshot_<name>.png  — headshot badge/icon
+#   If no files exist, template matching is skipped; color + MOG2 handle detection.
+kill_feed:
+  enabled: false              # set true to activate
+  sweat_threshold: 50         # peak 5-second window score needed to pass
+  window_seconds: 5
+  sample_fps: 5
+  kill_score: 10              # points per kill event
+  headshot_score: 20          # points per headshot event
+  color_spike_factor: 5.0     # current pixels must be > 5× rolling baseline to trigger
+  min_pixel_mass: 50          # ignore color hits with fewer pixels than this
+  template_dir: "assets/kill_feed_templates"
+  games:
+    marvel_rivals:
+      # Kill feed: top-right corner. ROI is approximate — calibrate with a screenshot.
+      roi:
+        x: 1620
+        y: 10
+        w: 300
+        h: 380
+      kill_colors:
+        - lower: [0, 0, 180]       # HSV near-white (player name text)
+          upper: [180, 50, 255]
+      headshot_colors:
+        - lower: [15, 120, 200]    # HSV orange-yellow (headshot highlight)
+          upper: [40, 255, 255]
+      pixel_spike_threshold: 50
+    deadlock:
+      roi:
+        x: 1620
+        y: 15
+        w: 300
+        h: 350
+      kill_colors:
+        - lower: [0, 0, 175]       # HSV near-white
+          upper: [180, 55, 255]
+      headshot_colors:
+        - lower: [15, 100, 190]    # HSV gold/orange (soul-orb color palette)
+          upper: [45, 255, 255]
+      pixel_spike_threshold: 50
+    arc_raiders:
+      roi:
+        x: 1600
+        y: 20
+        w: 320
+        h: 400
+      kill_colors:
+        - lower: [0, 0, 175]       # HSV near-white
+          upper: [180, 55, 255]
+      headshot_colors:
+        - lower: [10, 100, 200]    # HSV orange-red (elimination highlight)
+          upper: [30, 255, 255]
+      pixel_spike_threshold: 50
+
 pipeline:
   watch_interval_seconds: 30
 

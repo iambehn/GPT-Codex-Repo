@@ -38,5 +38,8 @@ pytrends>=4.9.2
 # Audio copyright detection — ACRCloud fingerprinting
 pyacrcloud>=1.0.0
 
+# Kill-Feed Parser (Advanced Clip Intelligence)
+opencv-python-headless>=4.8.0
+
 # Utilities
 tqdm>=4.66.0
