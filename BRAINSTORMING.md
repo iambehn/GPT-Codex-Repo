@@ -219,3 +219,93 @@ PostgreSQL + n8n + Metabase
 This gives automation, storage, visual reporting, low cost, and scalability — without proprietary lock-in.
 
 **The key shift at scale:** you stop managing videos individually and start managing **content as structured data**. Every post becomes a data point for improving hooks, captions, templates, posting times, and platform selection.
+
+---
+
+## Algorithm-Aligned Content Strategy
+
+### How Platform Distribution Works
+
+Every post on TikTok and Instagram goes through a staged test:
+
+```text
+Small initial batch → measure behavior → expand if strong, die if weak
+```
+
+The only metrics that determine whether a post expands:
+
+1. **Scroll-stop rate** (first 1–2 seconds) — did they stop instantly?
+2. **Retention** (% watched) — did they finish?
+3. **Rewatch / loop rate** — did it replay?
+4. **Early engagement velocity** — likes, comments, shares in the first few minutes
+
+Priority order: `Hook → Retention → Rewatch → Engagement`. Fail at step 1 or 2 and nothing downstream matters.
+
+### FPS Clips: What Works
+
+FPS content has a natural advantage — built-in excitement spikes.
+
+**High-performing:** clutch moments (1v3, 1v5), fast kill streaks, "what just happened" moments, high-skill flicks/snipes.
+
+**Low-performing:** slow buildups, context-heavy clips, long rotations, delayed payoff.
+
+If the viewer doesn't understand the hype within 2 seconds, the clip fails.
+
+### The Hook Problem
+
+Front-load the moment:
+
+- Bad: `setup → buildup → kill`
+- Good: `kill → replay → continuation`
+
+Techniques: start at the kill frame, add an instant subtitle ("1v4 clutch"), zoom on the first frame, audio spike immediately. The pipeline should enforce a hook within the first 0–1.5 seconds.
+
+### Retention Engineering
+
+Eliminate: dead air, static frames, slow pacing, silence, confusion.
+
+Template rules:
+- clip length: 6–20 seconds
+- remove downtime between events
+- slight zoom during action
+- subtitles tightly synced
+
+### Loop Optimization
+
+Platforms reward loops. Design endings that connect back to the beginning — a replay that cuts to the clip's opening frame increases rewatch rate automatically without any extra effort.
+
+### Scaling With Filters and Templates
+
+**Filters** decide what gets posted: duration (5–30s), audio spike threshold, kill/event detection score. Only the top X% move forward.
+
+**Template structure** (example FPS):
+
+```text
+0.0s   → action frame (hook)
+0.2s   → zoom + subtitle
+0–6s   → main action
+6–10s  → replay or continuation
+end    → loop transition
+```
+
+Together, filters and templates remove decision fatigue, enforce consistency, and align output with algorithm expectations.
+
+### Posting as Experimentation
+
+Each post is a data point, not a piece of content. Track: retention %, watch time, shares, follows per video.
+
+Optimization loop: `Post → Measure → Adjust template → Repeat`
+
+Multi-account strategy: separate game, style, and template per account so performance data is clean and comparable.
+
+### Early-Stage Boost
+
+Post when the target audience is active. Pin a comment; reply to 1–2 early comments. Hashtags and captions alone don't drive distribution — retention does.
+
+### Automation Model
+
+System handles: auto-select (filters), auto-apply template, auto-post, log metrics.
+
+Human handles: template refinement, reviewing top performers, adjusting filter rules.
+
+The long-term edge isn't posting more or fancier editing — it's **consistently passing the initial distribution test**.
