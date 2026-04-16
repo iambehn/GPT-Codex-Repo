@@ -561,3 +561,58 @@ Tools by approach:
 | Static HUD icon | OpenCV `matchTemplate` | Standard; works for fixed UI sprites |
 | In-world weapon (3D) | YOLO object detection | Requires training on FPS images; significantly more complex |
 | Text-based weapon name | Tesseract OCR | Reads text directly from HUD (CoD, Apex); no reference image needed |
+
+---
+
+## Modular Title Engine
+
+OpenCV extracts signal; a title engine turns that signal into natural language. The same filter-then-template logic that governs the clip pipeline applies here — the CV layer provides accuracy, templates provide scale, the LLM provides variety.
+
+### Title Strategy Matrix
+
+Organize titles by category rather than a flat list. The job manager selects a category based on clip metadata (kill count, event type, market condition):
+
+```yaml
+categories:
+  educational:
+    - "Why every pro is switching to the {weapon}"
+    - "The secret to mastering {hero} in this patch"
+  aggressive:
+    - "The {weapon} is actually UNFAIR right now"
+    - "POV: You finally learned how to play {hero}"
+  engagement_bait:
+    - "Is the {weapon} getting a nerf soon?"
+    - "I can't believe this worked with {hero}"
+```
+
+### Construction Logic
+
+Title generation follows a hierarchy:
+
+1. **OpenCV layer** — detects `{weapon: "Sniper", hero: "Venom"}` from HUD ROI
+2. **Context layer** — reads clip metadata (`multi_kill: True`, `sweat_score: 80`)
+3. **Selector layer** — maps context to category (`multi_kill → aggressive`)
+4. **Formatting layer** — string interpolation: `"The Sniper is actually UNFAIR right now"`
+
+### LLM Post-Processing (Hybrid Approach)
+
+For titles that need more variety than template substitution allows, feed structured CV data directly into a prompt:
+
+- **Input:** `{"weapon": "Venom SMG", "map": "Tokyo", "event": "1v4 Clutch"}`
+- **Prompt:** "Generate 3 viral TikTok titles under 50 characters for a gaming clip with these variables."
+- **Key advantage:** Grounding the LLM in structured CV data prevents factual hallucinations (calling a sniper clip an SMG clip). CV provides accuracy; LLM provides variety.
+
+### Handling Variety at Scale
+
+Three mechanisms that prevent repetition without manual intervention:
+
+1. **Dynamic substitution** — 50+ weapon/hero variables × 20+ hooks = 1,000+ combinations from a small template set
+2. **A/B feedback loop** — log which hook style gets higher retention per game; adjust category selection weights automatically
+3. **Metadata auto-tagging** — the same CV signals that drive title selection populate hashtags and descriptions for platform SEO
+
+### Implementation Checklist
+
+- [ ] Save 64×64 PNG reference images for each weapon icon in Deadlock and Marvel Rivals
+- [ ] Add weapon icon detection to the pipeline: crop `weapon_icon` ROI, run `cv2.matchTemplate`
+- [ ] Create a `weapon_id → display_name` mapper (e.g., `smg_01 → "Rapid Fire SMG"`)
+- [ ] Log the selected title in the clip manifest to prevent back-to-back repeats
