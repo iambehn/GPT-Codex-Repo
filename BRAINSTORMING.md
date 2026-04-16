@@ -81,3 +81,141 @@ Systems don't start with optimal filter-template pairings. They start with reaso
 - "Educational breakdown" template → filter for clarity and structure
 
 **The scaling trick is constraint design.** Instead of 50 filters × 50 templates = 2,500 combinations, design 5 filters each mapped to 1–2 templates. The system becomes stable and predictable without needing intelligence overhead to manage it.
+
+---
+
+## Operating at Scale — Content as Structured Data
+
+At the scale of **100+ short-form posts per day**, "clip farmers" usually stop thinking like creators and start thinking like **operators running a content distribution system**. The workflow becomes less about individual videos and more about **asset tracking, scheduling, analytics, and feedback loops**.
+
+They typically keep everything organized by assigning each clip a unique record in a dashboard or database:
+
+```text
+clip_id | source_creator | game | template | platform | channel | post_time | url | views | retention | status
+```
+
+A common pipeline is:
+
+1. ingest clip
+2. process/edit
+3. queue for upload
+4. store returned post URL
+5. collect performance data
+6. compare performance by template/channel/platform
+
+The minimum useful dashboard tracks:
+
+- clip ID
+- source file
+- target platform
+- account/channel
+- scheduled time
+- upload status
+- post URL
+- views
+- engagement
+- retention
+- repost eligibility
+- error logs
+
+### Paid Tooling
+
+Social media managers commonly use:
+
+- **Hootsuite** / **Buffer** / **Later** / **Metricool** / **Sprout Social**
+
+These provide multi-platform scheduling, post calendars, analytics, team workflows, link tracking, and approval systems.
+
+### Open-Source / Low-Cost Stack
+
+- **n8n** — automation and workflow orchestration
+- **Airbyte** — pulling analytics from platform APIs
+- **Metabase** — visual dashboards over a database
+- **Grafana** — metrics and time-series monitoring
+- **Supabase or PostgreSQL** — primary storage
+- **Airtable** — lightweight content database (early stage)
+- **Appsmith** — internal admin panels
+
+A typical scalable open-source pipeline:
+
+```text
+yt-dlp → FFmpeg/Resolve → upload script → database → Metabase dashboard
+```
+
+or
+
+```text
+ingestion → queue → editor → uploader → analytics collector → dashboard
+```
+
+### The Dashboard as Control Panel
+
+The dashboard often becomes the central interface, with clips organized by status:
+
+- "ready to post"
+- "posted"
+- "underperforming"
+- "viral"
+- "recycle later"
+- "copyright issue"
+- "manual review"
+
+At scale, operators usually rely on one of three dashboard styles:
+
+| Style | Characteristics |
+|---|---|
+| **Spreadsheet** | Simple, works early; Airtable or Google Sheets |
+| **Database dashboard** | Custom backend; better for large volume |
+| **Kanban** | Visual queue management; clip lifecycle tracking |
+
+Example lifecycle:
+
+```text
+Downloaded → Edited → Approved → Scheduled → Posted → Analyzed
+```
+
+### Posting Automation
+
+Some teams build custom upload wrappers around platform APIs, browser automation, queue systems, and retry handling — because native social APIs often have limitations (rate limits, missing features, inconsistent behavior).
+
+### Engagement at Scale
+
+At high volume, most operators separate engagement by value:
+
+**High-value:** top comments, repeat viewers, sponsors, potential leads — respond selectively.
+
+**Low-value:** generic comments, spam, one-word replies — let pass.
+
+Common approach:
+- engage deeply on a few high-performing posts
+- let most posts remain passive
+- use analytics to decide where engagement actually moves the needle
+
+Trying to reply to everything at scale feels robotic and doesn't compound. The better model:
+
+```text
+Automation handles posting
+Human handles relationship
+```
+
+### Signals Worth Monitoring
+
+- comment velocity
+- save rate
+- shares
+- retention
+- follows per post
+- profile clicks
+- conversion rate
+
+### Recommended Stack for This Pipeline
+
+For an automated pipeline like this one, the most practical open-source combination:
+
+```text
+PostgreSQL + n8n + Metabase
+```
+
+This gives automation, storage, visual reporting, low cost, and scalability — without proprietary lock-in.
+
+**The key shift at scale:** you stop managing videos individually and start managing **content as structured data**. Every post becomes a data point for improving hooks, captions, templates, posting times, and platform selection.
