@@ -314,14 +314,17 @@ weapon_detector:
   icon_dir: "assets/weapon_icons"
   games:
     deadlock:
-      roi: {x: 1600, y: 950, w: 150, h: 80}   # 1080p-normalised; calibrate per patch
-      weapons: {}   # e.g., sniper_rifle: "Sniper Rifle" — add as you build the library
+      # Hero portrait — top-left circle. Each hero has one weapon, so portrait = weapon.
+      roi: {x: 285, y: 3, w: 130, h: 108}
+      weapons: {}   # e.g., abrams: "Abrams" — one entry per hero
     marvel_rivals:
-      roi: {x: 1650, y: 940, w: 200, h: 100}
-      weapons: {}
+      # Hero portrait — bottom-left large square. Detecting hero = detecting kit/weapon.
+      roi: {x: 58, y: 895, w: 125, h: 135}
+      weapons: {}   # e.g., venom: "Venom" — one entry per hero
     arc_raiders:
-      roi: {x: 1600, y: 950, w: 150, h: 80}
-      weapons: {}
+      # Active weapon icon + label — bottom-right panel (KETTLE, FLASHLIGHT, etc.)
+      roi: {x: 1760, y: 940, w: 160, h: 120}
+      weapons: {}   # e.g., kettle: "Kettle" — one entry per weapon
 
 # ---------------------------------------------------------------------------
 # Title Engine — context-aware upload title generation

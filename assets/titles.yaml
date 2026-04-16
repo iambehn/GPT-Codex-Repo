@@ -1,12 +1,14 @@
 # Clip title templates for the Title Engine.
 #
 # Variables available for substitution:
-#   {weapon}         — detected weapon display name (e.g., "Sniper Rifle")
+#   {weapon}         — detected weapon OR hero name depending on the game:
+#                        arc_raiders  → weapon display name (e.g., "Kettle")
+#                        deadlock     → hero name (e.g., "Abrams") — portrait detected
+#                        marvel_rivals→ hero name (e.g., "Venom") — portrait detected
 #   {game}           — game display name (e.g., "Marvel Rivals")
 #   {kill_count}     — total kills detected by kill-feed parser
 #   {headshot_count} — total headshots detected
 #   {enemy_count}    — same as kill_count; used for "1v{enemy_count}" framing
-#   {hero}           — character name (future: hero/character detection)
 #   {map}            — map name (future: minimap detection)
 #   {season}         — current season (future: config field)
 #
@@ -61,25 +63,28 @@ generic:
 # ---------------------------------------------------------------------------
 deadlock:
   aggressive:
-    - "The {weapon} build just won a 1v{enemy_count} in Deadlock"
-    - "Deadlock players are NOT ready for this {weapon}"
-    - "POV: you picked up {weapon} and went feral"
-    - "How is {weapon} legal in Deadlock??"
+    - "Playing {weapon} just won a 1v{enemy_count} in Deadlock"
+    - "Deadlock players are NOT ready for {weapon}"
+    - "POV: you lock in {weapon} and go absolutely feral"
+    - "How is {weapon} this dominant in Deadlock??"
     - "They surrendered after this {weapon} clip"
     - "Deadlock 1v{enemy_count} — {weapon} diff"
-    - "The {weapon} said goodnight in Deadlock"
+    - "{weapon} just ended their whole game in Deadlock"
+    - "{kill_count} kills with {weapon} and it wasn't even a sweat"
 
   educational:
-    - "The {weapon} build pros don't want you to know"
-    - "Why you keep losing — {weapon} is the answer"
-    - "Best {weapon} tips for new Deadlock players"
-    - "Deadlock: stop ignoring the {weapon}"
+    - "The {weapon} strat pros don't want you to know"
+    - "Why you keep losing — play {weapon}"
+    - "Best tips for {weapon} in Deadlock"
+    - "Deadlock: stop underestimating {weapon}"
+    - "How to actually play {weapon} correctly in Deadlock"
 
   engagement_bait:
-    - "Is {weapon} the most overpowered thing in Deadlock?"
-    - "Deadlock players: is {weapon} broken or balanced?"
-    - "Okay but WHO thought {weapon} was a good idea in Deadlock?"
+    - "Is {weapon} the most broken thing in Deadlock right now?"
+    - "Deadlock players: is {weapon} balanced or overpowered?"
+    - "Okay but WHO thought {weapon} was fair in Deadlock?"
     - "Is {weapon} getting nerfed in the next Deadlock patch?"
+    - "Can we talk about how strong {weapon} is right now?"
 
 # ---------------------------------------------------------------------------
 # Marvel Rivals
@@ -87,24 +92,27 @@ deadlock:
 marvel_rivals:
   aggressive:
     - "{weapon} just deleted their entire team in Marvel Rivals"
-    - "Marvel Rivals players fear this {weapon} combo"
+    - "Marvel Rivals players are not ready for {weapon}"
     - "1v{enemy_count} in Marvel Rivals and it wasn't close"
-    - "The {weapon} is actually UNFAIR in this meta"
+    - "{weapon} is actually UNFAIR in this meta"
     - "They reported me after this {weapon} clip"
-    - "Marvel Rivals: the {weapon} is a problem"
-    - "{kill_count} kills with {weapon} — that's not okay"
+    - "Marvel Rivals: {weapon} is a problem right now"
+    - "{kill_count} kills with {weapon} — that's just not okay"
+    - "POV: you pick {weapon} and the enemy team has a bad day"
 
   educational:
-    - "Why every pro Marvel Rivals player builds {weapon}"
+    - "Why every top Marvel Rivals player is running {weapon}"
     - "The {weapon} combo nobody is talking about"
-    - "How to master {weapon} in Marvel Rivals"
+    - "How to actually play {weapon} in Marvel Rivals"
     - "Marvel Rivals: the hidden strength of {weapon}"
+    - "Stop sleeping on {weapon} in this meta"
 
   engagement_bait:
     - "Is {weapon} getting nerfed in Marvel Rivals?"
     - "Marvel Rivals: is {weapon} broken or is it just me?"
-    - "I cannot explain how this {weapon} hit in Marvel Rivals"
-    - "Marvel Rivals players — is {weapon} fair?"
+    - "I cannot explain how this {weapon} play worked in Marvel Rivals"
+    - "Marvel Rivals players — is {weapon} actually fair?"
+    - "Can we talk about {weapon} in Marvel Rivals for a second?"
 
 # ---------------------------------------------------------------------------
 # Arc Raiders
