@@ -1,0 +1,19 @@
+# Marvel Rivals — hero roster
+#
+# Living reference: https://www.marvelrivals.com/heroes/
+#
+# Used by weapon_detector.py to map hero_id → display_name.
+# {weapon} in title templates is substituted with the hero's display_name.
+# The role field (Vanguard / Duelist / Strategist) is stored for future
+# title flexibility (e.g. role-specific templates).
+#
+# hero_id must match the filename in assets/weapon_icons/marvel_rivals/<id>.png
+
+heroes: {}
+# Paste hero list here — format:
+#
+#   venom:
+#     display_name: "Venom"
+#     role: "Vanguard"
+#
+# Roles: Vanguard | Duelist | Strategist

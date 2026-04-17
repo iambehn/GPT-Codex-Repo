@@ -1,0 +1,20 @@
+# Deadlock — hero roster
+#
+# Living reference: https://deadlock.wiki.gg/wiki/Heroes
+#
+# Used by weapon_detector.py to map hero_id → display_name.
+# {weapon} in title templates is substituted with the hero's display_name.
+# Each hero in Deadlock has a unique weapon kit, so hero = weapon for
+# title purposes.
+#
+# hero_id must match the filename in assets/weapon_icons/deadlock/<id>.png
+
+heroes: {}
+# Paste hero list here — format:
+#
+#   abrams:
+#     display_name: "Abrams"
+#     role: "Durable"
+#
+# Roles (Deadlock uses a less rigid system; store what's useful):
+#   Durable | Carry | Support | Initiator | or leave blank

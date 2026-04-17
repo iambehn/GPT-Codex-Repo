@@ -1,0 +1,98 @@
+# Arc Raiders — weapon roster
+#
+# Living reference: https://arcraiders.wiki.gg/wiki/Weapons
+#
+# Used by weapon_detector.py to map weapon_id → display_name.
+# The category field is stored for future title flexibility
+# (e.g. "Sniper Rifle clip vs. SMG clip" may warrant different templates).
+#
+# weapon_id must match the filename in assets/weapon_icons/arc_raiders/<id>.png
+
+weapons:
+
+  # Assault Rifles
+  kettle:
+    display_name: "Kettle"
+    category: "Assault Rifle"
+  rattler:
+    display_name: "Rattler"
+    category: "Assault Rifle"
+  arpeggio:
+    display_name: "Arpeggio"
+    category: "Assault Rifle"
+  tempest:
+    display_name: "Tempest"
+    category: "Assault Rifle"
+  bettina:
+    display_name: "Bettina"
+    category: "Assault Rifle"
+
+  # Battle Rifles
+  ferro:
+    display_name: "Ferro"
+    category: "Battle Rifle"
+  renegade:
+    display_name: "Renegade"
+    category: "Battle Rifle"
+  aphelion:
+    display_name: "Aphelion"
+    category: "Battle Rifle"
+
+  # SMGs
+  stitcher:
+    display_name: "Stitcher"
+    category: "SMG"
+  canto:
+    display_name: "Canto"
+    category: "SMG"
+  bobcat:
+    display_name: "Bobcat"
+    category: "SMG"
+
+  # Shotguns
+  il_toro:
+    display_name: "Il Toro"
+    category: "Shotgun"
+  vulcano:
+    display_name: "Vulcano"
+    category: "Shotgun"
+  dolabra:
+    display_name: "Dolabra"
+    category: "Shotgun"
+
+  # Pistols
+  hairpin:
+    display_name: "Hairpin"
+    category: "Pistol"
+  burletta:
+    display_name: "Burletta"
+    category: "Pistol"
+  venator:
+    display_name: "Venator"
+    category: "Pistol"
+
+  # Hand Cannons
+  anvil:
+    display_name: "Anvil"
+    category: "Hand Cannon"
+
+  # LMGs
+  torrente:
+    display_name: "Torrente"
+    category: "LMG"
+
+  # Sniper Rifles
+  osprey:
+    display_name: "Osprey"
+    category: "Sniper Rifle"
+  jupiter:
+    display_name: "Jupiter"
+    category: "Sniper Rifle"
+
+  # Specials
+  hullcracker:
+    display_name: "Hullcracker"
+    category: "Special"
+  equalizer:
+    display_name: "Equalizer"
+    category: "Special"

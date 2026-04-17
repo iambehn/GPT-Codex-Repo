@@ -351,7 +351,39 @@ weapon_detector:
     arc_raiders:
       # Active weapon icon + label — bottom-right panel (KETTLE, FLASHLIGHT, etc.)
       roi: {x: 1760, y: 940, w: 160, h: 120}
-      weapons: {}   # e.g., kettle: "Kettle" — one entry per weapon
+      weapons:
+        # Assault Rifles
+        kettle:    "Kettle"
+        rattler:   "Rattler"
+        arpeggio:  "Arpeggio"
+        tempest:   "Tempest"
+        bettina:   "Bettina"
+        # Battle Rifles
+        ferro:     "Ferro"
+        renegade:  "Renegade"
+        aphelion:  "Aphelion"
+        # SMGs
+        stitcher:  "Stitcher"
+        canto:     "Canto"
+        bobcat:    "Bobcat"
+        # Shotguns
+        il_toro:   "Il Toro"
+        vulcano:   "Vulcano"
+        dolabra:   "Dolabra"
+        # Pistols
+        hairpin:   "Hairpin"
+        burletta:  "Burletta"
+        venator:   "Venator"
+        # Hand Cannons
+        anvil:     "Anvil"
+        # LMGs
+        torrente:  "Torrente"
+        # Sniper Rifles
+        osprey:    "Osprey"
+        jupiter:   "Jupiter"
+        # Specials
+        hullcracker: "Hullcracker"
+        equalizer:   "Equalizer"
 
 # ---------------------------------------------------------------------------
 # Title Engine — context-aware upload title generation
