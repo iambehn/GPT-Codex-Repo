@@ -11,6 +11,15 @@
      → [ Processing ] → [ AI Scoring ] → [ Manual Review ] → [ Distribution ] → [ Optimize ]
 ```
 
+**Run modes:**
+- `python run.py --game <game>` — single pipeline run for one game
+- `python run.py --game all` — run all configured games once
+- `python run.py --watch` — continuous loop for all games (`pipeline.watch_interval_seconds` interval)
+- `python run.py --distribute [--dry-run]` — upload all approved clips; `--dry-run` previews without posting
+- `python run.py --montage <game>` — assemble a montage from accepted clips
+- `python run.py --poll-tiktok` — resolve pending TikTok URLs for uploaded clips
+- `python run.py --list-reddit-flairs` — print available flair IDs per subreddit
+
 ---
 
 ## Stages
@@ -24,6 +33,7 @@
 - Assign quality tag: `high` (≥1080p), `medium` (≥720p), `low` (≥480p)
 - Quarantine: probe failure, no video stream, duration out of configured range, resolution < 480p
 - Write sidecar `.meta.json` per good clip; skip if sidecar already exists (idempotent)
+- Clip freshness filter: `ingestion.max_clip_age_hours: 72` — clips older than this (by Twitch `started_at`) are skipped; set `null` to disable
 
 **Folder structure:**
 ```
@@ -36,7 +46,7 @@ inbox/{game}/     quarantine/{game}/     processing/{game}/     accepted/{game}/
 **Tool:** Whisper (OpenAI) — segment-level output
 
 - Convert speech to text; stored alongside clip, used by Feature Extraction and AI Scoring
-- **Planned:** Language filter — skip non-English clips (`transcription.language_filter: "en"`)
+- Language filter: Whisper-detected language checked against `transcription.language_filter: "en"`; clips in other languages are skipped
 - **Future:** WhisperX for word-level timestamps (word-highlight captions)
 
 ---
@@ -96,6 +106,7 @@ Templates are versioned (e.g. `template_hype_v2`) to allow refinement without lo
 - Video player with virality score display
 - Approve → `accepted/` | Reject → `rejected/`
 - Queue skips already-reviewed clips
+- Video thumbnails: highest-motion keyframe extracted via FFmpeg scene detection; cached as `.thumb.jpg` sidecar; served at `/thumb/<game>/<stem>`
 
 ---
 
@@ -111,9 +122,16 @@ Templates are versioned (e.g. `template_hype_v2`) to allow refinement without lo
 | Reddit         | 1920×1080   | 16:9   | varies       |
 
 Idempotent: already-distributed platforms skipped. Run via `python run.py --distribute`.
+Use `--dry-run` to preview what would be uploaded without posting anything.
 Post-distribution: analytics logged to Google Sheets, clip backed up to Google Drive.
 
 **File naming:** `{game}_{date}_{clip_id}.mp4`
+
+**YouTube:** Thumbnail auto-generated from highest-motion keyframe (FFmpeg scene detection); uploaded via `thumbnails.set()` after video publish.
+
+**TikTok:** Clips uploaded with a `publish_id`; URL resolved asynchronously. Run `python run.py --poll-tiktok` to check processing status and update any pending URLs.
+
+**Reddit:** Flair IDs are subreddit-specific. Run `python run.py --list-reddit-flairs` to discover available flairs; add chosen IDs to `config.yaml → distribution.platforms.reddit.subreddit_config`.
 
 ---
 
@@ -175,21 +193,10 @@ The existing OAuth credentials (`YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET`) a
 
 ## Backlog — Quality of Life Features
 
-### Implemented ✓
-1. ~~**Language filter**~~ — Done. Whisper-detected language checked against `transcription.language_filter: "en"` in config.
-2. ~~**`--watch` mode**~~ — Done. `python run.py --watch` loops all games on `pipeline.watch_interval_seconds`.
-3. ~~**`--dry-run` flag**~~ — Done. `python run.py --distribute --dry-run` previews without uploading.
-4. ~~**Clip freshness filter**~~ — Done. `ingestion.max_clip_age_hours: 72` in config; filters by Twitch `started_at`.
-5. ~~**YouTube thumbnail generation**~~ — Done. Extracts highest-motion keyframe via FFmpeg scene detection; uploads via `thumbnails.set()`.
-6. ~~**Video thumbnails in review UI**~~ — Done. `/thumb/<game>/<stem>` route; cached `.thumb.jpg` sidecar; shown in queue.
-7. ~~**TikTok publish_id polling**~~ — Done. `python run.py --poll-tiktok` resolves pending TikTok URLs.
-8. ~~**Reddit flair auto-detection**~~ — Done. `python run.py --list-reddit-flairs`; apply via `config.yaml` subreddit_config.
-
-### Lower Priority
-9. **Retry failed distributions** — `python run.py --retry-failed` for clips with `distribution.{platform}.success: false`.
-10. **Clip deduplication** — Store seen Twitch clip IDs in `seen_clips.json`; skip re-downloads regardless of filename.
-11. **Completion notification** — Desktop/email alert when batch run finishes (macOS: `osascript`).
-12. **Aggregate stats in review UI** — `/stats` route: clips by game, acceptance rate, avg score, top keywords, clips per platform.
+1. **Retry failed distributions** — `python run.py --retry-failed` for clips with `distribution.{platform}.success: false`.
+2. **Clip deduplication** — Store seen Twitch clip IDs in `seen_clips.json`; skip re-downloads regardless of filename.
+3. **Completion notification** — Desktop/email alert when batch run finishes (macOS: `osascript`).
+4. **Aggregate stats in review UI** — `/stats` route: clips by game, acceptance rate, avg score, top keywords, clips per platform.
 
 ---
 
@@ -846,3 +853,4 @@ Minimum compose services: `app` (pipeline runner), `redis` (queue broker, when P
 | 2026-04-15 | Pipeline Scaling & Orchestration backlog added: state machine model, retry strategy, throughput reference, phased scaling path |
 | 2026-04-15 | Production Hardening backlog added: DLQ, task audit log, health metrics, containerisation; terminology reference added to interview prep |
 | 2026-04-15 | Systems Thinking section added: filters vs. templates as the core design philosophy behind repeatable automated workflows |
+| 2026-04-17 | Maintenance: moved implemented QoL features into their proper stage sections; removed crossed-off items from backlog |
