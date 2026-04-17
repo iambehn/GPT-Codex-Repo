@@ -175,10 +175,25 @@ def run_kill_feed_parser(clip_path: Path, game: str, config: dict) -> dict:
     template_dir = Path(kf_cfg.get("template_dir", "assets/kill_feed_templates")) / game
     templates = _load_templates(template_dir)
 
+    # If audio_detector ran first, use its spike timestamps to focus frame sampling.
+    audio_spike_timestamps: list[float] = []
+    if meta_path.exists():
+        try:
+            existing = json.loads(meta_path.read_text())
+            audio_spike_timestamps = existing.get("audio_events", {}).get("spike_timestamps", [])
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    if audio_spike_timestamps:
+        logger.info(
+            f"[kill_feed] Using {len(audio_spike_timestamps)} audio spike(s) as frame hints "
+            f"for {clip_path.name}"
+        )
+
     logger.info(f"[kill_feed] Analysing {clip_path.name} ({game})...")
 
     try:
-        events = _analyse_clip(clip_path, game_cfg, kf_cfg, templates)
+        events = _analyse_clip(clip_path, game_cfg, kf_cfg, templates, audio_spike_timestamps)
     except Exception as e:
         logger.error(f"[kill_feed] Analysis failed for {clip_path.name}: {e}")
         result = _disabled_result(f"analysis error: {e}")
@@ -231,16 +246,34 @@ def _analyse_clip(
     game_cfg: dict,
     kf_cfg: dict,
     templates: dict,
+    audio_spike_timestamps: list[float] | None = None,
 ) -> list[_Event]:
-    """Open the clip, sample frames, and return a list of detected events."""
+    """Open the clip, sample frames, and return a list of detected events.
+
+    When audio_spike_timestamps is provided (from audio_detector), only frames
+    within ±audio_window_seconds of each spike are inspected. This cuts OpenCV
+    work to a fraction of the full clip on long recordings.
+    """
     cap = cv2.VideoCapture(str(clip_path))
     if not cap.isOpened():
         raise OSError(f"Could not open {clip_path}")
+
+    _AUDIO_WINDOW = 2.0   # seconds either side of an audio spike to inspect
 
     try:
         native_fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
         sample_fps = float(kf_cfg.get("sample_fps", _DEFAULT_SAMPLE_FPS))
         frame_interval = max(1, int(round(native_fps / sample_fps)))
+
+        # Build an O(1) lookup set of frame indices to inspect when audio hints exist.
+        audio_frame_set: set[int] | None = None
+        if audio_spike_timestamps:
+            audio_frame_set = set()
+            for spike_t in audio_spike_timestamps:
+                start_frame = max(0, int((spike_t - _AUDIO_WINDOW) * native_fps))
+                end_frame = int((spike_t + _AUDIO_WINDOW) * native_fps)
+                for f in range(start_frame, end_frame + 1, frame_interval):
+                    audio_frame_set.add(f - (f % frame_interval))
 
         roi = game_cfg.get("roi", {"x": 1600, "y": 10, "w": 320, "h": 400})
         rx, ry, rw, rh = roi["x"], roi["y"], roi["w"], roi["h"]
@@ -265,6 +298,11 @@ def _analyse_clip(
                 break
 
             if frame_idx % frame_interval != 0:
+                frame_idx += 1
+                continue
+
+            # When audio hints are available, skip frames outside spike windows.
+            if audio_frame_set is not None and frame_idx not in audio_frame_set:
                 frame_idx += 1
                 continue
 

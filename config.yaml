@@ -226,6 +226,33 @@ rank_looker:
 #     kill_<name>.png      — skull, elimination icon, etc.
 #     headshot_<name>.png  — headshot badge/icon
 #   If no files exist, template matching is skipped; color + MOG2 handle detection.
+# ---------------------------------------------------------------------------
+# Audio Detector — DSP-based event detection (FFmpeg + numpy)
+# ---------------------------------------------------------------------------
+# Detects kills, multi-kills, objectives, and victory/defeat audio cues by
+# analysing per-frame RMS volume spikes relative to a rolling baseline.
+# No ML dependencies — uses FFmpeg astats filter + numpy Z-score.
+#
+# Run order: audio_detector runs before kill_feed so OpenCV only inspects
+# frames near confirmed audio spikes, reducing CPU cost significantly.
+#
+# frequency_filter uses FFmpeg highpass/lowpass filters to isolate the
+# kill/headshot frequency band (800–4000 Hz) before RMS analysis, reducing
+# false positives from bass-heavy background music or streamer voice.
+# Requires no extra Python packages (pure FFmpeg).
+audio_detector:
+  enabled: false
+  z_score_threshold: 3.0        # std devs above rolling baseline = event
+  baseline_window_seconds: 60   # rolling RMS window for baseline calculation
+  min_spike_gap_seconds: 1.5    # merge spikes closer than this into one
+  frame_duration_seconds: 0.1   # astats analysis window (100 ms per frame)
+  frequency_filter:
+    enabled: true               # bandpass before RMS — reduces music false positives
+    kill_low_hz: 800            # lower edge of kill/headshot band
+    kill_high_hz: 4000          # upper edge
+  multi_kill_window_seconds: 5  # cluster spikes within this window → multi_kill
+  multi_kill_min_spikes: 3      # minimum spikes in window to label multi_kill
+
 kill_feed:
   enabled: false              # set true to activate
   sweat_threshold: 50         # peak 5-second window score needed to pass

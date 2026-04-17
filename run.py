@@ -39,6 +39,7 @@ from utils.logger import get_logger
 from utils.metadata_injector import inject_metadata
 
 from pipeline.ingestion import run_ingestion
+from pipeline.audio_detector import run_audio_detector
 from pipeline.kill_feed import run_kill_feed_parser
 from pipeline.weapon_detector import run_weapon_detector
 from pipeline.title_engine import generate_title
@@ -78,7 +79,14 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
         clip_path = clip["clip_path"]
         logger.info(f"Processing clip: {clip_path}")
 
+        # Audio Detector: runs first — cheapest signal, narrows down action timestamps
+        # for the kill-feed OpenCV pass that follows.
+        if config.get("audio_detector", {}).get("enabled", False):
+            run_audio_detector(Path(clip_path), game, config)
+
         # Kill-Feed Parser: analyse kill events in the ROI before expensive stages.
+        # When audio_detector is also enabled, it reads audio spike_timestamps from
+        # meta.json and restricts frame sampling to those windows automatically.
         if config.get("kill_feed", {}).get("enabled", False):
             kf_result = run_kill_feed_parser(Path(clip_path), game, config)
             if not kf_result["passed"]:

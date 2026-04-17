@@ -698,3 +698,51 @@ Pull from `accepted/{game}/` — clips that have already passed manual review. O
 ### Pipeline Integration
 
 Montage assembly runs as a separate trigger (`python run.py --montage`), not as part of the per-clip pipeline. Output goes through the review UI before distribution so the assembled montage can be approved or rejected as a unit.
+
+---
+
+## Audio Event Detection — DSP-Based Kill and Highlight Detection
+
+Whisper is a speech-to-text engine — it tells you what was *said*, not what sounds occurred. To detect kills, headshots, multi-kills, victory/defeat, and game objectives from audio you need Digital Signal Processing (DSP): analysis of the shape of the sound wave itself, not its words.
+
+### Why Audio Before OpenCV
+
+Audio data is orders of magnitude smaller than video. Running audio analysis first means you can discard boring segments before OpenCV ever touches a frame. The cost funnel:
+
+1. **Audio spike detection** — is there any action in this window? (milliseconds, no GPU)
+2. **OpenCV kill-feed** — confirm visually at the spike timestamps only
+3. **Whisper** — transcribe only confirmed highlights
+
+### The Z-Score Method (No Paid APIs Needed)
+
+Don't just look for "loud" moments — some streamers are always loud. Look for *relative* spikes above the clip's own baseline:
+
+1. Compute rolling RMS (average loudness) over a 60-second window
+2. Flag any 1-second window that is ≥ 3 standard deviations above that baseline
+3. Apply a bandpass filter to isolate the frequency range of game sounds (kills/headshots live in the 800–4000 Hz "treble" band; explosions live in the 50–500 Hz "bass" band)
+
+### FFmpeg-Only vs Python Audio Libraries
+
+| Approach | What it can do | New dependency |
+|---|---|---|
+| **FFmpeg `astats` filter** | Per-frame RMS/peak dB log, parseable with Python | None |
+| **FFmpeg + numpy/scipy** | Z-score, bandpass filter, full spike detection | numpy (likely already installed) |
+| **Librosa** | Onset detection, spectrogram template matching, beat alignment | `librosa` (~50 MB) |
+
+The FFmpeg + numpy path covers kill/headshot/objective spike detection with no new ML dependencies. Librosa adds spectrogram "audio fingerprinting" — recording the exact headshot sound in isolation and cross-correlating against the clip, similar to weapon icon template matching but for audio.
+
+### Audio Fingerprinting (Spectrogram Template Match)
+
+For games with distinctive sounds (e.g. Deadlock soul orb pickup, Marvel Rivals ultimate activation), you can record that sound as a reference WAV, compute its spectrogram, and slide it across the clip's spectrogram looking for a match — the same concept as `cv2.matchTemplate` but in the frequency-time domain. Near 100% precision for known sounds.
+
+### Detected Event Types
+
+- **Kill / headshot** — sharp transient spike in the 800–4000 Hz band
+- **Multi-kill / ace** — cluster of spikes within a short window (≤ 5 seconds apart)
+- **Victory / defeat** — sustained loudness change with low-frequency content (music swell, crowd cheer)
+- **Objective capture** — game-specific audio cue; requires fingerprint reference clip
+
+### Pipeline Position
+
+Runs after ingestion, before kill-feed OpenCV — feeding spike timestamps into kill-feed so OpenCV only samples frames at audio-confirmed action windows instead of the full clip.
+
