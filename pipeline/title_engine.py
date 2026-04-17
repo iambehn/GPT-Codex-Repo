@@ -11,14 +11,15 @@ Deduplication: recently used template hashes are tracked per game in
 assets/title_history.json. Templates become eligible again after
 history_window clips.
 
-Category selection logic (in order):
-    1. headshot_count > 0  AND  kill_count >= 3  → aggressive
-    2. kill_count >= 2                           → aggressive
-    3. kill_count == 1  AND  headshot_count > 0  → aggressive
-    4. sweat_score > 50                          → aggressive
-    5. fallback                                  → engagement_bait / educational
-                                                   (alternates each clip to avoid
-                                                    two consecutive same-style titles)
+Category selection logic (see _select_category for full detail):
+    High action (multi-kill + headshots, or 4+ kills)
+        → random between performance_hype / broken_balance
+    Medium action (multi-kill or kill + headshot)
+        → random between broken_balance / reactionary_shock / performance_hype
+    Some action (sweat_score > 50 or any kill)
+        → random between broken_balance / reactionary_shock
+    Low action (no kill signals)
+        → cycles through meta_authority / reactionary_shock / broken_balance
 
 Config block (config.yaml → title_engine):
     enabled: false
@@ -232,36 +233,53 @@ def _generate_hashtags(clip_meta: dict, game: str, config: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def _select_category(clip_meta: dict, game: str, te_cfg: dict) -> str:
-    """Map clip metadata to an appropriate title category."""
+    """Map clip metadata to a psychological hook category.
+
+    Four categories:
+        meta_authority   — "pros are doing this" / FOMO
+        broken_balance   — "this is unfair/OP" / controversy
+        reactionary_shock— "I wasn't expecting this" / curiosity
+        performance_hype — "popping off" / action energy
+
+    Multiple categories can fit the same clip signal level, so we
+    randomise between applicable options to keep variety across posts.
+    """
     kf = clip_meta.get("kill_feed", {})
     kill_count = kf.get("kill_count", 0)
     headshot_count = kf.get("headshot_count", 0)
     sweat_score = float(kf.get("sweat_score", 0.0))
 
-    if headshot_count > 0 and kill_count >= 3:
-        return "aggressive"
-    if kill_count >= 2:
-        return "aggressive"
-    if kill_count == 1 and headshot_count > 0:
-        return "aggressive"
-    if sweat_score > 50:
-        return "aggressive"
+    # High action: multi-kill with headshots, or ace-level kill count
+    if (headshot_count > 0 and kill_count >= 3) or kill_count >= 4:
+        return random.choice(["performance_hype", "broken_balance"])
 
-    # Low-action clips: alternate between educational and engagement_bait
+    # Medium-high action: multi-kill, or single kill with headshot
+    if kill_count >= 2 or (kill_count >= 1 and headshot_count > 0):
+        return random.choice(["broken_balance", "reactionary_shock", "performance_hype"])
+
+    # Some action: high sweat score or any kill
+    if sweat_score > 50 or kill_count >= 1:
+        return random.choice(["broken_balance", "reactionary_shock"])
+
+    # Low action: rotate through meta_authority and reactionary_shock
+    fallback_cycle = ["meta_authority", "reactionary_shock", "broken_balance", "meta_authority"]
     history_path = Path(te_cfg.get("history_path", _DEFAULT_HISTORY_PATH))
     try:
         if history_path.exists():
             data = json.loads(history_path.read_text())
-            last = data.get(game, {}).get("last_fallback_category", "engagement_bait")
-            next_cat = "educational" if last == "engagement_bait" else "engagement_bait"
-            # Write the update so the next clip alternates correctly
+            last = data.get(game, {}).get("last_fallback_category", "broken_balance")
+            try:
+                idx = (fallback_cycle.index(last) + 1) % len(fallback_cycle)
+            except ValueError:
+                idx = 0
+            next_cat = fallback_cycle[idx]
             data.setdefault(game, {})["last_fallback_category"] = next_cat
             history_path.write_text(json.dumps(data, indent=2))
             return next_cat
     except (json.JSONDecodeError, OSError):
         pass
 
-    return "engagement_bait"
+    return "meta_authority"
 
 
 # ---------------------------------------------------------------------------
