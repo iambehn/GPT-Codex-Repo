@@ -746,3 +746,35 @@ For games with distinctive sounds (e.g. Deadlock soul orb pickup, Marvel Rivals 
 
 Runs after ingestion, before kill-feed OpenCV — feeding spike timestamps into kill-feed so OpenCV only samples frames at audio-confirmed action windows instead of the full clip.
 
+---
+
+## Audio-First VOD Mining — Industry Pattern
+
+Audio as a primary filter for highlight discovery is a proven production pattern used by high-end clipping platforms (Insights.gg, Tencent Game Video Analyzer) to keep server costs viable at scale.
+
+**Core principle:** Video decoding is GPU-heavy and slow. Audio scanning is CPU-only and fast. Scanning an hour of audio for volume/frequency spikes takes seconds; scanning the same hour of video takes minutes of intense work. By running audio first you can discard 90–95% of a VOD — the "walking simulator" segments — before a single video frame is decoded.
+
+### The Funnel
+
+| Stage | Signal | Cost | What it discards |
+|---|---|---|---|
+| 1 | Audio spike detection | Lowest | Boring stretches — no action sounds |
+| 2 | OCR / kill-feed visual check | Medium | False audio positives (jump scares, BGM) |
+| 3 | AI scoring | Highest | Clips that are visually interesting but not viral-quality |
+
+### Acoustic Signatures Worth Detecting
+
+- **Volume spike** — sudden loudness vs. rolling baseline (already implemented)
+- **Pitch shift** — caster/streamer excitement; rising pitch = escalating action
+- **MFCCs** (Mel-Frequency Cepstral Coefficients) — frequency fingerprint that distinguishes a menu click from a sniper shot at the waveform level; used by Librosa and most professional audio classifiers
+
+### Known Limitations
+
+- **Streamer scream problem** — audio spikes can be a jump scare or dropped coffee, not a kill; visual verification is still the final authority
+- **BGM interference** — loud background music buries mechanical game sounds; bandpass filtering (800–4000 Hz) partially solves this
+- **Silent clutches** — some of the best moments (1v5 ninja defuse, quiet sniper play) have no audio signal at all; audio-first would miss them without a visual fallback
+
+### Future Application: Full VOD Ingestion
+
+The current pipeline ingests pre-clipped Twitch clips (already 30–60s). The full payoff of audio-first comes when ingesting full VODs — extract an 8kHz mono audio proxy (~1/100th the file size), spike-detect the whole stream in seconds, download only the ±10s windows around hits. Allows mining 10× more streamers for the same bandwidth budget.
+
