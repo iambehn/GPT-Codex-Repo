@@ -343,7 +343,45 @@ weapon_detector:
     deadlock:
       # Hero portrait — top-left circle. Each hero has one weapon, so portrait = weapon.
       roi: {x: 285, y: 3, w: 130, h: 108}
-      weapons: {}   # e.g., abrams: "Abrams" — one entry per hero
+      weapons:
+        abrams:      "Abrams"
+        apollo:      "Apollo"
+        bebop:       "Bebop"
+        billy:       "Billy"
+        calico:      "Calico"
+        celeste:     "Celeste"
+        the_doorman: "The Doorman"
+        drifter:     "Drifter"
+        dynamo:      "Dynamo"
+        graves:      "Graves"
+        grey_talon:  "Grey Talon"
+        haze:        "Haze"
+        holliday:    "Holliday"
+        infernus:    "Infernus"
+        ivy:         "Ivy"
+        kelvin:      "Kelvin"
+        lady_geist:  "Lady Geist"
+        lash:        "Lash"
+        mcginnis:    "McGinnis"
+        mina:        "Mina"
+        mirage:      "Mirage"
+        mo_and_krill: "Mo & Krill"
+        paige:       "Paige"
+        paradox:     "Paradox"
+        pocket:      "Pocket"
+        rem:         "Rem"
+        seven:       "Seven"
+        shiv:        "Shiv"
+        silver:      "Silver"
+        sinclair:    "Sinclair"
+        venator:     "Venator"
+        victor:      "Victor"
+        vindicta:    "Vindicta"
+        viscous:     "Viscous"
+        vyper:       "Vyper"
+        warden:      "Warden"
+        wraith:      "Wraith"
+        yamato:      "Yamato"
     marvel_rivals:
       # Hero portrait — bottom-left large square. Detecting hero = detecting kit/weapon.
       roi: {x: 58, y: 895, w: 125, h: 135}
