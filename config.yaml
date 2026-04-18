@@ -385,7 +385,59 @@ weapon_detector:
     marvel_rivals:
       # Hero portrait — bottom-left large square. Detecting hero = detecting kit/weapon.
       roi: {x: 58, y: 895, w: 125, h: 135}
-      weapons: {}   # e.g., venom: "Venom" — one entry per hero
+      weapons:
+        # Vanguards
+        angela:          "Angela"
+        bruce_banner:    "Bruce Banner"
+        captain_america: "Captain America"
+        deadpool:        "Deadpool"
+        doctor_strange:  "Doctor Strange"
+        emma_frost:      "Emma Frost"
+        groot:           "Groot"
+        magneto:         "Magneto"
+        peni_parker:     "Peni Parker"
+        rogue:           "Rogue"
+        the_thing:       "The Thing"
+        thor:            "Thor"
+        venom:           "Venom"
+        # Duelists
+        black_cat:       "Black Cat"
+        black_panther:   "Black Panther"
+        black_widow:     "Black Widow"
+        blade:           "Blade"
+        daredevil:       "Daredevil"
+        elsa_bloodstone: "Elsa Bloodstone"
+        hawkeye:         "Hawkeye"
+        hela:            "Hela"
+        human_torch:     "Human Torch"
+        iron_fist:       "Iron Fist"
+        iron_man:        "Iron Man"
+        magik:           "Magik"
+        mister_fantastic: "Mister Fantastic"
+        moon_knight:     "Moon Knight"
+        namor:           "Namor"
+        phoenix:         "Phoenix"
+        psylocke:        "Psylocke"
+        scarlet_witch:   "Scarlet Witch"
+        spider_man:      "Spider-Man"
+        squirrel_girl:   "Squirrel Girl"
+        star_lord:       "Star-Lord"
+        storm:           "Storm"
+        the_punisher:    "The Punisher"
+        winter_soldier:  "Winter Soldier"
+        wolverine:       "Wolverine"
+        # Strategists
+        adam_warlock:       "Adam Warlock"
+        cloak_and_dagger:   "Cloak & Dagger"
+        gambit:             "Gambit"
+        invisible_woman:    "Invisible Woman"
+        jeff_the_land_shark: "Jeff the Land Shark"
+        loki:               "Loki"
+        luna_snow:          "Luna Snow"
+        mantis:             "Mantis"
+        rocket_raccoon:     "Rocket Raccoon"
+        ultron:             "Ultron"
+        white_fox:          "White Fox"
     arc_raiders:
       # Active weapon icon + label — bottom-right panel (KETTLE, FLASHLIGHT, etc.)
       roi: {x: 1760, y: 940, w: 160, h: 120}

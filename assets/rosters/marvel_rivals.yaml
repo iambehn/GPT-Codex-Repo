@@ -4,16 +4,161 @@
 #
 # Used by weapon_detector.py to map hero_id → display_name.
 # {weapon} in title templates is substituted with the hero's display_name.
-# The role field (Vanguard / Duelist / Strategist) is stored for future
-# title flexibility (e.g. role-specific templates).
+# Role (Vanguard / Duelist / Strategist) stored for future title flexibility.
 #
 # hero_id must match the filename in assets/weapon_icons/marvel_rivals/<id>.png
 
-heroes: {}
-# Paste hero list here — format:
-#
-#   venom:
-#     display_name: "Venom"
-#     role: "Vanguard"
-#
-# Roles: Vanguard | Duelist | Strategist
+heroes:
+
+  # Vanguards
+  angela:
+    display_name: "Angela"
+    role: "Vanguard"
+  bruce_banner:
+    display_name: "Bruce Banner"
+    role: "Vanguard"
+  captain_america:
+    display_name: "Captain America"
+    role: "Vanguard"
+  deadpool:
+    display_name: "Deadpool"
+    role: "Vanguard"
+  doctor_strange:
+    display_name: "Doctor Strange"
+    role: "Vanguard"
+  emma_frost:
+    display_name: "Emma Frost"
+    role: "Vanguard"
+  groot:
+    display_name: "Groot"
+    role: "Vanguard"
+  magneto:
+    display_name: "Magneto"
+    role: "Vanguard"
+  peni_parker:
+    display_name: "Peni Parker"
+    role: "Vanguard"
+  rogue:
+    display_name: "Rogue"
+    role: "Vanguard"
+  the_thing:
+    display_name: "The Thing"
+    role: "Vanguard"
+  thor:
+    display_name: "Thor"
+    role: "Vanguard"
+  venom:
+    display_name: "Venom"
+    role: "Vanguard"
+
+  # Duelists
+  black_cat:
+    display_name: "Black Cat"
+    role: "Duelist"
+  black_panther:
+    display_name: "Black Panther"
+    role: "Duelist"
+  black_widow:
+    display_name: "Black Widow"
+    role: "Duelist"
+  blade:
+    display_name: "Blade"
+    role: "Duelist"
+  daredevil:
+    display_name: "Daredevil"
+    role: "Duelist"
+  elsa_bloodstone:
+    display_name: "Elsa Bloodstone"
+    role: "Duelist"
+  hawkeye:
+    display_name: "Hawkeye"
+    role: "Duelist"
+  hela:
+    display_name: "Hela"
+    role: "Duelist"
+  human_torch:
+    display_name: "Human Torch"
+    role: "Duelist"
+  iron_fist:
+    display_name: "Iron Fist"
+    role: "Duelist"
+  iron_man:
+    display_name: "Iron Man"
+    role: "Duelist"
+  magik:
+    display_name: "Magik"
+    role: "Duelist"
+  mister_fantastic:
+    display_name: "Mister Fantastic"
+    role: "Duelist"
+  moon_knight:
+    display_name: "Moon Knight"
+    role: "Duelist"
+  namor:
+    display_name: "Namor"
+    role: "Duelist"
+  phoenix:
+    display_name: "Phoenix"
+    role: "Duelist"
+  psylocke:
+    display_name: "Psylocke"
+    role: "Duelist"
+  scarlet_witch:
+    display_name: "Scarlet Witch"
+    role: "Duelist"
+  spider_man:
+    display_name: "Spider-Man"
+    role: "Duelist"
+  squirrel_girl:
+    display_name: "Squirrel Girl"
+    role: "Duelist"
+  star_lord:
+    display_name: "Star-Lord"
+    role: "Duelist"
+  storm:
+    display_name: "Storm"
+    role: "Duelist"
+  the_punisher:
+    display_name: "The Punisher"
+    role: "Duelist"
+  winter_soldier:
+    display_name: "Winter Soldier"
+    role: "Duelist"
+  wolverine:
+    display_name: "Wolverine"
+    role: "Duelist"
+
+  # Strategists
+  adam_warlock:
+    display_name: "Adam Warlock"
+    role: "Strategist"
+  cloak_and_dagger:
+    display_name: "Cloak & Dagger"
+    role: "Strategist"
+  gambit:
+    display_name: "Gambit"
+    role: "Strategist"
+  invisible_woman:
+    display_name: "Invisible Woman"
+    role: "Strategist"
+  jeff_the_land_shark:
+    display_name: "Jeff the Land Shark"
+    role: "Strategist"
+  loki:
+    display_name: "Loki"
+    role: "Strategist"
+  luna_snow:
+    display_name: "Luna Snow"
+    role: "Strategist"
+  mantis:
+    display_name: "Mantis"
+    role: "Strategist"
+  rocket_raccoon:
+    display_name: "Rocket Raccoon"
+    role: "Strategist"
+  ultron:
+    display_name: "Ultron"
+    role: "Strategist"
+  white_fox:
+    display_name: "White Fox"
+    role: "Strategist"
