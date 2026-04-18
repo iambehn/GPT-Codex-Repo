@@ -69,6 +69,14 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+_SECTION_HEADERS = {
+    _norm(s) for s in [
+        "vanguard", "duelist", "strategist", "multi-role", "multi role",
+        "multirole", "team up", "abilities", "normal attack", "passive",
+    ]
+}
+
+
 # ---------------------------------------------------------------------------
 # Label detection
 # ---------------------------------------------------------------------------
@@ -89,8 +97,8 @@ def find_label_rects(img: np.ndarray) -> list[tuple[int, int, int, int]]:
     rects = []
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
-        # Labels: wide enough for a name, short (text height), good aspect ratio
-        if w > 45 and 6 <= h <= 28 and w / h > 2.5:
+        # Labels: short names like "HELA" are ~30px wide; keep aspect ratio loose
+        if w > 25 and 6 <= h <= 28 and w / h > 1.5:
             rects.append((x, y, w, h))
 
     return sorted(rects, key=lambda r: (r[1], r[0]))
@@ -126,13 +134,21 @@ def ocr_label(gray: np.ndarray, x: int, y: int, w: int, h: int, reader) -> str:
 
 def match_hero(raw_text: str, roster: dict[str, str]) -> str | None:
     """Map OCR'd label text to a hero_id. Returns None on no match."""
+    import difflib
     n = _norm(raw_text)
+    if not n or n in _SECTION_HEADERS:
+        return None
+    # Exact match
     if n in roster:
         return roster[n]
-    # Substring fallback for partial OCR reads
+    # Substring fallback
     for roster_norm, hero_id in roster.items():
-        if n and (n in roster_norm or roster_norm in n):
+        if n in roster_norm or roster_norm in n:
             return hero_id
+    # Fuzzy fallback — catches OCR errors like "DEAOPOOL" → "deadpool"
+    matches = difflib.get_close_matches(n, roster.keys(), n=1, cutoff=0.75)
+    if matches:
+        return roster[matches[0]]
     return None
 
 
