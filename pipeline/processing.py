@@ -219,9 +219,99 @@ def _make_static_srt(static_lines: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _srt_timestamp_to_seconds(value: str) -> float:
+    """Convert an SRT timestamp HH:MM:SS,mmm to seconds."""
+    hms, millis = value.strip().split(",")
+    hours, minutes, seconds = hms.split(":")
+    return int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(millis) / 1000.0
+
+
+def _seconds_to_srt_timestamp(seconds: float) -> str:
+    """Convert seconds to SRT timestamp format HH:MM:SS,mmm."""
+    seconds = max(0.0, seconds)
+    total_ms = int(round(seconds * 1000))
+    millis = total_ms % 1000
+    total_s = total_ms // 1000
+    secs = total_s % 60
+    total_m = total_s // 60
+    mins = total_m % 60
+    hours = total_m // 60
+    return f"{hours:02d}:{mins:02d}:{secs:02d},{millis:03d}"
+
+
+def _shift_srt_timestamps(srt_content: str, offset_seconds: float) -> str:
+    """Shift transcript captions after a source trim and drop fully trimmed blocks."""
+    if offset_seconds <= 0 or not srt_content.strip():
+        return srt_content
+
+    blocks: list[str] = []
+    for block in srt_content.strip().split("\n\n"):
+        lines = block.strip().splitlines()
+        ts_index = next((idx for idx, line in enumerate(lines) if "-->" in line), None)
+        if ts_index is None:
+            continue
+        try:
+            start_raw, end_raw = [part.strip() for part in lines[ts_index].split("-->", 1)]
+            start = _srt_timestamp_to_seconds(start_raw)
+            end = _srt_timestamp_to_seconds(end_raw)
+        except (ValueError, IndexError):
+            continue
+        if end <= offset_seconds:
+            continue
+
+        lines_before_text = lines[:ts_index]
+        text_lines = lines[ts_index + 1:]
+        new_start = max(0.0, start - offset_seconds)
+        new_end = max(0.0, end - offset_seconds)
+        if new_end <= new_start:
+            continue
+
+        block_lines = [
+            *lines_before_text,
+            f"{_seconds_to_srt_timestamp(new_start)} --> {_seconds_to_srt_timestamp(new_end)}",
+            *text_lines,
+        ]
+        blocks.append("\n".join(block_lines))
+
+    renumbered: list[str] = []
+    for idx, block in enumerate(blocks, start=1):
+        lines = block.splitlines()
+        if lines and lines[0].strip().isdigit():
+            lines[0] = str(idx)
+        else:
+            lines.insert(0, str(idx))
+        renumbered.append("\n".join(lines))
+    return "\n\n".join(renumbered) + ("\n" if renumbered else "")
+
+
 def _escape_filter_path(path: str) -> str:
     """Escape a file path for use inside an FFmpeg filter string."""
     return path.replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+
+
+def _hook_trim_start_seconds(metadata: dict) -> float:
+    """Return the non-destructive processing trim requested by hook_enforcer."""
+    hook = metadata.get("hook_enforcer") or {}
+    trim_plan = hook.get("trim_plan") or {}
+    if trim_plan.get("strategy") != "hard_trim":
+        return 0.0
+    try:
+        return max(0.0, float(trim_plan.get("trim_start_seconds", 0.0)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _effective_timing(metadata: dict, template_target_duration: float) -> tuple[float, float, float]:
+    """Return hook trim start, effective target duration, and remaining source duration."""
+    trim_start = _hook_trim_start_seconds(metadata)
+    try:
+        source_duration = float(metadata.get("duration_seconds", template_target_duration))
+    except (TypeError, ValueError):
+        source_duration = template_target_duration
+    remaining_duration = max(0.0, source_duration - trim_start)
+    if remaining_duration > 0:
+        return trim_start, min(template_target_duration, remaining_duration), remaining_duration
+    return trim_start, template_target_duration, remaining_duration
 
 
 # ---------------------------------------------------------------------------
@@ -449,7 +539,8 @@ def _srt_to_ass(srt_content: str, style: dict, out_w: int, out_h: int) -> str:
 
 def _add_captions(parts: list[str], current: str, cap_cfg: dict,
                   srt_path: Path | None, tmp_dir: str,
-                  out_w: int = 1080, out_h: int = 1920) -> str:
+                  out_w: int = 1080, out_h: int = 1920,
+                  time_offset_seconds: float = 0.0) -> str:
     """Burn captions into the video using the FFmpeg subtitles filter.
 
     Generates an ASS file with style baked in so that no force_style option
@@ -469,6 +560,10 @@ def _add_captions(parts: list[str], current: str, cap_cfg: dict,
     if source == "transcript":
         if srt_path and srt_path.exists() and srt_path.stat().st_size > 0:
             srt_text = srt_path.read_text(encoding="utf-8", errors="replace")
+            srt_text = _shift_srt_timestamps(srt_text, time_offset_seconds)
+            if not srt_text.strip():
+                logger.debug("Transcript captions ended before hook trim — skipping captions.")
+                return current
         else:
             logger.debug("No SRT file for transcript captions — skipping captions.")
             return current
@@ -549,8 +644,8 @@ def _build_ffmpeg_cmd(
     codec = out_cfg.get("codec", "h264")
     codec_lib = "libx264" if codec == "h264" else ("libx265" if codec == "h265" else "libvpx-vp9")
 
-    target_dur = float(tl["target_duration_seconds"])
-    actual_dur = float(metadata.get("duration_seconds", target_dur))
+    template_target_dur = float(tl["target_duration_seconds"])
+    hook_trim_start, target_dur, actual_dur = _effective_timing(metadata, template_target_dur)
     strategy = tl.get("target_duration_strategy", "trim_end")
     has_audio = metadata.get("has_audio", True)
 
@@ -563,7 +658,18 @@ def _build_ffmpeg_cmd(
     # ---- Build video filter graph ----------------------------------------
     video_parts: list[str] = []
     current = "0:v"
+    source_audio_filters: list[str] = []
     audio_speed_filters: list[str] = []
+
+    if hook_trim_start > 0:
+        current = "vhook"
+        video_parts.append(
+            f"[0:v]trim=start={hook_trim_start:.3f},setpts=PTS-STARTPTS[{current}]"
+        )
+        source_audio_filters = [
+            f"atrim=start={hook_trim_start:.3f}",
+            "asetpts=PTS-STARTPTS",
+        ]
 
     current, audio_speed_filters = _add_trim(
         video_parts, current, target_dur, actual_dur, strategy
@@ -571,7 +677,16 @@ def _build_ffmpeg_cmd(
     current = _add_vertical_fill(video_parts, current, vfx["vertical_fill"], out_w, out_h)
     current = _add_zoom(video_parts, current, vfx["zoom"], out_w, out_h, out_fps, target_dur)
     current = _add_color_grade(video_parts, current, vfx["color_grade"])
-    current = _add_captions(video_parts, current, cap_cfg, srt_path, tmp_dir, out_w, out_h)
+    current = _add_captions(
+        video_parts,
+        current,
+        cap_cfg,
+        srt_path,
+        tmp_dir,
+        out_w,
+        out_h,
+        time_offset_seconds=hook_trim_start,
+    )
     current = _add_post_effects(video_parts, current, vfx)
     final_video_label = current
 
@@ -604,6 +719,8 @@ def _build_ffmpeg_cmd(
         a_filters: list[str] = []
         # Trim / speed adjustments must come first so loudnorm only sees the
         # final audio duration, not the full original clip length.
+        if source_audio_filters:
+            a_filters.extend(source_audio_filters)
         if audio_speed_filters:
             a_filters.extend(audio_speed_filters)
         if vol_db != 0.0:
@@ -787,6 +904,12 @@ def run_processing(clip_path: str, template: dict, metadata: dict, config: dict)
     if meta_path.exists():
         meta = json.loads(meta_path.read_text())
         meta["processed_path"] = str(output_path)
+        hook_trim = _hook_trim_start_seconds(metadata)
+        if hook_trim > 0:
+            meta["processing_alignment"] = {
+                "source_trim_start_seconds": round(hook_trim, 3),
+                "strategy": "hook_enforcer_hard_trim",
+            }
         meta_path.write_text(json.dumps(meta, indent=2))
 
     return str(output_path)

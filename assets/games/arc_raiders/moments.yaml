@@ -1,0 +1,34 @@
+moments:
+- id: multi_kill_swing
+  labels:
+  - multi-kill
+  - swing
+  - burst
+  narrative: A short burst of eliminations that changes the fight immediately.
+  rarity_hint: high
+- id: clutch_reversal
+  labels:
+  - clutch
+  - outplay
+  - reversal
+  narrative: A low-odds survival or comeback moment.
+  rarity_hint: high
+- id: precision_pick
+  labels:
+  - headshot
+  - flick
+  - pick
+  narrative: A fast precision elimination that reads instantly to viewers.
+  rarity_hint: medium
+- id: extraction_clutch
+  labels:
+  - extract
+  - squad wipe
+  - ambush
+  narrative: A fight or escape that secures an extraction under pressure.
+  rarity_hint: high
+hook_targets:
+  hard_gate: true
+  window_seconds: 1.5
+  description: The clip must contain a moment that can anchor the first 1.5 seconds
+    of the final edit.

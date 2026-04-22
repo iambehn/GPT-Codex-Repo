@@ -121,6 +121,35 @@ def _extract_thumbnail(clip_path: Path) -> Path | None:
     return None
 
 
+def _publishing_title(metadata: dict, limit: int | None = None, default: str = "Gaming Clip") -> str:
+    """Return the canonical platform title with scoring/backstop fallbacks."""
+    title_engine = metadata.get("title_engine") or {}
+    scoring = metadata.get("scoring") or {}
+    title = (
+        title_engine.get("title")
+        or scoring.get("suggested_title")
+        or metadata.get("clip_id")
+        or default
+    )
+    title = str(title).strip() or default
+    return title[:limit].strip() if limit else title
+
+
+def _publishing_caption(metadata: dict, limit: int | None = None) -> str:
+    """Return canonical caption/body text with title and hashtag fallbacks."""
+    title_engine = metadata.get("title_engine") or {}
+    scoring = metadata.get("scoring") or {}
+    caption = title_engine.get("caption") or scoring.get("suggested_caption")
+
+    if not caption:
+        title = _publishing_title(metadata)
+        hashtags = " ".join(str(tag) for tag in (title_engine.get("hashtags") or []) if tag)
+        caption = " ".join(part for part in (title, hashtags) if part)
+
+    caption = str(caption).strip()
+    return caption[:limit].strip() if limit else caption
+
+
 # ---------------------------------------------------------------------------
 # YouTube Shorts
 # ---------------------------------------------------------------------------
@@ -151,9 +180,10 @@ def _upload_youtube_shorts(clip_path: Path, metadata: dict, cfg: dict) -> dict:
             "error": "Missing packages. Run: pip install google-api-python-client google-auth-oauthlib google-auth-httplib2",
         }
 
-    scoring = metadata.get("scoring", {})
-    title = (scoring.get("suggested_title") or metadata.get("clip_id", "Gaming Clip"))[:100]
-    description = scoring.get("suggested_caption", "") + "\n\n#Shorts"
+    title = _publishing_title(metadata, limit=100)
+    description = _publishing_caption(metadata)
+    if "#Shorts" not in description:
+        description = f"{description}\n\n#Shorts".strip()
     privacy = cfg.get("privacy", "public")
     category_id = str(cfg.get("category_id", "20"))  # 20 = Gaming
 
@@ -260,8 +290,7 @@ def _upload_tiktok(clip_path: Path, metadata: dict, cfg: dict) -> dict:
     except ImportError:
         return {"success": False, "url": None, "error": "requests not installed"}
 
-    scoring = metadata.get("scoring", {})
-    title = (scoring.get("suggested_title") or metadata.get("clip_id", ""))[:150]
+    title = _publishing_title(metadata, limit=150, default="")
     privacy = cfg.get("privacy_level", "SELF_ONLY")  # Use SELF_ONLY for testing
     file_size = clip_path.stat().st_size
 
@@ -500,9 +529,7 @@ def _upload_twitter_x(clip_path: Path, metadata: dict, cfg: dict) -> dict:
         }
 
     auth = OAuth1(api_key, api_secret, access_token, access_secret)
-    scoring = metadata.get("scoring", {})
-    tweet_text = (scoring.get("suggested_caption") or
-                  scoring.get("suggested_title") or "")[:280]
+    tweet_text = _publishing_caption(metadata, limit=280)
     file_size = clip_path.stat().st_size
 
     try:
@@ -599,8 +626,7 @@ def _upload_reddit(clip_path: Path, metadata: dict, cfg: dict, game: str) -> dic
             "error": f"No subreddit configured for game '{game}'. Add to config.yaml distribution.platforms.reddit.subreddits.",
         }
 
-    scoring = metadata.get("scoring", {})
-    title = (scoring.get("suggested_title") or metadata.get("clip_id", "Gaming Clip"))[:300]
+    title = _publishing_title(metadata, limit=300)
 
     try:
         reddit = praw.Reddit(

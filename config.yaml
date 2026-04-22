@@ -39,6 +39,32 @@ scoring:
   model: "claude-haiku-4-5-20251001"  # haiku: fast + cheap; swap to claude-sonnet-4-6 for higher quality
   max_tokens: 512
 
+clip_judge:
+  enabled: true
+  model: "claude-haiku-4-5-20251001"
+  max_tokens: 400
+
+niceshot_detector:
+  enabled: true
+  mode: "stub"              # "stub" | "fixture_json" | "cli" | "api"
+  provider: "niceshot_ai"
+  profile: "cod_like_default"
+  fixture_dir: null
+  fixture_path: null
+  stub:
+    action_score: 0.0
+    hook_score: 0.0
+    confidence: 0.0
+    moments: []
+
+yolo_detector:
+  enabled: true
+  confidence_threshold: 0.60
+  iou_threshold: 0.45
+  imgsz: 640
+  max_det: 100
+  verbose: false
+
 distribution:
   platforms:
     youtube_shorts:
@@ -334,7 +360,7 @@ kill_feed:
 #   "kill_timestamps"  — analyse frames at kill events (most accurate)
 #   "all"              — sample every 2 seconds (slowest)
 weapon_detector:
-  enabled: false
+  enabled: true
   confidence_threshold: 0.80
   frame_sample: "middle"
   match_mode: "color"       # "color" | "grayscale" (use grayscale for semi-transparent HUDs)

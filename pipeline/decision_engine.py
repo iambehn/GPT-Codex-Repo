@@ -1,8 +1,8 @@
 """
-Stage 4 — Decision Engine
+Stage 6 — Template Selection
 
-Loads and returns the single active template defined by `default_template_id`
-in config.yaml. All clips use this template.
+This module now handles template selection only.
+The actual accept/reject/quarantine decision happens earlier in pipeline.clip_judge.
 
 To switch templates, change `default_template_id` in config.yaml — no code
 change required.

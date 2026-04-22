@@ -1,0 +1,67 @@
+ui_version: legacy-2026-04
+rois:
+  kill_feed:
+    x: 1620
+    y: 10
+    w: 300
+    h: 380
+  weapon_detector:
+    x: 58
+    y: 895
+    w: 125
+    h: 135
+detectors:
+  kill_feed:
+    roi_ref: kill_feed
+    template_dir: assets/kill_feed_templates/marvel_rivals
+    kill_colors:
+    - lower:
+      - 0
+      - 0
+      - 180
+      upper:
+      - 180
+      - 50
+      - 255
+    headshot_colors:
+    - lower:
+      - 15
+      - 120
+      - 200
+      upper:
+      - 40
+      - 255
+      - 255
+    pixel_spike_threshold: 50
+  weapon_detector:
+    roi_ref: weapon_detector
+    icon_dir: assets/weapon_icons/marvel_rivals
+    entities_kind: heroes
+    match_mode: color
+  yolo:
+    enabled: false
+    weights_path: models/yolo/marvel_rivals/weights/best.pt
+    confidence_threshold: 0.6
+    frame_sample: middle
+    labels:
+      hero_the_punisher:
+        kind: entity
+        maps_to: the_punisher
+      hero_spider_man:
+        kind: entity
+        maps_to: spider_man
+      hero_groot:
+        kind: entity
+        maps_to: groot
+      medal_headshot:
+        kind: event
+        maps_to: precision_pick
+      medal_multikill:
+        kind: event
+        maps_to: multi_kill_swing
+      ultimate_swing:
+        kind: event
+        maps_to: ultimate_swing
+roi_templates: []
+ui_drift:
+  expected_hashes: []

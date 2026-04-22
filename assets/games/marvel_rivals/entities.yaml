@@ -1,0 +1,200 @@
+primary_kind: heroes
+heroes:
+  angela:
+    display_name: Angela
+    role: Vanguard
+    primary_weapon: Spear of Ichors
+  bruce_banner:
+    display_name: Bruce Banner
+    role: Vanguard
+    primary_weapon: null
+  captain_america:
+    display_name: Captain America
+    role: Vanguard
+    primary_weapon: null
+  deadpool:
+    display_name: Deadpool
+    role: Vanguard
+    primary_weapon: null
+  doctor_strange:
+    display_name: Doctor Strange
+    role: Vanguard
+    primary_weapon: null
+  emma_frost:
+    display_name: Emma Frost
+    role: Vanguard
+    primary_weapon: null
+  groot:
+    display_name: Groot
+    role: Vanguard
+    primary_weapon: null
+  magneto:
+    display_name: Magneto
+    role: Vanguard
+    primary_weapon: null
+  peni_parker:
+    display_name: Peni Parker
+    role: Vanguard
+    primary_weapon: null
+  rogue:
+    display_name: Rogue
+    role: Vanguard
+    primary_weapon: null
+  the_thing:
+    display_name: The Thing
+    role: Vanguard
+    primary_weapon: null
+  thor:
+    display_name: Thor
+    role: Vanguard
+    primary_weapon: null
+  venom:
+    display_name: Venom
+    role: Vanguard
+    primary_weapon: null
+  black_cat:
+    display_name: Black Cat
+    role: Duelist
+    primary_weapon: Feline Fury
+  black_panther:
+    display_name: Black Panther
+    role: Duelist
+    primary_weapon: Vibranium Claws
+  black_widow:
+    display_name: Black Widow
+    role: Duelist
+    primary_weapon: Red Room Rifle
+  blade:
+    display_name: Blade
+    role: Duelist
+    primary_weapon: null
+  daredevil:
+    display_name: Daredevil
+    role: Duelist
+    primary_weapon: null
+  elsa_bloodstone:
+    display_name: Elsa Bloodstone
+    role: Duelist
+    primary_weapon: null
+  hawkeye:
+    display_name: Hawkeye
+    role: Duelist
+    primary_weapon: null
+  hela:
+    display_name: Hela
+    role: Duelist
+    primary_weapon: null
+  human_torch:
+    display_name: Human Torch
+    role: Duelist
+    primary_weapon: null
+  iron_fist:
+    display_name: Iron Fist
+    role: Duelist
+    primary_weapon: null
+  iron_man:
+    display_name: Iron Man
+    role: Duelist
+    primary_weapon: null
+  magik:
+    display_name: Magik
+    role: Duelist
+    primary_weapon: null
+  mister_fantastic:
+    display_name: Mister Fantastic
+    role: Duelist
+    primary_weapon: null
+  moon_knight:
+    display_name: Moon Knight
+    role: Duelist
+    primary_weapon: null
+  namor:
+    display_name: Namor
+    role: Duelist
+    primary_weapon: null
+  phoenix:
+    display_name: Phoenix
+    role: Duelist
+    primary_weapon: null
+  psylocke:
+    display_name: Psylocke
+    role: Duelist
+    primary_weapon: null
+  scarlet_witch:
+    display_name: Scarlet Witch
+    role: Duelist
+    primary_weapon: null
+  spider_man:
+    display_name: Spider-Man
+    role: Duelist
+    primary_weapon: null
+  squirrel_girl:
+    display_name: Squirrel Girl
+    role: Duelist
+    primary_weapon: null
+  star_lord:
+    display_name: Star-Lord
+    role: Duelist
+    primary_weapon: null
+  storm:
+    display_name: Storm
+    role: Duelist
+    primary_weapon: null
+  the_punisher:
+    display_name: The Punisher
+    role: Duelist
+    primary_weapon: null
+  winter_soldier:
+    display_name: Winter Soldier
+    role: Duelist
+    primary_weapon: null
+  wolverine:
+    display_name: Wolverine
+    role: Duelist
+    primary_weapon: null
+  adam_warlock:
+    display_name: Adam Warlock
+    role: Strategist
+    primary_weapon: Quantum Magic
+  cloak_and_dagger:
+    display_name: Cloak & Dagger
+    role: Strategist
+    primary_weapon: null
+  gambit:
+    display_name: Gambit
+    role: Strategist
+    primary_weapon: null
+  invisible_woman:
+    display_name: Invisible Woman
+    role: Strategist
+    primary_weapon: null
+  jeff_the_land_shark:
+    display_name: Jeff the Land Shark
+    role: Strategist
+    primary_weapon: null
+  loki:
+    display_name: Loki
+    role: Strategist
+    primary_weapon: null
+  luna_snow:
+    display_name: Luna Snow
+    role: Strategist
+    primary_weapon: null
+  mantis:
+    display_name: Mantis
+    role: Strategist
+    primary_weapon: null
+  rocket_raccoon:
+    display_name: Rocket Raccoon
+    role: Strategist
+    primary_weapon: null
+  ultron:
+    display_name: Ultron
+    role: Strategist
+    primary_weapon: null
+  white_fox:
+    display_name: White Fox
+    role: Strategist
+    primary_weapon: null
+abilities: {}
+aliases: {}

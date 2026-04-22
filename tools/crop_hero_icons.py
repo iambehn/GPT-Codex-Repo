@@ -44,6 +44,9 @@ import numpy as np
 import yaml
 
 _ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
+
+from pipeline.game_pack import get_primary_entities, load_game_pack
 
 
 # ---------------------------------------------------------------------------
@@ -52,6 +55,18 @@ _ROOT = Path(__file__).resolve().parent.parent
 
 def load_roster(game: str) -> dict[str, str]:
     """Return {normalized_display_name: hero_id} from the game's roster YAML."""
+    config_path = _ROOT / "config.yaml"
+    if config_path.exists():
+        data = yaml.safe_load(config_path.read_text()) or {}
+        pack = load_game_pack(game, data)
+        _, entries = get_primary_entities(pack)
+        if entries:
+            return {
+                _norm(v["display_name"]): k
+                for k, v in entries.items()
+                if isinstance(v, dict) and "display_name" in v
+            }
+
     roster_path = _ROOT / "assets" / "rosters" / f"{game}.yaml"
     if not roster_path.exists():
         sys.exit(f"Roster not found: {roster_path}")

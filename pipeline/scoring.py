@@ -69,6 +69,7 @@ def _build_prompt(metadata: dict, transcript_text: str) -> str:
     motion = metadata.get("motion_level", "unknown")
     audio_energy = metadata.get("audio_energy", "unknown")
     keywords = metadata.get("keywords", [])
+    decision = metadata.get("decision", {})
     keywords_str = ", ".join(keywords) if keywords else "none detected"
     transcript_str = transcript_text.strip() if transcript_text.strip() else "(no speech detected)"
 
@@ -83,6 +84,8 @@ CLIP INFORMATION:
 - Motion level: {motion}
 - Audio energy: {audio_energy}
 - FPS keywords detected: {keywords_str}
+- Pre-judge composite score: {decision.get('composite_score', 'unknown')}
+- Hook gate passed: {decision.get('hook_gate_passed', 'unknown')}
 
 TRANSCRIPT:
 \"\"\"{transcript_str}\"\"\"

@@ -63,7 +63,7 @@ _DEFAULT_MULTI_KILL_MIN = 3
 # Public interface
 # ---------------------------------------------------------------------------
 
-def run_audio_detector(clip_path: Path, game: str, config: dict) -> dict:
+def run_audio_detector(clip_path: Path, game: str, config: dict, force: bool = False) -> dict:
     """Detect audio events in a clip and write results to its meta.json.
 
     Idempotent: skips if 'audio_events' key already present in meta.json.
@@ -73,7 +73,7 @@ def run_audio_detector(clip_path: Path, game: str, config: dict) -> dict:
     ad_cfg = config.get("audio_detector", {})
     meta_path = clip_path.with_suffix(".meta.json")
 
-    if meta_path.exists():
+    if meta_path.exists() and not force:
         try:
             existing = json.loads(meta_path.read_text())
             if "audio_events" in existing:

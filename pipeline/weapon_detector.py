@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from pipeline.game_pack import get_weapon_detector_game_config, load_game_pack, resolve_asset_path
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -59,7 +60,7 @@ _DEFAULT_ICON_DIR = "assets/weapon_icons"
 # Public interface
 # ---------------------------------------------------------------------------
 
-def run_weapon_detector(clip_path: Path, game: str, config: dict) -> dict:
+def run_weapon_detector(clip_path: Path, game: str, config: dict, force: bool = False) -> dict:
     """Detect the active weapon from the HUD weapon-icon ROI.
 
     Idempotent: skips if meta.json already contains a weapon_detection key.
@@ -77,7 +78,7 @@ def run_weapon_detector(clip_path: Path, game: str, config: dict) -> dict:
     meta_path = clip_path.with_suffix(".meta.json")
 
     # Idempotency
-    if meta_path.exists():
+    if meta_path.exists() and not force:
         try:
             existing = json.loads(meta_path.read_text())
             if "weapon_detection" in existing:
@@ -92,11 +93,15 @@ def run_weapon_detector(clip_path: Path, game: str, config: dict) -> dict:
     if not wd_cfg.get("enabled", False):
         return _write_and_return(meta_path, _disabled("weapon_detector disabled"))
 
-    game_cfg = wd_cfg.get("games", {}).get(game)
+    game_pack = load_game_pack(game, config)
+    game_cfg = get_weapon_detector_game_config(game, config, game_pack)
     if not game_cfg:
         return _write_and_return(meta_path, _disabled(f"no config for game '{game}'"))
 
-    icon_dir = Path(wd_cfg.get("icon_dir", _DEFAULT_ICON_DIR)) / game
+    icon_dir = resolve_asset_path(
+        game_cfg.get("icon_dir") or str(Path(wd_cfg.get("icon_dir", _DEFAULT_ICON_DIR)) / game),
+        Path(game_pack.get("pack_root", ".")),
+    )
     weapon_names = game_cfg.get("weapons", {})
     match_mode = wd_cfg.get("match_mode", "color")   # "color" | "grayscale"
     templates = _load_templates(icon_dir, weapon_names, match_mode)

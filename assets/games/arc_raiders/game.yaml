@@ -1,0 +1,19 @@
+game_id: arc_raiders
+display_name: Arc Raiders
+folder: arc_raiders
+twitch_url: https://www.twitch.tv/directory/game/Arc%20Raiders/clips
+genre: fps
+ui_version: legacy-2026-04
+detectors:
+  audio_detector:
+    enabled: false
+  kill_feed:
+    enabled: false
+  weapon_detector:
+    enabled: true
+  clip_judge_ai:
+    enabled: true
+    provider: anthropic
+  niceshot:
+    enabled: false
+    provider: niceshot_ai

@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}Quarantine — {{ clip.clip_id }}{% endblock %}
+
+{% block extra_styles %}
+.trainer-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  height: calc(100vh - 49px);
+  overflow: hidden;
+}
+.video-workbench {
+  background: #050505;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+}
+.video-wrap {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+}
+.video-wrap video {
+  max-width: 100%;
+  max-height: calc(100vh - 90px);
+  display: block;
+}
+#frameCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  cursor: crosshair;
+}
+.trainer-panel {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-scroll {
+  overflow-y: auto;
+  padding: 20px;
+}
+.panel-section { margin-bottom: 18px; }
+.panel-section h3 {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.field label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+select, input[type="text"] {
+  background: #111;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.checkbox-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+button {
+  border: none;
+  border-radius: 6px;
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.primary-btn { background: var(--accent); color: #fff; }
+.primary-btn:disabled { background: #3a365f; color: #888; cursor: not-allowed; }
+.ghost-btn { background: #252525; color: var(--text); border: 1px solid var(--border); }
+.danger-note {
+  background: #241a08;
+  border: 1px solid #5b3c0a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #facc15;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.meta-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid #232323;
+}
+.meta-line span:first-child { color: var(--muted); }
+#previewBox {
+  width: 140px;
+  min-height: 140px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #101010;
+  overflow: hidden;
+}
+#previewBox img { max-width: 140px; max-height: 140px; image-rendering: auto; }
+#statusBox {
+  white-space: pre-wrap;
+  background: #101010;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 220px;
+  overflow-y: auto;
+}
+{% endblock %}
+
+{% block header_extra %}
+  <span style="margin-left:auto;color:var(--muted);font-size:12px;">
+    {{ clip.game }} / {{ clip.reason }}
+  </span>
+{% endblock %}
+
+{% block content %}
+<div class="trainer-layout">
+  <section class="video-workbench">
+    <div class="video-wrap" id="videoWrap">
+      <video id="reviewVideo" controls preload="metadata">
+        <source src="{{ video_url }}">
+      </video>
+      <canvas id="frameCanvas"></canvas>
+    </div>
+  </section>
+
+  <aside class="trainer-panel">
+    <div class="panel-scroll">
+      <div class="panel-section">
+        <h3>Quarantined Clip</h3>
+        <div class="meta-line"><span>Clip</span><strong>{{ clip.filename }}</strong></div>
+        <div class="meta-line"><span>Game</span><strong>{{ clip.game }}</strong></div>
+        <div class="meta-line"><span>Reason</span><strong>{{ clip.reason }}</strong></div>
+        <div class="meta-line"><span>Entity type</span><strong>{{ primary_kind }}</strong></div>
+      </div>
+
+      <div class="panel-section">
+        <h3>1. Capture</h3>
+        <div class="danger-note">
+          Pause on a frame where the HUD icon is clear, then capture and draw a tight rectangle around the hero/weapon icon.
+        </div>
+        <div class="button-row" style="margin-top:12px;">
+          <button class="ghost-btn" id="captureBtn">Capture Frame</button>
+          <button class="ghost-btn" id="clearBtn">Clear Crop</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>2. Label</h3>
+        <div class="field">
+          <label for="entitySelect">Hero / Weapon</label>
+          <select id="entitySelect">
+            <option value="">Choose an entity</option>
+            {% for entity in entities %}
+            <option value="{{ entity.entity_id }}">{{ entity.display_name }} — {{ entity.entity_id }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="entityText">Entity ID quick entry</label>
+          <input id="entityText" type="text" list="entityIds" placeholder="Must already exist in entities.yaml">
+          <datalist id="entityIds">
+            {% for entity in entities %}
+            <option value="{{ entity.entity_id }}">{{ entity.display_name }}</option>
+            {% endfor %}
+          </datalist>
+        </div>
+        <label class="checkbox-row">
+          <input id="overwrite" type="checkbox">
+          Overwrite existing icon
+        </label>
+      </div>
+
+      <div class="panel-section">
+        <h3>3. Preview</h3>
+        <div id="previewBox"><span style="color:var(--muted);font-size:12px;">No crop yet</span></div>
+      </div>
+
+      <div class="panel-section">
+        <h3>4. Save And Rescan</h3>
+        <div class="button-row">
+          <button class="primary-btn" id="saveBtn" disabled>Save Icon</button>
+          <button class="ghost-btn" id="rescanBtn">Rescan Only</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>Status</h3>
+        <div id="statusBox">Ready.</div>
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const GAME = {{ clip.game|tojson }};
+const CLIP_STEM = {{ clip.stem|tojson }};
+const SAVE_URL = {{ url_for('api_quarantine_save_icon')|tojson }};
+const RESCAN_URL = {{ url_for('api_quarantine_rescan')|tojson }};
+
+const video = document.getElementById('reviewVideo');
+const canvas = document.getElementById('frameCanvas');
+const ctx = canvas.getContext('2d');
+const captureBtn = document.getElementById('captureBtn');
+const clearBtn = document.getElementById('clearBtn');
+const saveBtn = document.getElementById('saveBtn');
+const rescanBtn = document.getElementById('rescanBtn');
+const previewBox = document.getElementById('previewBox');
+const statusBox = document.getElementById('statusBox');
+const entitySelect = document.getElementById('entitySelect');
+const entityText = document.getElementById('entityText');
+const overwrite = document.getElementById('overwrite');
+
+let captured = false;
+let drawing = false;
+let start = null;
+let cropBox = null;
+let capturedTime = 0;
+
+function setStatus(message, payload = null) {
+  statusBox.textContent = payload ? `${message}\n\n${JSON.stringify(payload, null, 2)}` : message;
+}
+
+function lockRecoveredClip(result) {
+  const rescan = result.rescan || {};
+  if (!rescan.moved_to_inbox) return false;
+
+  saveBtn.disabled = true;
+  rescanBtn.disabled = true;
+  captureBtn.disabled = true;
+  clearBtn.disabled = true;
+  canvas.style.pointerEvents = 'none';
+  setStatus(
+    `Clip recovered to inbox. Further quarantine actions are disabled for this page.\n\nInbox path: ${rescan.inbox_path}`,
+    result
+  );
+  return true;
+}
+
+function redraw() {
+  if (!captured) return;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  if (cropBox) {
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = Math.max(2, Math.round(canvas.width / 700));
+    ctx.strokeRect(cropBox.x, cropBox.y, cropBox.w, cropBox.h);
+  }
+}
+
+function eventToCanvasPoint(event) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) * (canvas.width / rect.width),
+    y: (event.clientY - rect.top) * (canvas.height / rect.height),
+  };
+}
+
+function normalizeBox(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  const w = Math.abs(b.x - a.x);
+  const h = Math.abs(b.y - a.y);
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    w: Math.round(w),
+    h: Math.round(h),
+  };
+}
+
+function updatePreview() {
+  if (!cropBox || cropBox.w <= 0 || cropBox.h <= 0) {
+    previewBox.innerHTML = '<span style="color:var(--muted);font-size:12px;">No crop yet</span>';
+    saveBtn.disabled = true;
+    return;
+  }
+  const previewCanvas = document.createElement('canvas');
+  previewCanvas.width = cropBox.w;
+  previewCanvas.height = cropBox.h;
+  previewCanvas.getContext('2d').drawImage(
+    canvas,
+    cropBox.x, cropBox.y, cropBox.w, cropBox.h,
+    0, 0, cropBox.w, cropBox.h
+  );
+  const img = new Image();
+  img.src = previewCanvas.toDataURL('image/png');
+  previewBox.innerHTML = '';
+  previewBox.appendChild(img);
+  saveBtn.disabled = false;
+}
+
+function cropDataUrl() {
+  const out = document.createElement('canvas');
+  out.width = cropBox.w;
+  out.height = cropBox.h;
+  out.getContext('2d').drawImage(
+    canvas,
+    cropBox.x, cropBox.y, cropBox.w, cropBox.h,
+    0, 0, cropBox.w, cropBox.h
+  );
+  return out.toDataURL('image/png');
+}
+
+captureBtn.addEventListener('click', () => {
+  if (!video.videoWidth || !video.videoHeight) {
+    setStatus('Video metadata is not loaded yet.');
+    return;
+  }
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.style.display = 'block';
+  captured = true;
+  capturedTime = video.currentTime || 0;
+  cropBox = null;
+  redraw();
+  updatePreview();
+  setStatus(`Captured frame at ${capturedTime.toFixed(2)}s. Draw a rectangle on the video.`);
+});
+
+clearBtn.addEventListener('click', () => {
+  cropBox = null;
+  if (captured) redraw();
+  updatePreview();
+  setStatus('Crop cleared.');
+});
+
+canvas.addEventListener('mousedown', (event) => {
+  if (!captured) return;
+  drawing = true;
+  start = eventToCanvasPoint(event);
+});
+
+canvas.addEventListener('mousemove', (event) => {
+  if (!drawing || !start) return;
+  cropBox = normalizeBox(start, eventToCanvasPoint(event));
+  redraw();
+});
+
+canvas.addEventListener('mouseup', (event) => {
+  if (!drawing || !start) return;
+  drawing = false;
+  cropBox = normalizeBox(start, eventToCanvasPoint(event));
+  redraw();
+  updatePreview();
+  setStatus(`Crop selected: x=${cropBox.x}, y=${cropBox.y}, w=${cropBox.w}, h=${cropBox.h}`);
+});
+
+canvas.addEventListener('mouseleave', () => {
+  drawing = false;
+});
+
+entitySelect.addEventListener('change', () => {
+  entityText.value = entitySelect.value;
+});
+
+async function postJson(url, payload) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.ok) {
+    throw data;
+  }
+  return data;
+}
+
+saveBtn.addEventListener('click', async () => {
+  const entityId = (entityText.value || entitySelect.value || '').trim();
+  if (!entityId) {
+    setStatus('Choose an entity first.');
+    return;
+  }
+  if (!cropBox || cropBox.w <= 0 || cropBox.h <= 0) {
+    setStatus('Draw a crop first.');
+    return;
+  }
+
+  saveBtn.disabled = true;
+  setStatus('Saving icon and rescanning current clip...');
+  try {
+    const dataUrl = cropDataUrl();
+    const result = await postJson(SAVE_URL, {
+      game: GAME,
+      clip_stem: CLIP_STEM,
+      entity_id: entityId,
+      image_b64: dataUrl.split(',')[1],
+      crop_box: cropBox,
+      frame_time_seconds: capturedTime,
+      overwrite: overwrite.checked,
+    });
+    if (!lockRecoveredClip(result)) {
+      setStatus('Saved and rescanned.', result);
+    }
+  } catch (error) {
+    setStatus(`Save failed: ${error.error || 'unknown error'}`, error);
+    saveBtn.disabled = false;
+  }
+});
+
+rescanBtn.addEventListener('click', async () => {
+  setStatus('Rescanning current clip...');
+  try {
+    const result = await postJson(RESCAN_URL, {
+      game: GAME,
+      clip_stem: CLIP_STEM,
+    });
+    if (!lockRecoveredClip(result)) {
+      setStatus('Rescan complete.', result);
+    }
+  } catch (error) {
+    setStatus(`Rescan failed: ${error.error || 'unknown error'}`, error);
+  }
+});
+</script>
+{% endblock %}

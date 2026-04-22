@@ -42,6 +42,12 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from pipeline.game_pack import (
+    get_weapon_detector_game_config,
+    load_game_pack,
+    resolve_asset_path,
+)
+
 TARGET_WIDTH = 1920
 TARGET_HEIGHT = 1080
 
@@ -81,9 +87,10 @@ def main() -> None:
         config = yaml.safe_load(f)
 
     wd_cfg = config.get("weapon_detector", {})
-    game_cfg = wd_cfg.get("games", {}).get(args.game)
+    game_pack = load_game_pack(args.game, config)
+    game_cfg = get_weapon_detector_game_config(args.game, config, game_pack)
     if not game_cfg:
-        print(f"ERROR: No weapon_detector config for game '{args.game}' in config.yaml", file=sys.stderr)
+        print(f"ERROR: No weapon_detector/game-pack config for game '{args.game}'", file=sys.stderr)
         sys.exit(1)
 
     roi = game_cfg.get("roi", {})
@@ -129,11 +136,13 @@ def main() -> None:
             print(f"ERROR: ROI crop is empty — check roi coordinates (x={rx}, y={ry}, w={rw}, h={rh})", file=sys.stderr)
             sys.exit(1)
 
-        out_dir = ROOT / wd_cfg.get("icon_dir", "assets/weapon_icons") / args.game
+        default_icon_dir = Path(wd_cfg.get("icon_dir", "assets/weapon_icons")) / args.game
+        out_dir = resolve_asset_path(game_cfg.get("icon_dir") or str(default_icon_dir), ROOT)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / f"{args.weapon_id}.png"
         cv2.imwrite(str(out_path), icon)
-        print(f"Saved icon: {out_path.relative_to(ROOT)}  ({icon.shape[1]}×{icon.shape[0]} px)")
+        rel_out = out_path.relative_to(ROOT) if out_path.is_relative_to(ROOT) else out_path
+        print(f"Saved icon: {rel_out}  ({icon.shape[1]}×{icon.shape[0]} px)")
 
         if args.debug:
             debug_frame = frame.copy()
@@ -142,19 +151,17 @@ def main() -> None:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             debug_path = out_dir / f"{args.weapon_id}_debug.png"
             cv2.imwrite(str(debug_path), debug_frame)
-            print(f"Debug frame: {debug_path.relative_to(ROOT)}")
+            rel_debug = debug_path.relative_to(ROOT) if debug_path.is_relative_to(ROOT) else debug_path
+            print(f"Debug frame: {rel_debug}")
 
         display_name = args.display_name or args.weapon_id.replace("_", " ").title()
         print()
-        print("Next step — add to config.yaml under weapon_detector.games.{}:".format(args.game))
-        print(f"  weapons:")
-        print(f"    {args.weapon_id}: \"{display_name}\"")
+        print("Next step — confirm this entity exists in:")
+        print(f"  assets/games/{args.game}/entities.yaml")
+        print("If needed, add or update:")
+        print(f"  {args.weapon_id}: \"{display_name}\"")
         print()
-        print("Then enable detection:")
-        print("  weapon_detector:")
-        print("    enabled: true")
-        print("  title_engine:")
-        print("    enabled: true")
+        print("The game-pack-aware detector will read the icon automatically from hud.yaml/icon_dir.")
     finally:
         cap.release()
 

@@ -29,6 +29,7 @@ from pathlib import Path
 import requests
 import yt_dlp
 
+from pipeline.game_pack import get_game_metadata, load_game_pack
 from utils.file_utils import move_to_quarantine
 from utils.logger import get_logger
 
@@ -250,7 +251,8 @@ def run_ingestion(game: str, config: dict) -> list[dict]:
     Returns:
         List of clip manifest dicts for all successfully ingested clips.
     """
-    game_cfg = config["games"][game]
+    game_pack = load_game_pack(game, config, create_missing=True)
+    game_cfg = get_game_metadata(game, config, game_pack)
     display_name = game_cfg["display_name"]
     output_dir = Path(config["paths"]["inbox"]) / game
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -1,15 +1,16 @@
 # Clip title templates for the Title Engine.
 #
-# Every template MUST include {weapon} — this is substituted with the
-# hero name (Deadlock, Marvel Rivals) or weapon name (Arc Raiders)
-# detected by the Weapon Detector OpenCV stage.
+# Legacy templates can keep using {weapon}; V2 treats it as an alias for
+# {subject}, which resolves to the detected hero/weapon or a safe fallback.
+# New structured templates may use {subject}, {action}, {stakes}, {event},
+# {game}, {kill_count}, and {headshot_count}.
 #
 # Variables available for substitution:
 #   {weapon}       — hero or weapon display name (e.g. "Venom", "Kettle")
 #   {kill_count}   — total kills from kill-feed parser
 #   {enemy_count}  — same as kill_count; for "1v{enemy_count}" framing
 #
-# Templates with a missing variable have the placeholder silently removed.
+# Templates with a missing variable have the placeholder safely removed.
 #
 # Four psychological hook categories (title_engine.py → _select_category):
 #
@@ -18,9 +19,8 @@
 #   reactionary_shock— "I wasn't expecting this" / curiosity angle
 #   performance_hype — "popping off / peak gameplay" / action angle
 #
-# Category is selected based on kill-feed signals with randomisation between
-# applicable categories so the same clip type doesn't always produce the
-# same hook style. See title_engine.py → _select_category for the logic.
+# Category is selected deterministically from detector/judge facts. Template
+# history still avoids repeating recent templates and exact generated titles.
 
 # ---------------------------------------------------------------------------
 # Generic — fallback for any game not listed below

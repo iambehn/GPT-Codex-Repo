@@ -1,0 +1,20 @@
+game_id: marvel_rivals
+display_name: Marvel Rivals
+folder: marvel_rivals
+twitch_url: https://www.twitch.tv/directory/game/Marvel%20Rivals/clips
+genre: hero_shooter
+ui_version: legacy-2026-04
+detectors:
+  audio_detector:
+    enabled: false
+  kill_feed:
+    enabled: false
+  weapon_detector:
+    enabled: true
+  clip_judge_ai:
+    enabled: true
+    provider: anthropic
+  niceshot:
+    enabled: true
+    provider: niceshot_ai
+    profile: cod_like_default

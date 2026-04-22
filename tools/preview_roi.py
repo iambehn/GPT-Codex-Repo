@@ -26,6 +26,12 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from pipeline.game_pack import (
+    get_kill_feed_game_config,
+    get_weapon_detector_game_config,
+    load_game_pack,
+)
+
 TARGET_WIDTH = 1920
 TARGET_HEIGHT = 1080
 
@@ -89,8 +95,10 @@ def main() -> None:
 
         rois_drawn = 0
 
+        game_pack = load_game_pack(args.game, config)
+
         # Kill-feed ROI
-        kf_cfg = config.get("kill_feed", {}).get("games", {}).get(args.game)
+        kf_cfg = get_kill_feed_game_config(args.game, config, game_pack)
         if kf_cfg:
             roi = kf_cfg.get("roi", {})
             rx, ry, rw, rh = roi.get("x", 0), roi.get("y", 0), roi.get("w", 100), roi.get("h", 100)
@@ -101,7 +109,7 @@ def main() -> None:
             rois_drawn += 1
 
         # Weapon-detector ROI
-        wd_game = config.get("weapon_detector", {}).get("games", {}).get(args.game)
+        wd_game = get_weapon_detector_game_config(args.game, config, game_pack)
         if wd_game:
             roi = wd_game.get("roi", {})
             rx, ry, rw, rh = roi.get("x", 0), roi.get("y", 0), roi.get("w", 100), roi.get("h", 80)

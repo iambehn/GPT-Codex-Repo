@@ -72,6 +72,7 @@ from collections import deque
 from pathlib import Path
 from typing import NamedTuple
 
+from pipeline.game_pack import get_kill_feed_game_config, load_game_pack
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -117,7 +118,7 @@ class _Event(NamedTuple):
 # Public interface
 # ---------------------------------------------------------------------------
 
-def run_kill_feed_parser(clip_path: Path, game: str, config: dict) -> dict:
+def run_kill_feed_parser(clip_path: Path, game: str, config: dict, force: bool = False) -> dict:
     """Analyse kill-feed events in a clip and return a result manifest.
 
     Writes the result into the clip's .meta.json under the 'kill_feed' key
@@ -147,7 +148,7 @@ def run_kill_feed_parser(clip_path: Path, game: str, config: dict) -> dict:
     meta_path = Path(str(clip_path).replace(".mp4", ".meta.json"))
     if not meta_path.suffix:
         meta_path = clip_path.with_suffix(".meta.json")
-    if meta_path.exists():
+    if meta_path.exists() and not force:
         try:
             existing = json.loads(meta_path.read_text())
             if "kill_feed" in existing:
@@ -165,14 +166,17 @@ def run_kill_feed_parser(clip_path: Path, game: str, config: dict) -> dict:
         result = _disabled_result(f"clip not found: {clip_path}")
         return result
 
-    game_cfg = kf_cfg.get("games", {}).get(game)
+    game_pack = load_game_pack(game, config)
+    game_cfg = get_kill_feed_game_config(game, config, game_pack)
     if not game_cfg:
         logger.debug(f"[kill_feed] No config for game '{game}' — skipping.")
         result = _disabled_result(f"no kill_feed config for game '{game}'")
         _write_kf_meta(meta_path, result)
         return result
 
-    template_dir = Path(kf_cfg.get("template_dir", "assets/kill_feed_templates")) / game
+    template_dir = Path(game_cfg.get("template_dir") or kf_cfg.get("template_dir", "assets/kill_feed_templates"))
+    if template_dir.name != game and not template_dir.is_absolute() and str(template_dir).endswith("kill_feed_templates"):
+        template_dir = template_dir / game
     templates = _load_templates(template_dir)
 
     # If audio_detector ran first, use its spike timestamps to focus frame sampling.
