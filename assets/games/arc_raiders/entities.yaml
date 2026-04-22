@@ -1,0 +1,73 @@
+primary_kind: weapons
+weapons:
+  kettle:
+    display_name: Kettle
+    category: Assault Rifle
+  rattler:
+    display_name: Rattler
+    category: Assault Rifle
+  arpeggio:
+    display_name: Arpeggio
+    category: Assault Rifle
+  tempest:
+    display_name: Tempest
+    category: Assault Rifle
+  bettina:
+    display_name: Bettina
+    category: Assault Rifle
+  ferro:
+    display_name: Ferro
+    category: Battle Rifle
+  renegade:
+    display_name: Renegade
+    category: Battle Rifle
+  aphelion:
+    display_name: Aphelion
+    category: Battle Rifle
+  stitcher:
+    display_name: Stitcher
+    category: SMG
+  canto:
+    display_name: Canto
+    category: SMG
+  bobcat:
+    display_name: Bobcat
+    category: SMG
+  il_toro:
+    display_name: Il Toro
+    category: Shotgun
+  vulcano:
+    display_name: Vulcano
+    category: Shotgun
+  dolabra:
+    display_name: Dolabra
+    category: Shotgun
+  hairpin:
+    display_name: Hairpin
+    category: Pistol
+  burletta:
+    display_name: Burletta
+    category: Pistol
+  venator:
+    display_name: Venator
+    category: Pistol
+  anvil:
+    display_name: Anvil
+    category: Hand Cannon
+  torrente:
+    display_name: Torrente
+    category: LMG
+  osprey:
+    display_name: Osprey
+    category: Sniper Rifle
+  jupiter:
+    display_name: Jupiter
+    category: Sniper Rifle
+  hullcracker:
+    display_name: Hullcracker
+    category: Special
+  equalizer:
+    display_name: Equalizer
+    category: Special
+abilities: {}
+aliases: {}

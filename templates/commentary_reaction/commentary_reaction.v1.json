@@ -1,0 +1,134 @@
+{
+  "template_id": "commentary_reaction",
+  "version": 1,
+  "deprecated": false,
+  "display_name": "Commentary & Reaction v1",
+  "description": "Player talking on mic with low gameplay motion — captions are the primary feature, minimal visual distraction, clean natural look.",
+  "created_at": "2026-04-05",
+
+  "timeline": {
+    "input_mode": "single",
+    "target_duration_seconds": 60.0,
+    "target_duration_strategy": "trim_end",
+    "intro": {
+      "enabled": false,
+      "duration_seconds": 0,
+      "asset_path": null
+    },
+    "outro": {
+      "enabled": false,
+      "duration_seconds": 0,
+      "asset_path": null
+    }
+  },
+
+  "captions": {
+    "enabled": true,
+    "source": "transcript",
+    "style": {
+      "font_family": "Arial",
+      "font_size_px": 58,
+      "font_color": "#FFFFFF",
+      "stroke_color": "#000000",
+      "stroke_width_px": 3,
+      "background": {
+        "enabled": true,
+        "color": "#000000BB",
+        "padding_px": 12
+      },
+      "alignment": "center",
+      "word_highlight": {
+        "enabled": true,
+        "highlight_color": "#00BFFF"
+      }
+    },
+    "max_chars_per_line": 28,
+    "max_lines_on_screen": 3,
+    "static_lines": []
+  },
+
+  "visual_effects": {
+    "vertical_fill": {
+      "method": "blur_pillarbox",
+      "blur_strength": 30
+    },
+    "zoom": {
+      "enabled": false,
+      "type": "none",
+      "intensity": 1.0,
+      "duration_seconds": 0
+    },
+    "color_grade": {
+      "enabled": true,
+      "preset": "natural",
+      "brightness": 0.0,
+      "contrast": 0.05,
+      "saturation": 0.0,
+      "lut_path": null
+    },
+    "transitions": {
+      "between_clips": "cut",
+      "duration_seconds": 0.0
+    },
+    "overlays": [],
+    "vignette": {
+      "enabled": false,
+      "intensity": 0.0
+    },
+    "film_grain": {
+      "enabled": false,
+      "intensity": 0.0
+    },
+    "chromatic_aberration": {
+      "enabled": false,
+      "intensity": 0.0
+    },
+    "flash_cuts": {
+      "enabled": false,
+      "color": "#FFFFFF",
+      "duration_frames": 1
+    }
+  },
+
+  "audio": {
+    "background_music": {
+      "enabled": false,
+      "asset_path": null,
+      "volume_db": -99.0,
+      "fade_in_seconds": 0,
+      "fade_out_seconds": 0,
+      "loop": false
+    },
+    "original_audio": {
+      "enabled": true,
+      "volume_db": 0.0,
+      "normalize": true
+    },
+    "ducking": {
+      "enabled": false,
+      "duck_level_db": -30.0,
+      "attack_ms": 50,
+      "release_ms": 300
+    },
+    "sound_effects": []
+  },
+
+  "output": {
+    "resolution": {
+      "width": 1080,
+      "height": 1920
+    },
+    "aspect_ratio": "9:16",
+    "fps": 30,
+    "codec": "h264",
+    "bitrate_kbps": 6000,
+    "platform_targets": ["tiktok", "instagram_reels", "youtube_shorts"],
+    "safe_zone": {
+      "enabled": true,
+      "top_percent": 10.0,
+      "bottom_percent": 22.0,
+      "left_percent": 3.0,
+      "right_percent": 3.0
+    }
+  }
+}

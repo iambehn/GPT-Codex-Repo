@@ -1,0 +1,47 @@
+ui_version: legacy-2026-04
+rois:
+  kill_feed:
+    x: 1620
+    y: 15
+    w: 300
+    h: 350
+  weapon_detector:
+    x: 285
+    y: 3
+    w: 130
+    h: 108
+detectors:
+  kill_feed:
+    roi_ref: kill_feed
+    template_dir: assets/kill_feed_templates/deadlock
+    kill_colors:
+    - lower:
+      - 0
+      - 0
+      - 175
+      upper:
+      - 180
+      - 55
+      - 255
+    headshot_colors:
+    - lower:
+      - 15
+      - 100
+      - 190
+      upper:
+      - 45
+      - 255
+      - 255
+    pixel_spike_threshold: 50
+  weapon_detector:
+    roi_ref: weapon_detector
+    icon_dir: assets/weapon_icons/deadlock
+    entities_kind: heroes
+    match_mode: color
+  yolo:
+    enabled: false
+    weights_path: models/yolo/deadlock/weights/best.pt
+    labels: {}
+roi_templates: []
+ui_drift:
+  expected_hashes: []

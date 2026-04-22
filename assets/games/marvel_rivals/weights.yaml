@@ -1,0 +1,42 @@
+clip_judge:
+  ai_ratio: 0.6
+  deterministic_ratio: 0.4
+  thresholds:
+    accept: 0.7
+    quarantine: 0.45
+    reject: 0.25
+  hard_gates:
+    hook_window_seconds: 1.5
+    require_context_fields:
+    - player_entity
+    - detected_event
+  hook_enforcer:
+    window_seconds: 1.5
+    acceptance_threshold: 0.5
+    pre_event_padding_seconds: 0.5
+    minimum_remaining_seconds: 6.0
+    signal_weights:
+      kill_feed: 0.45
+      niceshot: 0.25
+      yolo: 0.2
+      audio: 0.1
+  composite_weights:
+    ai_clip_score: 0.35
+    ai_hook_score: 0.25
+    kill_feed_score: 0.2
+    audio_score: 0.1
+    context_score: 0.1
+  quarantine_reasons:
+  - missing_context
+  - hook_not_resolved
+  - low_confidence
+  - ui_drift
+  - needs_roi_template
+  feedback:
+    enabled: true
+    signals:
+    - scroll_stop_rate
+    - retention
+    - rewatch_rate
+    - shares
+    - follows

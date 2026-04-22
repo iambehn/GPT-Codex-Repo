@@ -1,0 +1,183 @@
+# Clip title templates for the Title Engine.
+#
+# Legacy templates can keep using {weapon}; V2 treats it as an alias for
+# {subject}, which resolves to the detected hero/weapon or a safe fallback.
+# New structured templates may use {subject}, {action}, {stakes}, {event},
+# {game}, {kill_count}, and {headshot_count}.
+#
+# Variables available for substitution:
+#   {weapon}       — hero or weapon display name (e.g. "Venom", "Kettle")
+#   {kill_count}   — total kills from kill-feed parser
+#   {enemy_count}  — same as kill_count; for "1v{enemy_count}" framing
+#
+# Templates with a missing variable have the placeholder safely removed.
+#
+# Four psychological hook categories (title_engine.py → _select_category):
+#
+#   meta_authority   — "pros are quietly doing this" / FOMO angle
+#   broken_balance   — "this is unfair / needs a nerf" / controversy angle
+#   reactionary_shock— "I wasn't expecting this" / curiosity angle
+#   performance_hype — "popping off / peak gameplay" / action angle
+#
+# Category is selected deterministically from detector/judge facts. Template
+# history still avoids repeating recent templates and exact generated titles.
+
+# ---------------------------------------------------------------------------
+# Generic — fallback for any game not listed below
+# ---------------------------------------------------------------------------
+generic:
+  meta_authority:
+    - "The reason every pro has switched to {weapon}"
+    - "Pros aren't telling you how broken {weapon} is"
+    - "Stop ignoring {weapon} if you want to rank up"
+    - "Is {weapon} actually the new meta?"
+    - "Why the top 1% are abusing {weapon} right now"
+    - "Why every pro is running {weapon} this patch"
+    - "The {weapon} trick that's dominating high elo"
+    - "Top players won't stop picking {weapon} — here's why"
+    - "{weapon} is quietly becoming the best pick in the game"
+    - "This is why {weapon} keeps showing up in every high-rank lobby"
+
+  broken_balance:
+    - "{weapon} is actually unfair in this patch"
+    - "I can't believe they haven't nerfed {weapon} yet"
+    - "Is it even a skill issue if they're using {weapon}?"
+    - "POV: you finally realized {weapon} is a cheat code"
+    - "{weapon} is completely out of control lately"
+    - "They have to nerf {weapon} — this is unacceptable"
+    - "{weapon} is so strong it should be illegal"
+    - "The devs need to look at {weapon} immediately"
+    - "How is {weapon} still in the game like this?"
+    - "Playing against {weapon} is genuinely not fun"
+
+  reactionary_shock:
+    - "I wasn't expecting {weapon} to be this good"
+    - "This is exactly why I main {weapon}"
+    - "You're using {weapon} wrong — watch this"
+    - "I switched to {weapon} and never looked back"
+    - "Nobody talks about how good {weapon} actually is"
+    - "Once you try {weapon} you can't go back"
+    - "This changed how I think about {weapon} forever"
+    - "{weapon} hits different when you actually know what you're doing"
+    - "The {weapon} clip I didn't think was possible"
+    - "{weapon} gameplay that actually feels illegal"
+
+  performance_hype:
+    - "Cleanest {weapon} clips you'll see today"
+    - "{weapon} going absolutely crazy in high rank"
+    - "Mastering {weapon} is the best feeling in the game"
+    - "Nobody is playing {weapon} at this level"
+    - "This {weapon} clip is peak performance"
+    - "Popping off with {weapon}"
+    - "The {weapon} play that broke their whole game"
+    - "Pure {weapon} domination — no other word for it"
+    - "{weapon} looking absolutely lethal right now"
+    - "{kill_count} kills with {weapon} and it wasn't even close"
+
+# ---------------------------------------------------------------------------
+# Deadlock — {weapon} = hero name (detected from hero portrait, top-left HUD)
+# ---------------------------------------------------------------------------
+deadlock:
+  meta_authority:
+    - "Deadlock pros are quietly abusing {weapon} right now"
+    - "The reason high-rank Deadlock players keep locking in {weapon}"
+    - "Stop sleeping on {weapon} if you want to climb in Deadlock"
+    - "Why {weapon} is the most underrated pick in Deadlock"
+    - "Top Deadlock players won't stop picking {weapon} — here's why"
+    - "{weapon} is the secret pick high-elo Deadlock players don't discuss"
+
+  broken_balance:
+    - "Is {weapon} actually fair in Deadlock? I don't think so"
+    - "How has {weapon} not been nerfed in Deadlock yet?"
+    - "{weapon} in Deadlock is genuinely out of control right now"
+    - "Playing against {weapon} in Deadlock just isn't fun"
+    - "Deadlock devs need to look at {weapon} immediately"
+    - "{weapon} is a cheat code in Deadlock and nobody is talking about it"
+
+  reactionary_shock:
+    - "I locked in {weapon} in Deadlock and I can never go back"
+    - "Deadlock: nobody warned me {weapon} was this good"
+    - "POV: you finally try {weapon} in Deadlock for the first time"
+    - "I didn't expect {weapon} to completely change how I play Deadlock"
+    - "The {weapon} moment in Deadlock I'll never forget"
+    - "This {weapon} clip in Deadlock genuinely surprised me"
+
+  performance_hype:
+    - "Locking in {weapon} and popping off in Deadlock"
+    - "This is what {weapon} mastery looks like in Deadlock"
+    - "{weapon} gameplay in Deadlock that just doesn't miss"
+    - "Peak {weapon} performance in Deadlock — watch this"
+    - "The cleanest {weapon} play you'll see in Deadlock this week"
+    - "{kill_count} kills with {weapon} in Deadlock and it wasn't even a sweat"
+
+# ---------------------------------------------------------------------------
+# Marvel Rivals — {weapon} = hero name (detected from hero portrait, bot-left)
+# ---------------------------------------------------------------------------
+marvel_rivals:
+  meta_authority:
+    - "Marvel Rivals pros are quietly abusing {weapon} right now"
+    - "The reason every high-rank Marvel Rivals player picks {weapon}"
+    - "Stop ignoring {weapon} in Marvel Rivals if you want to climb"
+    - "Why {weapon} is the most underrated pick in this Marvel Rivals meta"
+    - "Top Marvel Rivals players won't stop picking {weapon} — here's why"
+    - "{weapon} is the secret pick high-elo Marvel Rivals players don't discuss"
+
+  broken_balance:
+    - "Is {weapon} actually balanced in Marvel Rivals? No."
+    - "Marvel Rivals devs need to look at {weapon} right now"
+    - "{weapon} in Marvel Rivals is genuinely out of control"
+    - "Playing against {weapon} in Marvel Rivals just isn't fun"
+    - "How has {weapon} not been nerfed in Marvel Rivals yet?"
+    - "{weapon} is a cheat code in Marvel Rivals and everyone knows it"
+
+  reactionary_shock:
+    - "I picked {weapon} in Marvel Rivals and I can never go back"
+    - "Marvel Rivals: nobody warned me {weapon} was this good"
+    - "POV: you finally try {weapon} in Marvel Rivals"
+    - "{weapon} completely changed how I think about Marvel Rivals"
+    - "The {weapon} play in Marvel Rivals I didn't see coming"
+    - "This {weapon} clip in Marvel Rivals genuinely surprised me"
+
+  performance_hype:
+    - "Popping off with {weapon} in Marvel Rivals"
+    - "This is what {weapon} mastery looks like in Marvel Rivals"
+    - "{weapon} gameplay in Marvel Rivals that just doesn't miss"
+    - "Peak {weapon} performance in Marvel Rivals"
+    - "The cleanest {weapon} play you'll see in Marvel Rivals this week"
+    - "{weapon} carrying the whole team in Marvel Rivals"
+
+# ---------------------------------------------------------------------------
+# Arc Raiders — {weapon} = weapon name (detected from weapon panel, bot-right)
+# ---------------------------------------------------------------------------
+arc_raiders:
+  meta_authority:
+    - "Arc Raiders veterans are quietly running {weapon} right now"
+    - "The reason experienced Arc Raiders players always bring {weapon}"
+    - "Stop sleeping on {weapon} in Arc Raiders extraction"
+    - "Why {weapon} is the most underrated weapon in Arc Raiders"
+    - "Top Arc Raiders players won't stop using {weapon} — here's why"
+    - "{weapon} is the loadout Arc Raiders veterans don't share"
+
+  broken_balance:
+    - "Is {weapon} actually fair in Arc Raiders? I don't think so"
+    - "Arc Raiders devs need to balance {weapon} immediately"
+    - "{weapon} in Arc Raiders is out of control in the right hands"
+    - "Getting wiped by {weapon} in Arc Raiders is genuinely not fun"
+    - "How has {weapon} not been patched in Arc Raiders yet?"
+    - "{weapon} is a cheat code in Arc Raiders extraction right now"
+
+  reactionary_shock:
+    - "I started running {weapon} in Arc Raiders and never looked back"
+    - "Arc Raiders: nobody warned me how good {weapon} was"
+    - "POV: your first time using {weapon} in Arc Raiders"
+    - "{weapon} completely changed how I approach Arc Raiders runs"
+    - "The {weapon} play in Arc Raiders I didn't see coming"
+    - "This {weapon} extraction in Arc Raiders genuinely surprised me"
+
+  performance_hype:
+    - "Popping off with {weapon} in Arc Raiders"
+    - "This is what {weapon} mastery looks like in Arc Raiders"
+    - "{weapon} absolutely shredding in Arc Raiders extraction"
+    - "Peak {weapon} performance — Arc Raiders edition"
+    - "The cleanest {weapon} play you'll see in Arc Raiders this week"
+    - "{weapon} ending whole squads in Arc Raiders"

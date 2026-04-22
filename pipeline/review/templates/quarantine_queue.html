@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Quarantine{% endblock %}
+
+{% block extra_styles %}
+.quarantine-page { padding: 24px; max-width: 1180px; margin: 0 auto; }
+.quarantine-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.quarantine-header h1 { font-size: 20px; font-weight: 700; }
+.quarantine-header .count { font-size: 13px; color: var(--muted); }
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--muted);
+}
+table { width: 100%; border-collapse: collapse; }
+thead tr { border-bottom: 1px solid var(--border); }
+tbody tr { border-bottom: 1px solid var(--border); }
+tbody tr:hover { background: var(--surface); }
+th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+td { padding: 12px; vertical-align: middle; }
+.clip-title {
+  font-weight: 500;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clip-title small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+.reason-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--gold);
+  font-size: 11px;
+  background: #241a08;
+}
+.train-btn {
+  display: inline-block;
+  padding: 5px 14px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.train-btn:hover { background: #6b5ce7; text-decoration: none; }
+.muted { color: var(--muted); font-size: 12px; }
+{% endblock %}
+
+{% block header_extra %}
+  <span style="margin-left:auto;color:var(--muted);font-size:12px;">
+    {{ clips|length }} quarantined clip{{ 's' if clips|length != 1 else '' }}
+  </span>
+{% endblock %}
+
+{% block content %}
+<div class="quarantine-page">
+  <div class="quarantine-header">
+    <h1>Quarantine Review</h1>
+    <span class="count">Train missing hero/weapon icons from real gameplay HUDs</span>
+  </div>
+
+  {% if not clips %}
+  <div class="empty-state">
+    <div style="font-size:40px;">No quarantined clips</div>
+    <p>Clips that fail context detection will appear here.</p>
+  </div>
+  {% else %}
+  <table>
+    <thead>
+      <tr>
+        <th>Clip</th>
+        <th>Game</th>
+        <th>Reason</th>
+        <th>Score</th>
+        <th>Meta</th>
+        <th style="width:120px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for clip in clips %}
+      <tr>
+        <td>
+          <div class="clip-title">
+            {{ clip.filename }}
+            <small>{{ clip.video_relpath }}</small>
+          </div>
+        </td>
+        <td>{{ clip.game.replace('_', ' ').title() }}</td>
+        <td><span class="reason-pill">{{ clip.reason }}</span></td>
+        <td class="muted">{{ clip.composite_score if clip.composite_score != '' else 'n/a' }}</td>
+        <td class="muted">{{ 'yes' if clip.has_meta else 'legacy' }}</td>
+        <td>
+          <a class="train-btn" href="{{ url_for('quarantine_review', game=clip.game, clip_stem=clip.stem) }}">Train</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

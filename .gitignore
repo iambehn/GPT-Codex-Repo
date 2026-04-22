@@ -1,0 +1,64 @@
+# Environment — never commit secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Pipeline data folders — ignore all video/media/metadata files,
+# but keep the folder structure via .gitkeep
+inbox/**
+!inbox/*/
+!inbox/*/.gitkeep
+
+quarantine/**
+!quarantine/*/
+!quarantine/*/.gitkeep
+
+processing/**
+!processing/*/
+!processing/*/.gitkeep
+
+accepted/**
+!accepted/*/
+!accepted/*/.gitkeep
+
+rejected/**
+!rejected/*/
+!rejected/*/.gitkeep
+
+# Logs — keep folder, ignore log files
+logs/**
+!logs/.gitkeep
+
+# Assets — keep folder structure, ignore actual media files
+assets/music/**
+!assets/music/.gitkeep
+
+# Local review/scouting scratch artifacts
+Screenshot*.png
+screen*.png
+scout_cache.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

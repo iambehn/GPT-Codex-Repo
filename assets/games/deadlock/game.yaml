@@ -1,0 +1,19 @@
+game_id: deadlock
+display_name: Deadlock
+folder: deadlock
+twitch_url: https://www.twitch.tv/directory/game/Deadlock/clips
+genre: hero_shooter
+ui_version: legacy-2026-04
+detectors:
+  audio_detector:
+    enabled: false
+  kill_feed:
+    enabled: false
+  weapon_detector:
+    enabled: true
+  clip_judge_ai:
+    enabled: true
+    provider: anthropic
+  niceshot:
+    enabled: false
+    provider: niceshot_ai

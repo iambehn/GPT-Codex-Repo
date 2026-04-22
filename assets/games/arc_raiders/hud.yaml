@@ -1,0 +1,47 @@
+ui_version: legacy-2026-04
+rois:
+  kill_feed:
+    x: 1600
+    y: 20
+    w: 320
+    h: 400
+  weapon_detector:
+    x: 1760
+    y: 940
+    w: 160
+    h: 120
+detectors:
+  kill_feed:
+    roi_ref: kill_feed
+    template_dir: assets/kill_feed_templates/arc_raiders
+    kill_colors:
+    - lower:
+      - 0
+      - 0
+      - 175
+      upper:
+      - 180
+      - 55
+      - 255
+    headshot_colors:
+    - lower:
+      - 10
+      - 100
+      - 200
+      upper:
+      - 30
+      - 255
+      - 255
+    pixel_spike_threshold: 50
+  weapon_detector:
+    roi_ref: weapon_detector
+    icon_dir: assets/weapon_icons/arc_raiders
+    entities_kind: weapons
+    match_mode: color
+  yolo:
+    enabled: false
+    weights_path: models/yolo/arc_raiders/weights/best.pt
+    labels: {}
+roi_templates: []
+ui_drift:
+  expected_hashes: []

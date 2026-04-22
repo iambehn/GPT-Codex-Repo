@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}Game Scout{% endblock %}
+
+{% block extra_styles %}
+.scout-page { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+.scout-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.scout-header h1 { font-size: 20px; font-weight: 700; }
+.scout-header .meta { font-size: 12px; color: var(--muted); }
+
+.poll-btn {
+  margin-left: auto;
+  padding: 7px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.poll-btn:hover { background: #6b5ce7; }
+
+.flag-banner {
+  background: #3b1f1f;
+  border: 1px solid #7f1d1d;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #fca5a5;
+}
+.flag-banner strong { color: #f87171; }
+
+.thresholds {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.thresholds span { color: var(--text); font-weight: 600; }
+
+table { width: 100%; border-collapse: collapse; }
+thead tr { border-bottom: 1px solid var(--border); }
+th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+tbody tr:hover { background: var(--surface); }
+tbody tr.flagged-row { background: #1f1010; }
+tbody tr.flagged-row:hover { background: #2a1414; }
+td { padding: 10px 12px; vertical-align: middle; }
+
+.game-name { font-weight: 600; font-size: 14px; }
+
+.metric {
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.metric.na { color: var(--muted); font-style: italic; font-size: 11px; }
+
+.trend-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.trend-num { font-size: 18px; font-weight: 700; min-width: 28px; }
+.trend-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  flex: 1;
+  max-width: 80px;
+  overflow: hidden;
+}
+.trend-fill { height: 100%; border-radius: 3px; }
+.trend-high  .trend-fill { background: var(--green); }
+.trend-medium .trend-fill { background: var(--gold); }
+.trend-low   .trend-fill { background: #6366f1; }
+
+.direction { font-size: 16px; font-weight: 700; }
+.dir-up    { color: var(--green); }
+.dir-down  { color: var(--red); }
+.dir-flat  { color: var(--muted); }
+
+.longevity-form { display: flex; align-items: center; gap: 6px; }
+.longevity-input {
+  width: 44px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 3px 6px;
+  font-size: 13px;
+  text-align: center;
+}
+.set-btn {
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.set-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.status-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.status-flagged  { background: #7f1d1d; color: #fca5a5; }
+.status-watch    { background: #78350f; color: #fbbf24; }
+.status-monitor  { background: #1c1c2e; color: #818cf8; }
+
+.remove-btn {
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.remove-btn:hover { border-color: var(--red); color: var(--red); }
+
+.signal-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  margin-right: 3px;
+}
+.signal-ok   { background: var(--green); }
+.signal-miss { background: #444; }
+
+.add-section {
+  margin-top: 32px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.add-section h2 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+.add-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.add-form label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+.add-form input[type="text"],
+.add-form input[type="number"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.add-form input[type="text"] { width: 220px; }
+.add-form input[type="number"] { width: 64px; }
+.add-form button {
+  padding: 7px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-form button:hover { background: #6b5ce7; }
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+{% endblock %}
+
+{% block header_extra %}
+  <span style="margin-left:auto;color:var(--muted);font-size:12px;">
+    Game Scout
+  </span>
+{% endblock %}
+
+{% block content %}
+<div class="scout-page">
+
+  <div class="scout-header">
+    <h1>Game Scout</h1>
+    {% if last_poll %}
+      <span class="meta">Last poll: {{ last_poll }}</span>
+    {% else %}
+      <span class="meta">No poll yet</span>
+    {% endif %}
+    <form method="POST" action="{{ url_for('scout_poll') }}" style="margin-left:auto;">
+      <button type="submit" class="poll-btn">↻ Poll Now</button>
+    </form>
+  </div>
+
+  {% set flagged_games = games | selectattr('flagged') | list %}
+  {% if flagged_games %}
+  <div class="flag-banner">
+    <strong>★ {{ flagged_games | length }} game{{ 's' if flagged_games | length != 1 else '' }} flagged:</strong>
+    {% for g in flagged_games %}<strong>{{ g.name }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}
+    — Trend ≥ {{ trend_min }} and Longevity ≥ {{ longevity_min }}. Consider adding to the pipeline.
+  </div>
+  {% endif %}
+
+  <div class="thresholds">
+    Flag threshold: Trend Score ≥ <span>{{ trend_min }}</span> AND Longevity Score ≥ <span>{{ longevity_min }}</span>
+    &nbsp;·&nbsp;
+    Signals:
+    <span class="signal-dot signal-ok"></span>Twitch
+    <span class="signal-dot signal-ok" style="margin-left:4px;"></span>YouTube
+    <span class="signal-dot signal-ok" style="margin-left:4px;"></span>Google Trends
+    &nbsp;(grey dot = signal unavailable this poll)
+  </div>
+
+  {% if not games %}
+  <div class="empty-state">
+    <div style="font-size:36px;">📡</div>
+    <p style="margin-top:8px;">No games being tracked yet.</p>
+    <p>Add a game below to start scouting.</p>
+  </div>
+  {% else %}
+  <table>
+    <thead>
+      <tr>
+        <th>Game</th>
+        <th>Twitch Viewers</th>
+        <th>Streamers</th>
+        <th>YT Clips (24h)</th>
+        <th>Google Trends</th>
+        <th>Trend Score</th>
+        <th style="text-align:center;">Δ</th>
+        <th>Longevity</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for game in games %}
+      {% set latest = game.latest %}
+      {% set ts = latest.get('trend_score', 0) if latest else 0 %}
+      {% set trend_class = 'trend-high' if ts >= 7 else ('trend-medium' if ts >= 4 else 'trend-low') %}
+      {% set signals = latest.get('signals_ok', []) if latest else [] %}
+
+      {# Determine status #}
+      {% if game.flagged %}
+        {% set status_class = 'status-flagged' %}
+        {% set status_label = '★ Flagged' %}
+      {% elif ts >= 4 %}
+        {% set status_class = 'status-watch' %}
+        {% set status_label = '👀 Watch' %}
+      {% else %}
+        {% set status_class = 'status-monitor' %}
+        {% set status_label = 'Monitor' %}
+      {% endif %}
+
+      {# Trend direction #}
+      {% set prev = game.get('previous_trend_score') %}
+      {% if prev is none or latest is none %}
+        {% set dir_class = 'dir-flat' %}
+        {% set dir_sym = '—' %}
+      {% elif ts > prev %}
+        {% set dir_class = 'dir-up' %}
+        {% set dir_sym = '▲' %}
+      {% elif ts < prev %}
+        {% set dir_class = 'dir-down' %}
+        {% set dir_sym = '▼' %}
+      {% else %}
+        {% set dir_class = 'dir-flat' %}
+        {% set dir_sym = '→' %}
+      {% endif %}
+
+      <tr class="{{ 'flagged-row' if game.flagged else '' }}">
+        <td>
+          <div class="game-name">{{ game.name }}</div>
+          <div style="margin-top:3px;">
+            <span class="signal-dot {{ 'signal-ok' if 'twitch' in signals else 'signal-miss' }}"></span>
+            <span class="signal-dot {{ 'signal-ok' if 'youtube' in signals else 'signal-miss' }}" style="margin-left:1px;"></span>
+            <span class="signal-dot {{ 'signal-ok' if 'trends' in signals else 'signal-miss' }}" style="margin-left:1px;"></span>
+          </div>
+        </td>
+
+        <td>
+          {% if latest and latest.get('twitch_viewers') is not none %}
+            <span class="metric">{{ "{:,}".format(latest.twitch_viewers) }}</span>
+          {% else %}
+            <span class="metric na">—</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if latest and latest.get('twitch_streamers') is not none %}
+            <span class="metric">{{ latest.twitch_streamers }}</span>
+          {% else %}
+            <span class="metric na">—</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if latest and latest.get('youtube_clips_24h') is not none %}
+            <span class="metric">{{ latest.youtube_clips_24h }}</span>
+          {% else %}
+            <span class="metric na">—</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if latest and latest.get('google_trends_score') is not none %}
+            <span class="metric">{{ latest.google_trends_score }}/100</span>
+          {% else %}
+            <span class="metric na">—</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if latest %}
+          <div class="trend-bar-wrap {{ trend_class }}">
+            <span class="trend-num">{{ ts }}</span>
+            <div class="trend-bar">
+              <div class="trend-fill" style="width:{{ (ts / 10 * 100)|int }}%;"></div>
+            </div>
+          </div>
+          {% else %}
+            <span class="metric na">—</span>
+          {% endif %}
+        </td>
+
+        <td style="text-align:center;">
+          <span class="direction {{ dir_class }}">{{ dir_sym }}</span>
+        </td>
+
+        <td>
+          <form method="POST" action="{{ url_for('scout_set_longevity') }}" class="longevity-form">
+            <input type="hidden" name="game_name" value="{{ game.name }}">
+            <input class="longevity-input" type="number" name="longevity_score"
+                   min="0" max="10" value="{{ game.longevity_score }}">
+            <button type="submit" class="set-btn">Set</button>
+          </form>
+        </td>
+
+        <td>
+          <span class="status-flag {{ status_class }}">{{ status_label }}</span>
+        </td>
+
+        <td>
+          <form method="POST" action="{{ url_for('scout_remove_game') }}"
+                onsubmit="return confirm('Remove {{ game.name }} from scouting?')">
+            <input type="hidden" name="game_name" value="{{ game.name }}">
+            <button type="submit" class="remove-btn">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="add-section">
+    <h2>Track a New Game</h2>
+    <form method="POST" action="{{ url_for('scout_add_game') }}" class="add-form">
+      <div>
+        <label>Game name (as it appears on Twitch / Google)</label>
+        <input type="text" name="game_name" placeholder="e.g. The Finals" required>
+      </div>
+      <div>
+        <label>Longevity score (0–10)</label>
+        <input type="number" name="longevity_score" min="0" max="10" value="5">
+      </div>
+      <button type="submit">Add Game</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,558 @@
+games:
+  arc_raiders:
+    display_name: "Arc Raiders"
+    twitch_url: "https://www.twitch.tv/directory/game/Arc%20Raiders/clips"
+    folder: "arc_raiders"
+  marvel_rivals:
+    display_name: "Marvel Rivals"
+    twitch_url: "https://www.twitch.tv/directory/game/Marvel%20Rivals/clips"
+    folder: "marvel_rivals"
+  deadlock:
+    display_name: "Deadlock"
+    twitch_url: "https://www.twitch.tv/directory/game/Deadlock/clips"
+    folder: "deadlock"
+
+paths:
+  inbox: "inbox"
+  quarantine: "quarantine"
+  processing: "processing"
+  accepted: "accepted"
+  rejected: "rejected"
+  templates: "templates"
+  assets: "assets"
+  logs: "logs"
+
+ingestion:
+  max_clips_per_run: 20
+  max_clip_age_hours: 72    # skip clips older than this; set null to disable
+  quality_thresholds:
+    min_duration_seconds: 8
+    max_duration_seconds: 600
+    min_resolution_height: 480
+
+transcription:
+  model: "medium"      # options: tiny | base | small | medium | large-v3
+  language: "en"       # hint passed to Whisper during transcription
+  language_filter: "en"  # skip clips where Whisper detects a different language; set null to disable
+
+scoring:
+  model: "claude-haiku-4-5-20251001"  # haiku: fast + cheap; swap to claude-sonnet-4-6 for higher quality
+  max_tokens: 512
+
+clip_judge:
+  enabled: true
+  model: "claude-haiku-4-5-20251001"
+  max_tokens: 400
+
+niceshot_detector:
+  enabled: true
+  mode: "stub"              # "stub" | "fixture_json" | "cli" | "api"
+  provider: "niceshot_ai"
+  profile: "cod_like_default"
+  fixture_dir: null
+  fixture_path: null
+  stub:
+    action_score: 0.0
+    hook_score: 0.0
+    confidence: 0.0
+    moments: []
+
+yolo_detector:
+  enabled: true
+  confidence_threshold: 0.60
+  iou_threshold: 0.45
+  imgsz: 640
+  max_det: 100
+  verbose: false
+
+distribution:
+  platforms:
+    youtube_shorts:
+      enabled: false        # set true + configure YOUTUBE_CLIENT_ID/SECRET in .env
+      privacy: "public"
+      category_id: "20"    # 20 = Gaming
+    tiktok:
+      enabled: false        # set true + configure TIKTOK_ACCESS_TOKEN in .env
+      privacy_level: "SELF_ONLY"   # use SELF_ONLY for testing, PUBLIC_TO_EVERYONE for live
+    instagram_reels:
+      enabled: false        # requires public video hosting step — see distribution.py
+    twitter_x:
+      enabled: false        # set true + configure TWITTER_* vars in .env
+    reddit:
+      enabled: false        # set true + configure REDDIT_* vars in .env
+      subreddits:
+        arc_raiders: "ArcRaiders"
+        marvel_rivals: "MarvelRivals"
+        deadlock: "DeadlockTheGame"
+      # Optional flair per subreddit — run: python run.py --list-reddit-flairs
+      # to discover available flair IDs, then add them here.
+      subreddit_config:
+        arc_raiders:
+          flair_id: null    # e.g. "abc123-..."
+        marvel_rivals:
+          flair_id: null
+        deadlock:
+          flair_id: null
+
+default_template_id: "fast_hype"  # all clips use this template; change here to switch
+
+# ---------------------------------------------------------------------------
+# Audio copyright handling
+# ---------------------------------------------------------------------------
+# mode options:
+#   "original"  — keep the clip's audio as-is (default; copyright risk on Twitch clips)
+#   "mute"      — strip all audio (safe; silent video)
+#   "replace"   — replace audio with a royalty-free track from replacement_track path
+#
+# Copyright detection (optional — requires ACRCloud account):
+#   Set ACRCLOUD_ACCESS_KEY and ACRCLOUD_ACCESS_SECRET in .env, then set
+#   detection.enabled: true. When a fingerprint match is found above
+#   confidence_threshold, the mode above is applied automatically.
+#   Without detection enabled, mode is applied to ALL clips unconditionally.
+#
+# ACRCloud free tier: 100 recognitions/day — sufficient for a personal pipeline.
+# Sign up at: https://www.acrcloud.com
+audio:
+  mode: "original"            # original | mute | replace
+  replacement_track: null     # e.g. "assets/music/royalty_free_hype.mp3"
+  detection:
+    enabled: false            # set true + add ACRCLOUD_* env vars to activate
+    provider: "acrcloud"
+    confidence_threshold: 80  # 0–100; treat as copyrighted if score >= this
+
+# ---------------------------------------------------------------------------
+# Analytics — Google Sheets logging
+# ---------------------------------------------------------------------------
+# Required env vars (set in .env):
+#   GOOGLE_SERVICE_ACCOUNT_JSON  — /path/to/your-service-account-key.json
+#   GOOGLE_SHEETS_ID             — the ID from the spreadsheet URL:
+#                                  docs.google.com/spreadsheets/d/<ID>/edit
+#
+# Setup: create a Service Account in Google Cloud Console, download its JSON
+# key, share your spreadsheet with the service account email as Editor.
+# The "Analytics" tab and header row are created automatically on first run.
+analytics:
+  enabled: true   # set false to disable without removing env vars
+
+# ---------------------------------------------------------------------------
+# Backup — Google Drive
+# ---------------------------------------------------------------------------
+# Required env vars (set in .env):
+#   GOOGLE_SERVICE_ACCOUNT_JSON    — same key file as analytics
+#   GOOGLE_DRIVE_BACKUP_FOLDER_ID  — folder ID from the Drive URL:
+#                                    drive.google.com/drive/folders/<ID>
+#
+# Setup: create a folder in Drive, share it with the service account email
+# as Editor, copy the folder ID from the URL.
+# Uploads the .mp4 and .meta.json for each approved clip. Idempotent.
+backup:
+  enabled: true   # set false to disable without removing env vars
+
+# ---------------------------------------------------------------------------
+# Game Scouting Dashboard
+# ---------------------------------------------------------------------------
+# Tracks emerging FPS games via Twitch, YouTube, and Google Trends.
+# Results are displayed at http://127.0.0.1:5000/scout and logged to the
+# "Scout" tab in the existing Google Sheets spreadsheet.
+#
+# Required env vars:
+#   TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET  — already used for ingestion
+#   YOUTUBE_API_KEY                           — read-only API key from Google Cloud
+#                                              Console (separate from OAuth upload key)
+#                                              Enable: YouTube Data API v3, restrict to key
+#   GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_SHEETS_ID — already used for analytics
+#
+# pytrends (Google Trends) requires no API key but is rate-limited.
+# A 6-hour poll interval on ≤20 games is safe.
+scout:
+  enabled: true
+  poll_interval_hours: 6
+  thresholds:
+    trend_score_min: 6      # flag when trend_score >= this ...
+    longevity_score_min: 5  # ... AND longevity_score >= this
+  # Seed game list — loaded into scout_cache.json on first run.
+  # After first run, add/remove games via the Scout dashboard UI.
+  games:
+    - name: "Arc Raiders"
+      longevity_score: 7
+    - name: "Deadlock"
+      longevity_score: 8
+    - name: "Marvel Rivals"
+      longevity_score: 7
+
+# ---------------------------------------------------------------------------
+# Rank Looker — pre-download skill filter
+# ---------------------------------------------------------------------------
+# Runs on Twitch clip metadata (title, broadcaster follower count) BEFORE
+# downloading anything. Skips clips that show no skill signals.
+#
+# mode: "heuristic" — title NLP + follower count proxy; no extra API key needed
+# mode: "api"       — Tracker.gg rank lookup (future; requires TRACKER_GG_API_KEY)
+#
+# Heuristic logic (in order):
+#   1. Smurf keyword in title          → reject (overrides follower count)
+#   2. Follower count >= threshold     → accept (Verified Skill proxy)
+#   3. Sweat keyword in title          → accept
+#   4. No skill signals, strict: false → accept (permissive default)
+#   4. No skill signals, strict: true  → reject
+#
+# Mid-tier rank thresholds per game (used when mode: "api" is implemented):
+#   marvel_rivals: platinum and above  (gold < platinum < diamond < grandmaster ...)
+#   deadlock:      emissary and above  (ritualist < emissary < archon < oracle ...)
+#   arc_raiders:   no ranked mode yet; heuristic only
+rank_looker:
+  enabled: false          # set true to activate
+  mode: "heuristic"       # "heuristic" | "api"
+  tracker_gg_api_key: null  # set or use TRACKER_GG_API_KEY env var for api mode
+  strict: false           # true = reject clips with no skill signals
+  min_follower_count: 50000
+  game_rank_thresholds:
+    marvel_rivals: "platinum"
+    deadlock: "emissary"
+    arc_raiders: null
+  sweat_keywords:
+    - "scrim"
+    - "tourney"
+    - "tournament"
+    - "top 100"
+    - "pro"
+    - "ranked"
+    - "elo"
+    - "mmr"
+    - "competitive"
+  smurf_keywords:
+    - "smurf"
+    - "bronze to gm"
+    - "low elo"
+    - "stomping"
+    - "easy lobby"
+
+# ---------------------------------------------------------------------------
+# Kill-Feed Parser — post-download skill gate (OpenCV)
+# ---------------------------------------------------------------------------
+# Analyses the kill-feed ROI of each downloaded clip before transcription or
+# AI scoring. Clips with a peak 5-second sweat score >= sweat_threshold are
+# promoted; others still proceed but carry a lower kill_feed score so you can
+# filter in the review UI.
+#
+# ROI calibration (run once per game / after HUD patches):
+#   1. Extract frame 0: python -c "import cv2,sys; cap=cv2.VideoCapture(sys.argv[1]);
+#          ok,f=cap.read(); cv2.imwrite('frame0.png',f)" inbox/<game>/<clip>.mp4
+#   2. Open frame0.png, note the pixel rectangle around the kill feed.
+#   3. Scale to 1920×1080:  x_norm = x_raw * 1920 // frame_width  (same for y/w/h)
+#   4. Update roi below.
+#
+# Color tuning (HSV — Hue 0-180, Sat 0-255, Val 0-255):
+#   Use the script tools/tune_colors.py (coming soon) or adjust manually.
+#   Kill feed text is usually near-white (low Sat, high Val).
+#   Headshot highlights are game-specific (orange/yellow for most titles).
+#
+# Template icons:
+#   Place PNG/JPG files under assets/kill_feed_templates/<game>/
+#     kill_<name>.png      — skull, elimination icon, etc.
+#     headshot_<name>.png  — headshot badge/icon
+#   If no files exist, template matching is skipped; color + MOG2 handle detection.
+# ---------------------------------------------------------------------------
+# Audio Detector — DSP-based event detection (FFmpeg + numpy)
+# ---------------------------------------------------------------------------
+# Detects kills, multi-kills, objectives, and victory/defeat audio cues by
+# analysing per-frame RMS volume spikes relative to a rolling baseline.
+# No ML dependencies — uses FFmpeg astats filter + numpy Z-score.
+#
+# Run order: audio_detector runs before kill_feed so OpenCV only inspects
+# frames near confirmed audio spikes, reducing CPU cost significantly.
+#
+# frequency_filter uses FFmpeg highpass/lowpass filters to isolate the
+# kill/headshot frequency band (800–4000 Hz) before RMS analysis, reducing
+# false positives from bass-heavy background music or streamer voice.
+# Requires no extra Python packages (pure FFmpeg).
+audio_detector:
+  enabled: false
+  z_score_threshold: 3.0        # std devs above rolling baseline = event
+  baseline_window_seconds: 60   # rolling RMS window for baseline calculation
+  min_spike_gap_seconds: 1.5    # merge spikes closer than this into one
+  frame_duration_seconds: 0.1   # astats analysis window (100 ms per frame)
+  frequency_filter:
+    enabled: true               # bandpass before RMS — reduces music false positives
+    kill_low_hz: 800            # lower edge of kill/headshot band
+    kill_high_hz: 4000          # upper edge
+  multi_kill_window_seconds: 5  # cluster spikes within this window → multi_kill
+  multi_kill_min_spikes: 3      # minimum spikes in window to label multi_kill
+
+kill_feed:
+  enabled: false              # set true to activate
+  sweat_threshold: 50         # peak 5-second window score needed to pass
+  window_seconds: 5
+  sample_fps: 5
+  kill_score: 10              # points per kill event
+  headshot_score: 20          # points per headshot event
+  color_spike_factor: 5.0     # current pixels must be > 5× rolling baseline to trigger
+  min_pixel_mass: 50          # ignore color hits with fewer pixels than this
+  template_dir: "assets/kill_feed_templates"
+  games:
+    marvel_rivals:
+      # Kill feed: top-right corner. ROI is approximate — calibrate with a screenshot.
+      roi:
+        x: 1620
+        y: 10
+        w: 300
+        h: 380
+      kill_colors:
+        - lower: [0, 0, 180]       # HSV near-white (player name text)
+          upper: [180, 50, 255]
+      headshot_colors:
+        - lower: [15, 120, 200]    # HSV orange-yellow (headshot highlight)
+          upper: [40, 255, 255]
+      pixel_spike_threshold: 50
+    deadlock:
+      roi:
+        x: 1620
+        y: 15
+        w: 300
+        h: 350
+      kill_colors:
+        - lower: [0, 0, 175]       # HSV near-white
+          upper: [180, 55, 255]
+      headshot_colors:
+        - lower: [15, 100, 190]    # HSV gold/orange (soul-orb color palette)
+          upper: [45, 255, 255]
+      pixel_spike_threshold: 50
+    arc_raiders:
+      roi:
+        x: 1600
+        y: 20
+        w: 320
+        h: 400
+      kill_colors:
+        - lower: [0, 0, 175]       # HSV near-white
+          upper: [180, 55, 255]
+      headshot_colors:
+        - lower: [10, 100, 200]    # HSV orange-red (elimination highlight)
+          upper: [30, 255, 255]
+      pixel_spike_threshold: 50
+
+# ---------------------------------------------------------------------------
+# Weapon Detector — HUD icon recognition (OpenCV matchTemplate)
+# ---------------------------------------------------------------------------
+# Identifies the active weapon by matching the weapon-icon ROI against PNG
+# reference images in assets/weapon_icons/{game}/{weapon_id}.png.
+#
+# Step-by-step setup:
+#   1. Preview ROI placement on a real clip:
+#          python tools/preview_roi.py --clip inbox/{game}/clip.mp4 --game {game}
+#      Opens assets/roi_preview_{game}.png — adjust roi coords below if needed.
+#
+#   2. Extract an icon for each weapon you want to detect:
+#          python tools/extract_weapon_icon.py \
+#              --clip inbox/{game}/clip.mp4 \
+#              --game {game} \
+#              --weapon-id sniper_rifle \
+#              --display-name "Sniper Rifle"
+#      Saves assets/weapon_icons/{game}/sniper_rifle.png automatically.
+#
+#   3. Add the weapon_id → display_name mapping under weapons: below.
+#
+#   4. Set enabled: true and run the pipeline.
+#      The title engine will substitute {weapon} in post titles automatically.
+#
+# frame_sample options:
+#   "middle"           — analyse the middle frame only (fast, default)
+#   "kill_timestamps"  — analyse frames at kill events (most accurate)
+#   "all"              — sample every 2 seconds (slowest)
+weapon_detector:
+  enabled: true
+  confidence_threshold: 0.80
+  frame_sample: "middle"
+  match_mode: "color"       # "color" | "grayscale" (use grayscale for semi-transparent HUDs)
+  icon_dir: "assets/weapon_icons"
+  games:
+    deadlock:
+      # Hero portrait — top-left circle. Each hero has one weapon, so portrait = weapon.
+      roi: {x: 285, y: 3, w: 130, h: 108}
+      weapons:
+        abrams:      "Abrams"
+        apollo:      "Apollo"
+        bebop:       "Bebop"
+        billy:       "Billy"
+        calico:      "Calico"
+        celeste:     "Celeste"
+        the_doorman: "The Doorman"
+        drifter:     "Drifter"
+        dynamo:      "Dynamo"
+        graves:      "Graves"
+        grey_talon:  "Grey Talon"
+        haze:        "Haze"
+        holliday:    "Holliday"
+        infernus:    "Infernus"
+        ivy:         "Ivy"
+        kelvin:      "Kelvin"
+        lady_geist:  "Lady Geist"
+        lash:        "Lash"
+        mcginnis:    "McGinnis"
+        mina:        "Mina"
+        mirage:      "Mirage"
+        mo_and_krill: "Mo & Krill"
+        paige:       "Paige"
+        paradox:     "Paradox"
+        pocket:      "Pocket"
+        rem:         "Rem"
+        seven:       "Seven"
+        shiv:        "Shiv"
+        silver:      "Silver"
+        sinclair:    "Sinclair"
+        venator:     "Venator"
+        victor:      "Victor"
+        vindicta:    "Vindicta"
+        viscous:     "Viscous"
+        vyper:       "Vyper"
+        warden:      "Warden"
+        wraith:      "Wraith"
+        yamato:      "Yamato"
+    marvel_rivals:
+      # Hero portrait — bottom-left large square. Detecting hero = detecting kit/weapon.
+      roi: {x: 58, y: 895, w: 125, h: 135}
+      weapons:
+        # Vanguards
+        angela:          "Angela"
+        bruce_banner:    "Bruce Banner"
+        captain_america: "Captain America"
+        deadpool:        "Deadpool"
+        doctor_strange:  "Doctor Strange"
+        emma_frost:      "Emma Frost"
+        groot:           "Groot"
+        magneto:         "Magneto"
+        peni_parker:     "Peni Parker"
+        rogue:           "Rogue"
+        the_thing:       "The Thing"
+        thor:            "Thor"
+        venom:           "Venom"
+        # Duelists
+        black_cat:       "Black Cat"
+        black_panther:   "Black Panther"
+        black_widow:     "Black Widow"
+        blade:           "Blade"
+        daredevil:       "Daredevil"
+        elsa_bloodstone: "Elsa Bloodstone"
+        hawkeye:         "Hawkeye"
+        hela:            "Hela"
+        human_torch:     "Human Torch"
+        iron_fist:       "Iron Fist"
+        iron_man:        "Iron Man"
+        magik:           "Magik"
+        mister_fantastic: "Mister Fantastic"
+        moon_knight:     "Moon Knight"
+        namor:           "Namor"
+        phoenix:         "Phoenix"
+        psylocke:        "Psylocke"
+        scarlet_witch:   "Scarlet Witch"
+        spider_man:      "Spider-Man"
+        squirrel_girl:   "Squirrel Girl"
+        star_lord:       "Star-Lord"
+        storm:           "Storm"
+        the_punisher:    "The Punisher"
+        winter_soldier:  "Winter Soldier"
+        wolverine:       "Wolverine"
+        # Strategists
+        adam_warlock:       "Adam Warlock"
+        cloak_and_dagger:   "Cloak & Dagger"
+        gambit:             "Gambit"
+        invisible_woman:    "Invisible Woman"
+        jeff_the_land_shark: "Jeff the Land Shark"
+        loki:               "Loki"
+        luna_snow:          "Luna Snow"
+        mantis:             "Mantis"
+        rocket_raccoon:     "Rocket Raccoon"
+        ultron:             "Ultron"
+        white_fox:          "White Fox"
+    arc_raiders:
+      # Active weapon icon + label — bottom-right panel (KETTLE, FLASHLIGHT, etc.)
+      roi: {x: 1760, y: 940, w: 160, h: 120}
+      weapons:
+        # Assault Rifles
+        kettle:    "Kettle"
+        rattler:   "Rattler"
+        arpeggio:  "Arpeggio"
+        tempest:   "Tempest"
+        bettina:   "Bettina"
+        # Battle Rifles
+        ferro:     "Ferro"
+        renegade:  "Renegade"
+        aphelion:  "Aphelion"
+        # SMGs
+        stitcher:  "Stitcher"
+        canto:     "Canto"
+        bobcat:    "Bobcat"
+        # Shotguns
+        il_toro:   "Il Toro"
+        vulcano:   "Vulcano"
+        dolabra:   "Dolabra"
+        # Pistols
+        hairpin:   "Hairpin"
+        burletta:  "Burletta"
+        venator:   "Venator"
+        # Hand Cannons
+        anvil:     "Anvil"
+        # LMGs
+        torrente:  "Torrente"
+        # Sniper Rifles
+        osprey:    "Osprey"
+        jupiter:   "Jupiter"
+        # Specials
+        hullcracker: "Hullcracker"
+        equalizer:   "Equalizer"
+
+# ---------------------------------------------------------------------------
+# Title Engine — context-aware upload title generation
+# ---------------------------------------------------------------------------
+# Selects a title template from assets/titles.yaml based on kill-feed and
+# weapon-detection results. Substitutes {weapon}, {kill_count}, etc.
+# Tracks recently used templates per game to avoid back-to-back repeats.
+#
+# Category selection (in order):
+#   headshots + kills >= 3  → aggressive
+#   kills >= 2              → aggressive
+#   kills == 1 + headshot   → aggressive
+#   sweat_score > 50        → aggressive
+#   fallback                → engagement_bait / educational (alternating)
+#
+# mode: "template"  — pure template substitution (default)
+# mode: "llm"       — future: feeds structured CV data to Claude for variety
+title_engine:
+  enabled: false
+  mode: "template"
+  titles_path: "assets/titles.yaml"
+  history_path: "assets/title_history.json"
+  history_window: 20
+
+pipeline:
+  watch_interval_seconds: 30
+
+review:
+  host: "127.0.0.1"
+  port: 5000
+  debug: false
+
+# ---------------------------------------------------------------------------
+# Montage Assembler
+# ---------------------------------------------------------------------------
+# Selects accepted clips by kill_feed.sweat_score (highest first), trims each
+# to its peak action window, and concatenates them until target_duration_seconds
+# is reached.
+#
+# Usage:  python run.py --montage arc_raiders
+#         python run.py --montage all
+#
+# require_kill_feed: true  — skip clips with no kill_feed data (default)
+# require_kill_feed: false — include them trimmed to the clip midpoint instead
+montage:
+  enabled: false
+  target_duration_seconds: 45
+  transition: "flash"            # "cut" | "flash"
+  flash_color: "white"           # "white" | "black"
+  flash_duration_seconds: 0.067  # ~2 frames at 30 fps
+  clip_window_seconds: 5         # action window per clip
+  clip_padding_seconds: 2        # context before/after window
+  min_sweat_score: 0             # minimum kill_feed.sweat_score to include
+  require_kill_feed: true        # skip clips without kill_feed data
+  output_dir: "montage"
+  max_clips: 10                  # safety cap

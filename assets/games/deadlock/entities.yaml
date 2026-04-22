@@ -1,0 +1,118 @@
+primary_kind: heroes
+heroes:
+  abrams:
+    display_name: Abrams
+    role: ''
+  apollo:
+    display_name: Apollo
+    role: Mobility/Melee
+  bebop:
+    display_name: Bebop
+    role: Laser/Support
+  billy:
+    display_name: Billy
+    role: ''
+  calico:
+    display_name: Calico
+    role: ''
+  celeste:
+    display_name: Celeste
+    role: Disruptive
+  the_doorman:
+    display_name: The Doorman
+    role: ''
+  drifter:
+    display_name: Drifter
+    role: Roaming/Hunter
+  dynamo:
+    display_name: Dynamo
+    role: Support/Crowd Control
+  graves:
+    display_name: Graves
+    role: Zone Control/Summons
+  grey_talon:
+    display_name: Grey Talon
+    role: ''
+  haze:
+    display_name: Haze
+    role: ''
+  holliday:
+    display_name: Holliday
+    role: ''
+  infernus:
+    display_name: Infernus
+    role: ''
+  ivy:
+    display_name: Ivy
+    role: ''
+  kelvin:
+    display_name: Kelvin
+    role: Utility/Durability
+  lady_geist:
+    display_name: Lady Geist
+    role: ''
+  lash:
+    display_name: Lash
+    role: ''
+  mcginnis:
+    display_name: McGinnis
+    role: Turrets/Area Denial
+  mina:
+    display_name: Mina
+    role: ''
+  mirage:
+    display_name: Mirage
+    role: ''
+  mo_and_krill:
+    display_name: Mo & Krill
+    role: ''
+  paige:
+    display_name: Paige
+    role: ''
+  paradox:
+    display_name: Paradox
+    role: ''
+  pocket:
+    display_name: Pocket
+    role: ''
+  rem:
+    display_name: Rem
+    role: Sleep/Disruptor
+  seven:
+    display_name: Seven
+    role: ''
+  shiv:
+    display_name: Shiv
+    role: ''
+  silver:
+    display_name: Silver
+    role: ''
+  sinclair:
+    display_name: Sinclair
+    role: ''
+  venator:
+    display_name: Venator
+    role: Tactical/Arms Expert
+  victor:
+    display_name: Victor
+    role: ''
+  vindicta:
+    display_name: Vindicta
+    role: ''
+  viscous:
+    display_name: Viscous
+    role: ''
+  vyper:
+    display_name: Vyper
+    role: ''
+  warden:
+    display_name: Warden
+    role: Defense/Control
+  wraith:
+    display_name: Wraith
+    role: ''
+  yamato:
+    display_name: Yamato
+    role: ''
+abilities: {}
+aliases: {}
