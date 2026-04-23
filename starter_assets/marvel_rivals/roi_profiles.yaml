@@ -1,0 +1,28 @@
+rois:
+  kill_feed:
+    anchor: top_right
+    x_pct: 0.74
+    y_pct: 0.05
+    w_pct: 0.22
+    h_pct: 0.22
+  medal_area:
+    anchor: center
+    x_pct: 0.40
+    y_pct: 0.18
+    w_pct: 0.20
+    h_pct: 0.18
+  ability_hud:
+    anchor: bottom_center
+    x_pct: 0.32
+    y_pct: 0.80
+    w_pct: 0.36
+    h_pct: 0.16
+templates:
+  - id: kill_medal_headshot
+    roi: medal_area
+    image: assets/roi_library/marvel_rivals/kill_medal_headshot.png
+    match_threshold: 0.86
+  - id: ult_ready_icon
+    roi: ability_hud
+    image: assets/roi_library/marvel_rivals/ult_ready_icon.png
+    match_threshold: 0.83

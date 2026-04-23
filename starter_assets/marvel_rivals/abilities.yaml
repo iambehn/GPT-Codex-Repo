@@ -1,0 +1,19 @@
+abilities:
+  - id: punisher_ult
+    character_id: punisher
+    display_name: "Final Judgment"
+    aliases: ["ult", "ultimate", "final judgment"]
+    class: ultimate
+    worthiness_boost: 0.18
+  - id: groot_wall
+    character_id: groot
+    display_name: "Thornlash Wall"
+    aliases: ["wall"]
+    class: utility
+    worthiness_boost: 0.05
+  - id: mantis_ult
+    character_id: mantis
+    display_name: "Soul Resurgence"
+    aliases: ["soul resurgence"]
+    class: ultimate
+    worthiness_boost: 0.16

@@ -1,0 +1,17 @@
+game_id: marvel_rivals
+display_name: "Marvel Rivals"
+genre: hero_shooter
+camera_mode: first_person
+ui_version: "2026-04-launch"
+detectors:
+  niceshot:
+    enabled: true
+    profile: cod_like_default
+  yolo:
+    enabled: true
+    model_path: models/yolo/marvel_rivals/weights/best.pt
+  roi_matcher:
+    enabled: true
+resolution_profiles:
+  base_capture_height: 1080
+  normalize_to: 1920x1080

@@ -1,0 +1,10 @@
+labels:
+  yolo:
+    hero_punisher: punisher
+    hero_groot: groot
+    hero_mantis: mantis
+    medal_headshot: headshot_medal
+  niceshot:
+    killstreak: streak_event
+    flick: aim_skill
+    explosive_entry: engagement_spike

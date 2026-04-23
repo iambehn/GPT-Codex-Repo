@@ -1,0 +1,17 @@
+{
+  "clip_id": "abc123",
+  "game_id": "marvel_rivals",
+  "status": "quarantine",
+  "quarantine_reason": "missing_entities",
+  "missing_fields": ["player_character", "detected_event"],
+  "detector_outputs": {
+    "niceshot_action_score": 0.81,
+    "yolo_labels": [],
+    "roi_matches": []
+  },
+  "next_actions": [
+    "run_roi_snip_search",
+    "extract_reference_frames",
+    "manual_label_if_still_unknown"
+  ]
+}

@@ -1,0 +1,13 @@
+characters:
+  - id: punisher
+    display_name: "The Punisher"
+    aliases: ["punisher"]
+    role: duelist
+  - id: groot
+    display_name: "Groot"
+    aliases: ["groot"]
+    role: vanguard
+  - id: mantis
+    display_name: "Mantis"
+    aliases: ["mantis"]
+    role: strategist

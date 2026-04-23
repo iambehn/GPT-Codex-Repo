@@ -1,0 +1,20 @@
+weights:
+  niceshot_action_score: 0.24
+  yolo_event_score: 0.18
+  roi_icon_score: 0.12
+  audio_hype_score: 0.10
+  transcript_hype_score: 0.08
+  motion_energy_score: 0.10
+  context_certainty_score: 0.08
+  rarity_score: 0.10
+thresholds:
+  accept: 0.72
+  quarantine: 0.48
+  reject_below: 0.48
+gates:
+  require_context_fields:
+    - player_character
+    - detected_event
+  quarantine_if_missing:
+    - player_character
+    - detected_event

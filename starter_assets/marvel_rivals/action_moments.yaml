@@ -1,0 +1,20 @@
+moments:
+  - id: team_wipe
+    category: combat
+    description: "Multiple eliminations in a short window"
+    evidence:
+      min_kills_in_window: 3
+      window_seconds: 5
+    score_weight: 0.22
+  - id: clutch_win
+    category: outcome
+    description: "Round-saving or low-odds conversion"
+    evidence:
+      transcript_keywords: ["clutch", "no way", "1v", "last alive"]
+    score_weight: 0.20
+  - id: ultimate_swing
+    category: ability
+    description: "Ultimate creates a decisive fight swing"
+    evidence:
+      required_ability_class: ultimate
+    score_weight: 0.17
