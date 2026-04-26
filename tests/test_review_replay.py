@@ -65,7 +65,6 @@ class ReplayViewerTests(unittest.TestCase):
                 "icon_dir": str(self.assets_dir / "weapon_icons"),
             },
             "kill_feed": {"enabled": True, "games": {self.game: {"roi": {"x": 1500, "y": 60, "w": 320, "h": 260}}}},
-            "scout": {"thresholds": {}},
         }
 
         review_app.PROJECT_ROOT = self.root
@@ -223,8 +222,7 @@ class ReplayViewerTests(unittest.TestCase):
         self.assertIn("HUD ROIs", html)
         self.assertIn("YOLO Boxes", html)
         self.assertIn("Hook And Trim", html)
-        self.assertIn("False Positive", html)
-        self.assertIn("Recommend Retrain", html)
+        self.assertIn("Replay is read-only for queue clips", html)
 
     def test_replay_quarantine_route_loads(self) -> None:
         response = self.client.get(f"/replay/quarantine/{self.game}/quarantine_clip")
@@ -234,7 +232,6 @@ class ReplayViewerTests(unittest.TestCase):
         self.assertIn("Late hook can be aligned with hard trim.", html)
         self.assertIn("multi_kill", html)
         self.assertIn("Open ROI Repair", html)
-        self.assertIn("False Negative", html)
 
     def test_replay_missing_clip_404s(self) -> None:
         self.assertEqual(self.client.get(f"/replay/queue/{self.game}/missing").status_code, 404)

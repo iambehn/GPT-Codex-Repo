@@ -122,7 +122,8 @@ def evaluate(clip_path: str | Path, game_pack: dict, config: dict, force: bool =
             **detector_outputs,
             "ai_clip_judge": ai_result,
             "composite_inputs": {
-                key: round(value, 3) for key, value in composite_inputs.items()
+                key: (round(value, 3) if value is not None else None)
+                for key, value in composite_inputs.items()
             },
         },
         "decision": {

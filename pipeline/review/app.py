@@ -1,7 +1,7 @@
 """
 Stage 7 — Manual Review UI
 
-Flask web app for reviewing processed clips before distribution.
+Flask web app for reviewing processed clips and debugging detector output.
 Clips sit in processing/{game}/ after AI Scoring. The reviewer watches
 each clip, sees the virality score and Claude-generated metadata, then
 approves or rejects.
@@ -14,8 +14,6 @@ Routes:
   POST /clip/<game>/<stem>/reject     — reject  → rejected/{game}/, load next
   GET  /video/<game>/<filename>       — stream the processed video file
   GET  /quarantine                    — asset-training queue for quarantined clips
-  GET  /analytics                     — post-performance analytics dashboard
-  GET  /distribution                  — distribution queue and compliance dashboard
 
 Launch:
   python -m pipeline.review.app
@@ -25,7 +23,6 @@ Launch:
 import base64
 import binascii
 import json
-import os
 import shutil
 import struct
 import subprocess
@@ -46,7 +43,6 @@ from flask import (
 )
 
 from pipeline.clip_judge import evaluate as evaluate_clip
-from pipeline.distribution_queue import get_distribution_dashboard
 from pipeline.game_pack import (
     get_kill_feed_game_config,
     get_primary_entities,
@@ -55,9 +51,7 @@ from pipeline.game_pack import (
     load_game_pack,
     resolve_asset_path,
 )
-from pipeline.review_feedback import apply_feedback_updates, record_feedback, summarize_feedback
 from pipeline.weapon_detector import run_weapon_detector
-from utils.analytics import build_dashboard_state, build_post_detail, import_metric_payload
 
 app = Flask(__name__)
 
@@ -527,24 +521,6 @@ def _next_clip(game: str, stem: str) -> dict | None:
     return clips[0] if clips else None
 
 
-def _resolve_feedback_target(game: str, clip_stem: str, source_stage: str) -> tuple[Path, Path, str]:
-    if source_stage == "quarantine":
-        clip_path = _resolve_quarantine_clip(game, clip_stem)
-        meta_path, meta = _ensure_quarantine_meta(clip_path, game)
-        clip_id = meta.get("clip_id", clip_path.stem)
-        return clip_path, meta_path, clip_id
-
-    if source_stage == "queue":
-        clip = _find_clip(game, clip_stem)
-        if clip is None:
-            abort(404)
-        clip_path = Path(clip["processed_path"])
-        meta_path = _inbox_root(game) / f"{clip['clip_id']}.meta.json"
-        return clip_path, meta_path, clip["clip_id"]
-
-    abort(404)
-
-
 def _resolve_replay_target(source_stage: str, game: str, clip_stem: str) -> dict:
     if source_stage == "queue":
         clip = _find_clip(game, clip_stem)
@@ -916,7 +892,6 @@ def _build_replay_state(source_stage: str, game: str, clip_stem: str) -> dict:
             for key, value in raw_sections.items()
         },
         "actions": {
-            "feedback_source_stage": target["source_stage"],
             "repair_url": target["back_url"] if target["source_stage"] == "quarantine" else None,
         },
     }
@@ -1182,237 +1157,6 @@ def api_quarantine_rescan():
 
 
 # ---------------------------------------------------------------------------
-# Analytics routes
-# ---------------------------------------------------------------------------
-
-@app.route("/analytics")
-def analytics_dashboard():
-    filters = {
-        "platform": request.args.get("platform", "").strip(),
-        "game": request.args.get("game", "").strip(),
-        "template_id": request.args.get("template_id", "").strip(),
-        "hook_type": request.args.get("hook_type", "").strip(),
-        "paid": request.args.get("paid", "").strip(),
-    }
-    state = build_dashboard_state(CONFIG, filters)
-    return render_template("analytics.html", state=state)
-
-
-@app.route("/analytics/post/<post_id>")
-def analytics_post_detail(post_id: str):
-    detail = build_post_detail(CONFIG, post_id)
-    if detail is None:
-        abort(404)
-    return render_template("analytics_post.html", detail=detail)
-
-
-@app.route("/analytics/import", methods=["POST"])
-def analytics_import():
-    source_platform = request.form.get("source_platform", "").strip()
-    payload = request.form.get("payload", "")
-    uploaded = request.files.get("metrics_file")
-    if uploaded and uploaded.filename:
-        payload = uploaded.read().decode("utf-8", errors="replace")
-    result = import_metric_payload(CONFIG, source_platform, payload)
-    status = "ok" if result.get("ok") else "error"
-    return redirect(url_for(
-        "analytics_dashboard",
-        import_status=status,
-        imported=result.get("imported", 0),
-        import_errors="; ".join(result.get("errors", [])[:3]),
-    ))
-
-
-@app.route("/api/analytics/import", methods=["POST"])
-def api_analytics_import():
-    data = request.get_json(silent=True) or {}
-    source_platform = str(data.get("source_platform", "")).strip()
-    payload = data.get("payload", "")
-    if not isinstance(payload, str):
-        payload = json.dumps(payload)
-    result = import_metric_payload(CONFIG, source_platform, payload)
-    status = 200 if result.get("ok") else 400
-    return jsonify(result), status
-
-
-# ---------------------------------------------------------------------------
-# Distribution routes
-# ---------------------------------------------------------------------------
-
-@app.route("/distribution")
-def distribution_dashboard():
-    filters = {
-        "status": request.args.get("status", "").strip(),
-        "platform": request.args.get("platform", "").strip(),
-        "account_id": request.args.get("account_id", "").strip(),
-        "game": request.args.get("game", "").strip(),
-    }
-    state = get_distribution_dashboard(CONFIG, filters)
-    return render_template("distribution.html", state=state)
-
-
-# ---------------------------------------------------------------------------
-# Feedback routes
-# ---------------------------------------------------------------------------
-
-@app.route("/feedback")
-def feedback_dashboard():
-    games = list_supported_games(CONFIG)
-    selected_game = request.args.get("game", "").strip()
-    summaries = []
-    for game in games:
-        summaries.append(summarize_feedback(game, CONFIG, limit=12))
-
-    if not selected_game and summaries:
-        selected_game = summaries[0]["game"]
-    selected = next((item for item in summaries if item["game"] == selected_game), None)
-    if selected is None and summaries:
-        selected = summaries[0]
-        selected_game = selected["game"]
-
-    return render_template(
-        "feedback.html",
-        summaries=summaries,
-        selected=selected,
-        selected_game=selected_game,
-    )
-
-
-@app.route("/api/feedback/record", methods=["POST"])
-def api_feedback_record():
-    data = request.get_json(silent=True) or {}
-    game = str(data.get("game", "")).strip()
-    clip_stem = str(data.get("clip_stem", "")).strip()
-    source_stage = str(data.get("source_stage", "")).strip()
-    feedback_type = str(data.get("feedback_type", "")).strip()
-    detector = str(data.get("detector", "")).strip() or None
-    note = str(data.get("note", "")).strip()
-    details = data.get("details") if isinstance(data.get("details"), dict) else {}
-
-    if not game or not clip_stem or not source_stage or not feedback_type:
-        return _json_error("game, clip_stem, source_stage, and feedback_type are required")
-
-    try:
-        clip_path, meta_path, clip_id = _resolve_feedback_target(game, clip_stem, source_stage)
-    except Exception:
-        return _json_error("Clip not found for feedback recording", 404)
-
-    try:
-        entry = record_feedback(
-            game,
-            CONFIG,
-            clip_id=clip_id,
-            clip_path=clip_path,
-            meta_path=meta_path,
-            feedback_type=feedback_type,
-            source_stage=source_stage,
-            detector=detector,
-            note=note,
-            details=details,
-        )
-    except ValueError as e:
-        return _json_error(str(e), 400)
-
-    summary = summarize_feedback(game, CONFIG, limit=12)
-    return jsonify({"ok": True, "feedback": entry, "summary": summary})
-
-
-@app.route("/api/feedback/apply/<game>", methods=["POST"])
-def api_feedback_apply(game: str):
-    data = request.get_json(silent=True) or {}
-    dry_run = bool(data.get("dry_run", False))
-    result = apply_feedback_updates(game, CONFIG, dry_run=dry_run)
-    return jsonify({"ok": True, "result": result})
-
-# ---------------------------------------------------------------------------
-# Scout routes
-# ---------------------------------------------------------------------------
-
-@app.route("/scout")
-def scout():
-    from pipeline.scout.tracker import load_cache
-    cache = load_cache()
-    thresholds = CONFIG.get("scout", {}).get("thresholds", {})
-    trend_min = thresholds.get("trend_score_min", 6)
-    longevity_min = thresholds.get("longevity_score_min", 5)
-
-    games_data = []
-    for name, data in cache.get("games", {}).items():
-        latest = data.get("latest", {})
-        prev_score = data.get("previous_trend_score")
-        curr_score = latest.get("trend_score", 0) if latest else 0
-
-        if prev_score is None or not latest:
-            direction = None
-        elif curr_score > prev_score:
-            direction = "up"
-        elif curr_score < prev_score:
-            direction = "down"
-        else:
-            direction = "flat"
-
-        games_data.append({
-            "name": name,
-            "longevity_score": data.get("longevity_score", 5),
-            "latest": latest or {},
-            "previous_trend_score": prev_score,
-            "flagged": latest.get("flagged", False) if latest else False,
-            "direction": direction,
-        })
-
-    games_data.sort(key=lambda g: (-int(g["flagged"]), -g["latest"].get("trend_score", 0)))
-
-    return render_template(
-        "scout.html",
-        games=games_data,
-        last_poll=cache.get("last_poll"),
-        trend_min=trend_min,
-        longevity_min=longevity_min,
-    )
-
-
-@app.route("/scout/poll", methods=["POST"])
-def scout_poll():
-    """Trigger an immediate background poll of all tracked games."""
-    import threading as _t
-    from pipeline.scout.tracker import poll_all_games
-    _t.Thread(target=poll_all_games, args=(CONFIG,), daemon=True).start()
-    return redirect(url_for("scout"))
-
-
-@app.route("/scout/game/add", methods=["POST"])
-def scout_add_game():
-    from pipeline.scout.tracker import add_game, poll_game
-    name = request.form.get("game_name", "").strip()
-    longevity = int(request.form.get("longevity_score", 5))
-    if name:
-        add_game(name, longevity)
-        # Poll immediately so the row has data on first load
-        import threading as _t
-        _t.Thread(target=poll_game, args=(name, CONFIG), daemon=True).start()
-    return redirect(url_for("scout"))
-
-
-@app.route("/scout/game/remove", methods=["POST"])
-def scout_remove_game():
-    from pipeline.scout.tracker import remove_game
-    name = request.form.get("game_name", "").strip()
-    if name:
-        remove_game(name)
-    return redirect(url_for("scout"))
-
-
-@app.route("/scout/game/longevity", methods=["POST"])
-def scout_set_longevity():
-    from pipeline.scout.tracker import set_longevity
-    name = request.form.get("game_name", "").strip()
-    score = request.form.get("longevity_score", 5)
-    if name:
-        set_longevity(name, score, CONFIG)
-    return redirect(url_for("scout"))
-
-
-# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -1420,13 +1164,6 @@ if __name__ == "__main__":
     cfg = _load_config()
     review_cfg = cfg.get("review", {})
     debug = review_cfg.get("debug", False)
-
-    # Start background scout polling.
-    # In debug mode, Werkzeug runs the script twice (reloader parent + worker).
-    # Only start the thread in the actual worker subprocess to avoid duplicates.
-    if not debug or os.environ.get("WERKZEUG_RUN_MAIN"):
-        from pipeline.scout.tracker import start_background_polling
-        start_background_polling(cfg)
 
     app.run(
         host=review_cfg.get("host", "127.0.0.1"),

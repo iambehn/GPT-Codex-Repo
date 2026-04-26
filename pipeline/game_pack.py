@@ -265,8 +265,6 @@ def scaffold_game_pack(game: str, config: dict, force: bool = False) -> dict[str
     (pack_dir / "examples" / "reference_frames").mkdir(parents=True, exist_ok=True)
     (pack_dir / "examples" / "gold_set" / "clips").mkdir(parents=True, exist_ok=True)
     (pack_dir / "examples" / "gold_set" / "sidecars").mkdir(parents=True, exist_ok=True)
-    (pack_dir / "feedback").mkdir(parents=True, exist_ok=True)
-    (pack_dir / "reports" / "feedback").mkdir(parents=True, exist_ok=True)
     for subdir in (
         "images/train",
         "images/val",
@@ -386,13 +384,6 @@ def scaffold_game_pack(game: str, config: dict, force: bool = False) -> dict[str
                 "context_score": 0.10,
             },
             "quarantine_reasons": _QUARANTINE_REASONS,
-            "feedback": {
-                "enabled": True,
-                "signals": ["scroll_stop_rate", "retention", "rewatch_rate", "shares", "follows"],
-                "threshold_step": 0.01,
-                "weight_step": 0.05,
-                "retrain_threshold": 3,
-            },
         }
     }
 

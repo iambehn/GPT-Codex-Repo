@@ -226,12 +226,6 @@
   display: grid;
   gap: 8px;
 }
-.action-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-.action-btn,
 .action-link {
   display: inline-flex;
   align-items: center;
@@ -249,23 +243,6 @@
   padding: 8px 10px;
 }
 .action-link:hover { text-decoration: none; }
-.action-note {
-  width: 100%;
-  background: #0f0f0f;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 9px 10px;
-  font-size: 12px;
-  min-height: 72px;
-  resize: vertical;
-}
-.action-status {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
 details {
   margin-top: 10px;
 }
@@ -432,22 +409,11 @@ pre {
         <h3>Quick Actions</h3>
         <div class="summary-card">
           <div class="action-grid">
-            <textarea id="feedbackNote" class="action-note" placeholder="Why was this detection or decision wrong?"></textarea>
-            <div class="action-row">
-              {% if replay.clip.source_stage == 'quarantine' %}
-              <button class="action-btn" type="button" data-feedback-type="false_negative">False Negative</button>
-              {% else %}
-              <button class="action-btn" type="button" data-feedback-type="false_positive">False Positive</button>
-              {% endif %}
-              <button class="action-btn" type="button" data-feedback-type="needs_roi_template">Needs ROI</button>
-            </div>
-            <div class="action-row">
-              <button class="action-btn" type="button" data-feedback-type="recommend_retrain">Recommend Retrain</button>
-              {% if replay.actions.repair_url %}
-              <a class="action-link" href="{{ replay.actions.repair_url }}">Open ROI Repair</a>
-              {% endif %}
-            </div>
-            <div id="actionStatus" class="action-status">Ready.</div>
+            {% if replay.actions.repair_url %}
+            <a class="action-link" href="{{ replay.actions.repair_url }}">Open ROI Repair</a>
+            {% else %}
+            <div class="empty-state">Replay is read-only for queue clips. Use Queue or Quarantine to change clip state.</div>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -521,8 +487,6 @@ const toggleRoi = document.getElementById('toggleRoi');
 const toggleYolo = document.getElementById('toggleYolo');
 const timelineTrack = document.getElementById('timelineTrack');
 const timelineCurrent = document.getElementById('timelineCurrent');
-const feedbackNote = document.getElementById('feedbackNote');
-const actionStatus = document.getElementById('actionStatus');
 
 function durationSeconds() {
   if (Number.isFinite(video.duration) && video.duration > 0) return video.duration;
@@ -630,41 +594,6 @@ document.querySelectorAll('[data-seek]').forEach((button) => {
     renderOverlay();
     updateCurrentMarker();
   });
-});
-
-async function sendReplayFeedback(feedbackType) {
-  actionStatus.textContent = 'Recording feedback...';
-  const response = await fetch('/api/feedback/record', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      game: replay.clip.game,
-      clip_stem: replay.clip.clip_stem,
-      source_stage: replay.actions.feedback_source_stage,
-      feedback_type: feedbackType,
-      detector: 'replay_viewer',
-      note: feedbackNote.value,
-      details: {
-        replay_context: true,
-        decision_status: replay.summary.decision_status,
-        quarantine_reason: replay.summary.quarantine_reason,
-      },
-    }),
-  });
-  const payload = await response.json();
-  if (!response.ok || !payload.ok) {
-    actionStatus.textContent = payload.error || 'Failed to record feedback.';
-    return;
-  }
-  actionStatus.textContent = JSON.stringify({
-    feedback: payload.feedback.feedback_type,
-    total_entries: payload.summary.total_entries,
-    retrain_recommended: payload.summary.retrain_recommendation.recommended,
-  }, null, 2);
-}
-
-document.querySelectorAll('[data-feedback-type]').forEach((button) => {
-  button.addEventListener('click', () => sendReplayFeedback(button.dataset.feedbackType));
 });
 
 toggleRoi.addEventListener('change', renderOverlay);

@@ -1,12 +1,12 @@
 # Gaming Clip Farming Bot — Planning
 
-> Working-tree snapshot. This document reflects the current repo state, including implemented but not yet committed features where relevant.
+> Working-tree snapshot. This document reflects the current active repo surface for solo use.
 >
 > Source of truth order: code in `run.py` and `pipeline/` first, then this document.
 
 ## Current System Overview
 
-The project is now a game-pack-first clip pipeline with a deterministic pre-processing judge, a local review app, a distribution queue, and a feedback loop.
+The active product is a game-pack-first clip pipeline focused on detector quality, deterministic judging, quarantine recovery, replay debugging, and YOLO asset/model iteration.
 
 Current runtime order:
 
@@ -21,8 +21,6 @@ ingestion
 -> processing
 -> scoring / title_engine
 -> review
--> distribution
--> analytics / feedback
 ```
 
 Current state and storage model:
@@ -32,8 +30,7 @@ Current state and storage model:
 - Game knowledge lives under `assets/games/<game>/`
 - Detector icon assets live under `assets/weapon_icons/<game>/`
 - YOLO registry and dataset artifacts live under `models/yolo/<game>/`
-- Distribution operational state is local SQLite
-- Analytics source of truth is still Google Sheets
+- Audit, review, and training artifacts stay on disk beside the active game assets
 
 ## Commands
 
@@ -49,40 +46,30 @@ Game-pack lifecycle:
 - `python run.py --validate-game-pack <game_slug>`
 - `python run.py --evaluate-game-pack <game_slug>`
 - `python run.py --build-yolo-dataset <game_slug>`
+- `python run.py --train-yolo <game_slug> [--dry-run]`
 - `python run.py --enrich-game-from-wiki <game_slug> --wiki-url <url>`
 - `python run.py --enrich-quarantine <game_slug>`
 
-Distribution:
+Detector and asset iteration:
 
-- `python run.py --schedule-distribution`
-- `python run.py --run-distribution-queue`
-- `python run.py --distribution-status`
-- `python run.py --mark-manual-posted <task_id> --url <url>`
-- `python run.py --distribute [--dry-run]`
+- `python run.py --refresh-weapon-detector <game_slug> [--weapon-frame-sample middle|kill_timestamps|all]`
+- `python run.py --audit-weapon-detector <game_slug>`
+- `python run.py --render-weapon-audit-review <game_slug> [--report <path>] [--top-k <n>]`
+- `python run.py --promote-weapon-audit-crop <game_slug> [--report <path>] [--rank <n>] [--crop-source auto|candidate|roi] [--overwrite] [--dry-run]`
 
-Feedback and evaluation:
-
-- `python run.py --review-feedback <game_slug>`
-- `python run.py --apply-feedback <game_slug> [--dry-run]`
-
-Other existing commands:
+Other active commands:
 
 - `python run.py --montage <game|all>`
-- `python run.py --poll-tiktok`
-- `python run.py --list-reddit-flairs`
 
 Review app:
 
 - `python -m pipeline.review.app`
 
-Review UI surfaces:
+Active review surfaces:
 
 - `Queue`
 - `Quarantine`
-- `Feedback`
-- `Scout`
-- `Analytics`
-- `Distribution`
+- `Replay` (clip-level debug view linked from Queue and Quarantine)
 
 ## Current Subsystems
 
@@ -90,8 +77,7 @@ Review UI surfaces:
 
 - New game support is structured around `assets/games/<game>/`
 - Canonical files: `game.yaml`, `entities.yaml`, `moments.yaml`, `hud.yaml`, `weights.yaml`
-- Scaffolding, validation, wiki draft enrichment, and gold-set evaluation are all wired
-- Goal state: a new game should validate and run without core code edits
+- Scaffolding, validation, wiki draft enrichment, and gold-set evaluation are wired
 
 ### Quarantine Review + ROI Icon Training — `Implemented`
 
@@ -100,20 +86,18 @@ Review UI surfaces:
 - Audit metadata is written back to the clip sidecar
 - Clips that recover can move back to `inbox/`
 
-### YOLO Inference Scaffold + Dataset Builder — `Partial`
+### YOLO Inference + Dataset / Training Path — `Partial`
 
 - Runtime YOLO adapter is in place
 - Per-game label mapping and weights paths are driven by game packs
-- Dataset registry builder exports `dataset.yaml`, `labels.txt`, `label_map.json`, and `seed_manifest.json`
-- Current design uses existing icon, ROI, and reference-frame assets as seeds
-- Real trained weights and full retraining automation are still pending
+- Dataset export, training harness, and promotion path exist
+- Real trained weights and retraining automation are still pending
 
 ### NiceShot Adapter Integration — `Partial`
 
-- NiceShot now feeds the same scoring path as the other detectors
+- NiceShot feeds the same judging path as the other detectors
 - Current adapter supports `stub` and `fixture_json`
 - Profile presets and game-specific overrides exist
-- Output is normalized into structured scores and candidate moments
 - Real NiceShot CLI/API integration is not wired yet
 
 ### Hook Enforcer — `Implemented`
@@ -124,41 +108,25 @@ Review UI surfaces:
 
 ### Clip Judge — `Implemented`
 
-- The clip judge is now the pre-processing decision engine
-- It combines detector outputs, hook resolution, AI/deterministic scoring, context resolution, and quarantine routing
-- Current outputs include `candidate_moments`, `context`, `detector_outputs`, `decision`, and `quarantine`
+- The clip judge is the pre-processing keep/reject/quarantine gate
+- It combines detector outputs, hook resolution, context resolution, and deterministic thresholds
+- Current outputs include `candidate_moments`, `context`, `decision`, and `quarantine`
 
 ### Modular Title Engine — `Implemented`
 
 - Deterministic fact-bundle-driven title assembly is in place
-- Current publishing metadata prefers `title_engine.title` and `title_engine.caption`
-- It uses detector and judge metadata instead of relying only on the older scoring title
-
-### Analytics Dashboard — `Implemented`
-
-- Analytics has its own Flask tab
-- Current model separates posts, metric snapshots, and deterministic performance decisions
-- Manual import is the current ingestion path; platform collectors are still future work
-
-### Distribution Queue — `Implemented`
-
-- Distribution is now queue-driven instead of direct-post-first
-- Queue states, attempts, compliance records, and manual publish packs are wired
-- Official API posting is gated by account policy mode and compliance defaults
-- `human_assisted` is the safe default pattern where direct API behavior is not ready
-
-### Review Feedback Loop — `Implemented`
-
-- Reviewers can record false positives, false negatives, ROI-template needs, and retrain requests
-- Feedback is stored per game, summarized, and surfaced in a dedicated dashboard
-- Bounded weight updates and retrain recommendations can be generated from feedback
-- This updates configuration and reporting only; it does not train models automatically
+- Active packaging metadata prefers `title_engine.title` and `title_engine.caption`
 
 ### Replay Viewer / Visual Debugging — `Implemented`
 
-- The review app now includes a clip-level replay viewer for queue and quarantine sources
-- V1 shows detector timelines, HUD ROI overlays, YOLO boxes when present, hook alignment, trim intent, and judge explanations
-- Raw detector and decision sections are exposed in a single debug page so failures can be inspected without reading sidecar files manually
+- Queue and quarantine clips have a replay/debug page
+- It shows detector timelines, HUD ROI overlays, YOLO boxes when present, hook alignment, trim intent, and judge explanations
+- Raw detector and decision sections are exposed in one debug page
+
+### Weapon Detector Audit + Asset Review — `Implemented`
+
+- The project can rank OpenCV near-misses, export candidate crops from real footage, and render side-by-side review galleries
+- Asset promotion is explicit and can be dry-run or backed up before overwrite
 
 ## Current Gaps / Not Yet Production-Ready
 
@@ -166,27 +134,25 @@ Review UI surfaces:
 - YOLO training and retraining are not automated
 - Real per-game weights are still mostly missing
 - Marvel Rivals kill-feed templates are still missing
-- Analytics collection is still manual-import-first
-- Distribution adapters are not complete for every platform/account path
+- OpenCV icon assets still need curation from real gameplay for better pseudo-label growth
 - The review app is local-tool safe, not hardened for internet exposure
 
 ## Near-Term Roadmap
 
-1. Train the first real Marvel Rivals YOLO model from seeded assets and labeled gold-set data
-2. Use the replay viewer to tighten signal manifests, overlay quality, and gold-set debugging before changing weights
-3. Upgrade NiceShot from stub/fixture mode to a real adapter once the external contract is confirmed
-4. Add a cleaner review/promote flow for wiki drafts and game-pack onboarding artifacts
-5. Tighten operator docs, health surfaces, and validation around the full review -> distribution -> analytics loop
+1. Curate better Marvel Rivals icon assets from replay/audit output
+2. Grow real clip-derived YOLO examples and train the first useful Marvel Rivals model
+3. Use replay + gold-set evaluation to tighten detector manifests and thresholds before changing weights
+4. Upgrade NiceShot from stub/fixture mode to a real adapter once the external contract is confirmed
+5. Keep the active surface small; only add support features again when they solve a repeated bottleneck
 
-## Backlog
+## Archived / Frozen
 
-Still real, still unbuilt, but no longer mixed with implemented systems:
+These were removed from the active solo-use repo surface and are tracked in [ARCHIVE_FEATURES.md](/Users/tj/GPT-Codex-Repo/ARCHIVE_FEATURES.md):
 
-- YOLO training orchestration and model promotion workflow
-- NiceShot production adapter
-- Analytics collectors for platform APIs
-- Hardened auth/rate-limiting if the review app is ever exposed beyond localhost
-- Platform-specific distribution adapters beyond the current queue/compliance scaffolding
+- Analytics dashboard and import flow
+- Distribution queue and compliance scheduler
+- Review feedback and performance-feedback loops
+- Scout dashboard and trend polling
 
 ## Recent Major Additions
 
@@ -194,9 +160,7 @@ Still real, still unbuilt, but no longer mixed with implemented systems:
 - Clip judge became the real worthiness gate before transcription and processing
 - Hook enforcement became a first-class stage
 - Quarantine gained browser-based ROI/icon training and rescan
-- YOLO gained inference scaffolding plus a dataset/registry builder
+- YOLO gained inference scaffolding plus dataset/training/export tooling
 - NiceShot gained normalized profile-driven scoring instead of a raw stub-only shape
-- Analytics gained its own dashboard and manual import flow
-- Distribution moved to a SQLite-backed compliance queue
-- Review feedback became a real loop with summaries, bounded weight updates, and retrain recommendations
 - Replay viewer added a visual debug surface for queue and quarantine clips
+- Weapon-detector audit and asset-review tooling added a cleaner path for real-footage asset correction

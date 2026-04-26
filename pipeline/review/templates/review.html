@@ -110,52 +110,6 @@
   line-height: 1.6;
 }
 
-.feedback-box {
-  background: #151515;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-}
-.feedback-controls {
-  display: grid;
-  gap: 8px;
-}
-.feedback-controls select,
-.feedback-controls textarea {
-  width: 100%;
-  background: #111;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 12px;
-}
-.feedback-controls textarea {
-  min-height: 70px;
-  resize: vertical;
-}
-.feedback-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-.feedback-btn {
-  background: #252525;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.feedback-status {
-  margin-top: 8px;
-  white-space: pre-wrap;
-  color: var(--muted);
-  font-size: 11px;
-}
-
 /* ---- Decision bar ---- */
 .decision-bar {
   padding: 16px 20px;
@@ -317,27 +271,6 @@
         </div>
       </div>
 
-      <div class="meta-section">
-        <h3>Feedback Loop</h3>
-        <div class="feedback-box">
-          <div class="feedback-controls">
-            <select id="feedbackDetector">
-              <option value="clip_judge">Clip judge</option>
-              <option value="niceshot_detector">NiceShot</option>
-              <option value="yolo_detector">YOLO</option>
-              <option value="weapon_detector">Weapon detector</option>
-            </select>
-            <textarea id="feedbackNote" placeholder="Why was this a bad accept, detector miss, or retrain candidate?"></textarea>
-          </div>
-          <div class="feedback-buttons" style="margin-top:10px;">
-            <button class="feedback-btn" type="button" data-feedback-type="false_positive">False Positive</button>
-            <button class="feedback-btn" type="button" data-feedback-type="needs_roi_template">Needs ROI</button>
-            <button class="feedback-btn" type="button" data-feedback-type="recommend_retrain">Retrain YOLO</button>
-          </div>
-          <div id="feedbackStatus" class="feedback-status">Ready.</div>
-        </div>
-      </div>
-
     </div><!-- /meta-scroll -->
 
     <!-- Decision bar -->
@@ -370,39 +303,6 @@
 {% block scripts %}
 <script>
   const player = document.getElementById('player');
-  const feedbackStatus = document.getElementById('feedbackStatus');
-  const feedbackDetector = document.getElementById('feedbackDetector');
-  const feedbackNote = document.getElementById('feedbackNote');
-
-  async function sendFeedback(feedbackType) {
-    feedbackStatus.textContent = 'Recording feedback...';
-    const response = await fetch('/api/feedback/record', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        game: {{ clip.game|tojson }},
-        clip_stem: {{ clip.stem|tojson }},
-        source_stage: 'queue',
-        feedback_type: feedbackType,
-        detector: feedbackDetector.value,
-        note: feedbackNote.value,
-      }),
-    });
-    const payload = await response.json();
-    if (!response.ok || !payload.ok) {
-      feedbackStatus.textContent = payload.error || 'Failed to record feedback.';
-      return;
-    }
-    feedbackStatus.textContent = JSON.stringify({
-      feedback: payload.feedback.feedback_type,
-      total_entries: payload.summary.total_entries,
-      retrain_recommended: payload.summary.retrain_recommendation.recommended,
-    }, null, 2);
-  }
-
-  document.querySelectorAll('[data-feedback-type]').forEach((button) => {
-    button.addEventListener('click', () => sendFeedback(button.dataset.feedbackType));
-  });
 
   document.addEventListener('keydown', (e) => {
     // Ignore when typing in an input

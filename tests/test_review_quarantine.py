@@ -93,7 +93,6 @@ class QuarantineReviewTests(unittest.TestCase):
                 "frame_sample": "middle",
                 "icon_dir": str(self.assets_dir / "weapon_icons"),
             },
-            "scout": {"thresholds": {}},
         }
 
         review_app.PROJECT_ROOT = self.root
@@ -174,10 +173,12 @@ class QuarantineReviewTests(unittest.TestCase):
         self.assertEqual(body["primary_kind"], "heroes")
         self.assertEqual({entity["entity_id"] for entity in body["entities"]}, {"hero_one", "hero_two"})
 
-    def test_queue_and_scout_pages_still_load(self) -> None:
+    def test_queue_loads_and_frozen_routes_are_gone(self) -> None:
         self.assertEqual(self.client.get("/").status_code, 200)
-        with patch("pipeline.scout.tracker.load_cache", return_value={"last_poll": None, "games": {}}):
-            self.assertEqual(self.client.get("/scout").status_code, 200)
+        self.assertEqual(self.client.get("/scout").status_code, 404)
+        self.assertEqual(self.client.get("/feedback").status_code, 404)
+        self.assertEqual(self.client.get("/analytics").status_code, 404)
+        self.assertEqual(self.client.get("/distribution").status_code, 404)
 
     def test_save_icon_rejects_unknown_entity(self) -> None:
         response = self.client.post("/api/quarantine/save-icon", json=self._save_payload(entity_id="missing"))

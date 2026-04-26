@@ -16,7 +16,7 @@ _IMPORT_CWD = tempfile.TemporaryDirectory()
 _ORIGINAL_CWD = os.getcwd()
 os.chdir(_IMPORT_CWD.name)
 try:
-    from pipeline.distribution import _publishing_caption, _publishing_title
+    from pipeline.publishing import publishing_caption, publishing_title
     from pipeline.title_engine import generate_title
 finally:
     os.chdir(_ORIGINAL_CWD)
@@ -189,7 +189,7 @@ class TitleEngineV2Tests(unittest.TestCase):
         self.assertEqual(first["title"], "Hero One first title")
         self.assertEqual(second["title"], "Hero One second title")
 
-    def test_distribution_helpers_prefer_title_engine_then_scoring_then_clip_id(self) -> None:
+    def test_publishing_helpers_prefer_title_engine_then_scoring_then_clip_id(self) -> None:
         metadata = {
             "clip_id": "clip-123",
             "title_engine": {
@@ -202,16 +202,16 @@ class TitleEngineV2Tests(unittest.TestCase):
                 "suggested_caption": "Scoring caption",
             },
         }
-        self.assertEqual(_publishing_title(metadata), "Engine title")
-        self.assertEqual(_publishing_caption(metadata), "Engine caption")
+        self.assertEqual(publishing_title(metadata), "Engine title")
+        self.assertEqual(publishing_caption(metadata), "Engine caption")
 
         metadata["title_engine"] = {}
-        self.assertEqual(_publishing_title(metadata), "Scoring title")
-        self.assertEqual(_publishing_caption(metadata), "Scoring caption")
+        self.assertEqual(publishing_title(metadata), "Scoring title")
+        self.assertEqual(publishing_caption(metadata), "Scoring caption")
 
         metadata["scoring"] = {}
-        self.assertEqual(_publishing_title(metadata), "clip-123")
-        self.assertIn("clip-123", _publishing_caption(metadata))
+        self.assertEqual(publishing_title(metadata), "clip-123")
+        self.assertIn("clip-123", publishing_caption(metadata))
 
 
 if __name__ == "__main__":

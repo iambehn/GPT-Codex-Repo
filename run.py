@@ -15,16 +15,8 @@ Usage:
     python run.py --audit-weapon-detector marvel_rivals
     python run.py --render-weapon-audit-review marvel_rivals --report assets/games/marvel_rivals/reports/weapon_detector/20260425-231327.json
     python run.py --promote-weapon-audit-crop marvel_rivals --rank 1 --overwrite
-    python run.py --review-feedback marvel_rivals
-    python run.py --apply-feedback marvel_rivals
-    python run.py --perf-feedback marvel_rivals
-    python run.py --apply-perf-feedback marvel_rivals
     python run.py --enrich-quarantine marvel_rivals
     python run.py --enrich-game-from-wiki marvel_rivals --wiki-url https://example.fandom.com/wiki/Characters
-    python run.py --distribute
-    python run.py --schedule-distribution
-    python run.py --run-distribution-queue
-    python run.py --distribution-status
 
 Pipeline order:
   1. Ingestion
@@ -54,13 +46,6 @@ from dotenv import load_dotenv
 from pipeline.audio_detector import run_audio_detector
 from pipeline.clip_judge import evaluate as evaluate_clip
 from pipeline.decision_engine import select_template
-from pipeline.distribution import list_reddit_flairs, poll_tiktok_pending
-from pipeline.distribution_queue import (
-    distribution_status,
-    mark_manual_posted,
-    run_distribution_queue,
-    schedule_distribution_tasks,
-)
 from pipeline.feature_extraction import run_feature_extraction
 from pipeline.game_pack import (
     get_game_metadata,
@@ -77,8 +62,6 @@ from pipeline.kill_feed import run_kill_feed_parser
 from pipeline.montage import run_montage
 from pipeline.niceshot_detector import run_niceshot_detector
 from pipeline.processing import run_processing
-from pipeline.performance_feedback import apply_performance_updates
-from pipeline.review_feedback import apply_feedback_updates, summarize_feedback
 from pipeline.scoring import run_scoring
 from pipeline.title_engine import generate_title
 from pipeline.transcription import run_transcription
@@ -224,24 +207,6 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
     logger.info(f"Pipeline complete for {game}. Launch review UI: python -m pipeline.review.app")
 
 
-def run_distribution_for_all(config: dict, dry_run: bool = False) -> None:
-    """Compatibility wrapper: schedule accepted clips, then run due queue items."""
-    logger.info("--distribute now uses the SQLite distribution queue.")
-    scheduled = schedule_distribution_tasks(config)
-    logger.info(
-        "Scheduled distribution tasks: "
-        f"created={scheduled.get('created', 0)}, skipped={scheduled.get('skipped', 0)}, "
-        f"manual={scheduled.get('manual', 0)}, paused={scheduled.get('paused', 0)}"
-    )
-    result = run_distribution_queue(config, dry_run=dry_run)
-    logger.info(
-        "Distribution queue run: "
-        f"due={result.get('due', 0)}, posted={result.get('posted', 0)}, "
-        f"retryable={result.get('retryable', 0)}, terminal={result.get('terminal', 0)}, "
-        f"skipped={result.get('skipped', 0)}"
-    )
-
-
 def _find_meta_for_clip(clip_file: Path, inbox_game_dir: Path) -> Path | None:
     """Locate the inbox .meta.json that matches an accepted clip."""
     parts = clip_file.stem.split("_", 2)
@@ -358,50 +323,9 @@ def main() -> None:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--game", help="Game key to process or 'all'.")
     group.add_argument(
-        "--distribute",
-        action="store_true",
-        help="Compatibility wrapper: schedule accepted clips and run due distribution queue items.",
-    )
-    group.add_argument(
-        "--schedule-distribution",
-        action="store_true",
-        dest="schedule_distribution",
-        help="Create distribution queue tasks for accepted clips.",
-    )
-    group.add_argument(
-        "--run-distribution-queue",
-        action="store_true",
-        dest="run_distribution_queue",
-        help="Run due official-API distribution queue tasks.",
-    )
-    group.add_argument(
-        "--distribution-status",
-        action="store_true",
-        dest="distribution_status",
-        help="Print distribution queue counts and recent tasks.",
-    )
-    group.add_argument(
-        "--mark-manual-posted",
-        metavar="TASK_ID",
-        dest="mark_manual_posted",
-        help="Mark a human-assisted distribution task as posted. Requires --url.",
-    )
-    group.add_argument(
         "--watch",
         action="store_true",
         help="Continuously run the pipeline for all games on a loop.",
-    )
-    group.add_argument(
-        "--poll-tiktok",
-        action="store_true",
-        dest="poll_tiktok",
-        help="Check TikTok processing status for uploaded clips that don't have a URL yet.",
-    )
-    group.add_argument(
-        "--list-reddit-flairs",
-        action="store_true",
-        dest="list_reddit_flairs",
-        help="Print available link flairs for each configured subreddit, then exit.",
     )
     group.add_argument(
         "--montage",
@@ -463,30 +387,6 @@ def main() -> None:
         help="Render side-by-side comparison images from a weapon-detector audit report.",
     )
     group.add_argument(
-        "--review-feedback",
-        metavar="GAME",
-        dest="review_feedback",
-        help="Summarize review feedback, ROI requests, and retrain pressure for a game.",
-    )
-    group.add_argument(
-        "--apply-feedback",
-        metavar="GAME",
-        dest="apply_feedback",
-        help="Apply bounded clip-judge weight updates from recorded review feedback.",
-    )
-    group.add_argument(
-        "--perf-feedback",
-        metavar="GAME",
-        dest="perf_feedback",
-        help="Report social performance → weight recommendations for GAME (dry run, no changes written).",
-    )
-    group.add_argument(
-        "--apply-perf-feedback",
-        metavar="GAME",
-        dest="apply_perf_feedback",
-        help="Apply social performance weight updates to GAME's weights.yaml.",
-    )
-    group.add_argument(
         "--enrich-quarantine",
         metavar="GAME",
         dest="enrich_quarantine",
@@ -506,12 +406,7 @@ def main() -> None:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="With --distribute or --run-distribution-queue: show what would be uploaded without posting.",
-    )
-    parser.add_argument(
-        "--url",
-        dest="url",
-        help="Published post URL for --mark-manual-posted.",
+        help="Do not write final outputs for commands that support preview mode.",
     )
     parser.add_argument(
         "--skip-eval-detectors",
@@ -630,20 +525,6 @@ def main() -> None:
         print(json.dumps(result, indent=2))
         if not result.get("ok"):
             sys.exit(1)
-    elif args.review_feedback:
-        result = summarize_feedback(args.review_feedback, config)
-        print(json.dumps(result, indent=2))
-    elif args.apply_feedback:
-        result = apply_feedback_updates(args.apply_feedback, config, dry_run=args.dry_run)
-        print(json.dumps(result, indent=2))
-    elif args.perf_feedback:
-        result = apply_performance_updates(args.perf_feedback, config, dry_run=True)
-        print(json.dumps(result, indent=2))
-    elif args.apply_perf_feedback:
-        result = apply_performance_updates(args.apply_perf_feedback, config, dry_run=args.dry_run)
-        print(json.dumps(result, indent=2))
-        if not result.get("ok"):
-            sys.exit(1)
     elif args.enrich_quarantine:
         ensure_dirs(config)
         enrich_quarantine(args.enrich_quarantine, config)
@@ -654,31 +535,6 @@ def main() -> None:
         print(json.dumps(result, indent=2))
         if result.get("status") == "failed":
             sys.exit(1)
-    elif args.schedule_distribution:
-        ensure_dirs(config)
-        result = schedule_distribution_tasks(config)
-        print(json.dumps(result, indent=2))
-    elif args.run_distribution_queue:
-        ensure_dirs(config)
-        result = run_distribution_queue(config, dry_run=args.dry_run)
-        print(json.dumps(result, indent=2))
-    elif args.distribution_status:
-        result = distribution_status(config)
-        print(json.dumps(result, indent=2))
-    elif args.mark_manual_posted:
-        if not args.url:
-            parser.error("--mark-manual-posted requires --url")
-        result = mark_manual_posted(args.mark_manual_posted, args.url, config)
-        print(json.dumps(result, indent=2))
-        if not result.get("ok"):
-            sys.exit(1)
-    elif args.distribute:
-        ensure_dirs(config)
-        run_distribution_for_all(config, dry_run=args.dry_run)
-    elif args.poll_tiktok:
-        poll_tiktok_pending(config)
-    elif args.list_reddit_flairs:
-        list_reddit_flairs(config)
     elif args.watch:
         ensure_dirs(config)
         interval = config.get("pipeline", {}).get("watch_interval_seconds", 300)
