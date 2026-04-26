@@ -54,8 +54,11 @@ TARGET_WIDTH = 1920
 TARGET_HEIGHT = 1080
 _DEFAULT_CONFIDENCE = 0.80
 _DEFAULT_ICON_DIR = "assets/weapon_icons"
+<<<<<<< HEAD
 _DEFAULT_TEMPLATE_SCALES = [0.9, 1.0, 1.1]
 _CANDIDATE_LIMIT = 5
+=======
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -105,9 +108,14 @@ def run_weapon_detector(clip_path: Path, game: str, config: dict, force: bool = 
         Path(game_pack.get("pack_root", ".")),
     )
     weapon_names = game_cfg.get("weapons", {})
+<<<<<<< HEAD
     match_mode = game_cfg.get("match_mode") or wd_cfg.get("match_mode", "color")
     template_scales = _template_scales(game_cfg, wd_cfg)
     templates = _load_templates(icon_dir, weapon_names)
+=======
+    match_mode = wd_cfg.get("match_mode", "color")   # "color" | "grayscale"
+    templates = _load_templates(icon_dir, weapon_names, match_mode)
+>>>>>>> origin/main
 
     if not templates:
         logger.debug(f"[weapon_detector] No icons in {icon_dir} — skipping.")
@@ -127,7 +135,11 @@ def run_weapon_detector(clip_path: Path, game: str, config: dict, force: bool = 
         except (json.JSONDecodeError, OSError):
             pass
 
+<<<<<<< HEAD
     result = _detect(clip_path, roi, templates, threshold, frame_sample, kill_timestamps, match_mode, template_scales)
+=======
+    result = _detect(clip_path, roi, templates, threshold, frame_sample, kill_timestamps, match_mode)
+>>>>>>> origin/main
     _write_and_return(meta_path, result)
 
     if result["weapon_id"]:
@@ -153,7 +165,10 @@ def _detect(
     frame_sample: str,
     kill_timestamps: list[float],
     match_mode: str = "color",
+<<<<<<< HEAD
     template_scales: list[float] | None = None,
+=======
+>>>>>>> origin/main
 ) -> dict:
     """Open the clip, extract frames, and return the best template match."""
     cap = cv2.VideoCapture(str(clip_path))
@@ -178,6 +193,7 @@ def _detect(
         rh = roi.get("h", 80)
 
         best_weapon: dict | None = None
+<<<<<<< HEAD
         best_conf = -1.0
         best_time = 0.0
         best_match_box: dict | None = None
@@ -185,6 +201,10 @@ def _detect(
         best_scale = None
         frame_observations: list[dict] = []
         top_candidates: dict[str, dict] = {}
+=======
+        best_conf = 0.0
+        best_time = 0.0
+>>>>>>> origin/main
 
         for t in sample_times:
             cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
@@ -200,6 +220,7 @@ def _detect(
             if roi_bgr.size == 0:
                 continue
 
+<<<<<<< HEAD
             search_variants = _search_variants(roi_bgr)
 
             frame_best_weapon: dict | None = None
@@ -227,10 +248,27 @@ def _detect(
                     frame_best_box = match_box
                     frame_best_variant = str(match["variant"])
                     frame_best_scale = float(match["scale"])
+=======
+            # Grayscale mode: reduces sensitivity to background colour shifts
+            # caused by semi-transparent or game-world-tinted HUD elements.
+            search_frame = (
+                cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2GRAY)
+                if match_mode == "grayscale"
+                else roi_bgr
+            )
+
+            for tmpl in templates:
+                img = tmpl["image"]
+                if img.shape[0] > search_frame.shape[0] or img.shape[1] > search_frame.shape[1]:
+                    continue
+                res = cv2.matchTemplate(search_frame, img, cv2.TM_CCOEFF_NORMED)
+                _, max_val, _, _ = cv2.minMaxLoc(res)
+>>>>>>> origin/main
                 if max_val > best_conf:
                     best_conf = max_val
                     best_weapon = tmpl
                     best_time = t
+<<<<<<< HEAD
                     best_match_box = match_box
                     best_variant = str(match["variant"])
                     best_scale = float(match["scale"])
@@ -278,6 +316,8 @@ def _detect(
                 reverse=True,
             )[:_CANDIDATE_LIMIT],
         }
+=======
+>>>>>>> origin/main
 
         if best_weapon and best_conf >= threshold:
             return {
@@ -286,16 +326,25 @@ def _detect(
                 "confidence":   round(best_conf, 3),
                 "method":       "template_match",
                 "frame_time":   round(best_time, 2),
+<<<<<<< HEAD
                 **debug_fields,
+=======
+>>>>>>> origin/main
             }
 
         return {
             "weapon_id":    None,
             "display_name": None,
+<<<<<<< HEAD
             "confidence":   round(max(best_conf, 0.0), 3),
             "method":       "no_match",
             "frame_time":   round(best_time, 2),
             **debug_fields,
+=======
+            "confidence":   round(best_conf, 3),
+            "method":       "no_match",
+            "frame_time":   round(best_time, 2),
+>>>>>>> origin/main
         }
     finally:
         cap.release()
@@ -305,6 +354,7 @@ def _detect(
 # Helpers
 # ---------------------------------------------------------------------------
 
+<<<<<<< HEAD
 def _load_templates(icon_dir: Path, weapon_name_map: dict) -> list[dict]:
     """Load weapon PNG reference images from the icon directory.
 
@@ -312,11 +362,21 @@ def _load_templates(icon_dir: Path, weapon_name_map: dict) -> list[dict]:
     so the detector can switch matching strategies per game without reloading
     the icon library.
     """
+=======
+def _load_templates(icon_dir: Path, weapon_name_map: dict, match_mode: str = "color") -> list[dict]:
+    """Load weapon PNG reference images from the icon directory.
+
+    When match_mode is "grayscale", templates are loaded as single-channel
+    images to match the grayscale ROI crop used during detection.
+    """
+    read_flag = cv2.IMREAD_GRAYSCALE if match_mode == "grayscale" else cv2.IMREAD_COLOR
+>>>>>>> origin/main
     templates = []
     if not icon_dir.exists():
         return templates
     for ext in ("*.png", "*.jpg", "*.jpeg"):
         for path in sorted(icon_dir.glob(ext)):
+<<<<<<< HEAD
             img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
             if img is None:
                 continue
@@ -459,6 +519,18 @@ def _scaled_template(template_image: np.ndarray, scale: float):
     return cv2.resize(template_image, (width, height), interpolation=interpolation)
 
 
+=======
+            img = cv2.imread(str(path), read_flag)
+            if img is None:
+                continue
+            weapon_id = path.stem
+            display_name = weapon_name_map.get(weapon_id, weapon_id.replace("_", " ").title())
+            templates.append({"weapon_id": weapon_id, "display_name": display_name, "image": img})
+            logger.debug(f"[weapon_detector] Loaded ({match_mode}): {path.name} → '{display_name}'")
+    return templates
+
+
+>>>>>>> origin/main
 def _write_and_return(meta_path: Path, result: dict) -> dict:
     try:
         existing = json.loads(meta_path.read_text()) if meta_path.exists() else {}

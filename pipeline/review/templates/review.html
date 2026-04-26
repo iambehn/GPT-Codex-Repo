@@ -163,6 +163,7 @@
 {% endblock %}
 
 {% block header_extra %}
+<<<<<<< HEAD
   <div style="margin-left:auto;display:flex;align-items:center;gap:16px;">
     <a href="{{ url_for('replay_view', source_stage='queue', game=clip.game, clip_stem=clip.stem) }}"
        style="font-size:12px;color:var(--muted);">
@@ -177,6 +178,16 @@
     <span style="font-size:12px;color:var(--muted);">Last clip in queue</span>
     {% endif %}
   </div>
+=======
+  {% if next_clip %}
+  <a href="{{ url_for('review_clip', game=next_clip.game, stem=next_clip.stem) }}"
+     style="margin-left:auto;font-size:12px;color:var(--muted);">
+    Next: {{ next_clip.suggested_title or next_clip.clip_id }} →
+  </a>
+  {% else %}
+  <span style="margin-left:auto;font-size:12px;color:var(--muted);">Last clip in queue</span>
+  {% endif %}
+>>>>>>> origin/main
 {% endblock %}
 
 {% block content %}

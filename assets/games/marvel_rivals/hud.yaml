@@ -37,6 +37,7 @@ detectors:
     roi_ref: weapon_detector
     icon_dir: assets/weapon_icons/marvel_rivals
     entities_kind: heroes
+<<<<<<< HEAD
     match_mode: hybrid
     template_scales:
     - 0.9
@@ -46,10 +47,16 @@ detectors:
     enabled: false
     inference_mode: roi_crop
     roi_ref: weapon_detector
+=======
+    match_mode: color
+  yolo:
+    enabled: false
+>>>>>>> origin/main
     weights_path: models/yolo/marvel_rivals/weights/best.pt
     confidence_threshold: 0.6
     frame_sample: middle
     labels:
+<<<<<<< HEAD
       hero_adam_warlock:
         kind: entity
         maps_to: adam_warlock
@@ -95,6 +102,26 @@ detectors:
       hero_the_thing:
         kind: entity
         maps_to: the_thing
+=======
+      hero_the_punisher:
+        kind: entity
+        maps_to: the_punisher
+      hero_spider_man:
+        kind: entity
+        maps_to: spider_man
+      hero_groot:
+        kind: entity
+        maps_to: groot
+      medal_headshot:
+        kind: event
+        maps_to: precision_pick
+      medal_multikill:
+        kind: event
+        maps_to: multi_kill_swing
+      ultimate_swing:
+        kind: event
+        maps_to: ultimate_swing
+>>>>>>> origin/main
 roi_templates: []
 ui_drift:
   expected_hashes: []

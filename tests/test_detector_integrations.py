@@ -22,7 +22,10 @@ try:
     from pipeline.game_pack import validate_game_pack
     from pipeline.hook_enforcer import run_hook_enforcer
     from pipeline.niceshot_detector import run_niceshot_detector
+<<<<<<< HEAD
     import pipeline.yolo_detector as yolo_module
+=======
+>>>>>>> origin/main
     from pipeline.yolo_detector import run_yolo_detector
 
     run_module = importlib.import_module("run")
@@ -114,6 +117,7 @@ class DetectorIntegrationTests(unittest.TestCase):
             },
             "hud.yaml": {
                 "ui_version": "test",
+<<<<<<< HEAD
                 "rois": {
                     "weapon_detector": {"x": 58, "y": 895, "w": 125, "h": 135},
                 },
@@ -121,6 +125,12 @@ class DetectorIntegrationTests(unittest.TestCase):
                     "yolo": {
                         "enabled": yolo_enabled,
                         "inference_mode": "video",
+=======
+                "rois": {},
+                "detectors": {
+                    "yolo": {
+                        "enabled": yolo_enabled,
+>>>>>>> origin/main
                         "weights_path": str(self.weights_path),
                         "labels": {
                             "hero_one_label": {"kind": "entity", "maps_to": "hero_one"},
@@ -182,6 +192,7 @@ class DetectorIntegrationTests(unittest.TestCase):
         malformed = run_niceshot_detector(self.clip, self.game, self.config, pack, force=True)
         self.assertEqual(malformed["status"], "error")
 
+<<<<<<< HEAD
     def test_niceshot_profile_overrides_normalize_scores_and_alias_moments(self) -> None:
         self._write_pack(niceshot_enabled=True)
         game_yaml = yaml.safe_load((self.pack_dir / "game.yaml").read_text())
@@ -211,6 +222,8 @@ class DetectorIntegrationTests(unittest.TestCase):
         self.assertEqual(result["moment_summary"]["top_kind"], "ultimate_swing")
         self.assertIn("profile_overrides_applied", result)
 
+=======
+>>>>>>> origin/main
     def test_yolo_disabled_missing_weights_missing_dependency_and_mapping(self) -> None:
         pack = self._write_pack(yolo_enabled=False)
         disabled = run_yolo_detector(self.clip, self.game, self.config, pack, force=True)
@@ -235,12 +248,16 @@ class DetectorIntegrationTests(unittest.TestCase):
         self.assertEqual(detected["status"], "ok")
         self.assertEqual(detected["top_entity"]["entity_id"], "hero_one")
         self.assertEqual(detected["event_candidates"][0]["event_id"], "precision_pick")
+<<<<<<< HEAD
         self.assertIn("timing", detected)
+=======
+>>>>>>> origin/main
 
         with patch("pipeline.yolo_detector._run_model_inference", return_value=[]):
             cached = run_yolo_detector(self.clip, self.game, self.config, pack, force=False)
         self.assertEqual(cached["top_entity"]["entity_id"], "hero_one")
 
+<<<<<<< HEAD
     def test_yolo_timestamp_estimation_uses_fps_and_vid_stride(self) -> None:
         ts = yolo_module._estimate_timestamp(3, {"fps": 30.0, "duration_seconds": 10.0, "vid_stride": 2}, 20)
         self.assertEqual(ts, 0.2)
@@ -275,6 +292,8 @@ class DetectorIntegrationTests(unittest.TestCase):
         roi_infer.assert_called_once()
         video_infer.assert_not_called()
 
+=======
+>>>>>>> origin/main
     def test_clip_judge_uses_niceshot_moments_and_yolo_context(self) -> None:
         pack = self._write_pack(yolo_enabled=True)
         meta = self._meta()
@@ -298,7 +317,10 @@ class DetectorIntegrationTests(unittest.TestCase):
         self.assertEqual(result["context"]["player_entity"], "hero_two")
         self.assertEqual(result["context"]["detected_event"], "precision_pick")
         self.assertEqual(result["detector_outputs"]["yolo"]["top_entity"]["entity_id"], "hero_two")
+<<<<<<< HEAD
         self.assertTrue(any("evidence" in moment for moment in result["candidate_moments"]))
+=======
+>>>>>>> origin/main
 
     def test_game_pack_validation_rejects_bad_yolo_mapping(self) -> None:
         pack = yaml.safe_load((self.pack_dir / "hud.yaml").read_text())
@@ -335,6 +357,7 @@ class DetectorIntegrationTests(unittest.TestCase):
 
         self.assertEqual(calls[:7], ["audio", "kill_feed", "weapon", "niceshot", "yolo", "hook_enforcer", "judge"])
 
+<<<<<<< HEAD
     def test_refresh_weapon_detector_reruns_existing_sidecars(self) -> None:
         inbox_dir = self.root / "inbox" / self.game
         processing_dir = self.root / "processing" / self.game
@@ -377,6 +400,8 @@ class DetectorIntegrationTests(unittest.TestCase):
         called_frame_samples = {call.args[2]["weapon_detector"]["frame_sample"] for call in mocked.call_args_list}
         self.assertEqual(called_frame_samples, {"all"})
 
+=======
+>>>>>>> origin/main
 
 if __name__ == "__main__":
     unittest.main()

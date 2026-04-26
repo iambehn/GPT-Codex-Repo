@@ -228,6 +228,7 @@ def run_kill_feed_parser(clip_path: Path, game: str, config: dict, force: bool =
         "headshot_timestamps": [round(t, 2) for t in headshot_ts],
         "reason": reason,
         "method": dominant_method or "no_events",
+<<<<<<< HEAD
         "events": [
             {
                 "timestamp": round(e.timestamp, 3),
@@ -246,6 +247,8 @@ def run_kill_feed_parser(clip_path: Path, game: str, config: dict, force: bool =
             "base_height": TARGET_HEIGHT,
         },
         "template_assets_present": bool(any(templates.values())),
+=======
+>>>>>>> origin/main
     }
 
     _write_kf_meta(meta_path, result)
@@ -577,7 +580,10 @@ def _disabled_result(reason: str) -> dict:
         "headshot_timestamps": [],
         "reason": reason,
         "method": "disabled",
+<<<<<<< HEAD
         "events": [],
         "roi": None,
         "template_assets_present": False,
+=======
+>>>>>>> origin/main
     }

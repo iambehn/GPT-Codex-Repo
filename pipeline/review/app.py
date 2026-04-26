@@ -1,7 +1,11 @@
 """
 Stage 7 — Manual Review UI
 
+<<<<<<< HEAD
 Flask web app for reviewing processed clips and debugging detector output.
+=======
+Flask web app for reviewing processed clips before distribution.
+>>>>>>> origin/main
 Clips sit in processing/{game}/ after AI Scoring. The reviewer watches
 each clip, sees the virality score and Claude-generated metadata, then
 approves or rejects.
@@ -9,7 +13,10 @@ approves or rejects.
 Routes:
   GET  /                              — queue view (all pending clips, sorted by score)
   GET  /clip/<game>/<stem>            — single clip review page
+<<<<<<< HEAD
   GET  /replay/<source>/<game>/<stem> — replay/debug viewer for queue or quarantine clips
+=======
+>>>>>>> origin/main
   POST /clip/<game>/<stem>/approve    — approve → accepted/{game}/, load next
   POST /clip/<game>/<stem>/reject     — reject  → rejected/{game}/, load next
   GET  /video/<game>/<filename>       — stream the processed video file
@@ -23,6 +30,10 @@ Launch:
 import base64
 import binascii
 import json
+<<<<<<< HEAD
+=======
+import os
+>>>>>>> origin/main
 import shutil
 import struct
 import subprocess
@@ -44,7 +55,10 @@ from flask import (
 
 from pipeline.clip_judge import evaluate as evaluate_clip
 from pipeline.game_pack import (
+<<<<<<< HEAD
     get_kill_feed_game_config,
+=======
+>>>>>>> origin/main
     get_primary_entities,
     get_weapon_detector_game_config,
     list_supported_games,
@@ -61,15 +75,22 @@ MAX_ICON_IMAGE_BYTES = 2 * 1024 * 1024
 MAX_ICON_IMAGE_BASE64_CHARS = int(MAX_ICON_IMAGE_BYTES * 1.4)
 MIN_ICON_CROP_SIDE = 8
 MAX_ICON_CROP_SIDE = 1024
+<<<<<<< HEAD
 REPLAY_BASE_WIDTH = 1920
 REPLAY_BASE_HEIGHT = 1080
+=======
+>>>>>>> origin/main
 
 # ---------------------------------------------------------------------------
 # Config loading
 # ---------------------------------------------------------------------------
 
 def _load_config() -> dict:
+<<<<<<< HEAD
     config_path = PROJECT_ROOT / "config.yaml"
+=======
+    config_path = Path(__file__).parent.parent.parent / "config.yaml"
+>>>>>>> origin/main
     with open(config_path) as f:
         return yaml.safe_load(f)
 
@@ -98,8 +119,14 @@ def _get_pending_clips() -> list[dict]:
     Returns list of clip info dicts sorted by highlight_score descending.
     """
     clips = []
+<<<<<<< HEAD
     inbox_root = (PROJECT_ROOT / CONFIG["paths"]["inbox"]).resolve()
     processing_root = (PROJECT_ROOT / CONFIG["paths"]["processing"]).resolve()
+=======
+    project_root = Path(__file__).parent.parent.parent
+    inbox_root = (project_root / CONFIG["paths"]["inbox"]).resolve()
+    processing_root = (project_root / CONFIG["paths"]["processing"]).resolve()
+>>>>>>> origin/main
 
     for game in list_supported_games(CONFIG):
         inbox_dir = inbox_root / game
@@ -123,9 +150,13 @@ def _get_pending_clips() -> list[dict]:
             processed = Path(processed_path_str)
             # Resolve legacy relative paths written before absolute-path fix
             if not processed.is_absolute():
+<<<<<<< HEAD
                 processed = (PROJECT_ROOT / processed).resolve()
             else:
                 processed = processed.resolve()
+=======
+                processed = (project_root / processed).resolve()
+>>>>>>> origin/main
             # Must still live inside the processing/ tree (not moved yet)
             if not processed.exists():
                 continue
@@ -227,6 +258,7 @@ def _get_quarantine_clips() -> list[dict]:
 
 
 def _find_quarantine_clip(game: str, clip_stem: str) -> dict | None:
+<<<<<<< HEAD
     fallback_matches: list[dict] = []
     for clip in _get_quarantine_clips():
         if clip["game"] != game:
@@ -237,6 +269,11 @@ def _find_quarantine_clip(game: str, clip_stem: str) -> dict | None:
             fallback_matches.append(clip)
     if len(fallback_matches) == 1:
         return fallback_matches[0]
+=======
+    for clip in _get_quarantine_clips():
+        if clip["game"] == game and clip["stem"] == clip_stem:
+            return clip
+>>>>>>> origin/main
     return None
 
 
@@ -521,6 +558,7 @@ def _next_clip(game: str, stem: str) -> dict | None:
     return clips[0] if clips else None
 
 
+<<<<<<< HEAD
 def _resolve_replay_target(source_stage: str, game: str, clip_stem: str) -> dict:
     if source_stage == "queue":
         clip = _find_clip(game, clip_stem)
@@ -897,6 +935,8 @@ def _build_replay_state(source_stage: str, game: str, clip_stem: str) -> dict:
     }
 
 
+=======
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -917,12 +957,15 @@ def review_clip(game: str, stem: str):
     return render_template("review.html", clip=clip, next_clip=next_c, video_url=video_url)
 
 
+<<<<<<< HEAD
 @app.route("/replay/<source_stage>/<game>/<path:clip_stem>")
 def replay_view(source_stage: str, game: str, clip_stem: str):
     replay = _build_replay_state(source_stage, game, clip_stem)
     return render_template("replay.html", replay=replay, replay_data=replay)
 
 
+=======
+>>>>>>> origin/main
 @app.route("/clip/<game>/<stem>/approve", methods=["POST"])
 def approve_clip(game: str, stem: str):
     return _handle_decision(game, stem, "accepted")
@@ -966,7 +1009,12 @@ def _handle_decision(game: str, stem: str, decision: str):
 @app.route("/video/<game>/<filename>")
 def serve_video(game: str, filename: str):
     """Stream a processed video file safely."""
+<<<<<<< HEAD
     video_dir = (PROJECT_ROOT / CONFIG["paths"]["processing"] / game).resolve()
+=======
+    project_root = Path(__file__).parent.parent.parent
+    video_dir = (project_root / CONFIG["paths"]["processing"] / game).resolve()
+>>>>>>> origin/main
     return send_from_directory(str(video_dir), filename, mimetype="video/mp4")
 
 
@@ -978,7 +1026,12 @@ def serve_thumb(game: str, stem: str):
     caches it as a .thumb.jpg sidecar next to the video, and serves it.
     Returns a 1x1 transparent GIF if the clip doesn't exist or FFmpeg fails.
     """
+<<<<<<< HEAD
     processing_dir = (PROJECT_ROOT / CONFIG["paths"]["processing"] / game).resolve()
+=======
+    project_root = Path(__file__).parent.parent.parent
+    processing_dir = (project_root / CONFIG["paths"]["processing"] / game).resolve()
+>>>>>>> origin/main
     clip_path = processing_dir / f"{stem}.mp4"
     thumb_path = processing_dir / f"{stem}.thumb.jpg"
 
@@ -1155,6 +1208,96 @@ def api_quarantine_rescan():
     rescan = _rescan_quarantine_clip(game, clip_stem)
     return jsonify({"ok": True, "rescan": rescan})
 
+<<<<<<< HEAD
+=======
+# ---------------------------------------------------------------------------
+# Scout routes
+# ---------------------------------------------------------------------------
+
+@app.route("/scout")
+def scout():
+    from pipeline.scout.tracker import load_cache
+    cache = load_cache()
+    thresholds = CONFIG.get("scout", {}).get("thresholds", {})
+    trend_min = thresholds.get("trend_score_min", 6)
+    longevity_min = thresholds.get("longevity_score_min", 5)
+
+    games_data = []
+    for name, data in cache.get("games", {}).items():
+        latest = data.get("latest", {})
+        prev_score = data.get("previous_trend_score")
+        curr_score = latest.get("trend_score", 0) if latest else 0
+
+        if prev_score is None or not latest:
+            direction = None
+        elif curr_score > prev_score:
+            direction = "up"
+        elif curr_score < prev_score:
+            direction = "down"
+        else:
+            direction = "flat"
+
+        games_data.append({
+            "name": name,
+            "longevity_score": data.get("longevity_score", 5),
+            "latest": latest or {},
+            "previous_trend_score": prev_score,
+            "flagged": latest.get("flagged", False) if latest else False,
+            "direction": direction,
+        })
+
+    games_data.sort(key=lambda g: (-int(g["flagged"]), -g["latest"].get("trend_score", 0)))
+
+    return render_template(
+        "scout.html",
+        games=games_data,
+        last_poll=cache.get("last_poll"),
+        trend_min=trend_min,
+        longevity_min=longevity_min,
+    )
+
+
+@app.route("/scout/poll", methods=["POST"])
+def scout_poll():
+    """Trigger an immediate background poll of all tracked games."""
+    import threading as _t
+    from pipeline.scout.tracker import poll_all_games
+    _t.Thread(target=poll_all_games, args=(CONFIG,), daemon=True).start()
+    return redirect(url_for("scout"))
+
+
+@app.route("/scout/game/add", methods=["POST"])
+def scout_add_game():
+    from pipeline.scout.tracker import add_game, poll_game
+    name = request.form.get("game_name", "").strip()
+    longevity = int(request.form.get("longevity_score", 5))
+    if name:
+        add_game(name, longevity)
+        # Poll immediately so the row has data on first load
+        import threading as _t
+        _t.Thread(target=poll_game, args=(name, CONFIG), daemon=True).start()
+    return redirect(url_for("scout"))
+
+
+@app.route("/scout/game/remove", methods=["POST"])
+def scout_remove_game():
+    from pipeline.scout.tracker import remove_game
+    name = request.form.get("game_name", "").strip()
+    if name:
+        remove_game(name)
+    return redirect(url_for("scout"))
+
+
+@app.route("/scout/game/longevity", methods=["POST"])
+def scout_set_longevity():
+    from pipeline.scout.tracker import set_longevity
+    name = request.form.get("game_name", "").strip()
+    score = request.form.get("longevity_score", 5)
+    if name:
+        set_longevity(name, score, CONFIG)
+    return redirect(url_for("scout"))
+
+>>>>>>> origin/main
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -1165,6 +1308,16 @@ if __name__ == "__main__":
     review_cfg = cfg.get("review", {})
     debug = review_cfg.get("debug", False)
 
+<<<<<<< HEAD
+=======
+    # Start background scout polling.
+    # In debug mode, Werkzeug runs the script twice (reloader parent + worker).
+    # Only start the thread in the actual worker subprocess to avoid duplicates.
+    if not debug or os.environ.get("WERKZEUG_RUN_MAIN"):
+        from pipeline.scout.tracker import start_background_polling
+        start_background_polling(cfg)
+
+>>>>>>> origin/main
     app.run(
         host=review_cfg.get("host", "127.0.0.1"),
         port=review_cfg.get("port", 5000),

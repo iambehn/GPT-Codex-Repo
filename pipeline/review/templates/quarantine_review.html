@@ -145,6 +145,7 @@ button {
 {% endblock %}
 
 {% block header_extra %}
+<<<<<<< HEAD
   <div style="margin-left:auto;display:flex;align-items:center;gap:16px;color:var(--muted);font-size:12px;">
     <a href="{{ url_for('replay_view', source_stage='quarantine', game=clip.game, clip_stem=clip.stem) }}"
        style="color:var(--muted);">
@@ -152,6 +153,11 @@ button {
     </a>
     <span>{{ clip.game }} / {{ clip.reason }}</span>
   </div>
+=======
+  <span style="margin-left:auto;color:var(--muted);font-size:12px;">
+    {{ clip.game }} / {{ clip.reason }}
+  </span>
+>>>>>>> origin/main
 {% endblock %}
 
 {% block content %}
@@ -226,7 +232,11 @@ button {
       </div>
 
       <div class="panel-section">
+<<<<<<< HEAD
         <h3>5. Status</h3>
+=======
+        <h3>Status</h3>
+>>>>>>> origin/main
         <div id="statusBox">Ready.</div>
       </div>
     </div>

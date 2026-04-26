@@ -44,16 +44,20 @@ rejected/**
 logs/**
 !logs/.gitkeep
 
+<<<<<<< HEAD
 # Local operational state
 data/*.sqlite3
 data/*.sqlite3-*
 data/*.db
 distribution/manual_packs/**
 
+=======
+>>>>>>> origin/main
 # Assets — keep folder structure, ignore actual media files
 assets/music/**
 !assets/music/.gitkeep
 
+<<<<<<< HEAD
 # YOLO workspaces — keep registry metadata, ignore large local datasets and weights
 models/yolo/*/images/**
 !models/yolo/*/images/
@@ -77,11 +81,14 @@ yolov5*.pt
 !models/yolo/*/weights/
 !models/yolo/*/weights/.gitkeep
 
+=======
+>>>>>>> origin/main
 # Local review/scouting scratch artifacts
 Screenshot*.png
 screen*.png
 scout_cache.json
 
+<<<<<<< HEAD
 # Generated game-pack reports — audit runs, crops, feedback logs are operational outputs
 assets/games/*/reports/evaluation/*.json
 assets/games/*/reports/weapon_detector/
@@ -90,6 +97,8 @@ assets/games/*/reports/feedback/
 # Icon version backups
 assets/weapon_icons/**/.backups/
 
+=======
+>>>>>>> origin/main
 # OS
 .DS_Store
 Thumbs.db

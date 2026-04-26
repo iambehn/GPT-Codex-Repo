@@ -51,6 +51,7 @@ niceshot_detector:
   profile: "cod_like_default"
   fixture_dir: null
   fixture_path: null
+<<<<<<< HEAD
   profiles:
     cod_like_default:
       score_multipliers:
@@ -86,6 +87,8 @@ niceshot_detector:
       kind_aliases:
         ult_swing: "ultimate_swing"
         teamwipe: "team_wipe_candidate"
+=======
+>>>>>>> origin/main
   stub:
     action_score: 0.0
     hook_score: 0.0
@@ -94,11 +97,15 @@ niceshot_detector:
 
 yolo_detector:
   enabled: true
+<<<<<<< HEAD
   inference_mode: video
+=======
+>>>>>>> origin/main
   confidence_threshold: 0.60
   iou_threshold: 0.45
   imgsz: 640
   max_det: 100
+<<<<<<< HEAD
   vid_stride: 1
   frame_sample: middle
   max_samples: 24
@@ -177,6 +184,11 @@ distribution:
       policy_mode: "human_assisted"
       daily_cap: 2
       min_spacing_minutes: 360
+=======
+  verbose: false
+
+distribution:
+>>>>>>> origin/main
   platforms:
     youtube_shorts:
       enabled: false        # set true + configure YOUTUBE_CLIENT_ID/SECRET in .env
@@ -244,6 +256,7 @@ audio:
 # The "Analytics" tab and header row are created automatically on first run.
 analytics:
   enabled: true   # set false to disable without removing env vars
+<<<<<<< HEAD
   decision_rules:
     min_views_for_decision: 500
     boost_retention_min: 0.60
@@ -254,6 +267,8 @@ analytics:
     underperform_retention_max: 0.35
     underperform_views_min: 500
     winner_percentile: 0.90
+=======
+>>>>>>> origin/main
 
 # ---------------------------------------------------------------------------
 # Backup — Google Drive
@@ -484,12 +499,16 @@ weapon_detector:
   enabled: true
   confidence_threshold: 0.80
   frame_sample: "middle"
+<<<<<<< HEAD
   match_mode: "color"       # "color" | "grayscale" | "edges" | "hybrid"
   template_scales: [0.9, 1.0, 1.1]
   audit:
     top_k: 20
     min_confidence: 0.45
     export_crops: true
+=======
+  match_mode: "color"       # "color" | "grayscale" (use grayscale for semi-transparent HUDs)
+>>>>>>> origin/main
   icon_dir: "assets/weapon_icons"
   games:
     deadlock:

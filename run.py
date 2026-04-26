@@ -8,6 +8,7 @@ Usage:
     python run.py --game all
     python run.py --init-game valorant
     python run.py --validate-game-pack marvel_rivals
+<<<<<<< HEAD
     python run.py --evaluate-game-pack marvel_rivals
     python run.py --build-yolo-dataset marvel_rivals
     python run.py --train-yolo marvel_rivals
@@ -17,6 +18,11 @@ Usage:
     python run.py --promote-weapon-audit-crop marvel_rivals --rank 1 --overwrite
     python run.py --enrich-quarantine marvel_rivals
     python run.py --enrich-game-from-wiki marvel_rivals --wiki-url https://example.fandom.com/wiki/Characters
+=======
+    python run.py --enrich-quarantine marvel_rivals
+    python run.py --enrich-game-from-wiki marvel_rivals --wiki-url https://example.fandom.com/wiki/Characters
+    python run.py --distribute
+>>>>>>> origin/main
 
 Pipeline order:
   1. Ingestion
@@ -46,6 +52,10 @@ from dotenv import load_dotenv
 from pipeline.audio_detector import run_audio_detector
 from pipeline.clip_judge import evaluate as evaluate_clip
 from pipeline.decision_engine import select_template
+<<<<<<< HEAD
+=======
+from pipeline.distribution import list_reddit_flairs, poll_tiktok_pending, run_distribution
+>>>>>>> origin/main
 from pipeline.feature_extraction import run_feature_extraction
 from pipeline.game_pack import (
     get_game_metadata,
@@ -55,7 +65,10 @@ from pipeline.game_pack import (
     scaffold_game_pack,
     validate_game_pack,
 )
+<<<<<<< HEAD
 from pipeline.game_pack_evaluator import evaluate_game_pack, scaffold_gold_set
+=======
+>>>>>>> origin/main
 from pipeline.ingestion import run_ingestion
 from pipeline.hook_enforcer import run_hook_enforcer
 from pipeline.kill_feed import run_kill_feed_parser
@@ -66,6 +79,7 @@ from pipeline.scoring import run_scoring
 from pipeline.title_engine import generate_title
 from pipeline.transcription import run_transcription
 from pipeline.weapon_detector import run_weapon_detector
+<<<<<<< HEAD
 from pipeline.weapon_detector_audit import audit_weapon_detector
 from pipeline.weapon_asset_review import render_weapon_audit_review
 from pipeline.weapon_icon_promotion import promote_weapon_audit_crop
@@ -73,6 +87,12 @@ from pipeline.wiki_enrichment import enrich_game_from_wiki
 from pipeline.yolo_detector import run_yolo_detector
 from pipeline.yolo_dataset import build_yolo_dataset
 from pipeline.yolo_training import train_yolo_model
+=======
+from pipeline.wiki_enrichment import enrich_game_from_wiki
+from pipeline.yolo_detector import run_yolo_detector
+from utils.analytics import log_clip
+from utils.backup import backup_clip
+>>>>>>> origin/main
 from utils.file_utils import ensure_dirs, move_to_quarantine
 from utils.logger import get_logger
 from utils.metadata_injector import inject_metadata
@@ -207,6 +227,60 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
     logger.info(f"Pipeline complete for {game}. Launch review UI: python -m pipeline.review.app")
 
 
+<<<<<<< HEAD
+=======
+def run_distribution_for_all(config: dict, dry_run: bool = False) -> None:
+    """Distribute all approved clips that have not yet been posted."""
+    accepted_root = Path(config["paths"]["accepted"])
+    inbox_root = Path(config["paths"]["inbox"])
+    total = 0
+    distributed = 0
+
+    for game in list_supported_games(config):
+        game_dir = accepted_root / game
+        if not game_dir.exists():
+            continue
+
+        for clip_file in sorted(game_dir.glob("*.mp4")):
+            total += 1
+            meta_path = _find_meta_for_clip(clip_file, inbox_root / game)
+            if meta_path is None:
+                logger.warning(f"No meta.json found for {clip_file.name} — skipping distribution.")
+                continue
+
+            metadata = json.loads(meta_path.read_text())
+            if metadata.get("review_status") != "accepted":
+                continue
+
+            if dry_run:
+                enabled_platforms = [
+                    p for p, cfg in config.get("distribution", {}).get("platforms", {}).items()
+                    if cfg.get("enabled")
+                ]
+                score = metadata.get("scoring", {}).get("highlight_score", "n/a")
+                logger.info(
+                    f"[DRY RUN] {clip_file.name} | score={score} "
+                    f"| platforms={enabled_platforms or ['none enabled']}"
+                )
+                distributed += 1
+                continue
+
+            logger.info(f"Distributing: {clip_file.name}")
+            dist_results = run_distribution(str(clip_file), metadata, config)
+            metadata = json.loads(meta_path.read_text())
+            log_clip(metadata, dist_results, config)
+            backup_clip(str(clip_file), metadata, config)
+            distributed += 1
+
+    if dry_run:
+        logger.info(f"[DRY RUN] {distributed}/{total} clip(s) would be distributed.")
+    else:
+        logger.info(f"Distribution complete: {distributed}/{total} clip(s) processed.")
+    if distributed == 0 and total == 0:
+        logger.info("No clips in accepted/ yet. Run the pipeline then approve clips in the review UI.")
+
+
+>>>>>>> origin/main
 def _find_meta_for_clip(clip_file: Path, inbox_game_dir: Path) -> Path | None:
     """Locate the inbox .meta.json that matches an accepted clip."""
     parts = clip_file.stem.split("_", 2)
@@ -269,6 +343,7 @@ def enrich_quarantine(game: str, config: dict) -> None:
     logger.info(f"[enrich_quarantine] Restored {restored} clip(s) for {game}.")
 
 
+<<<<<<< HEAD
 def refresh_weapon_detector(game: str, config: dict, frame_sample: str | None = None) -> dict:
     stage_keys = ("inbox", "quarantine", "processing", "accepted")
     refreshed = 0
@@ -316,6 +391,8 @@ def refresh_weapon_detector(game: str, config: dict, frame_sample: str | None = 
     return summary
 
 
+=======
+>>>>>>> origin/main
 def main() -> None:
     load_dotenv()
 
@@ -323,11 +400,34 @@ def main() -> None:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--game", help="Game key to process or 'all'.")
     group.add_argument(
+<<<<<<< HEAD
+=======
+        "--distribute",
+        action="store_true",
+        help="Upload all approved clips from accepted/ to social media, log analytics, and back up to Drive.",
+    )
+    group.add_argument(
+>>>>>>> origin/main
         "--watch",
         action="store_true",
         help="Continuously run the pipeline for all games on a loop.",
     )
     group.add_argument(
+<<<<<<< HEAD
+=======
+        "--poll-tiktok",
+        action="store_true",
+        dest="poll_tiktok",
+        help="Check TikTok processing status for uploaded clips that don't have a URL yet.",
+    )
+    group.add_argument(
+        "--list-reddit-flairs",
+        action="store_true",
+        dest="list_reddit_flairs",
+        help="Print available link flairs for each configured subreddit, then exit.",
+    )
+    group.add_argument(
+>>>>>>> origin/main
         "--montage",
         metavar="GAME",
         help="Assemble a montage from accepted clips for GAME (or 'all').",
@@ -345,6 +445,7 @@ def main() -> None:
         help="Validate the required files and references for a game pack.",
     )
     group.add_argument(
+<<<<<<< HEAD
         "--evaluate-game-pack",
         metavar="GAME",
         dest="evaluate_game_pack",
@@ -387,6 +488,8 @@ def main() -> None:
         help="Render side-by-side comparison images from a weapon-detector audit report.",
     )
     group.add_argument(
+=======
+>>>>>>> origin/main
         "--enrich-quarantine",
         metavar="GAME",
         dest="enrich_quarantine",
@@ -406,6 +509,7 @@ def main() -> None:
     parser.add_argument(
         "--dry-run",
         action="store_true",
+<<<<<<< HEAD
         help="Do not write final outputs for commands that support preview mode.",
     )
     parser.add_argument(
@@ -417,12 +521,16 @@ def main() -> None:
         "--weapon-frame-sample",
         choices=["middle", "kill_timestamps", "all"],
         help="With --refresh-weapon-detector: temporarily override the weapon detector frame sampling mode.",
+=======
+        help="With --distribute: show what would be uploaded without actually posting anything.",
+>>>>>>> origin/main
     )
     parser.add_argument(
         "--config",
         default="config.yaml",
         help="Path to config file (default: config.yaml).",
     )
+<<<<<<< HEAD
     parser.add_argument(
         "--report",
         help="With --promote-weapon-audit-crop: explicit audit report JSON path. Defaults to the latest report for the game.",
@@ -450,6 +558,8 @@ def main() -> None:
         default=10,
         help="With --render-weapon-audit-review: number of ranked candidates to render (default: 10).",
     )
+=======
+>>>>>>> origin/main
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -471,6 +581,7 @@ def main() -> None:
         print(print_validation_report(result))
         if not result["valid"]:
             sys.exit(1)
+<<<<<<< HEAD
     elif args.evaluate_game_pack:
         scaffold_gold_set(args.evaluate_game_pack, config)
         result = evaluate_game_pack(
@@ -525,6 +636,8 @@ def main() -> None:
         print(json.dumps(result, indent=2))
         if not result.get("ok"):
             sys.exit(1)
+=======
+>>>>>>> origin/main
     elif args.enrich_quarantine:
         ensure_dirs(config)
         enrich_quarantine(args.enrich_quarantine, config)
@@ -535,6 +648,16 @@ def main() -> None:
         print(json.dumps(result, indent=2))
         if result.get("status") == "failed":
             sys.exit(1)
+<<<<<<< HEAD
+=======
+    elif args.distribute:
+        ensure_dirs(config)
+        run_distribution_for_all(config, dry_run=args.dry_run)
+    elif args.poll_tiktok:
+        poll_tiktok_pending(config)
+    elif args.list_reddit_flairs:
+        list_reddit_flairs(config)
+>>>>>>> origin/main
     elif args.watch:
         ensure_dirs(config)
         interval = config.get("pipeline", {}).get("watch_interval_seconds", 300)

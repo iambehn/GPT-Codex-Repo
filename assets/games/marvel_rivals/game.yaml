@@ -17,6 +17,7 @@ detectors:
   niceshot:
     enabled: true
     provider: niceshot_ai
+<<<<<<< HEAD
     profile: hero_shooter_default
     profile_overrides:
       score_multipliers:
@@ -30,3 +31,6 @@ detectors:
       - precision_pick
       kind_aliases:
         ult_swing: ultimate_swing
+=======
+    profile: cod_like_default
+>>>>>>> origin/main

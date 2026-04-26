@@ -21,6 +21,7 @@ clip_judge:
       yolo: 0.2
       audio: 0.1
   composite_weights:
+<<<<<<< HEAD
     # Hero shooter: character identity is the content hook. Ults and combos don't always
     # register as kill-feed events, so kill_feed_score is reduced. context_score is raised
     # because which hero is playing drives title, thumbnail, and search discoverability.
@@ -31,6 +32,13 @@ clip_judge:
     context_score: 0.15
     yolo_event_score: 0.05  # character recognition; active once a YOLO model is configured
     niceshot_score: 0.05    # reserved; contributes once Niceshot integration is wired up
+=======
+    ai_clip_score: 0.35
+    ai_hook_score: 0.25
+    kill_feed_score: 0.2
+    audio_score: 0.1
+    context_score: 0.1
+>>>>>>> origin/main
   quarantine_reasons:
   - missing_context
   - hook_not_resolved
@@ -45,6 +53,9 @@ clip_judge:
     - rewatch_rate
     - shares
     - follows
+<<<<<<< HEAD
     threshold_step: 0.01
     weight_step: 0.05
     retrain_threshold: 3
+=======
+>>>>>>> origin/main

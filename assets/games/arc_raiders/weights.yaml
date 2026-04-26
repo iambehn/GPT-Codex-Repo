@@ -21,6 +21,7 @@ clip_judge:
       yolo: 0.2
       audio: 0.1
   composite_weights:
+<<<<<<< HEAD
     # Extraction shooter: clutch moments and extraction tension are the primary value driver.
     # Audio is heavily weighted — alarms, comms, near-death spikes sell the moment better
     # than character identity. context_score removed since who you are matters less than
@@ -31,6 +32,13 @@ clip_judge:
     audio_score: 0.15
     context_score: 0.00
     niceshot_score: 0.05    # reserved; contributes once Niceshot integration is wired up
+=======
+    ai_clip_score: 0.35
+    ai_hook_score: 0.25
+    kill_feed_score: 0.2
+    audio_score: 0.1
+    context_score: 0.1
+>>>>>>> origin/main
   quarantine_reasons:
   - missing_context
   - hook_not_resolved
