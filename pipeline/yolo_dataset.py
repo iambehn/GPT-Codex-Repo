@@ -258,6 +258,10 @@ def _export_roi_crop_dataset(
     asset_training_offsets = _asset_training_offsets(yolo_cfg)
     pseudo_label_confidence = _safe_float(yolo_cfg.get("weapon_pseudo_label_min_confidence"), 0.92)
 
+    dataset_cfg = dict(config.get("yolo_dataset") or {})
+    n_augment = max(0, int(dataset_cfg.get("augment_per_seed", 0)))
+    rng = np.random.default_rng(int(dataset_cfg.get("augment_seed", 42))) if n_augment > 0 else None
+
     for sample in _scan_asset_training_examples(game, config, game_pack, entity_labels, weapon_roi, cv2, asset_training_offsets):
         if sample.get("warning"):
             warnings.append(sample["warning"])
@@ -270,7 +274,7 @@ def _export_roi_crop_dataset(
             continue
         samples.append(sample)
 
-    for icon_sample in _icon_seed_export_samples(seed_manifest, entity_labels, weapon_roi, cv2, np):
+    for icon_sample in _icon_seed_export_samples(seed_manifest, entity_labels, weapon_roi, cv2, np, n_augment=n_augment, rng=rng):
         if icon_sample.get("warning"):
             warnings.append(icon_sample["warning"])
             continue
@@ -310,8 +314,10 @@ def _export_roi_crop_dataset(
             "clip_asset_training_examples": sum(1 for sample in exported_samples if sample["source_type"] == "clip_asset_training"),
             "weapon_detector_pseudo_examples": sum(1 for sample in exported_samples if sample["source_type"] == "weapon_detector_pseudo"),
             "icon_seed_examples": sum(1 for sample in exported_samples if sample["source_type"] == "icon_seed"),
+            "icon_seed_augmented_examples": sum(1 for sample in exported_samples if sample["source_type"] == "icon_seed_augmented"),
             "roi_template_examples": sum(1 for sample in exported_samples if sample["source_type"] == "roi_template_seed"),
             "classes_with_examples": sum(1 for entry in label_entries if class_counts.get(entry["label"], 0) > 0),
+            "augment_per_seed": n_augment,
         },
         "class_counts": class_counts,
         "asset_training_time_offsets_seconds": asset_training_offsets,
@@ -794,6 +800,8 @@ def _icon_seed_export_samples(
     weapon_roi: dict[str, int] | None,
     cv2: Any,
     np: Any,
+    n_augment: int = 0,
+    rng: Any = None,
 ) -> list[dict[str, Any]]:
     if not weapon_roi:
         return []
@@ -809,6 +817,8 @@ def _icon_seed_export_samples(
             samples.append({"warning": f"{item.get('source_path')}: could not load icon seed image."})
             continue
         canvas, bbox_norm = _place_seed_on_canvas(image, weapon_roi["w"], weapon_roi["h"], cv2, np)
+        roi_box = {**weapon_roi, "base_width": weapon_roi["w"], "base_height": weapon_roi["h"]}
+        source_path_str = str(item.get("source_path"))
         samples.append({
             "sample_id": f"{label_entry['label']}__icon_seed",
             "source_type": "icon_seed",
@@ -816,17 +826,32 @@ def _icon_seed_export_samples(
             "class_id": label_entry["class_id"],
             "maps_to": label_entry.get("maps_to"),
             "display_name": label_entry.get("display_name"),
-            "split_key": str(item.get("source_path")),
+            "split_key": source_path_str,
             "image_array": canvas,
             "bbox_norm": bbox_norm,
             "image_ext": ".png",
-            "source_path": str(item.get("source_path")),
-            "roi_box": {
-                **weapon_roi,
-                "base_width": weapon_roi["w"],
-                "base_height": weapon_roi["h"],
-            },
+            "source_path": source_path_str,
+            "roi_box": roi_box,
         })
+
+        if n_augment > 0 and rng is not None:
+            for aug_idx, (aug_canvas, aug_bbox) in enumerate(
+                _augment_seed_variants(image, weapon_roi["w"], weapon_roi["h"], n_augment, cv2, np, rng)
+            ):
+                samples.append({
+                    "sample_id": f"{label_entry['label']}__icon_seed_aug{aug_idx:03d}",
+                    "source_type": "icon_seed_augmented",
+                    "label": label_entry["label"],
+                    "class_id": label_entry["class_id"],
+                    "maps_to": label_entry.get("maps_to"),
+                    "display_name": label_entry.get("display_name"),
+                    "split_key": source_path_str,
+                    "image_array": aug_canvas,
+                    "bbox_norm": aug_bbox,
+                    "image_ext": ".png",
+                    "source_path": source_path_str,
+                    "roi_box": roi_box,
+                })
     return samples
 
 
@@ -878,7 +903,16 @@ def _roi_template_export_samples(
     return samples
 
 
-def _place_seed_on_canvas(image: Any, canvas_w: int, canvas_h: int, cv2: Any, np: Any) -> tuple[Any, dict[str, float]]:
+def _place_seed_on_canvas(
+    image: Any,
+    canvas_w: int,
+    canvas_h: int,
+    cv2: Any,
+    np: Any,
+    scale_jitter: float = 1.0,
+    pos_jitter_x: int = 0,
+    pos_jitter_y: int = 0,
+) -> tuple[Any, dict[str, float]]:
     if image.ndim == 2:
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGRA)
     elif image.shape[2] == 3:
@@ -889,13 +923,16 @@ def _place_seed_on_canvas(image: Any, canvas_w: int, canvas_h: int, cv2: Any, np
     max_h = max(1, canvas_h - margin * 2)
     src_h, src_w = image.shape[:2]
     scale = min(max_w / max(src_w, 1), max_h / max(src_h, 1), 1.0)
+    scale = scale * max(0.6, min(float(scale_jitter), 1.4))
     target_w = max(1, int(round(src_w * scale)))
     target_h = max(1, int(round(src_h * scale)))
     resized = cv2.resize(image, (target_w, target_h), interpolation=cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR)
 
     canvas = np.zeros((canvas_h, canvas_w, 4), dtype=np.uint8)
-    x = max(0, (canvas_w - target_w) // 2)
-    y = max(0, (canvas_h - target_h) // 2)
+    cx = (canvas_w - target_w) // 2 + int(pos_jitter_x)
+    cy = (canvas_h - target_h) // 2 + int(pos_jitter_y)
+    x = max(0, min(cx, max(0, canvas_w - target_w)))
+    y = max(0, min(cy, max(0, canvas_h - target_h)))
     alpha = resized[:, :, 3:4].astype(np.float32) / 255.0
     canvas_region = canvas[y:y + target_h, x:x + target_w, :3].astype(np.float32)
     image_region = resized[:, :, :3].astype(np.float32)
@@ -909,6 +946,58 @@ def _place_seed_on_canvas(image: Any, canvas_w: int, canvas_h: int, cv2: Any, np
         "h": round(target_h / canvas_h, 6),
     }
     return canvas[:, :, :3], bbox_norm
+
+
+def _augment_seed_variants(
+    image: Any,
+    canvas_w: int,
+    canvas_h: int,
+    n_variants: int,
+    cv2: Any,
+    np: Any,
+    rng: Any,
+) -> list[tuple[Any, dict[str, float]]]:
+    """Generate n_variants augmented icon-on-canvas images from a single source icon.
+
+    Augmentations simulate real capture variability: brightness, noise, compression
+    blur, and slight scale/position shifts within the HUD crop region.
+    """
+    results = []
+    for _ in range(n_variants):
+        aug = image.copy().astype(np.float32)
+
+        # Brightness + contrast jitter
+        brightness = rng.uniform(0.72, 1.28)
+        contrast = rng.uniform(0.85, 1.15)
+        aug = aug * brightness
+        mean = aug.mean()
+        aug = (aug - mean) * contrast + mean
+        aug = np.clip(aug, 0, 255).astype(np.uint8)
+
+        # Gaussian noise (simulates sensor/compression noise)
+        noise_sigma = rng.uniform(0, 9)
+        if noise_sigma > 0.5:
+            noise = rng.normal(0, noise_sigma, aug.shape).astype(np.float32)
+            aug = np.clip(aug.astype(np.float32) + noise, 0, 255).astype(np.uint8)
+
+        # Slight blur (simulates video encoding artifacts)
+        blur_k = int(rng.choice([0, 0, 1, 1, 2]))
+        if blur_k > 0:
+            aug = cv2.GaussianBlur(aug, (blur_k * 2 + 1, blur_k * 2 + 1), 0)
+
+        # Scale and position jitter when placing on canvas
+        scale_jitter = float(rng.uniform(0.88, 1.10))
+        pos_jitter_x = int(rng.integers(-5, 6))
+        pos_jitter_y = int(rng.integers(-5, 6))
+
+        canvas, bbox_norm = _place_seed_on_canvas(
+            aug, canvas_w, canvas_h, cv2, np,
+            scale_jitter=scale_jitter,
+            pos_jitter_x=pos_jitter_x,
+            pos_jitter_y=pos_jitter_y,
+        )
+        results.append((canvas, bbox_norm))
+    return results
 
 
 def _assign_splits(samples: list[dict[str, Any]]) -> list[dict[str, Any]]:

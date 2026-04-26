@@ -106,13 +106,17 @@ yolo_detector:
   weapon_pseudo_label_min_confidence: 0.92
   verbose: false
 
+yolo_dataset:
+  augment_per_seed: 30   # augmented variants generated per icon seed image
+  augment_seed: 42       # RNG seed for reproducible augmentation
+
 yolo_training:
   base_model: "yolov8s.pt"
   epochs: 80
   imgsz: 640
   batch: 16
   patience: 15
-  device: "cpu"
+  device: "mps"          # Apple Silicon GPU — change to "cpu" or "cuda" if needed
   workers: 2
   run_name_prefix: "train"
   minimum_examples: 30

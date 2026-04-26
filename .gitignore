@@ -62,12 +62,18 @@ models/yolo/*/images/**
 !models/yolo/*/images/val/
 !models/yolo/*/images/val/.gitkeep
 models/yolo/*/labels/**/*.txt
+models/yolo/*/labels/**/*.cache
 !models/yolo/*/labels/
 !models/yolo/*/labels/train/
 !models/yolo/*/labels/train/.gitkeep
 !models/yolo/*/labels/val/
 !models/yolo/*/labels/val/.gitkeep
 models/yolo/*/weights/**
+models/yolo/*/runs/
+
+# Downloaded base model weights
+yolov8*.pt
+yolov5*.pt
 !models/yolo/*/weights/
 !models/yolo/*/weights/.gitkeep
 

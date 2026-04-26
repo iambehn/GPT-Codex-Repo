@@ -17,6 +17,8 @@ Usage:
     python run.py --promote-weapon-audit-crop marvel_rivals --rank 1 --overwrite
     python run.py --review-feedback marvel_rivals
     python run.py --apply-feedback marvel_rivals
+    python run.py --perf-feedback marvel_rivals
+    python run.py --apply-perf-feedback marvel_rivals
     python run.py --enrich-quarantine marvel_rivals
     python run.py --enrich-game-from-wiki marvel_rivals --wiki-url https://example.fandom.com/wiki/Characters
     python run.py --distribute
@@ -75,6 +77,7 @@ from pipeline.kill_feed import run_kill_feed_parser
 from pipeline.montage import run_montage
 from pipeline.niceshot_detector import run_niceshot_detector
 from pipeline.processing import run_processing
+from pipeline.performance_feedback import apply_performance_updates
 from pipeline.review_feedback import apply_feedback_updates, summarize_feedback
 from pipeline.scoring import run_scoring
 from pipeline.title_engine import generate_title
@@ -472,6 +475,18 @@ def main() -> None:
         help="Apply bounded clip-judge weight updates from recorded review feedback.",
     )
     group.add_argument(
+        "--perf-feedback",
+        metavar="GAME",
+        dest="perf_feedback",
+        help="Report social performance → weight recommendations for GAME (dry run, no changes written).",
+    )
+    group.add_argument(
+        "--apply-perf-feedback",
+        metavar="GAME",
+        dest="apply_perf_feedback",
+        help="Apply social performance weight updates to GAME's weights.yaml.",
+    )
+    group.add_argument(
         "--enrich-quarantine",
         metavar="GAME",
         dest="enrich_quarantine",
@@ -621,6 +636,14 @@ def main() -> None:
     elif args.apply_feedback:
         result = apply_feedback_updates(args.apply_feedback, config, dry_run=args.dry_run)
         print(json.dumps(result, indent=2))
+    elif args.perf_feedback:
+        result = apply_performance_updates(args.perf_feedback, config, dry_run=True)
+        print(json.dumps(result, indent=2))
+    elif args.apply_perf_feedback:
+        result = apply_performance_updates(args.apply_perf_feedback, config, dry_run=args.dry_run)
+        print(json.dumps(result, indent=2))
+        if not result.get("ok"):
+            sys.exit(1)
     elif args.enrich_quarantine:
         ensure_dirs(config)
         enrich_quarantine(args.enrich_quarantine, config)
