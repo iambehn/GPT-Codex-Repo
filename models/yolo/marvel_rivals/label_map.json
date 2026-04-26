@@ -1,0 +1,127 @@
+{
+  "schema_version": "yolo_dataset.v1",
+  "game": "marvel_rivals",
+  "generated_at": "2026-04-25T17:43:27+00:00",
+  "classes": [
+    {
+      "class_id": 0,
+      "label": "hero_adam_warlock",
+      "kind": "entity",
+      "maps_to": "adam_warlock",
+      "display_name": "Adam Warlock",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 1,
+      "label": "hero_black_cat",
+      "kind": "entity",
+      "maps_to": "black_cat",
+      "display_name": "Black Cat",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 2,
+      "label": "hero_cloak_and_dagger",
+      "kind": "entity",
+      "maps_to": "cloak_and_dagger",
+      "display_name": "Cloak & Dagger",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 3,
+      "label": "hero_daredevil",
+      "kind": "entity",
+      "maps_to": "daredevil",
+      "display_name": "Daredevil",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 4,
+      "label": "hero_deadpool",
+      "kind": "entity",
+      "maps_to": "deadpool",
+      "display_name": "Deadpool",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 5,
+      "label": "hero_doctor_strange",
+      "kind": "entity",
+      "maps_to": "doctor_strange",
+      "display_name": "Doctor Strange",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 6,
+      "label": "hero_elsa_bloodstone",
+      "kind": "entity",
+      "maps_to": "elsa_bloodstone",
+      "display_name": "Elsa Bloodstone",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 7,
+      "label": "hero_jeff_the_land_shark",
+      "kind": "entity",
+      "maps_to": "jeff_the_land_shark",
+      "display_name": "Jeff the Land Shark",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 8,
+      "label": "hero_luna_snow",
+      "kind": "entity",
+      "maps_to": "luna_snow",
+      "display_name": "Luna Snow",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 9,
+      "label": "hero_namor",
+      "kind": "entity",
+      "maps_to": "namor",
+      "display_name": "Namor",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 10,
+      "label": "hero_peni_parker",
+      "kind": "entity",
+      "maps_to": "peni_parker",
+      "display_name": "Peni Parker",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 11,
+      "label": "hero_scarlet_witch",
+      "kind": "entity",
+      "maps_to": "scarlet_witch",
+      "display_name": "Scarlet Witch",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 12,
+      "label": "hero_star_lord",
+      "kind": "entity",
+      "maps_to": "star_lord",
+      "display_name": "Star-Lord",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 13,
+      "label": "hero_the_punisher",
+      "kind": "entity",
+      "maps_to": "the_punisher",
+      "display_name": "The Punisher",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 14,
+      "label": "hero_the_thing",
+      "kind": "entity",
+      "maps_to": "the_thing",
+      "display_name": "The Thing",
+      "entity_kind": "heroes"
+    }
+  ]
+}

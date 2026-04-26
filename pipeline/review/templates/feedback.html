@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback{% endblock %}
+
+{% block extra_styles %}
+.feedback-page {
+  padding: 24px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.feedback-grid {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 18px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.panel h2, .panel h3 {
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.panel h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+.game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.game-link {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: #121212;
+}
+.game-link.active {
+  border-color: var(--accent);
+  background: #181533;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.metric-card {
+  background: #111;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+.metric-card strong {
+  display: block;
+  font-size: 22px;
+  margin-top: 4px;
+}
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #232323;
+}
+.row:last-child {
+  border-bottom: none;
+}
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+}
+.pill-ok {
+  background: #0c2c1b;
+  color: #4ade80;
+}
+.pill-warn {
+  background: #2a1f08;
+  color: #facc15;
+}
+.apply-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+button {
+  border: none;
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.primary-btn {
+  background: var(--accent);
+  color: #fff;
+}
+#applyStatus {
+  margin-top: 10px;
+  white-space: pre-wrap;
+  font-size: 12px;
+  color: var(--muted);
+}
+@media (max-width: 980px) {
+  .feedback-grid, .split, .metrics {
+    grid-template-columns: 1fr;
+  }
+}
+{% endblock %}
+
+{% block content %}
+<div class="feedback-page">
+  <div class="feedback-grid">
+    <aside class="panel">
+      <h2>Game Feedback</h2>
+      <div class="game-list">
+        {% for summary in summaries %}
+        <a
+          class="game-link {% if summary.game == selected_game %}active{% endif %}"
+          href="{{ url_for('feedback_dashboard', game=summary.game) }}"
+        >
+          <div>{{ summary.game.replace('_', ' ').title() }}</div>
+          <div class="muted">{{ summary.total_entries }} feedback event{{ 's' if summary.total_entries != 1 else '' }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    </aside>
+
+    <section>
+      {% if not selected %}
+      <div class="panel">
+        <h2>No Feedback Yet</h2>
+        <p class="muted">Record false positives, false negatives, ROI requests, or retrain requests from Queue or Quarantine to start the loop.</p>
+      </div>
+      {% else %}
+      <div class="metrics">
+        <div class="metric-card">
+          <div class="muted">Total Feedback</div>
+          <strong>{{ selected.total_entries }}</strong>
+        </div>
+        <div class="metric-card">
+          <div class="muted">False Positives</div>
+          <strong>{{ selected.counts.false_positive or 0 }}</strong>
+        </div>
+        <div class="metric-card">
+          <div class="muted">False Negatives</div>
+          <strong>{{ selected.counts.false_negative or 0 }}</strong>
+        </div>
+        <div class="metric-card">
+          <div class="muted">ROI Requests</div>
+          <strong>{{ selected.counts.needs_roi_template or 0 }}</strong>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <h2>Weight Updates</h2>
+          {% if selected.weight_update.would_change %}
+          <div class="pill pill-warn">Pending changes</div>
+          {% else %}
+          <div class="pill pill-ok">No change needed</div>
+          {% endif %}
+
+          <div class="list" style="margin-top:12px;">
+            {% for change in selected.weight_update.changes %}
+            <div class="row"><span>{{ change }}</span></div>
+            {% else %}
+            <div class="muted">No weight changes recommended from current feedback volume.</div>
+            {% endfor %}
+          </div>
+
+          <div class="apply-row">
+            <div class="muted">Apply bounded threshold and composite-weight updates to `weights.yaml`.</div>
+            <button class="primary-btn" id="applyBtn" data-game="{{ selected.game }}">Apply Updates</button>
+          </div>
+          <div id="applyStatus">Ready.</div>
+        </div>
+
+        <div class="panel">
+          <h2>Retrain Pressure</h2>
+          <div class="pill {% if selected.retrain_recommendation.recommended %}pill-warn{% else %}pill-ok{% endif %}">
+            {{ "Retrain recommended" if selected.retrain_recommendation.recommended else "No retrain yet" }}
+          </div>
+          <div class="list" style="margin-top:12px;">
+            <div class="row">
+              <span>Reason</span>
+              <span class="muted">{{ selected.retrain_recommendation.reason }}</span>
+            </div>
+            <div class="row">
+              <span>Related feedback count</span>
+              <span>{{ selected.retrain_recommendation.related_feedback_count }}</span>
+            </div>
+            <div class="row">
+              <span>Threshold</span>
+              <span>{{ selected.retrain_recommendation.threshold }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="split" style="margin-top:18px;">
+        <div class="panel">
+          <h2>ROI Template Requests</h2>
+          <div class="list">
+            {% for request in selected.roi_template_requests %}
+            <div class="row">
+              <span>{{ request.target }}</span>
+              <span>{{ request.count }}</span>
+            </div>
+            {% else %}
+            <div class="muted">No ROI template requests recorded.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Recent Feedback</h2>
+          <div class="list">
+            {% for item in selected.recent_entries %}
+            <div class="row" style="display:block;">
+              <div style="display:flex;justify-content:space-between;gap:12px;">
+                <strong>{{ item.feedback_type.replace('_', ' ') }}</strong>
+                <span class="muted">{{ item.recorded_at[:19].replace('T', ' ') }}</span>
+              </div>
+              <div class="muted">{{ item.clip_id }} · {{ item.detector }} · {{ item.source_stage }}</div>
+              {% if item.note %}
+              <div style="margin-top:6px;">{{ item.note }}</div>
+              {% endif %}
+            </div>
+            {% else %}
+            <div class="muted">No feedback recorded yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const applyBtn = document.getElementById('applyBtn');
+const applyStatus = document.getElementById('applyStatus');
+
+if (applyBtn) {
+  applyBtn.addEventListener('click', async () => {
+    const game = applyBtn.dataset.game;
+    applyStatus.textContent = 'Applying feedback updates...';
+    const response = await fetch(`/api/feedback/apply/${encodeURIComponent(game)}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({dry_run: false}),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) {
+      applyStatus.textContent = payload.error || 'Failed to apply feedback updates.';
+      return;
+    }
+    applyStatus.textContent = JSON.stringify(payload.result, null, 2);
+  });
+}
+</script>
+{% endblock %}

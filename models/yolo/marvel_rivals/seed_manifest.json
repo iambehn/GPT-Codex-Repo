@@ -1,0 +1,260 @@
+{
+  "schema_version": "yolo_dataset.v1",
+  "game": "marvel_rivals",
+  "generated_at": "2026-04-25T17:43:27+00:00",
+  "model_dir": "/Users/tj/GPT-Codex-Repo/models/yolo/marvel_rivals",
+  "classes": [
+    {
+      "class_id": 0,
+      "label": "hero_adam_warlock",
+      "kind": "entity",
+      "maps_to": "adam_warlock",
+      "display_name": "Adam Warlock",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 1,
+      "label": "hero_black_cat",
+      "kind": "entity",
+      "maps_to": "black_cat",
+      "display_name": "Black Cat",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 2,
+      "label": "hero_cloak_and_dagger",
+      "kind": "entity",
+      "maps_to": "cloak_and_dagger",
+      "display_name": "Cloak & Dagger",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 3,
+      "label": "hero_daredevil",
+      "kind": "entity",
+      "maps_to": "daredevil",
+      "display_name": "Daredevil",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 4,
+      "label": "hero_deadpool",
+      "kind": "entity",
+      "maps_to": "deadpool",
+      "display_name": "Deadpool",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 5,
+      "label": "hero_doctor_strange",
+      "kind": "entity",
+      "maps_to": "doctor_strange",
+      "display_name": "Doctor Strange",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 6,
+      "label": "hero_elsa_bloodstone",
+      "kind": "entity",
+      "maps_to": "elsa_bloodstone",
+      "display_name": "Elsa Bloodstone",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 7,
+      "label": "hero_jeff_the_land_shark",
+      "kind": "entity",
+      "maps_to": "jeff_the_land_shark",
+      "display_name": "Jeff the Land Shark",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 8,
+      "label": "hero_luna_snow",
+      "kind": "entity",
+      "maps_to": "luna_snow",
+      "display_name": "Luna Snow",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 9,
+      "label": "hero_namor",
+      "kind": "entity",
+      "maps_to": "namor",
+      "display_name": "Namor",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 10,
+      "label": "hero_peni_parker",
+      "kind": "entity",
+      "maps_to": "peni_parker",
+      "display_name": "Peni Parker",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 11,
+      "label": "hero_scarlet_witch",
+      "kind": "entity",
+      "maps_to": "scarlet_witch",
+      "display_name": "Scarlet Witch",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 12,
+      "label": "hero_star_lord",
+      "kind": "entity",
+      "maps_to": "star_lord",
+      "display_name": "Star-Lord",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 13,
+      "label": "hero_the_punisher",
+      "kind": "entity",
+      "maps_to": "the_punisher",
+      "display_name": "The Punisher",
+      "entity_kind": "heroes"
+    },
+    {
+      "class_id": 14,
+      "label": "hero_the_thing",
+      "kind": "entity",
+      "maps_to": "the_thing",
+      "display_name": "The Thing",
+      "entity_kind": "heroes"
+    }
+  ],
+  "sources": {
+    "icons": [
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/adam_warlock.png",
+        "entity_id": "adam_warlock",
+        "suggested_labels": [
+          "hero_adam_warlock"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/black_cat.png",
+        "entity_id": "black_cat",
+        "suggested_labels": [
+          "hero_black_cat"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/cloak_and_dagger.png",
+        "entity_id": "cloak_and_dagger",
+        "suggested_labels": [
+          "hero_cloak_and_dagger"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/daredevil.png",
+        "entity_id": "daredevil",
+        "suggested_labels": [
+          "hero_daredevil"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/deadpool.png",
+        "entity_id": "deadpool",
+        "suggested_labels": [
+          "hero_deadpool"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/doctor_strange.png",
+        "entity_id": "doctor_strange",
+        "suggested_labels": [
+          "hero_doctor_strange"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/elsa_bloodstone.png",
+        "entity_id": "elsa_bloodstone",
+        "suggested_labels": [
+          "hero_elsa_bloodstone"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/jeff_the_land_shark.png",
+        "entity_id": "jeff_the_land_shark",
+        "suggested_labels": [
+          "hero_jeff_the_land_shark"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/luna_snow.png",
+        "entity_id": "luna_snow",
+        "suggested_labels": [
+          "hero_luna_snow"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/namor.png",
+        "entity_id": "namor",
+        "suggested_labels": [
+          "hero_namor"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/peni_parker.png",
+        "entity_id": "peni_parker",
+        "suggested_labels": [
+          "hero_peni_parker"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/scarlet_witch.png",
+        "entity_id": "scarlet_witch",
+        "suggested_labels": [
+          "hero_scarlet_witch"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/star_lord.png",
+        "entity_id": "star_lord",
+        "suggested_labels": [
+          "hero_star_lord"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/the_punisher.png",
+        "entity_id": "the_punisher",
+        "suggested_labels": [
+          "hero_the_punisher"
+        ]
+      },
+      {
+        "source_type": "icon",
+        "source_path": "/Users/tj/GPT-Codex-Repo/assets/weapon_icons/marvel_rivals/the_thing.png",
+        "entity_id": "the_thing",
+        "suggested_labels": [
+          "hero_the_thing"
+        ]
+      }
+    ],
+    "roi_templates": [],
+    "reference_frames": []
+  },
+  "summary": {
+    "seed_assets": 15,
+    "icons": 15,
+    "roi_templates": 0,
+    "reference_frames": 0
+  }
+}

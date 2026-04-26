@@ -37,31 +37,64 @@ detectors:
     roi_ref: weapon_detector
     icon_dir: assets/weapon_icons/marvel_rivals
     entities_kind: heroes
-    match_mode: color
+    match_mode: hybrid
+    template_scales:
+    - 0.9
+    - 1.0
+    - 1.1
   yolo:
     enabled: false
+    inference_mode: roi_crop
+    roi_ref: weapon_detector
     weights_path: models/yolo/marvel_rivals/weights/best.pt
     confidence_threshold: 0.6
     frame_sample: middle
     labels:
+      hero_adam_warlock:
+        kind: entity
+        maps_to: adam_warlock
+      hero_black_cat:
+        kind: entity
+        maps_to: black_cat
+      hero_cloak_and_dagger:
+        kind: entity
+        maps_to: cloak_and_dagger
+      hero_daredevil:
+        kind: entity
+        maps_to: daredevil
+      hero_deadpool:
+        kind: entity
+        maps_to: deadpool
+      hero_doctor_strange:
+        kind: entity
+        maps_to: doctor_strange
+      hero_elsa_bloodstone:
+        kind: entity
+        maps_to: elsa_bloodstone
+      hero_jeff_the_land_shark:
+        kind: entity
+        maps_to: jeff_the_land_shark
+      hero_luna_snow:
+        kind: entity
+        maps_to: luna_snow
+      hero_namor:
+        kind: entity
+        maps_to: namor
+      hero_peni_parker:
+        kind: entity
+        maps_to: peni_parker
+      hero_scarlet_witch:
+        kind: entity
+        maps_to: scarlet_witch
+      hero_star_lord:
+        kind: entity
+        maps_to: star_lord
       hero_the_punisher:
         kind: entity
         maps_to: the_punisher
-      hero_spider_man:
+      hero_the_thing:
         kind: entity
-        maps_to: spider_man
-      hero_groot:
-        kind: entity
-        maps_to: groot
-      medal_headshot:
-        kind: event
-        maps_to: precision_pick
-      medal_multikill:
-        kind: event
-        maps_to: multi_kill_swing
-      ultimate_swing:
-        kind: event
-        maps_to: ultimate_swing
+        maps_to: the_thing
 roi_templates: []
 ui_drift:
   expected_hashes: []

@@ -22,6 +22,7 @@ try:
     from pipeline.game_pack import validate_game_pack
     from pipeline.hook_enforcer import run_hook_enforcer
     from pipeline.niceshot_detector import run_niceshot_detector
+    import pipeline.yolo_detector as yolo_module
     from pipeline.yolo_detector import run_yolo_detector
 
     run_module = importlib.import_module("run")
@@ -113,10 +114,13 @@ class DetectorIntegrationTests(unittest.TestCase):
             },
             "hud.yaml": {
                 "ui_version": "test",
-                "rois": {},
+                "rois": {
+                    "weapon_detector": {"x": 58, "y": 895, "w": 125, "h": 135},
+                },
                 "detectors": {
                     "yolo": {
                         "enabled": yolo_enabled,
+                        "inference_mode": "video",
                         "weights_path": str(self.weights_path),
                         "labels": {
                             "hero_one_label": {"kind": "entity", "maps_to": "hero_one"},
@@ -178,6 +182,35 @@ class DetectorIntegrationTests(unittest.TestCase):
         malformed = run_niceshot_detector(self.clip, self.game, self.config, pack, force=True)
         self.assertEqual(malformed["status"], "error")
 
+    def test_niceshot_profile_overrides_normalize_scores_and_alias_moments(self) -> None:
+        self._write_pack(niceshot_enabled=True)
+        game_yaml = yaml.safe_load((self.pack_dir / "game.yaml").read_text())
+        game_yaml["detectors"]["niceshot"]["profile"] = "hero_shooter_default"
+        game_yaml["detectors"]["niceshot"]["profile_overrides"] = {
+            "score_multipliers": {"hook": 1.1},
+            "moment_boosts": {"ultimate_swing": 0.1},
+            "hook_kinds": ["ultimate_swing"],
+            "kind_aliases": {"ult_swing": "ultimate_swing"},
+        }
+        (self.pack_dir / "game.yaml").write_text(yaml.safe_dump(game_yaml))
+        from pipeline.game_pack import load_game_pack
+        pack = load_game_pack(self.game, self.config)
+
+        self.config["niceshot_detector"]["stub"] = {
+            "action_score": 0.5,
+            "hook_score": 0.5,
+            "confidence": 0.5,
+            "moments": [{"timestamp": 0.8, "kind": "ult_swing", "confidence": 0.6, "hook_candidate": False}],
+        }
+        result = run_niceshot_detector(self.clip, self.game, self.config, pack, force=True)
+
+        self.assertEqual(result["profile"], "hero_shooter_default")
+        self.assertEqual(result["moments"][0]["kind"], "ultimate_swing")
+        self.assertTrue(result["moments"][0]["hook_candidate"])
+        self.assertGreater(result["hook_score"], 0.5)
+        self.assertEqual(result["moment_summary"]["top_kind"], "ultimate_swing")
+        self.assertIn("profile_overrides_applied", result)
+
     def test_yolo_disabled_missing_weights_missing_dependency_and_mapping(self) -> None:
         pack = self._write_pack(yolo_enabled=False)
         disabled = run_yolo_detector(self.clip, self.game, self.config, pack, force=True)
@@ -202,10 +235,45 @@ class DetectorIntegrationTests(unittest.TestCase):
         self.assertEqual(detected["status"], "ok")
         self.assertEqual(detected["top_entity"]["entity_id"], "hero_one")
         self.assertEqual(detected["event_candidates"][0]["event_id"], "precision_pick")
+        self.assertIn("timing", detected)
 
         with patch("pipeline.yolo_detector._run_model_inference", return_value=[]):
             cached = run_yolo_detector(self.clip, self.game, self.config, pack, force=False)
         self.assertEqual(cached["top_entity"]["entity_id"], "hero_one")
+
+    def test_yolo_timestamp_estimation_uses_fps_and_vid_stride(self) -> None:
+        ts = yolo_module._estimate_timestamp(3, {"fps": 30.0, "duration_seconds": 10.0, "vid_stride": 2}, 20)
+        self.assertEqual(ts, 0.2)
+
+        interpolated = yolo_module._estimate_timestamp(2, {"fps": None, "duration_seconds": 8.0, "vid_stride": 1}, 5)
+        self.assertEqual(interpolated, 4.0)
+
+    def test_yolo_roi_crop_helpers_map_boxes_and_limit_samples(self) -> None:
+        roi = yolo_module._resolve_inference_roi(
+            {"inference_mode": "roi_crop", "roi_ref": "weapon_detector"},
+            self._write_pack(yolo_enabled=True),
+        )
+        self.assertEqual(roi["x"], 58)
+        self.assertEqual(roi["h"], 135)
+
+        mapped = yolo_module._map_roi_box_to_frame([2, 3, 20, 22], roi)
+        self.assertEqual(mapped, [60.0, 898.0, 78.0, 917.0])
+
+        indices = yolo_module._select_frame_indices(120, {"frame_sample": "stride", "vid_stride": 5, "max_samples": 6})
+        self.assertEqual(indices, [0, 20, 40, 60, 80, 100])
+
+    def test_yolo_roi_crop_mode_dispatches_to_roi_inference(self) -> None:
+        with patch("pipeline.yolo_detector._run_roi_crop_inference", return_value=[]) as roi_infer, \
+            patch("pipeline.yolo_detector._run_video_inference", return_value=[]) as video_infer:
+            yolo_module._run_model_inference(
+                self.clip,
+                self.weights_path,
+                {"inference_mode": "roi_crop", "roi_ref": "weapon_detector"},
+                self._write_pack(yolo_enabled=True),
+            )
+
+        roi_infer.assert_called_once()
+        video_infer.assert_not_called()
 
     def test_clip_judge_uses_niceshot_moments_and_yolo_context(self) -> None:
         pack = self._write_pack(yolo_enabled=True)
@@ -230,6 +298,7 @@ class DetectorIntegrationTests(unittest.TestCase):
         self.assertEqual(result["context"]["player_entity"], "hero_two")
         self.assertEqual(result["context"]["detected_event"], "precision_pick")
         self.assertEqual(result["detector_outputs"]["yolo"]["top_entity"]["entity_id"], "hero_two")
+        self.assertTrue(any("evidence" in moment for moment in result["candidate_moments"]))
 
     def test_game_pack_validation_rejects_bad_yolo_mapping(self) -> None:
         pack = yaml.safe_load((self.pack_dir / "hud.yaml").read_text())
@@ -265,6 +334,48 @@ class DetectorIntegrationTests(unittest.TestCase):
             run_module._process_clip(clip, self.game, self.config)
 
         self.assertEqual(calls[:7], ["audio", "kill_feed", "weapon", "niceshot", "yolo", "hook_enforcer", "judge"])
+
+    def test_refresh_weapon_detector_reruns_existing_sidecars(self) -> None:
+        inbox_dir = self.root / "inbox" / self.game
+        processing_dir = self.root / "processing" / self.game
+        inbox_dir.mkdir(parents=True, exist_ok=True)
+        processing_dir.mkdir(parents=True, exist_ok=True)
+
+        inbox_clip = inbox_dir / "refresh_a.mp4"
+        inbox_clip.write_bytes(b"a")
+        (inbox_dir / "refresh_a.meta.json").write_text(json.dumps({
+            "clip_id": "refresh_a",
+            "game": self.game,
+            "clip_path": str(inbox_clip),
+        }))
+
+        processing_clip = processing_dir / "refresh_b.mp4"
+        processing_clip.write_bytes(b"b")
+        (processing_dir / "refresh_b.meta.json").write_text(json.dumps({
+            "clip_id": "refresh_b",
+            "game": self.game,
+            "clip_path": str(processing_clip),
+        }))
+
+        missing_meta = inbox_dir / "missing.meta.json"
+        missing_meta.write_text(json.dumps({
+            "clip_id": "missing",
+            "game": self.game,
+            "clip_path": str(inbox_dir / "missing.mp4"),
+        }))
+
+        with patch.object(run_module, "run_weapon_detector", return_value={"method": "no_match"}) as mocked:
+            result = run_module.refresh_weapon_detector(self.game, self.config, frame_sample="all")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["refreshed"], 2)
+        self.assertEqual(result["skipped_missing"], 1)
+        self.assertEqual(result["frame_sample"], "all")
+        self.assertEqual(mocked.call_count, 2)
+        called_paths = {Path(call.args[0]) for call in mocked.call_args_list}
+        self.assertEqual(called_paths, {inbox_clip, processing_clip})
+        called_frame_samples = {call.args[2]["weapon_detector"]["frame_sample"] for call in mocked.call_args_list}
+        self.assertEqual(called_frame_samples, {"all"})
 
 
 if __name__ == "__main__":

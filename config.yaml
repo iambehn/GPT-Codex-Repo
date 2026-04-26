@@ -51,6 +51,41 @@ niceshot_detector:
   profile: "cod_like_default"
   fixture_dir: null
   fixture_path: null
+  profiles:
+    cod_like_default:
+      score_multipliers:
+        action: 1.0
+        hook: 1.0
+        confidence: 1.0
+      score_weights:
+        action: 0.45
+        hook: 0.35
+        confidence: 0.20
+      moment_boosts:
+        flick: 0.05
+        headshot: 0.06
+        entry_frag: 0.05
+      hook_kinds: ["flick", "headshot", "entry_frag", "killstreak", "precision_pick"]
+      non_hook_kinds: ["audio_spike", "ambient_action"]
+      kind_aliases: {}
+    hero_shooter_default:
+      score_multipliers:
+        action: 1.0
+        hook: 1.05
+        confidence: 1.0
+      score_weights:
+        action: 0.40
+        hook: 0.40
+        confidence: 0.20
+      moment_boosts:
+        ultimate_swing: 0.08
+        team_wipe_candidate: 0.06
+        multi_kill_swing: 0.05
+      hook_kinds: ["ultimate_swing", "team_wipe_candidate", "multi_kill_swing", "entry_frag", "precision_pick"]
+      non_hook_kinds: ["ambient_action"]
+      kind_aliases:
+        ult_swing: "ultimate_swing"
+        teamwipe: "team_wipe_candidate"
   stub:
     action_score: 0.0
     hook_score: 0.0
@@ -59,13 +94,85 @@ niceshot_detector:
 
 yolo_detector:
   enabled: true
+  inference_mode: video
   confidence_threshold: 0.60
   iou_threshold: 0.45
   imgsz: 640
   max_det: 100
+  vid_stride: 1
+  frame_sample: middle
+  max_samples: 24
+  asset_training_time_offsets_seconds: [0.0, -0.2, 0.2]
+  weapon_pseudo_label_min_confidence: 0.92
   verbose: false
 
+yolo_training:
+  base_model: "yolov8s.pt"
+  epochs: 80
+  imgsz: 640
+  batch: 16
+  patience: 15
+  device: "cpu"
+  workers: 2
+  run_name_prefix: "train"
+  minimum_examples: 30
+
 distribution:
+  # Operational queue state is local SQLite. Google Sheets remains analytics truth.
+  queue_db_path: "data/distribution_queue.sqlite3"
+  manual_pack_dir: "distribution/manual_packs"
+  schedule:
+    default_timezone: "America/New_York"
+    default_daily_cap: 3
+    default_min_spacing_minutes: 180
+    ready_delay_minutes: 0
+    jitter_minutes: 20
+    retry_base_minutes: 30
+    retry_jitter_minutes: 10
+    retry_max_attempts: 3
+    circuit_breaker_window_minutes: 60
+    circuit_breaker_failure_threshold: 3
+  accounts:
+    # Enable one or more accounts when you are ready to schedule publishing.
+    # policy_mode options:
+    #   official_api     — post only through the platform's official API adapter
+    #   human_assisted  — generate a manual publish pack; no automated posting
+    #   disabled        — keep configured but blocked by compliance
+    - account_id: "youtube_main"
+      platform: "youtube_shorts"
+      channel: "main"
+      enabled: false
+      policy_mode: "official_api"
+      daily_cap: 3
+      min_spacing_minutes: 180
+    - account_id: "tiktok_main"
+      platform: "tiktok"
+      channel: "main"
+      enabled: false
+      policy_mode: "human_assisted"
+      daily_cap: 3
+      min_spacing_minutes: 180
+    - account_id: "instagram_main"
+      platform: "instagram_reels"
+      channel: "main"
+      enabled: false
+      policy_mode: "human_assisted"
+      daily_cap: 2
+      min_spacing_minutes: 240
+    - account_id: "x_main"
+      platform: "twitter_x"
+      channel: "main"
+      enabled: false
+      policy_mode: "official_api"
+      daily_cap: 4
+      min_spacing_minutes: 180
+    - account_id: "reddit_main"
+      platform: "reddit"
+      channel: "main"
+      enabled: false
+      policy_mode: "human_assisted"
+      daily_cap: 2
+      min_spacing_minutes: 360
   platforms:
     youtube_shorts:
       enabled: false        # set true + configure YOUTUBE_CLIENT_ID/SECRET in .env
@@ -133,6 +240,16 @@ audio:
 # The "Analytics" tab and header row are created automatically on first run.
 analytics:
   enabled: true   # set false to disable without removing env vars
+  decision_rules:
+    min_views_for_decision: 500
+    boost_retention_min: 0.60
+    boost_engagement_rate_min: 0.04
+    boost_share_rate_min: 0.01
+    recycle_retention_min: 0.55
+    recycle_views_max: 1500
+    underperform_retention_max: 0.35
+    underperform_views_min: 500
+    winner_percentile: 0.90
 
 # ---------------------------------------------------------------------------
 # Backup — Google Drive
@@ -363,7 +480,12 @@ weapon_detector:
   enabled: true
   confidence_threshold: 0.80
   frame_sample: "middle"
-  match_mode: "color"       # "color" | "grayscale" (use grayscale for semi-transparent HUDs)
+  match_mode: "color"       # "color" | "grayscale" | "edges" | "hybrid"
+  template_scales: [0.9, 1.0, 1.1]
+  audit:
+    top_k: 20
+    min_confidence: 0.45
+    export_crops: true
   icon_dir: "assets/weapon_icons"
   games:
     deadlock:

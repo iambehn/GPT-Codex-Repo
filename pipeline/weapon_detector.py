@@ -54,6 +54,8 @@ TARGET_WIDTH = 1920
 TARGET_HEIGHT = 1080
 _DEFAULT_CONFIDENCE = 0.80
 _DEFAULT_ICON_DIR = "assets/weapon_icons"
+_DEFAULT_TEMPLATE_SCALES = [0.9, 1.0, 1.1]
+_CANDIDATE_LIMIT = 5
 
 
 # ---------------------------------------------------------------------------
@@ -103,8 +105,9 @@ def run_weapon_detector(clip_path: Path, game: str, config: dict, force: bool = 
         Path(game_pack.get("pack_root", ".")),
     )
     weapon_names = game_cfg.get("weapons", {})
-    match_mode = wd_cfg.get("match_mode", "color")   # "color" | "grayscale"
-    templates = _load_templates(icon_dir, weapon_names, match_mode)
+    match_mode = game_cfg.get("match_mode") or wd_cfg.get("match_mode", "color")
+    template_scales = _template_scales(game_cfg, wd_cfg)
+    templates = _load_templates(icon_dir, weapon_names)
 
     if not templates:
         logger.debug(f"[weapon_detector] No icons in {icon_dir} — skipping.")
@@ -124,7 +127,7 @@ def run_weapon_detector(clip_path: Path, game: str, config: dict, force: bool = 
         except (json.JSONDecodeError, OSError):
             pass
 
-    result = _detect(clip_path, roi, templates, threshold, frame_sample, kill_timestamps, match_mode)
+    result = _detect(clip_path, roi, templates, threshold, frame_sample, kill_timestamps, match_mode, template_scales)
     _write_and_return(meta_path, result)
 
     if result["weapon_id"]:
@@ -150,6 +153,7 @@ def _detect(
     frame_sample: str,
     kill_timestamps: list[float],
     match_mode: str = "color",
+    template_scales: list[float] | None = None,
 ) -> dict:
     """Open the clip, extract frames, and return the best template match."""
     cap = cv2.VideoCapture(str(clip_path))
@@ -174,8 +178,13 @@ def _detect(
         rh = roi.get("h", 80)
 
         best_weapon: dict | None = None
-        best_conf = 0.0
+        best_conf = -1.0
         best_time = 0.0
+        best_match_box: dict | None = None
+        best_variant = None
+        best_scale = None
+        frame_observations: list[dict] = []
+        top_candidates: dict[str, dict] = {}
 
         for t in sample_times:
             cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
@@ -191,24 +200,84 @@ def _detect(
             if roi_bgr.size == 0:
                 continue
 
-            # Grayscale mode: reduces sensitivity to background colour shifts
-            # caused by semi-transparent or game-world-tinted HUD elements.
-            search_frame = (
-                cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2GRAY)
-                if match_mode == "grayscale"
-                else roi_bgr
-            )
+            search_variants = _search_variants(roi_bgr)
+
+            frame_best_weapon: dict | None = None
+            frame_best_conf = -1.0
+            frame_best_box: dict | None = None
+            frame_best_variant: str | None = None
+            frame_best_scale = 1.0
 
             for tmpl in templates:
-                img = tmpl["image"]
-                if img.shape[0] > search_frame.shape[0] or img.shape[1] > search_frame.shape[1]:
+                match = _best_template_match(search_variants, tmpl, match_mode, template_scales or _DEFAULT_TEMPLATE_SCALES)
+                if match is None:
                     continue
-                res = cv2.matchTemplate(search_frame, img, cv2.TM_CCOEFF_NORMED)
-                _, max_val, _, _ = cv2.minMaxLoc(res)
+                match_box = {
+                    "x": int(rx + match["x"]),
+                    "y": int(ry + match["y"]),
+                    "w": int(match["w"]),
+                    "h": int(match["h"]),
+                    "base_width": TARGET_WIDTH,
+                    "base_height": TARGET_HEIGHT,
+                }
+                max_val = float(match["confidence"])
+                if max_val > frame_best_conf:
+                    frame_best_conf = max_val
+                    frame_best_weapon = tmpl
+                    frame_best_box = match_box
+                    frame_best_variant = str(match["variant"])
+                    frame_best_scale = float(match["scale"])
                 if max_val > best_conf:
                     best_conf = max_val
                     best_weapon = tmpl
                     best_time = t
+                    best_match_box = match_box
+                    best_variant = str(match["variant"])
+                    best_scale = float(match["scale"])
+
+                candidate = top_candidates.get(tmpl["weapon_id"])
+                candidate_payload = {
+                    "weapon_id": tmpl["weapon_id"],
+                    "display_name": tmpl["display_name"],
+                    "confidence": round(max_val, 3),
+                    "match_variant": str(match["variant"]),
+                    "match_scale": round(float(match["scale"]), 3),
+                    "match_box": match_box,
+                }
+                if candidate is None or float(candidate.get("confidence", 0.0)) < max_val:
+                    top_candidates[tmpl["weapon_id"]] = candidate_payload
+
+            if frame_best_weapon:
+                frame_observations.append({
+                    "timestamp": round(float(t), 3),
+                    "weapon_id": frame_best_weapon["weapon_id"],
+                    "display_name": frame_best_weapon["display_name"],
+                    "confidence": round(float(max(frame_best_conf, 0.0)), 3),
+                    "match_variant": frame_best_variant,
+                    "match_scale": round(float(frame_best_scale), 3),
+                    "match_box": frame_best_box,
+                })
+
+        debug_fields = {
+            "roi": {
+                "x": int(rx),
+                "y": int(ry),
+                "w": int(rw),
+                "h": int(rh),
+                "base_width": TARGET_WIDTH,
+                "base_height": TARGET_HEIGHT,
+            },
+            "sample_times": [round(float(ts), 3) for ts in sample_times],
+            "frame_observations": frame_observations,
+            "best_match_box": best_match_box,
+            "best_match_variant": best_variant,
+            "best_match_scale": round(float(best_scale), 3) if best_scale is not None else None,
+            "top_candidates": sorted(
+                top_candidates.values(),
+                key=lambda item: float(item.get("confidence", 0.0)),
+                reverse=True,
+            )[:_CANDIDATE_LIMIT],
+        }
 
         if best_weapon and best_conf >= threshold:
             return {
@@ -217,14 +286,16 @@ def _detect(
                 "confidence":   round(best_conf, 3),
                 "method":       "template_match",
                 "frame_time":   round(best_time, 2),
+                **debug_fields,
             }
 
         return {
             "weapon_id":    None,
             "display_name": None,
-            "confidence":   round(best_conf, 3),
+            "confidence":   round(max(best_conf, 0.0), 3),
             "method":       "no_match",
             "frame_time":   round(best_time, 2),
+            **debug_fields,
         }
     finally:
         cap.release()
@@ -234,26 +305,158 @@ def _detect(
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _load_templates(icon_dir: Path, weapon_name_map: dict, match_mode: str = "color") -> list[dict]:
+def _load_templates(icon_dir: Path, weapon_name_map: dict) -> list[dict]:
     """Load weapon PNG reference images from the icon directory.
 
-    When match_mode is "grayscale", templates are loaded as single-channel
-    images to match the grayscale ROI crop used during detection.
+    Templates are normalized into reusable color / grayscale / edge variants
+    so the detector can switch matching strategies per game without reloading
+    the icon library.
     """
-    read_flag = cv2.IMREAD_GRAYSCALE if match_mode == "grayscale" else cv2.IMREAD_COLOR
     templates = []
     if not icon_dir.exists():
         return templates
     for ext in ("*.png", "*.jpg", "*.jpeg"):
         for path in sorted(icon_dir.glob(ext)):
-            img = cv2.imread(str(path), read_flag)
+            img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
             if img is None:
+                continue
+            variants = _template_variants(img)
+            if not variants:
                 continue
             weapon_id = path.stem
             display_name = weapon_name_map.get(weapon_id, weapon_id.replace("_", " ").title())
-            templates.append({"weapon_id": weapon_id, "display_name": display_name, "image": img})
-            logger.debug(f"[weapon_detector] Loaded ({match_mode}): {path.name} → '{display_name}'")
+            templates.append({
+                "weapon_id": weapon_id,
+                "display_name": display_name,
+                "variants": variants,
+            })
+            logger.debug(f"[weapon_detector] Loaded template variants: {path.name} → '{display_name}'")
     return templates
+
+
+def _template_scales(game_cfg: dict, wd_cfg: dict) -> list[float]:
+    raw = game_cfg.get("template_scales")
+    if raw is None:
+        raw = wd_cfg.get("template_scales", _DEFAULT_TEMPLATE_SCALES)
+    if isinstance(raw, (int, float)):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return list(_DEFAULT_TEMPLATE_SCALES)
+    scales: list[float] = []
+    seen: set[float] = set()
+    for value in raw:
+        try:
+            scale = round(float(value), 3)
+        except (TypeError, ValueError):
+            continue
+        if scale <= 0:
+            continue
+        if scale in seen:
+            continue
+        seen.add(scale)
+        scales.append(scale)
+    return scales or list(_DEFAULT_TEMPLATE_SCALES)
+
+
+def _template_variants(image) -> dict[str, np.ndarray]:
+    if image.ndim == 2:
+        color = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        alpha = None
+    elif image.shape[2] == 4:
+        alpha = image[:, :, 3]
+        color = image[:, :, :3]
+    else:
+        alpha = None
+        color = image[:, :, :3]
+
+    color = _trim_transparent_padding(color, alpha)
+    if color.size == 0:
+        return {}
+    grayscale = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(grayscale, 40, 120)
+    return {
+        "color": color,
+        "grayscale": grayscale,
+        "edges": edges,
+    }
+
+
+def _trim_transparent_padding(color: np.ndarray, alpha: np.ndarray | None):
+    if alpha is None:
+        return color
+    ys, xs = np.where(alpha > 0)
+    if len(xs) == 0 or len(ys) == 0:
+        return color
+    x1, x2 = xs.min(), xs.max() + 1
+    y1, y2 = ys.min(), ys.max() + 1
+    return color[y1:y2, x1:x2]
+
+
+def _search_variants(roi_bgr: np.ndarray) -> dict[str, np.ndarray]:
+    grayscale = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(grayscale, 40, 120)
+    return {
+        "color": roi_bgr,
+        "grayscale": grayscale,
+        "edges": edges,
+    }
+
+
+def _match_variants_for_mode(match_mode: str) -> list[str]:
+    mode = str(match_mode or "color").strip().lower()
+    if mode in {"grayscale", "gray"}:
+        return ["grayscale"]
+    if mode in {"edge", "edges"}:
+        return ["edges"]
+    if mode == "hybrid":
+        return ["color", "grayscale", "edges"]
+    return ["color"]
+
+
+def _best_template_match(
+    search_variants: dict[str, np.ndarray],
+    template: dict,
+    match_mode: str,
+    template_scales: list[float],
+) -> dict | None:
+    best: dict | None = None
+    for variant_name in _match_variants_for_mode(match_mode):
+        search_frame = search_variants.get(variant_name)
+        template_image = (template.get("variants") or {}).get(variant_name)
+        if search_frame is None or template_image is None:
+            continue
+
+        for scale in template_scales:
+            tmpl = _scaled_template(template_image, scale)
+            if tmpl is None:
+                continue
+            if tmpl.shape[0] > search_frame.shape[0] or tmpl.shape[1] > search_frame.shape[1]:
+                continue
+            res = cv2.matchTemplate(search_frame, tmpl, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, max_loc = cv2.minMaxLoc(res)
+            candidate = {
+                "confidence": float(max_val),
+                "x": int(max_loc[0]),
+                "y": int(max_loc[1]),
+                "w": int(tmpl.shape[1]),
+                "h": int(tmpl.shape[0]),
+                "variant": variant_name,
+                "scale": float(scale),
+            }
+            if best is None or float(candidate["confidence"]) > float(best["confidence"]):
+                best = candidate
+    return best
+
+
+def _scaled_template(template_image: np.ndarray, scale: float):
+    if abs(scale - 1.0) < 1e-6:
+        return template_image
+    width = max(1, int(round(template_image.shape[1] * scale)))
+    height = max(1, int(round(template_image.shape[0] * scale)))
+    if width < 1 or height < 1:
+        return None
+    interpolation = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR
+    return cv2.resize(template_image, (width, height), interpolation=interpolation)
 
 
 def _write_and_return(meta_path: Path, result: dict) -> dict:

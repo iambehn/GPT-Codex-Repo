@@ -1,0 +1,686 @@
+{% extends "base.html" %}
+
+{% block title %}Replay — {{ replay.clip.clip_id }}{% endblock %}
+
+{% block extra_styles %}
+.replay-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  height: calc(100vh - 49px);
+  overflow: hidden;
+}
+.viewer-panel {
+  background: #050505;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.viewer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: #111;
+  flex-wrap: wrap;
+}
+.viewer-toolbar .meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.video-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  position: relative;
+}
+.video-stage {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+}
+.video-stage video {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 210px);
+  background: #000;
+}
+#overlayCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.timeline-wrap {
+  border-top: 1px solid var(--border);
+  background: #101010;
+  padding: 14px 16px 18px;
+}
+.timeline-shell {
+  position: relative;
+  height: 64px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #171717 0%, #0f0f0f 100%);
+  overflow: hidden;
+}
+.timeline-track {
+  position: absolute;
+  inset: 0;
+}
+.timeline-current {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffffff;
+  opacity: 0.9;
+  pointer-events: none;
+}
+.timeline-marker {
+  position: absolute;
+  top: 10px;
+  width: 10px;
+  height: 44px;
+  margin-left: -5px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  opacity: 0.95;
+}
+.timeline-marker.signal-audio_detector { background: #60a5fa; }
+.timeline-marker.signal-kill_feed { background: #ef4444; }
+.timeline-marker.signal-niceshot { background: #a855f7; }
+.timeline-marker.signal-yolo_detector { background: #38bdf8; }
+.timeline-marker.signal-weapon_detector { background: #22c55e; }
+.timeline-marker.signal-hook_enforcer { background: #f59e0b; }
+.timeline-marker.role-hook_anchor {
+  top: 4px;
+  height: 56px;
+  width: 12px;
+  margin-left: -6px;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+}
+.timeline-marker.role-trim_start {
+  background: #fbbf24;
+  top: 6px;
+  height: 52px;
+}
+.timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.sidebar {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-scroll {
+  overflow-y: auto;
+  padding: 18px 20px 28px;
+}
+.section {
+  margin-bottom: 18px;
+}
+.section h3 {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.summary-card,
+.explain-card,
+.json-card {
+  background: #111;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.summary-grid {
+  display: grid;
+  gap: 8px;
+}
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #232323;
+}
+.summary-line:last-child { border-bottom: none; padding-bottom: 0; }
+.summary-line span:first-child { color: var(--muted); }
+.decision-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.decision-accept { background: #123522; color: #4ade80; }
+.decision-reject { background: #3b1212; color: #f87171; }
+.decision-quarantine { background: #33240f; color: #fbbf24; }
+.decision-other { background: #202020; color: #cbd5e1; }
+.signal-list {
+  display: grid;
+  gap: 8px;
+}
+.signal-item {
+  background: #101010;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.signal-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.signal-top strong { color: var(--text); }
+.signal-meta {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.explain-list {
+  display: grid;
+  gap: 8px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.subtitle {
+  color: var(--muted);
+  font-size: 12px;
+}
+.action-grid {
+  display: grid;
+  gap: 8px;
+}
+.action-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.action-btn,
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #101010;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 8px 10px;
+}
+.action-link:hover { text-decoration: none; }
+.action-note {
+  width: 100%;
+  background: #0f0f0f;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 12px;
+  min-height: 72px;
+  resize: vertical;
+}
+.action-status {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+details {
+  margin-top: 10px;
+}
+details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+pre {
+  margin-top: 8px;
+  background: #0b0b0b;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  color: #d4d4d4;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.empty-state {
+  color: var(--muted);
+  font-size: 12px;
+}
+{% endblock %}
+
+{% block header_extra %}
+  <a href="{{ replay.clip.back_url }}" style="margin-left:auto;font-size:12px;color:var(--muted);">
+    ← Back to {{ replay.clip.source_stage_label }}
+  </a>
+{% endblock %}
+
+{% block content %}
+{% set status = replay.summary.decision_status or 'unknown' %}
+{% set status_class = 'decision-accept' if status == 'accept' else ('decision-reject' if status == 'reject' else ('decision-quarantine' if status == 'quarantine' else 'decision-other')) %}
+
+<div class="replay-layout">
+  <section class="viewer-panel">
+    <div class="viewer-toolbar">
+      <div class="meta">
+        <span class="badge badge-other">Replay Viewer</span>
+        <span class="badge badge-other">{{ replay.clip.source_stage_label }}</span>
+        <strong>{{ replay.clip.title }}</strong>
+        <span>{{ replay.clip.game.replace('_', ' ').title() }}</span>
+        <span>{{ replay.clip.duration_seconds }}s</span>
+      </div>
+      <label class="toggle"><input type="checkbox" id="toggleRoi" checked> HUD ROIs</label>
+      <label class="toggle"><input type="checkbox" id="toggleYolo" checked> YOLO Boxes</label>
+    </div>
+
+    <div class="video-shell">
+      <div class="video-stage" id="videoStage">
+        <video id="replayVideo" controls preload="metadata">
+          <source src="{{ replay.clip.video_url }}" type="video/mp4">
+        </video>
+        <canvas id="overlayCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="timeline-wrap">
+      <div class="timeline-shell">
+        <div class="timeline-track" id="timelineTrack"></div>
+        <div class="timeline-current" id="timelineCurrent"></div>
+      </div>
+      <div class="timeline-labels">
+        <span>0.0s</span>
+        <span>{{ replay.clip.duration_seconds }}s</span>
+      </div>
+    </div>
+  </section>
+
+  <aside class="sidebar">
+    <div class="sidebar-scroll">
+      <div class="section">
+        <h3>Decision</h3>
+        <div class="summary-card">
+          <div class="summary-grid">
+            <div class="summary-line">
+              <span>Status</span>
+              <span class="decision-badge {{ status_class }}">{{ status }}</span>
+            </div>
+            <div class="summary-line">
+              <span>Composite score</span>
+              <strong>{{ replay.summary.composite_score }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Player entity</span>
+              <strong>{{ replay.summary.player_entity_name or 'Unresolved' }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Detected event</span>
+              <strong>{{ replay.summary.detected_event or 'Unknown' }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Context confidence</span>
+              <strong>{{ replay.summary.context_confidence }}</strong>
+            </div>
+            {% if replay.summary.quarantine_reason %}
+            <div class="summary-line">
+              <span>Quarantine</span>
+              <strong>{{ replay.summary.quarantine_reason }}</strong>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Hook And Trim</h3>
+        <div class="summary-card">
+          <div class="summary-grid">
+            <div class="summary-line">
+              <span>Early hook</span>
+              <strong>{{ 'yes' if replay.hook.early_hook_passed else 'no' }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Hook score</span>
+              <strong>{{ replay.hook.hook_score }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Window</span>
+              <strong>{{ replay.hook.window_seconds }}s</strong>
+            </div>
+            <div class="summary-line">
+              <span>Anchor</span>
+              <strong>
+                {% if replay.hook.anchor_moment %}
+                  {{ replay.hook.anchor_moment.kind or 'hook' }} @ {{ replay.hook.anchor_moment.timestamp }}s
+                {% else %}
+                  Unresolved
+                {% endif %}
+              </strong>
+            </div>
+            <div class="summary-line">
+              <span>Trim strategy</span>
+              <strong>{{ replay.hook.trim_plan.strategy or 'none' }}</strong>
+            </div>
+            {% if replay.hook.trim_plan.trim_start_seconds is not none %}
+            <div class="summary-line">
+              <span>Trim start</span>
+              <strong>{{ replay.hook.trim_plan.trim_start_seconds }}s</strong>
+            </div>
+            {% endif %}
+            {% if replay.hook.trim_plan.expected_hook_timestamp is not none %}
+            <div class="summary-line">
+              <span>Expected final hook</span>
+              <strong>{{ replay.hook.trim_plan.expected_hook_timestamp }}s</strong>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if replay.clip.caption %}
+      <div class="section">
+        <h3>Packaging</h3>
+        <div class="summary-card">
+          <div style="font-weight:700;font-size:13px;line-height:1.5;">{{ replay.clip.title }}</div>
+          <div class="subtitle" style="margin-top:8px;">{{ replay.clip.caption }}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="section">
+        <h3>Quick Actions</h3>
+        <div class="summary-card">
+          <div class="action-grid">
+            <textarea id="feedbackNote" class="action-note" placeholder="Why was this detection or decision wrong?"></textarea>
+            <div class="action-row">
+              {% if replay.clip.source_stage == 'quarantine' %}
+              <button class="action-btn" type="button" data-feedback-type="false_negative">False Negative</button>
+              {% else %}
+              <button class="action-btn" type="button" data-feedback-type="false_positive">False Positive</button>
+              {% endif %}
+              <button class="action-btn" type="button" data-feedback-type="needs_roi_template">Needs ROI</button>
+            </div>
+            <div class="action-row">
+              <button class="action-btn" type="button" data-feedback-type="recommend_retrain">Recommend Retrain</button>
+              {% if replay.actions.repair_url %}
+              <a class="action-link" href="{{ replay.actions.repair_url }}">Open ROI Repair</a>
+              {% endif %}
+            </div>
+            <div id="actionStatus" class="action-status">Ready.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Signals</h3>
+        {% if replay.signals %}
+        <div class="signal-list">
+          {% for signal in replay.signals %}
+          <button
+            class="signal-item"
+            type="button"
+            data-seek="{{ signal.timestamp }}"
+            title="Jump to {{ signal.timestamp }}s">
+            <div class="signal-top">
+              <strong>{{ signal.label }}</strong>
+              <span>{{ signal.timestamp }}s</span>
+            </div>
+            <div class="signal-meta">
+              {{ signal.source }}{% if signal.confidence is not none %} · conf {{ signal.confidence }}{% endif %}{% if signal.detail %} · {{ signal.detail }}{% endif %}
+            </div>
+          </button>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">No detector moments were recorded for this clip yet.</div>
+        {% endif %}
+      </div>
+
+      <div class="section">
+        <h3>Explanation</h3>
+        <div class="explain-card">
+          <div class="explain-list">
+            {% for line in replay.decision.explanation %}
+            <div>{{ line }}</div>
+            {% endfor %}
+            {% for line in replay.hook.explanation %}
+            <div>{{ line }}</div>
+            {% endfor %}
+            {% if not replay.decision.explanation and not replay.hook.explanation %}
+            <div class="empty-state">No explanation text was recorded for this clip.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Debug Data</h3>
+        <div class="json-card">
+          {% for name, payload in replay.raw_pretty.items() %}
+          <details {% if loop.first %}open{% endif %}>
+            <summary>{{ name }}</summary>
+            <pre>{{ payload }}</pre>
+          </details>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const replay = {{ replay_data|tojson }};
+
+const video = document.getElementById('replayVideo');
+const canvas = document.getElementById('overlayCanvas');
+const ctx = canvas.getContext('2d');
+const toggleRoi = document.getElementById('toggleRoi');
+const toggleYolo = document.getElementById('toggleYolo');
+const timelineTrack = document.getElementById('timelineTrack');
+const timelineCurrent = document.getElementById('timelineCurrent');
+const feedbackNote = document.getElementById('feedbackNote');
+const actionStatus = document.getElementById('actionStatus');
+
+function durationSeconds() {
+  if (Number.isFinite(video.duration) && video.duration > 0) return video.duration;
+  const fallback = Number(replay.clip.duration_seconds || 0);
+  return fallback > 0 ? fallback : 1;
+}
+
+function resizeCanvas() {
+  const rect = video.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  canvas.style.width = `${rect.width}px`;
+  canvas.style.height = `${rect.height}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  renderOverlay();
+}
+
+function drawBox({x, y, w, h, color, label}) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = color;
+  ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const labelWidth = Math.ceil(ctx.measureText(label).width) + 10;
+  ctx.fillRect(x, Math.max(0, y - 20), labelWidth, 18);
+  ctx.fillStyle = '#050505';
+  ctx.fillText(label, x + 5, Math.max(12, y - 7));
+}
+
+function renderOverlay() {
+  const rect = video.getBoundingClientRect();
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  if (!rect.width || !rect.height) return;
+
+  if (toggleRoi.checked) {
+    const base = replay.overlays.video_base || {width: 1920, height: 1080};
+    const scaleX = rect.width / base.width;
+    const scaleY = rect.height / base.height;
+    for (const roi of replay.overlays.roi_boxes || []) {
+      drawBox({
+        x: roi.x * scaleX,
+        y: roi.y * scaleY,
+        w: roi.w * scaleX,
+        h: roi.h * scaleY,
+        color: roi.color || '#f59e0b',
+        label: roi.label,
+      });
+    }
+  }
+
+  if (toggleYolo.checked) {
+    const sourceWidth = video.videoWidth || replay.overlays.video_base.width || 1920;
+    const sourceHeight = video.videoHeight || replay.overlays.video_base.height || 1080;
+    const scaleX = rect.width / sourceWidth;
+    const scaleY = rect.height / sourceHeight;
+    const now = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+
+    for (const box of replay.overlays.yolo_boxes || []) {
+      const isVisible = box.always_visible || Math.abs((box.timestamp || 0) - now) <= 0.6;
+      if (!isVisible) continue;
+      drawBox({
+        x: box.x1 * scaleX,
+        y: box.y1 * scaleY,
+        w: (box.x2 - box.x1) * scaleX,
+        h: (box.y2 - box.y1) * scaleY,
+        color: box.color || '#38bdf8',
+        label: `${box.label} (${box.confidence})`,
+      });
+    }
+  }
+}
+
+function renderTimeline() {
+  timelineTrack.innerHTML = '';
+  const duration = durationSeconds();
+  for (const signal of replay.signals || []) {
+    const marker = document.createElement('button');
+    marker.type = 'button';
+    marker.className = `timeline-marker signal-${signal.source} role-${signal.role || 'signal'}`;
+    marker.style.left = `${Math.min(100, Math.max(0, (signal.timestamp / duration) * 100))}%`;
+    marker.title = `${signal.label} @ ${signal.timestamp}s`;
+    marker.addEventListener('click', () => {
+      video.currentTime = Number(signal.timestamp || 0);
+      video.pause();
+      renderOverlay();
+      updateCurrentMarker();
+    });
+    timelineTrack.appendChild(marker);
+  }
+  updateCurrentMarker();
+}
+
+function updateCurrentMarker() {
+  const duration = durationSeconds();
+  const now = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+  timelineCurrent.style.left = `${Math.min(100, Math.max(0, (now / duration) * 100))}%`;
+}
+
+document.querySelectorAll('[data-seek]').forEach((button) => {
+  button.addEventListener('click', () => {
+    video.currentTime = Number(button.dataset.seek || 0);
+    video.pause();
+    renderOverlay();
+    updateCurrentMarker();
+  });
+});
+
+async function sendReplayFeedback(feedbackType) {
+  actionStatus.textContent = 'Recording feedback...';
+  const response = await fetch('/api/feedback/record', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      game: replay.clip.game,
+      clip_stem: replay.clip.clip_stem,
+      source_stage: replay.actions.feedback_source_stage,
+      feedback_type: feedbackType,
+      detector: 'replay_viewer',
+      note: feedbackNote.value,
+      details: {
+        replay_context: true,
+        decision_status: replay.summary.decision_status,
+        quarantine_reason: replay.summary.quarantine_reason,
+      },
+    }),
+  });
+  const payload = await response.json();
+  if (!response.ok || !payload.ok) {
+    actionStatus.textContent = payload.error || 'Failed to record feedback.';
+    return;
+  }
+  actionStatus.textContent = JSON.stringify({
+    feedback: payload.feedback.feedback_type,
+    total_entries: payload.summary.total_entries,
+    retrain_recommended: payload.summary.retrain_recommendation.recommended,
+  }, null, 2);
+}
+
+document.querySelectorAll('[data-feedback-type]').forEach((button) => {
+  button.addEventListener('click', () => sendReplayFeedback(button.dataset.feedbackType));
+});
+
+toggleRoi.addEventListener('change', renderOverlay);
+toggleYolo.addEventListener('change', renderOverlay);
+window.addEventListener('resize', resizeCanvas);
+video.addEventListener('loadedmetadata', () => {
+  resizeCanvas();
+  renderTimeline();
+});
+video.addEventListener('timeupdate', () => {
+  renderOverlay();
+  updateCurrentMarker();
+});
+video.addEventListener('seeked', renderOverlay);
+video.addEventListener('pause', renderOverlay);
+
+renderTimeline();
+</script>
+{% endblock %}

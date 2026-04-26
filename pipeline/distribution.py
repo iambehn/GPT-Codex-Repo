@@ -742,6 +742,32 @@ _HANDLERS = {
 # Public interface
 # ---------------------------------------------------------------------------
 
+def upload_to_platform(
+    platform: str,
+    clip_path: str | Path,
+    metadata: dict,
+    config: dict,
+    account: dict | None = None,
+) -> dict:
+    """Upload one clip to one platform using the existing platform adapter."""
+    clip = Path(clip_path)
+    platform_cfg = dict((config.get("distribution", {}).get("platforms", {}) or {}).get(platform, {}))
+    if account:
+        platform_cfg.update(account.get("platform_config") or {})
+
+    if platform == "reddit":
+        result = _upload_reddit(clip, metadata, platform_cfg, metadata.get("game", ""))
+    elif platform in _HANDLERS:
+        result = _HANDLERS[platform](clip, metadata, platform_cfg)
+    else:
+        result = {"success": False, "url": None, "error": f"Unknown platform: {platform}"}
+
+    if result.get("success") and not result.get("posted_at"):
+        from datetime import datetime, timezone
+
+        result["posted_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return result
+
 def run_distribution(clip_path: str, metadata: dict, config: dict) -> dict:
     """Publish an approved clip to all configured and targeted platforms.
 
@@ -803,13 +829,7 @@ def run_distribution(clip_path: str, metadata: dict, config: dict) -> dict:
             continue
 
         logger.info(f"Uploading to {platform}...")
-
-        if platform == "reddit":
-            result = _upload_reddit(clip, metadata, platform_cfg, game)
-        elif platform in _HANDLERS:
-            result = _HANDLERS[platform](clip, metadata, platform_cfg)
-        else:
-            result = {"success": False, "url": None, "error": f"Unknown platform: {platform}"}
+        result = upload_to_platform(platform, clip, metadata, config)
 
         results[platform] = result
         status = "✓" if result["success"] else "✗"

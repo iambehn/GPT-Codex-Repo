@@ -142,12 +142,39 @@ button {
   max-height: 220px;
   overflow-y: auto;
 }
+.feedback-box {
+  background: #111;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+.feedback-grid {
+  display: grid;
+  gap: 8px;
+}
+.feedback-grid textarea,
+.feedback-grid select {
+  background: #0f0f0f;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.feedback-grid textarea {
+  min-height: 70px;
+  resize: vertical;
+}
 {% endblock %}
 
 {% block header_extra %}
-  <span style="margin-left:auto;color:var(--muted);font-size:12px;">
-    {{ clip.game }} / {{ clip.reason }}
-  </span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:16px;color:var(--muted);font-size:12px;">
+    <a href="{{ url_for('replay_view', source_stage='quarantine', game=clip.game, clip_stem=clip.stem) }}"
+       style="color:var(--muted);">
+      Replay Debug
+    </a>
+    <span>{{ clip.game }} / {{ clip.reason }}</span>
+  </div>
 {% endblock %}
 
 {% block content %}
@@ -222,6 +249,26 @@ button {
       </div>
 
       <div class="panel-section">
+        <h3>5. Feedback Loop</h3>
+        <div class="feedback-box">
+          <div class="feedback-grid">
+            <select id="feedbackDetector">
+              <option value="weapon_detector">Weapon detector</option>
+              <option value="yolo_detector">YOLO</option>
+              <option value="niceshot_detector">NiceShot</option>
+              <option value="clip_judge">Clip judge</option>
+            </select>
+            <textarea id="feedbackNote" placeholder="Why should this have passed, or what asset/model work is still missing?"></textarea>
+            <div class="button-row">
+              <button class="ghost-btn" id="falseNegativeBtn">False Negative</button>
+              <button class="ghost-btn" id="needsRoiBtn">Needs ROI</button>
+            </div>
+            <button class="ghost-btn" id="retrainBtn">Recommend YOLO Retrain</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
         <h3>Status</h3>
         <div id="statusBox">Ready.</div>
       </div>
@@ -236,6 +283,7 @@ const GAME = {{ clip.game|tojson }};
 const CLIP_STEM = {{ clip.stem|tojson }};
 const SAVE_URL = {{ url_for('api_quarantine_save_icon')|tojson }};
 const RESCAN_URL = {{ url_for('api_quarantine_rescan')|tojson }};
+const FEEDBACK_URL = {{ url_for('api_feedback_record')|tojson }};
 
 const video = document.getElementById('reviewVideo');
 const canvas = document.getElementById('frameCanvas');
@@ -249,6 +297,11 @@ const statusBox = document.getElementById('statusBox');
 const entitySelect = document.getElementById('entitySelect');
 const entityText = document.getElementById('entityText');
 const overwrite = document.getElementById('overwrite');
+const feedbackDetector = document.getElementById('feedbackDetector');
+const feedbackNote = document.getElementById('feedbackNote');
+const falseNegativeBtn = document.getElementById('falseNegativeBtn');
+const needsRoiBtn = document.getElementById('needsRoiBtn');
+const retrainBtn = document.getElementById('retrainBtn');
 
 let captured = false;
 let drawing = false;
@@ -258,6 +311,32 @@ let capturedTime = 0;
 
 function setStatus(message, payload = null) {
   statusBox.textContent = payload ? `${message}\n\n${JSON.stringify(payload, null, 2)}` : message;
+}
+
+async function sendFeedback(feedbackType) {
+  setStatus('Recording feedback...');
+  const response = await fetch(FEEDBACK_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      game: GAME,
+      clip_stem: CLIP_STEM,
+      source_stage: 'quarantine',
+      feedback_type: feedbackType,
+      detector: feedbackDetector.value,
+      note: feedbackNote.value,
+    }),
+  });
+  const payload = await response.json();
+  if (!response.ok || !payload.ok) {
+    setStatus(payload.error || 'Failed to record feedback.');
+    return;
+  }
+  setStatus('Feedback recorded.', {
+    feedback: payload.feedback.feedback_type,
+    total_entries: payload.summary.total_entries,
+    retrain_recommended: payload.summary.retrain_recommendation.recommended,
+  });
 }
 
 function lockRecoveredClip(result) {
@@ -451,6 +530,18 @@ rescanBtn.addEventListener('click', async () => {
   } catch (error) {
     setStatus(`Rescan failed: ${error.error || 'unknown error'}`, error);
   }
+});
+
+falseNegativeBtn.addEventListener('click', async () => {
+  await sendFeedback('false_negative');
+});
+
+needsRoiBtn.addEventListener('click', async () => {
+  await sendFeedback('needs_roi_template');
+});
+
+retrainBtn.addEventListener('click', async () => {
+  await sendFeedback('recommend_retrain');
 });
 </script>
 {% endblock %}

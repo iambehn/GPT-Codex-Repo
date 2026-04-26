@@ -1,0 +1,46 @@
+{% set rows = table_posts if table_posts is defined else state.top_performers %}
+{% if not rows %}
+  <div class="notice">No posts match this view yet.</div>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Post</th>
+      <th>Platform</th>
+      <th>Game</th>
+      <th>Views</th>
+      <th>Retention</th>
+      <th>Decision</th>
+      <th>Score</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for post in rows[:10] %}
+    {% set d = post.decision %}
+    {% set m = post.metrics %}
+    <tr>
+      <td>
+        <a class="mono" href="{{ url_for('analytics_post_detail', post_id=post.post_id) }}">{{ post.post_id }}</a>
+        <div class="muted">{{ post.title or post.clip_id }}</div>
+      </td>
+      <td>{{ post.platform }}</td>
+      <td>{{ post.game }}</td>
+      <td>{{ "{:,}".format(m.views or 0) }}</td>
+      <td>{{ "%.1f%%"|format((m.retention or 0) * 100) }}</td>
+      <td>
+        {% if d.boost_candidate in [true, 'TRUE', 'True', 'true', 1, '1'] %}
+          <span class="pill pill-good">Boost</span>
+        {% elif d.underperforming in [true, 'TRUE', 'True', 'true', 1, '1'] %}
+          <span class="pill pill-bad">Weak</span>
+        {% elif d.recycle_candidate in [true, 'TRUE', 'True', 'true', 1, '1'] %}
+          <span class="pill pill-warn">Recycle</span>
+        {% else %}
+          <span class="pill">Monitor</span>
+        {% endif %}
+      </td>
+      <td>{{ "%.3f"|format(post.score or 0) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}

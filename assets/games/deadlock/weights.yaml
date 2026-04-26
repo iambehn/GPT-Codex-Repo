@@ -21,11 +21,16 @@ clip_judge:
       yolo: 0.2
       audio: 0.1
   composite_weights:
+    # MOBA-FPS hybrid: teamfight context is complex and not well-captured by kill count alone,
+    # so ai_clip_score carries more weight. Kill feed still matters for multi-kill moments.
+    # context_score kept moderate — which hero is carrying is meaningful for MOBA content.
     ai_clip_score: 0.35
-    ai_hook_score: 0.25
-    kill_feed_score: 0.2
-    audio_score: 0.1
-    context_score: 0.1
+    ai_hook_score: 0.20
+    kill_feed_score: 0.20
+    audio_score: 0.10
+    context_score: 0.10
+    yolo_event_score: 0.05  # character recognition; active once a YOLO model is configured
+    niceshot_score: 0.05    # reserved; contributes once Niceshot integration is wired up
   quarantine_reasons:
   - missing_context
   - hook_not_resolved

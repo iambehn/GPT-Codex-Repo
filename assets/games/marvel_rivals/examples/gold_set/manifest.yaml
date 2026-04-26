@@ -1,0 +1,11 @@
+game: marvel_rivals
+description: Replace the example entry with real labeled clips before using this as a quality gate.
+clips:
+  - id: example_accept_replace_me
+    clip: clips/example_accept_replace_me.mp4
+    meta: sidecars/example_accept_replace_me.meta.json
+    expected:
+      status: accept
+      hook_gate_passed: true
+      player_entity: replace_with_entity_id
+      detected_event: replace_with_moment_id

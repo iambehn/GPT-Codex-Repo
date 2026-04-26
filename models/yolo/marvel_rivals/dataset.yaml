@@ -1,0 +1,19 @@
+path: /Users/tj/GPT-Codex-Repo/models/yolo/marvel_rivals
+train: images/train
+val: images/val
+names:
+- hero_adam_warlock
+- hero_black_cat
+- hero_cloak_and_dagger
+- hero_daredevil
+- hero_deadpool
+- hero_doctor_strange
+- hero_elsa_bloodstone
+- hero_jeff_the_land_shark
+- hero_luna_snow
+- hero_namor
+- hero_peni_parker
+- hero_scarlet_witch
+- hero_star_lord
+- hero_the_punisher
+- hero_the_thing

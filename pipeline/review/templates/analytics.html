@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block extra_styles %}
+.analytics-page { padding: 24px; max-width: 1320px; margin: 0 auto; }
+.analytics-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:22px; flex-wrap:wrap; }
+.analytics-header h1 { font-size:22px; line-height:1.1; }
+.analytics-header p { color:var(--muted); margin-top:6px; max-width:720px; }
+.notice { border:1px solid var(--border); background:var(--surface); padding:12px 14px; border-radius:8px; margin-bottom:18px; color:var(--muted); }
+.notice strong { color:var(--text); }
+.card-grid { display:grid; grid-template-columns:repeat(5, minmax(140px, 1fr)); gap:12px; margin-bottom:22px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; }
+.card .label { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.45px; }
+.card .value { margin-top:6px; font-size:22px; font-weight:750; font-variant-numeric:tabular-nums; }
+.filters, .import-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:20px; }
+.filters form { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+.filters label, .import-panel label { display:block; color:var(--muted); font-size:11px; margin-bottom:5px; }
+.filters select, .import-panel select, .import-panel textarea, .import-panel input[type=file] {
+  background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:7px 9px; min-width:140px;
+}
+.filters button, .import-panel button {
+  background:var(--accent); color:white; border:0; border-radius:6px; padding:8px 14px; font-weight:650; cursor:pointer;
+}
+.section { margin-top:24px; }
+.section h2 { font-size:15px; margin-bottom:10px; }
+table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+th { text-align:left; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.4px; padding:9px 10px; border-bottom:1px solid var(--border); }
+td { padding:10px; border-bottom:1px solid var(--border); vertical-align:top; }
+tr:last-child td { border-bottom:0; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+.muted { color:var(--muted); }
+.pill { display:inline-block; border-radius:999px; padding:3px 8px; font-size:11px; font-weight:700; }
+.pill-good { background:#12351f; color:#6ee7a8; }
+.pill-warn { background:#402c0b; color:#fbbf24; }
+.pill-bad { background:#3b1515; color:#fca5a5; }
+.tables { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.import-panel textarea { width:100%; min-height:130px; margin-bottom:10px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+@media (max-width: 980px) {
+  .card-grid { grid-template-columns:repeat(2, 1fr); }
+  .tables { grid-template-columns:1fr; }
+}
+{% endblock %}
+
+{% block header_extra %}
+  <span style="margin-left:auto;color:var(--muted);font-size:12px;">Post Performance</span>
+{% endblock %}
+
+{% block content %}
+{% set o = state.overview %}
+<div class="analytics-page">
+  <div class="analytics-header">
+    <div>
+      <h1>Analytics</h1>
+      <p>Downstream performance for posted clips. Scout decides what to ingest; this page decides what worked after publishing.</p>
+    </div>
+  </div>
+
+  {% if not state.configured %}
+  <div class="notice">
+    <strong>Google Sheets analytics is not connected.</strong>
+    {{ state.error }}. Configure GOOGLE_SERVICE_ACCOUNT_JSON and GOOGLE_SHEETS_ID to populate this dashboard.
+  </div>
+  {% endif %}
+
+  {% if request.args.get('import_status') %}
+  <div class="notice">
+    <strong>Import {{ request.args.get('import_status') }}.</strong>
+    Imported {{ request.args.get('imported', '0') }} metric snapshot(s).
+    {% if request.args.get('import_errors') %}<span class="muted">{{ request.args.get('import_errors') }}</span>{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card-grid">
+    <div class="card"><div class="label">Posts Tracked</div><div class="value">{{ o.posts_tracked }}</div></div>
+    <div class="card"><div class="label">Total Views</div><div class="value">{{ "{:,}".format(o.total_views) }}</div></div>
+    <div class="card"><div class="label">Avg Retention</div><div class="value">{{ "%.1f%%"|format(o.avg_retention * 100) }}</div></div>
+    <div class="card"><div class="label">Follow Conversion</div><div class="value">{{ "%.2f%%"|format(o.follower_conversion * 100) }}</div></div>
+    <div class="card"><div class="label">Top Template</div><div class="value" style="font-size:16px;">{{ o.top_template or "n/a" }}</div></div>
+  </div>
+
+  <div class="filters">
+    <form method="GET" action="{{ url_for('analytics_dashboard') }}">
+      <div>
+        <label>Platform</label>
+        <select name="platform">
+          <option value="">All</option>
+          {% for value in state.platforms %}
+            <option value="{{ value }}" {{ 'selected' if state.filters.platform == value else '' }}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Game</label>
+        <select name="game">
+          <option value="">All</option>
+          {% for value in state.games %}
+            <option value="{{ value }}" {{ 'selected' if state.filters.game == value else '' }}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Template</label>
+        <select name="template_id">
+          <option value="">All</option>
+          {% for value in state.templates %}
+            <option value="{{ value }}" {{ 'selected' if state.filters.template_id == value else '' }}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Paid / Organic</label>
+        <select name="paid">
+          <option value="">All</option>
+          <option value="organic" {{ 'selected' if state.filters.paid == 'organic' else '' }}>Organic</option>
+          <option value="paid" {{ 'selected' if state.filters.paid == 'paid' else '' }}>Paid</option>
+        </select>
+      </div>
+      <button type="submit">Apply</button>
+    </form>
+  </div>
+
+  <div class="import-panel">
+    <h2 style="font-size:15px;margin-bottom:10px;">Manual Metric Import</h2>
+    <form method="POST" action="{{ url_for('analytics_import') }}" enctype="multipart/form-data">
+      <label>Source platform</label>
+      <select name="source_platform" style="margin-bottom:10px;">
+        <option value="tiktok">TikTok</option>
+        <option value="youtube_shorts">YouTube Shorts</option>
+        <option value="instagram_reels">Instagram Reels</option>
+        <option value="twitter_x">Twitter/X</option>
+        <option value="reddit">Reddit</option>
+      </select>
+      <label>Paste CSV or JSON export</label>
+      <textarea name="payload" placeholder="post_id,views,likes,comments,shares,saves,retention,follows,paid_spend"></textarea>
+      <label>Or upload CSV/JSON</label>
+      <input type="file" name="metrics_file" accept=".csv,.json,text/csv,application/json">
+      <button type="submit" style="margin-top:10px;">Import Metrics</button>
+    </form>
+  </div>
+
+  <div class="section">
+    <h2>Top Performers</h2>
+    {% include "analytics_table.html" with context %}
+  </div>
+
+  <div class="tables">
+    <div class="section">
+      <h2>Boost Candidates</h2>
+      {% set table_posts = state.boost_candidates %}
+      {% include "analytics_table.html" with context %}
+    </div>
+    <div class="section">
+      <h2>Underperformers</h2>
+      {% set table_posts = state.underperformers %}
+      {% include "analytics_table.html" with context %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -9,10 +9,13 @@ approves or rejects.
 Routes:
   GET  /                              — queue view (all pending clips, sorted by score)
   GET  /clip/<game>/<stem>            — single clip review page
+  GET  /replay/<source>/<game>/<stem> — replay/debug viewer for queue or quarantine clips
   POST /clip/<game>/<stem>/approve    — approve → accepted/{game}/, load next
   POST /clip/<game>/<stem>/reject     — reject  → rejected/{game}/, load next
   GET  /video/<game>/<filename>       — stream the processed video file
   GET  /quarantine                    — asset-training queue for quarantined clips
+  GET  /analytics                     — post-performance analytics dashboard
+  GET  /distribution                  — distribution queue and compliance dashboard
 
 Launch:
   python -m pipeline.review.app
@@ -43,14 +46,18 @@ from flask import (
 )
 
 from pipeline.clip_judge import evaluate as evaluate_clip
+from pipeline.distribution_queue import get_distribution_dashboard
 from pipeline.game_pack import (
+    get_kill_feed_game_config,
     get_primary_entities,
     get_weapon_detector_game_config,
     list_supported_games,
     load_game_pack,
     resolve_asset_path,
 )
+from pipeline.review_feedback import apply_feedback_updates, record_feedback, summarize_feedback
 from pipeline.weapon_detector import run_weapon_detector
+from utils.analytics import build_dashboard_state, build_post_detail, import_metric_payload
 
 app = Flask(__name__)
 
@@ -60,13 +67,15 @@ MAX_ICON_IMAGE_BYTES = 2 * 1024 * 1024
 MAX_ICON_IMAGE_BASE64_CHARS = int(MAX_ICON_IMAGE_BYTES * 1.4)
 MIN_ICON_CROP_SIDE = 8
 MAX_ICON_CROP_SIDE = 1024
+REPLAY_BASE_WIDTH = 1920
+REPLAY_BASE_HEIGHT = 1080
 
 # ---------------------------------------------------------------------------
 # Config loading
 # ---------------------------------------------------------------------------
 
 def _load_config() -> dict:
-    config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    config_path = PROJECT_ROOT / "config.yaml"
     with open(config_path) as f:
         return yaml.safe_load(f)
 
@@ -95,9 +104,8 @@ def _get_pending_clips() -> list[dict]:
     Returns list of clip info dicts sorted by highlight_score descending.
     """
     clips = []
-    project_root = Path(__file__).parent.parent.parent
-    inbox_root = (project_root / CONFIG["paths"]["inbox"]).resolve()
-    processing_root = (project_root / CONFIG["paths"]["processing"]).resolve()
+    inbox_root = (PROJECT_ROOT / CONFIG["paths"]["inbox"]).resolve()
+    processing_root = (PROJECT_ROOT / CONFIG["paths"]["processing"]).resolve()
 
     for game in list_supported_games(CONFIG):
         inbox_dir = inbox_root / game
@@ -121,7 +129,9 @@ def _get_pending_clips() -> list[dict]:
             processed = Path(processed_path_str)
             # Resolve legacy relative paths written before absolute-path fix
             if not processed.is_absolute():
-                processed = (project_root / processed).resolve()
+                processed = (PROJECT_ROOT / processed).resolve()
+            else:
+                processed = processed.resolve()
             # Must still live inside the processing/ tree (not moved yet)
             if not processed.exists():
                 continue
@@ -223,9 +233,16 @@ def _get_quarantine_clips() -> list[dict]:
 
 
 def _find_quarantine_clip(game: str, clip_stem: str) -> dict | None:
+    fallback_matches: list[dict] = []
     for clip in _get_quarantine_clips():
-        if clip["game"] == game and clip["stem"] == clip_stem:
+        if clip["game"] != game:
+            continue
+        if clip["stem"] == clip_stem:
             return clip
+        if Path(clip["stem"]).name == clip_stem:
+            fallback_matches.append(clip)
+    if len(fallback_matches) == 1:
+        return fallback_matches[0]
     return None
 
 
@@ -510,6 +527,401 @@ def _next_clip(game: str, stem: str) -> dict | None:
     return clips[0] if clips else None
 
 
+def _resolve_feedback_target(game: str, clip_stem: str, source_stage: str) -> tuple[Path, Path, str]:
+    if source_stage == "quarantine":
+        clip_path = _resolve_quarantine_clip(game, clip_stem)
+        meta_path, meta = _ensure_quarantine_meta(clip_path, game)
+        clip_id = meta.get("clip_id", clip_path.stem)
+        return clip_path, meta_path, clip_id
+
+    if source_stage == "queue":
+        clip = _find_clip(game, clip_stem)
+        if clip is None:
+            abort(404)
+        clip_path = Path(clip["processed_path"])
+        meta_path = _inbox_root(game) / f"{clip['clip_id']}.meta.json"
+        return clip_path, meta_path, clip["clip_id"]
+
+    abort(404)
+
+
+def _resolve_replay_target(source_stage: str, game: str, clip_stem: str) -> dict:
+    if source_stage == "queue":
+        clip = _find_clip(game, clip_stem)
+        if clip is None:
+            abort(404)
+        clip_path = Path(clip["processed_path"]).resolve()
+        meta_path = _inbox_root(game) / f"{clip['clip_id']}.meta.json"
+        meta = _load_json(meta_path)
+        if not meta:
+            meta_path = clip_path.with_suffix(".meta.json")
+            meta = _load_json(meta_path)
+        return {
+            "source_stage": "queue",
+            "source_stage_label": "Queue",
+            "game": game,
+            "clip_stem": clip["stem"],
+            "clip_id": clip["clip_id"],
+            "clip_path": clip_path,
+            "meta_path": meta_path,
+            "meta": meta,
+            "video_url": url_for("serve_video", game=game, filename=clip["filename"]),
+            "back_url": url_for("review_clip", game=game, stem=clip["stem"]),
+        }
+
+    if source_stage == "quarantine":
+        clip = _find_quarantine_clip(game, clip_stem)
+        if clip is None:
+            abort(404)
+        clip_path = _resolve_quarantine_clip(game, clip_stem)
+        meta_path, meta = _ensure_quarantine_meta(clip_path, game)
+        return {
+            "source_stage": "quarantine",
+            "source_stage_label": "Quarantine",
+            "game": game,
+            "clip_stem": clip["stem"],
+            "clip_id": clip["clip_id"],
+            "clip_path": clip_path,
+            "meta_path": meta_path,
+            "meta": meta,
+            "video_url": url_for("quarantine_video", game=game, filename=clip["video_relpath"]),
+            "back_url": url_for("quarantine_review", game=game, clip_stem=clip["stem"]),
+        }
+
+    abort(404)
+
+
+def _safe_float(value: object, default: float = 0.0) -> float:
+    try:
+        return round(float(value), 3)
+    except (TypeError, ValueError):
+        return round(default, 3)
+
+
+def _labelize(value: object, fallback: str = "unknown") -> str:
+    text = str(value).strip() if value is not None else ""
+    if not text:
+        text = fallback
+    return text.replace("_", " ").replace("-", " ").title()
+
+
+def _build_roi_overlays(game: str, game_pack: dict) -> list[dict]:
+    overlays: list[dict] = []
+    seen: set[tuple[str, int, int, int, int]] = set()
+    hud = game_pack.get("hud") or {}
+    rois = hud.get("rois") or {}
+    detectors = hud.get("detectors") or {}
+    color_map = {
+        "kill_feed": "#ef4444",
+        "weapon_detector": "#22c55e",
+        "weapon_icon": "#22c55e",
+        "hud": "#f59e0b",
+    }
+
+    for roi_name, roi in rois.items():
+        if not isinstance(roi, dict):
+            continue
+        try:
+            x = int(round(float(roi["x"])))
+            y = int(round(float(roi["y"])))
+            w = int(round(float(roi["w"])))
+            h = int(round(float(roi["h"])))
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        detector_names = [
+            name for name, detector in detectors.items()
+            if isinstance(detector, dict) and detector.get("roi_ref") == roi_name
+        ]
+        source = detector_names[0] if detector_names else roi_name if roi_name in color_map else "hud"
+        key = (source, x, y, w, h)
+        if key in seen:
+            continue
+        seen.add(key)
+        overlays.append({
+            "label": _labelize(roi_name),
+            "source": source,
+            "x": x,
+            "y": y,
+            "w": w,
+            "h": h,
+            "base_width": REPLAY_BASE_WIDTH,
+            "base_height": REPLAY_BASE_HEIGHT,
+            "color": color_map.get(source, color_map.get(roi_name, "#f59e0b")),
+        })
+
+    for detector_name, roi in (
+        ("kill_feed", get_kill_feed_game_config(game, CONFIG, game_pack).get("roi")),
+        ("weapon_detector", get_weapon_detector_game_config(game, CONFIG, game_pack).get("roi")),
+    ):
+        if not isinstance(roi, dict):
+            continue
+        try:
+            x = int(round(float(roi["x"])))
+            y = int(round(float(roi["y"])))
+            w = int(round(float(roi["w"])))
+            h = int(round(float(roi["h"])))
+        except (KeyError, TypeError, ValueError):
+            continue
+        key = (detector_name, x, y, w, h)
+        if key in seen:
+            continue
+        seen.add(key)
+        overlays.append({
+            "label": _labelize(detector_name),
+            "source": detector_name,
+            "x": x,
+            "y": y,
+            "w": w,
+            "h": h,
+            "base_width": REPLAY_BASE_WIDTH,
+            "base_height": REPLAY_BASE_HEIGHT,
+            "color": color_map.get(detector_name, "#f59e0b"),
+        })
+
+    return overlays
+
+
+def _build_yolo_overlays(meta: dict) -> list[dict]:
+    yolo = meta.get("yolo_detection") or {}
+    detections = yolo.get("detections") or []
+    has_timestamped_boxes = any(_safe_float(item.get("timestamp"), -1.0) > 0 for item in detections if isinstance(item, dict))
+    overlays: list[dict] = []
+    for item in detections:
+        if not isinstance(item, dict):
+            continue
+        box = item.get("box") or []
+        if not isinstance(box, list) or len(box) < 4:
+            continue
+        try:
+            x1, y1, x2, y2 = [round(float(value), 3) for value in box[:4]]
+        except (TypeError, ValueError):
+            continue
+        overlays.append({
+            "label": _labelize(item.get("maps_to") or item.get("entity_id") or item.get("event_id") or item.get("label")),
+            "raw_label": str(item.get("label", "")),
+            "kind": str(item.get("kind") or ""),
+            "maps_to": item.get("maps_to"),
+            "confidence": _safe_float(item.get("confidence"), 0.0),
+            "timestamp": _safe_float(item.get("timestamp"), 0.0),
+            "frame_index": item.get("frame_index"),
+            "x1": x1,
+            "y1": y1,
+            "x2": x2,
+            "y2": y2,
+            "always_visible": not has_timestamped_boxes,
+            "color": "#38bdf8" if item.get("kind") == "entity" else "#f97316",
+        })
+    return overlays
+
+
+def _build_replay_signals(meta: dict) -> list[dict]:
+    signals: list[dict] = []
+
+    def add_signal(
+        timestamp: object,
+        source: str,
+        kind: str,
+        label: str,
+        confidence: object | None = None,
+        detail: str | None = None,
+        role: str = "signal",
+    ) -> None:
+        ts = _safe_float(timestamp, 0.0)
+        signals.append({
+            "timestamp": ts,
+            "source": source,
+            "kind": kind,
+            "label": label,
+            "confidence": _safe_float(confidence, 0.0) if confidence is not None else None,
+            "detail": detail or "",
+            "role": role,
+        })
+
+    audio_events = meta.get("audio_events") or {}
+    if isinstance(audio_events.get("events"), list) and audio_events.get("events"):
+        for event in audio_events["events"]:
+            if not isinstance(event, dict):
+                continue
+            detail = ""
+            if event.get("spike_count"):
+                detail = f"{event['spike_count']} spikes"
+            add_signal(
+                event.get("timestamp", 0.0),
+                "audio_detector",
+                str(event.get("type") or "audio_event"),
+                _labelize(event.get("type") or "audio_event"),
+                detail=detail,
+            )
+    else:
+        for timestamp in audio_events.get("spike_timestamps") or []:
+            add_signal(timestamp, "audio_detector", "audio_spike", "Audio Spike")
+
+    kill_feed = meta.get("kill_feed") or {}
+    if isinstance(kill_feed.get("events"), list) and kill_feed.get("events"):
+        for event in kill_feed["events"]:
+            if not isinstance(event, dict):
+                continue
+            add_signal(
+                event.get("timestamp", 0.0),
+                "kill_feed",
+                str(event.get("kind") or "kill"),
+                _labelize(event.get("kind") or "kill"),
+                confidence=event.get("confidence"),
+                detail=f"method={event.get('method', 'unknown')}",
+            )
+    else:
+        for timestamp in kill_feed.get("kill_timestamps") or []:
+            add_signal(timestamp, "kill_feed", "kill", "Kill", detail=f"method={kill_feed.get('method', 'unknown')}")
+        for timestamp in kill_feed.get("headshot_timestamps") or []:
+            add_signal(timestamp, "kill_feed", "headshot", "Headshot", detail=f"method={kill_feed.get('method', 'unknown')}")
+
+    weapon_detection = meta.get("weapon_detection") or {}
+    if weapon_detection.get("frame_time") is not None:
+        add_signal(
+            weapon_detection.get("frame_time", 0.0),
+            "weapon_detector",
+            "icon_match",
+            f"Weapon Match — {_labelize(weapon_detection.get('display_name') or weapon_detection.get('weapon_id'))}",
+            confidence=weapon_detection.get("confidence"),
+            role="context",
+        )
+
+    niceshot = meta.get("niceshot_detection") or {}
+    for moment in niceshot.get("moments") or []:
+        if not isinstance(moment, dict):
+            continue
+        add_signal(
+            moment.get("timestamp", 0.0),
+            "niceshot",
+            str(moment.get("kind") or "action_spike"),
+            f"NiceShot — {_labelize(moment.get('kind') or 'action_spike')}",
+            confidence=moment.get("confidence"),
+            detail="hook candidate" if moment.get("hook_candidate") else "",
+        )
+
+    yolo = meta.get("yolo_detection") or {}
+    for event in yolo.get("event_candidates") or []:
+        if not isinstance(event, dict):
+            continue
+        add_signal(
+            event.get("timestamp", 0.0),
+            "yolo_detector",
+            str(event.get("event_id") or event.get("label") or "visual_event"),
+            f"YOLO — {_labelize(event.get('event_id') or event.get('label') or 'visual_event')}",
+            confidence=event.get("confidence"),
+            detail=str(event.get("timestamp_source") or (yolo.get("timing") or {}).get("timestamp_source") or ""),
+        )
+
+    hook = meta.get("hook_enforcer") or {}
+    anchor = hook.get("anchor_moment") or {}
+    if anchor:
+        add_signal(
+            anchor.get("timestamp", 0.0),
+            "hook_enforcer",
+            str(anchor.get("kind") or "hook_anchor"),
+            f"Hook Anchor — {_labelize(anchor.get('kind') or 'hook_anchor')}",
+            confidence=anchor.get("confidence"),
+            role="hook_anchor",
+        )
+
+    trim_plan = hook.get("trim_plan") or {}
+    if trim_plan.get("strategy") == "hard_trim":
+        add_signal(
+            trim_plan.get("trim_start_seconds", 0.0),
+            "hook_enforcer",
+            "trim_start",
+            "Trim Start",
+            detail=f"expected hook at {_safe_float(trim_plan.get('expected_hook_timestamp'), 0.0)}s",
+            role="trim_start",
+        )
+
+    signals.sort(key=lambda item: (item["timestamp"], item["source"], item["kind"]))
+    return signals
+
+
+def _build_replay_state(source_stage: str, game: str, clip_stem: str) -> dict:
+    target = _resolve_replay_target(source_stage, game, clip_stem)
+    meta = target["meta"] or {}
+    game_pack = load_game_pack(game, CONFIG)
+    roi_overlays = _build_roi_overlays(game, game_pack)
+    yolo_overlays = _build_yolo_overlays(meta)
+    signals = _build_replay_signals(meta)
+    hook = meta.get("hook_enforcer") or {}
+    decision = meta.get("decision") or {}
+    context = meta.get("context") or {}
+    quarantine = meta.get("quarantine") or {}
+    title_engine = meta.get("title_engine") or {}
+    raw_sections = {
+        "audio_events": meta.get("audio_events", {}),
+        "kill_feed": meta.get("kill_feed", {}),
+        "weapon_detection": meta.get("weapon_detection", {}),
+        "niceshot_detection": meta.get("niceshot_detection", {}),
+        "yolo_detection": meta.get("yolo_detection", {}),
+        "hook_enforcer": hook,
+        "candidate_moments": meta.get("candidate_moments", []),
+        "context": context,
+        "decision": decision,
+        "quarantine": quarantine,
+    }
+    if title_engine:
+        raw_sections["title_engine"] = title_engine
+
+    return {
+        "clip": {
+            "source_stage": target["source_stage"],
+            "source_stage_label": target["source_stage_label"],
+            "game": target["game"],
+            "clip_stem": target["clip_stem"],
+            "clip_id": target["clip_id"],
+            "clip_path": str(target["clip_path"]),
+            "meta_path": str(target["meta_path"]),
+            "video_url": target["video_url"],
+            "back_url": target["back_url"],
+            "duration_seconds": _safe_float(meta.get("duration_seconds"), 0.0),
+            "title": title_engine.get("title") or (meta.get("scoring") or {}).get("suggested_title") or target["clip_id"],
+            "caption": title_engine.get("caption") or (meta.get("scoring") or {}).get("suggested_caption") or "",
+        },
+        "summary": {
+            "decision_status": decision.get("status") or meta.get("status") or target["source_stage"],
+            "composite_score": _safe_float(decision.get("composite_score"), 0.0),
+            "quarantine_reason": quarantine.get("reason") or meta.get("quarantine_reason"),
+            "player_entity_name": context.get("player_entity_name") or context.get("player_entity"),
+            "detected_event": context.get("detected_event"),
+            "context_confidence": _safe_float(context.get("context_confidence"), 0.0),
+            "hook_mode": (decision.get("hook_alignment") or {}).get("mode") or (hook.get("trim_plan") or {}).get("strategy"),
+        },
+        "hook": {
+            "early_hook_passed": bool(hook.get("early_hook_passed")),
+            "hook_score": _safe_float(hook.get("hook_score"), 0.0),
+            "window_seconds": _safe_float(hook.get("window_seconds"), 1.5),
+            "anchor_moment": hook.get("anchor_moment") or {},
+            "trim_plan": hook.get("trim_plan") or {},
+            "retention_flags": hook.get("retention_flags") or {},
+            "explanation": hook.get("explanation") or [],
+        },
+        "decision": {
+            "explanation": decision.get("explanation") or [],
+            "hook_alignment": decision.get("hook_alignment") or {},
+        },
+        "overlays": {
+            "roi_boxes": roi_overlays,
+            "yolo_boxes": yolo_overlays,
+            "video_base": {"width": REPLAY_BASE_WIDTH, "height": REPLAY_BASE_HEIGHT},
+        },
+        "signals": signals,
+        "raw_sections": raw_sections,
+        "raw_pretty": {
+            key: json.dumps(value, indent=2, sort_keys=True)
+            for key, value in raw_sections.items()
+        },
+        "actions": {
+            "feedback_source_stage": target["source_stage"],
+            "repair_url": target["back_url"] if target["source_stage"] == "quarantine" else None,
+        },
+    }
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -528,6 +940,12 @@ def review_clip(game: str, stem: str):
     next_c = _next_clip(game, stem)
     video_url = url_for("serve_video", game=game, filename=clip["filename"])
     return render_template("review.html", clip=clip, next_clip=next_c, video_url=video_url)
+
+
+@app.route("/replay/<source_stage>/<game>/<path:clip_stem>")
+def replay_view(source_stage: str, game: str, clip_stem: str):
+    replay = _build_replay_state(source_stage, game, clip_stem)
+    return render_template("replay.html", replay=replay, replay_data=replay)
 
 
 @app.route("/clip/<game>/<stem>/approve", methods=["POST"])
@@ -573,8 +991,7 @@ def _handle_decision(game: str, stem: str, decision: str):
 @app.route("/video/<game>/<filename>")
 def serve_video(game: str, filename: str):
     """Stream a processed video file safely."""
-    project_root = Path(__file__).parent.parent.parent
-    video_dir = (project_root / CONFIG["paths"]["processing"] / game).resolve()
+    video_dir = (PROJECT_ROOT / CONFIG["paths"]["processing"] / game).resolve()
     return send_from_directory(str(video_dir), filename, mimetype="video/mp4")
 
 
@@ -586,8 +1003,7 @@ def serve_thumb(game: str, stem: str):
     caches it as a .thumb.jpg sidecar next to the video, and serves it.
     Returns a 1x1 transparent GIF if the clip doesn't exist or FFmpeg fails.
     """
-    project_root = Path(__file__).parent.parent.parent
-    processing_dir = (project_root / CONFIG["paths"]["processing"] / game).resolve()
+    processing_dir = (PROJECT_ROOT / CONFIG["paths"]["processing"] / game).resolve()
     clip_path = processing_dir / f"{stem}.mp4"
     thumb_path = processing_dir / f"{stem}.thumb.jpg"
 
@@ -763,6 +1179,150 @@ def api_quarantine_rescan():
         return _json_error("game and clip_stem are required")
     rescan = _rescan_quarantine_clip(game, clip_stem)
     return jsonify({"ok": True, "rescan": rescan})
+
+
+# ---------------------------------------------------------------------------
+# Analytics routes
+# ---------------------------------------------------------------------------
+
+@app.route("/analytics")
+def analytics_dashboard():
+    filters = {
+        "platform": request.args.get("platform", "").strip(),
+        "game": request.args.get("game", "").strip(),
+        "template_id": request.args.get("template_id", "").strip(),
+        "hook_type": request.args.get("hook_type", "").strip(),
+        "paid": request.args.get("paid", "").strip(),
+    }
+    state = build_dashboard_state(CONFIG, filters)
+    return render_template("analytics.html", state=state)
+
+
+@app.route("/analytics/post/<post_id>")
+def analytics_post_detail(post_id: str):
+    detail = build_post_detail(CONFIG, post_id)
+    if detail is None:
+        abort(404)
+    return render_template("analytics_post.html", detail=detail)
+
+
+@app.route("/analytics/import", methods=["POST"])
+def analytics_import():
+    source_platform = request.form.get("source_platform", "").strip()
+    payload = request.form.get("payload", "")
+    uploaded = request.files.get("metrics_file")
+    if uploaded and uploaded.filename:
+        payload = uploaded.read().decode("utf-8", errors="replace")
+    result = import_metric_payload(CONFIG, source_platform, payload)
+    status = "ok" if result.get("ok") else "error"
+    return redirect(url_for(
+        "analytics_dashboard",
+        import_status=status,
+        imported=result.get("imported", 0),
+        import_errors="; ".join(result.get("errors", [])[:3]),
+    ))
+
+
+@app.route("/api/analytics/import", methods=["POST"])
+def api_analytics_import():
+    data = request.get_json(silent=True) or {}
+    source_platform = str(data.get("source_platform", "")).strip()
+    payload = data.get("payload", "")
+    if not isinstance(payload, str):
+        payload = json.dumps(payload)
+    result = import_metric_payload(CONFIG, source_platform, payload)
+    status = 200 if result.get("ok") else 400
+    return jsonify(result), status
+
+
+# ---------------------------------------------------------------------------
+# Distribution routes
+# ---------------------------------------------------------------------------
+
+@app.route("/distribution")
+def distribution_dashboard():
+    filters = {
+        "status": request.args.get("status", "").strip(),
+        "platform": request.args.get("platform", "").strip(),
+        "account_id": request.args.get("account_id", "").strip(),
+        "game": request.args.get("game", "").strip(),
+    }
+    state = get_distribution_dashboard(CONFIG, filters)
+    return render_template("distribution.html", state=state)
+
+
+# ---------------------------------------------------------------------------
+# Feedback routes
+# ---------------------------------------------------------------------------
+
+@app.route("/feedback")
+def feedback_dashboard():
+    games = list_supported_games(CONFIG)
+    selected_game = request.args.get("game", "").strip()
+    summaries = []
+    for game in games:
+        summaries.append(summarize_feedback(game, CONFIG, limit=12))
+
+    if not selected_game and summaries:
+        selected_game = summaries[0]["game"]
+    selected = next((item for item in summaries if item["game"] == selected_game), None)
+    if selected is None and summaries:
+        selected = summaries[0]
+        selected_game = selected["game"]
+
+    return render_template(
+        "feedback.html",
+        summaries=summaries,
+        selected=selected,
+        selected_game=selected_game,
+    )
+
+
+@app.route("/api/feedback/record", methods=["POST"])
+def api_feedback_record():
+    data = request.get_json(silent=True) or {}
+    game = str(data.get("game", "")).strip()
+    clip_stem = str(data.get("clip_stem", "")).strip()
+    source_stage = str(data.get("source_stage", "")).strip()
+    feedback_type = str(data.get("feedback_type", "")).strip()
+    detector = str(data.get("detector", "")).strip() or None
+    note = str(data.get("note", "")).strip()
+    details = data.get("details") if isinstance(data.get("details"), dict) else {}
+
+    if not game or not clip_stem or not source_stage or not feedback_type:
+        return _json_error("game, clip_stem, source_stage, and feedback_type are required")
+
+    try:
+        clip_path, meta_path, clip_id = _resolve_feedback_target(game, clip_stem, source_stage)
+    except Exception:
+        return _json_error("Clip not found for feedback recording", 404)
+
+    try:
+        entry = record_feedback(
+            game,
+            CONFIG,
+            clip_id=clip_id,
+            clip_path=clip_path,
+            meta_path=meta_path,
+            feedback_type=feedback_type,
+            source_stage=source_stage,
+            detector=detector,
+            note=note,
+            details=details,
+        )
+    except ValueError as e:
+        return _json_error(str(e), 400)
+
+    summary = summarize_feedback(game, CONFIG, limit=12)
+    return jsonify({"ok": True, "feedback": entry, "summary": summary})
+
+
+@app.route("/api/feedback/apply/<game>", methods=["POST"])
+def api_feedback_apply(game: str):
+    data = request.get_json(silent=True) or {}
+    dry_run = bool(data.get("dry_run", False))
+    result = apply_feedback_updates(game, CONFIG, dry_run=dry_run)
+    return jsonify({"ok": True, "result": result})
 
 # ---------------------------------------------------------------------------
 # Scout routes

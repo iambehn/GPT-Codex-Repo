@@ -8,9 +8,21 @@ Usage:
     python run.py --game all
     python run.py --init-game valorant
     python run.py --validate-game-pack marvel_rivals
+    python run.py --evaluate-game-pack marvel_rivals
+    python run.py --build-yolo-dataset marvel_rivals
+    python run.py --train-yolo marvel_rivals
+    python run.py --refresh-weapon-detector marvel_rivals
+    python run.py --audit-weapon-detector marvel_rivals
+    python run.py --render-weapon-audit-review marvel_rivals --report assets/games/marvel_rivals/reports/weapon_detector/20260425-231327.json
+    python run.py --promote-weapon-audit-crop marvel_rivals --rank 1 --overwrite
+    python run.py --review-feedback marvel_rivals
+    python run.py --apply-feedback marvel_rivals
     python run.py --enrich-quarantine marvel_rivals
     python run.py --enrich-game-from-wiki marvel_rivals --wiki-url https://example.fandom.com/wiki/Characters
     python run.py --distribute
+    python run.py --schedule-distribution
+    python run.py --run-distribution-queue
+    python run.py --distribution-status
 
 Pipeline order:
   1. Ingestion
@@ -40,7 +52,13 @@ from dotenv import load_dotenv
 from pipeline.audio_detector import run_audio_detector
 from pipeline.clip_judge import evaluate as evaluate_clip
 from pipeline.decision_engine import select_template
-from pipeline.distribution import list_reddit_flairs, poll_tiktok_pending, run_distribution
+from pipeline.distribution import list_reddit_flairs, poll_tiktok_pending
+from pipeline.distribution_queue import (
+    distribution_status,
+    mark_manual_posted,
+    run_distribution_queue,
+    schedule_distribution_tasks,
+)
 from pipeline.feature_extraction import run_feature_extraction
 from pipeline.game_pack import (
     get_game_metadata,
@@ -50,20 +68,25 @@ from pipeline.game_pack import (
     scaffold_game_pack,
     validate_game_pack,
 )
+from pipeline.game_pack_evaluator import evaluate_game_pack, scaffold_gold_set
 from pipeline.ingestion import run_ingestion
 from pipeline.hook_enforcer import run_hook_enforcer
 from pipeline.kill_feed import run_kill_feed_parser
 from pipeline.montage import run_montage
 from pipeline.niceshot_detector import run_niceshot_detector
 from pipeline.processing import run_processing
+from pipeline.review_feedback import apply_feedback_updates, summarize_feedback
 from pipeline.scoring import run_scoring
 from pipeline.title_engine import generate_title
 from pipeline.transcription import run_transcription
 from pipeline.weapon_detector import run_weapon_detector
+from pipeline.weapon_detector_audit import audit_weapon_detector
+from pipeline.weapon_asset_review import render_weapon_audit_review
+from pipeline.weapon_icon_promotion import promote_weapon_audit_crop
 from pipeline.wiki_enrichment import enrich_game_from_wiki
 from pipeline.yolo_detector import run_yolo_detector
-from utils.analytics import log_clip
-from utils.backup import backup_clip
+from pipeline.yolo_dataset import build_yolo_dataset
+from pipeline.yolo_training import train_yolo_model
 from utils.file_utils import ensure_dirs, move_to_quarantine
 from utils.logger import get_logger
 from utils.metadata_injector import inject_metadata
@@ -199,54 +222,21 @@ def run_pipeline_for_game(game: str, config: dict) -> None:
 
 
 def run_distribution_for_all(config: dict, dry_run: bool = False) -> None:
-    """Distribute all approved clips that have not yet been posted."""
-    accepted_root = Path(config["paths"]["accepted"])
-    inbox_root = Path(config["paths"]["inbox"])
-    total = 0
-    distributed = 0
-
-    for game in list_supported_games(config):
-        game_dir = accepted_root / game
-        if not game_dir.exists():
-            continue
-
-        for clip_file in sorted(game_dir.glob("*.mp4")):
-            total += 1
-            meta_path = _find_meta_for_clip(clip_file, inbox_root / game)
-            if meta_path is None:
-                logger.warning(f"No meta.json found for {clip_file.name} — skipping distribution.")
-                continue
-
-            metadata = json.loads(meta_path.read_text())
-            if metadata.get("review_status") != "accepted":
-                continue
-
-            if dry_run:
-                enabled_platforms = [
-                    p for p, cfg in config.get("distribution", {}).get("platforms", {}).items()
-                    if cfg.get("enabled")
-                ]
-                score = metadata.get("scoring", {}).get("highlight_score", "n/a")
-                logger.info(
-                    f"[DRY RUN] {clip_file.name} | score={score} "
-                    f"| platforms={enabled_platforms or ['none enabled']}"
-                )
-                distributed += 1
-                continue
-
-            logger.info(f"Distributing: {clip_file.name}")
-            dist_results = run_distribution(str(clip_file), metadata, config)
-            metadata = json.loads(meta_path.read_text())
-            log_clip(metadata, dist_results, config)
-            backup_clip(str(clip_file), metadata, config)
-            distributed += 1
-
-    if dry_run:
-        logger.info(f"[DRY RUN] {distributed}/{total} clip(s) would be distributed.")
-    else:
-        logger.info(f"Distribution complete: {distributed}/{total} clip(s) processed.")
-    if distributed == 0 and total == 0:
-        logger.info("No clips in accepted/ yet. Run the pipeline then approve clips in the review UI.")
+    """Compatibility wrapper: schedule accepted clips, then run due queue items."""
+    logger.info("--distribute now uses the SQLite distribution queue.")
+    scheduled = schedule_distribution_tasks(config)
+    logger.info(
+        "Scheduled distribution tasks: "
+        f"created={scheduled.get('created', 0)}, skipped={scheduled.get('skipped', 0)}, "
+        f"manual={scheduled.get('manual', 0)}, paused={scheduled.get('paused', 0)}"
+    )
+    result = run_distribution_queue(config, dry_run=dry_run)
+    logger.info(
+        "Distribution queue run: "
+        f"due={result.get('due', 0)}, posted={result.get('posted', 0)}, "
+        f"retryable={result.get('retryable', 0)}, terminal={result.get('terminal', 0)}, "
+        f"skipped={result.get('skipped', 0)}"
+    )
 
 
 def _find_meta_for_clip(clip_file: Path, inbox_game_dir: Path) -> Path | None:
@@ -311,6 +301,53 @@ def enrich_quarantine(game: str, config: dict) -> None:
     logger.info(f"[enrich_quarantine] Restored {restored} clip(s) for {game}.")
 
 
+def refresh_weapon_detector(game: str, config: dict, frame_sample: str | None = None) -> dict:
+    stage_keys = ("inbox", "quarantine", "processing", "accepted")
+    refreshed = 0
+    skipped_missing = 0
+    scanned = 0
+    detector_config = dict(config)
+    detector_config["weapon_detector"] = dict(config.get("weapon_detector") or {})
+    if frame_sample:
+        detector_config["weapon_detector"]["frame_sample"] = frame_sample
+
+    for stage in stage_keys:
+        root = Path(config["paths"].get(stage, "")) / game
+        if not root.exists():
+            continue
+
+        for meta_file in sorted(root.rglob("*.meta.json")):
+            scanned += 1
+            meta = _load_meta(meta_file)
+            clip_path = Path(meta.get("clip_path", "")) if meta.get("clip_path") else None
+            if clip_path is None or not clip_path.exists():
+                sibling_candidates = [meta_file.with_suffix(ext) for ext in (".mp4", ".mov", ".m4v", ".webm")]
+                clip_path = next((candidate for candidate in sibling_candidates if candidate.exists()), None)
+            if clip_path is None or not clip_path.exists():
+                skipped_missing += 1
+                logger.warning(f"[refresh_weapon_detector] Missing clip for {meta_file}")
+                continue
+
+            run_weapon_detector(clip_path, game, detector_config, force=True)
+            refreshed += 1
+
+    summary = {
+        "ok": True,
+        "game": game,
+        "scanned_meta_files": scanned,
+        "refreshed": refreshed,
+        "skipped_missing": skipped_missing,
+        "stages": list(stage_keys),
+        "frame_sample": detector_config["weapon_detector"].get("frame_sample"),
+    }
+    logger.info(
+        f"[refresh_weapon_detector] {game}: refreshed={refreshed}, "
+        f"scanned={scanned}, missing={skipped_missing}, "
+        f"frame_sample={detector_config['weapon_detector'].get('frame_sample')}"
+    )
+    return summary
+
+
 def main() -> None:
     load_dotenv()
 
@@ -320,7 +357,31 @@ def main() -> None:
     group.add_argument(
         "--distribute",
         action="store_true",
-        help="Upload all approved clips from accepted/ to social media, log analytics, and back up to Drive.",
+        help="Compatibility wrapper: schedule accepted clips and run due distribution queue items.",
+    )
+    group.add_argument(
+        "--schedule-distribution",
+        action="store_true",
+        dest="schedule_distribution",
+        help="Create distribution queue tasks for accepted clips.",
+    )
+    group.add_argument(
+        "--run-distribution-queue",
+        action="store_true",
+        dest="run_distribution_queue",
+        help="Run due official-API distribution queue tasks.",
+    )
+    group.add_argument(
+        "--distribution-status",
+        action="store_true",
+        dest="distribution_status",
+        help="Print distribution queue counts and recent tasks.",
+    )
+    group.add_argument(
+        "--mark-manual-posted",
+        metavar="TASK_ID",
+        dest="mark_manual_posted",
+        help="Mark a human-assisted distribution task as posted. Requires --url.",
     )
     group.add_argument(
         "--watch",
@@ -357,6 +418,60 @@ def main() -> None:
         help="Validate the required files and references for a game pack.",
     )
     group.add_argument(
+        "--evaluate-game-pack",
+        metavar="GAME",
+        dest="evaluate_game_pack",
+        help="Evaluate a game pack against assets/games/GAME/examples/gold_set/manifest.yaml.",
+    )
+    group.add_argument(
+        "--build-yolo-dataset",
+        metavar="GAME",
+        dest="build_yolo_dataset",
+        help="Build the per-game YOLO dataset registry, labels, and seed manifest.",
+    )
+    group.add_argument(
+        "--train-yolo",
+        metavar="GAME",
+        dest="train_yolo",
+        help="Train a YOLO model from the per-game exported dataset and promote best.pt into the model registry.",
+    )
+    group.add_argument(
+        "--refresh-weapon-detector",
+        metavar="GAME",
+        dest="refresh_weapon_detector",
+        help="Rerun the weapon detector across existing clips for a game and refresh sidecar metadata.",
+    )
+    group.add_argument(
+        "--audit-weapon-detector",
+        metavar="GAME",
+        dest="audit_weapon_detector",
+        help="Rank weapon-detector near misses for a game and export candidate ROI crops from real clips.",
+    )
+    group.add_argument(
+        "--promote-weapon-audit-crop",
+        metavar="GAME",
+        dest="promote_weapon_audit_crop",
+        help="Promote one exported audit crop into assets/weapon_icons/<game>/ with optional backup/overwrite.",
+    )
+    group.add_argument(
+        "--render-weapon-audit-review",
+        metavar="GAME",
+        dest="render_weapon_audit_review",
+        help="Render side-by-side comparison images from a weapon-detector audit report.",
+    )
+    group.add_argument(
+        "--review-feedback",
+        metavar="GAME",
+        dest="review_feedback",
+        help="Summarize review feedback, ROI requests, and retrain pressure for a game.",
+    )
+    group.add_argument(
+        "--apply-feedback",
+        metavar="GAME",
+        dest="apply_feedback",
+        help="Apply bounded clip-judge weight updates from recorded review feedback.",
+    )
+    group.add_argument(
         "--enrich-quarantine",
         metavar="GAME",
         dest="enrich_quarantine",
@@ -376,12 +491,54 @@ def main() -> None:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="With --distribute: show what would be uploaded without actually posting anything.",
+        help="With --distribute or --run-distribution-queue: show what would be uploaded without posting.",
+    )
+    parser.add_argument(
+        "--url",
+        dest="url",
+        help="Published post URL for --mark-manual-posted.",
+    )
+    parser.add_argument(
+        "--skip-eval-detectors",
+        action="store_true",
+        help="With --evaluate-game-pack: use existing sidecar detector metadata instead of rerunning detectors.",
+    )
+    parser.add_argument(
+        "--weapon-frame-sample",
+        choices=["middle", "kill_timestamps", "all"],
+        help="With --refresh-weapon-detector: temporarily override the weapon detector frame sampling mode.",
     )
     parser.add_argument(
         "--config",
         default="config.yaml",
         help="Path to config file (default: config.yaml).",
+    )
+    parser.add_argument(
+        "--report",
+        help="With --promote-weapon-audit-crop: explicit audit report JSON path. Defaults to the latest report for the game.",
+    )
+    parser.add_argument(
+        "--rank",
+        type=int,
+        default=1,
+        help="With --promote-weapon-audit-crop: 1-based ranked candidate to promote (default: 1).",
+    )
+    parser.add_argument(
+        "--crop-source",
+        choices=["auto", "candidate", "roi"],
+        default="auto",
+        help="With --promote-weapon-audit-crop: which exported crop type to promote.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Allow replacement of an existing asset and create a timestamped backup first.",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=10,
+        help="With --render-weapon-audit-review: number of ranked candidates to render (default: 10).",
     )
     args = parser.parse_args()
 
@@ -404,6 +561,66 @@ def main() -> None:
         print(print_validation_report(result))
         if not result["valid"]:
             sys.exit(1)
+    elif args.evaluate_game_pack:
+        scaffold_gold_set(args.evaluate_game_pack, config)
+        result = evaluate_game_pack(
+            args.evaluate_game_pack,
+            config,
+            run_detectors=not args.skip_eval_detectors,
+            force=True,
+        )
+        print(json.dumps(result, indent=2))
+        if result.get("status") == "failed":
+            sys.exit(1)
+    elif args.build_yolo_dataset:
+        result = build_yolo_dataset(args.build_yolo_dataset, config)
+        print(json.dumps(result, indent=2))
+        if not result.get("ok"):
+            sys.exit(1)
+    elif args.train_yolo:
+        result = train_yolo_model(args.train_yolo, config, dry_run=args.dry_run)
+        print(json.dumps(result, indent=2))
+        if not result.get("ok"):
+            sys.exit(1)
+    elif args.refresh_weapon_detector:
+        ensure_dirs(config)
+        result = refresh_weapon_detector(args.refresh_weapon_detector, config, frame_sample=args.weapon_frame_sample)
+        print(json.dumps(result, indent=2))
+    elif args.audit_weapon_detector:
+        ensure_dirs(config)
+        result = audit_weapon_detector(args.audit_weapon_detector, config)
+        print(json.dumps(result, indent=2))
+    elif args.promote_weapon_audit_crop:
+        ensure_dirs(config)
+        result = promote_weapon_audit_crop(
+            args.promote_weapon_audit_crop,
+            config,
+            report_path=args.report,
+            rank=args.rank,
+            source=args.crop_source,
+            overwrite=args.overwrite,
+            dry_run=args.dry_run,
+        )
+        print(json.dumps(result, indent=2))
+        if not result.get("ok"):
+            sys.exit(1)
+    elif args.render_weapon_audit_review:
+        ensure_dirs(config)
+        result = render_weapon_audit_review(
+            args.render_weapon_audit_review,
+            config,
+            report_path=args.report,
+            top_k=args.top_k,
+        )
+        print(json.dumps(result, indent=2))
+        if not result.get("ok"):
+            sys.exit(1)
+    elif args.review_feedback:
+        result = summarize_feedback(args.review_feedback, config)
+        print(json.dumps(result, indent=2))
+    elif args.apply_feedback:
+        result = apply_feedback_updates(args.apply_feedback, config, dry_run=args.dry_run)
+        print(json.dumps(result, indent=2))
     elif args.enrich_quarantine:
         ensure_dirs(config)
         enrich_quarantine(args.enrich_quarantine, config)
@@ -413,6 +630,24 @@ def main() -> None:
         result = enrich_game_from_wiki(args.enrich_game_from_wiki, args.wiki_url, config)
         print(json.dumps(result, indent=2))
         if result.get("status") == "failed":
+            sys.exit(1)
+    elif args.schedule_distribution:
+        ensure_dirs(config)
+        result = schedule_distribution_tasks(config)
+        print(json.dumps(result, indent=2))
+    elif args.run_distribution_queue:
+        ensure_dirs(config)
+        result = run_distribution_queue(config, dry_run=args.dry_run)
+        print(json.dumps(result, indent=2))
+    elif args.distribution_status:
+        result = distribution_status(config)
+        print(json.dumps(result, indent=2))
+    elif args.mark_manual_posted:
+        if not args.url:
+            parser.error("--mark-manual-posted requires --url")
+        result = mark_manual_posted(args.mark_manual_posted, args.url, config)
+        print(json.dumps(result, indent=2))
+        if not result.get("ok"):
             sys.exit(1)
     elif args.distribute:
         ensure_dirs(config)
