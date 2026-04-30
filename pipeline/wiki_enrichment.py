@@ -12,7 +12,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlparse
-from urllib.request import urlopen
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from pipeline.simple_yaml import dump_yaml_file
 
@@ -42,6 +43,24 @@ _ASSET_FAMILY_DEFAULTS = {
 _EVENT_SECTION_HINTS = ("medal", "event", "badge", "killstreak")
 _ABILITY_SECTION_HINTS = ("ability", "equipment", "perk", "loadout", "item")
 _ENTITY_SECTION_HINTS = ("operator", "character", "hero")
+_NEGATIVE_SECTION_HINTS = (
+    "overview",
+    "contents",
+    "trivia",
+    "references",
+    "external links",
+    "see also",
+    "gallery",
+    "navigation",
+)
+_HTML_ACCEPT_HEADER = "text/html,application/xhtml+xml"
+_DEFAULT_ACCEPT_LANGUAGE = "en-US,en;q=0.9"
+_DEFAULT_TIMEOUT_SECONDS = 20
+_BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
 
 
 @dataclass
@@ -60,6 +79,49 @@ class ParsedSection:
     images: list[ParsedImage] = field(default_factory=list)
 
 
+@dataclass
+class ParsedCategoryItem:
+    name: str
+    href: str
+
+
+@dataclass(frozen=True)
+class WikiSource:
+    url: str
+    role: str
+
+
+class WikiFetchError(RuntimeError):
+    def __init__(
+        self,
+        *,
+        source_url: str,
+        category: str,
+        message: str,
+        hint: str,
+        http_status: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.source_url = source_url
+        self.category = category
+        self.message = message
+        self.hint = hint
+        self.http_status = http_status
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = {
+            "ok": False,
+            "status": "fetch_failed",
+            "wiki_url": self.source_url,
+            "error": self.message,
+            "hint": self.hint,
+            "failure_category": self.category,
+        }
+        if self.http_status is not None:
+            payload["http_status"] = self.http_status
+        return payload
+
+
 class _WikiHtmlParser(HTMLParser):
     def __init__(self, base_url: str) -> None:
         super().__init__(convert_charrefs=True)
@@ -72,18 +134,45 @@ class _WikiHtmlParser(HTMLParser):
         self.sections: list[ParsedSection] = [self._current_section]
         self._capture_li = False
         self._capture_title = False
+        self._article_detected = False
+        self._article_depth = 0
+        self._ignored_depth = 0
+        self._tag_flags: list[tuple[str, bool, bool, bool]] = []
+        self.category_items: list[ParsedCategoryItem] = []
+        self._category_members_depth = 0
+        self._category_anchor_href = ""
+        self._capture_category_anchor = False
+        self._current_category_anchor_text = ""
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr_map = dict(attrs)
-        if tag in {"h1", "h2", "h3"}:
+        enters_article = _is_article_container(tag, attr_map)
+        enters_ignored = _is_ignored_container(tag, attr_map)
+        enters_category_members = _is_category_members_container(tag, attr_map)
+
+        if enters_article:
+            if not self._article_detected:
+                self._article_detected = True
+                self._reset_sections()
+            self._article_depth += 1
+
+        if enters_ignored and self._capture_content_enabled():
+            self._ignored_depth += 1
+
+        self._tag_flags.append((tag, enters_article, enters_ignored, enters_category_members))
+
+        if enters_category_members:
+            self._category_members_depth += 1
+
+        if tag in {"h1", "h2", "h3"} and self._capture_content_enabled():
             self._current_heading_tag = tag
             self._current_heading_text = ""
-        elif tag == "li":
+        elif tag == "li" and self._capture_content_enabled():
             self._capture_li = True
             self._current_text_parts = []
         elif tag == "title":
             self._capture_title = True
-        elif tag == "img":
+        elif tag == "img" and self._capture_content_enabled():
             src = attr_map.get("src") or ""
             alt = (attr_map.get("alt") or "").strip()
             if src:
@@ -96,6 +185,10 @@ class _WikiHtmlParser(HTMLParser):
                         section_text=self._current_section.heading,
                     )
                 )
+        elif tag == "a" and self._should_capture_category_anchor(attr_map):
+            self._capture_category_anchor = True
+            self._category_anchor_href = urljoin(self.base_url, attr_map.get("href") or "")
+            self._current_category_anchor_text = ""
 
     def handle_endtag(self, tag: str) -> None:
         if tag == self._current_heading_tag and self._current_heading_tag:
@@ -114,17 +207,70 @@ class _WikiHtmlParser(HTMLParser):
             self._current_text_parts = []
         elif tag == "title":
             self._capture_title = False
+        elif tag == "a" and self._capture_category_anchor:
+            item_name = _clean_text(self._current_category_anchor_text)
+            if item_name and self._category_anchor_href and not _should_ignore_category_row(item_name):
+                self.category_items.append(
+                    ParsedCategoryItem(
+                        name=item_name,
+                        href=self._category_anchor_href,
+                    )
+                )
+            self._capture_category_anchor = False
+            self._category_anchor_href = ""
+            self._current_category_anchor_text = ""
+
+        while self._tag_flags:
+            open_tag, enters_article, enters_ignored, enters_category_members = self._tag_flags.pop()
+            if enters_ignored and self._ignored_depth > 0:
+                self._ignored_depth -= 1
+            if enters_article and self._article_depth > 0:
+                self._article_depth -= 1
+            if enters_category_members and self._category_members_depth > 0:
+                self._category_members_depth -= 1
+            if open_tag == tag:
+                break
 
     def handle_data(self, data: str) -> None:
-        if self._current_heading_tag:
+        if self._current_heading_tag and self._capture_content_enabled():
             self._current_heading_text += data
-        if self._capture_li:
+        if self._capture_li and self._capture_content_enabled():
             self._current_text_parts.append(data)
         if self._capture_title:
             self.title += data
+        if self._capture_category_anchor:
+            self._current_category_anchor_text += data
+
+    def _capture_content_enabled(self) -> bool:
+        if self._article_detected:
+            return self._article_depth > 0 and self._ignored_depth == 0
+        return self._ignored_depth == 0
+
+    def _reset_sections(self) -> None:
+        self._current_section = ParsedSection(section_key="overview", heading="Overview")
+        self.sections = [self._current_section]
+        self._current_heading_tag = ""
+        self._current_heading_text = ""
+        self._current_text_parts = []
+        self._capture_li = False
+
+    def _should_capture_category_anchor(self, attrs: dict[str, str | None]) -> bool:
+        if self._category_members_depth <= 0:
+            return False
+        href = (attrs.get("href") or "").strip()
+        if not href:
+            return False
+        classes = _attr_tokens(attrs.get("class"))
+        if "category-page__member-link" in classes:
+            return True
+        return True
 
 
 def enrich_game_from_wiki(game: str, wiki_url: str, *, repo_root: Path | None = None) -> dict[str, Any]:
+    return enrich_game_from_sources(game, [WikiSource(url=wiki_url, role="overview")], repo_root=repo_root)
+
+
+def enrich_game_from_sources(game: str, sources: list[WikiSource], *, repo_root: Path | None = None) -> dict[str, Any]:
     repo_root = (repo_root or REPO_ROOT).resolve()
     timestamp = _timestamp_slug()
     draft_root = repo_root / "assets" / "games" / game / "drafts" / "wiki" / timestamp
@@ -135,7 +281,7 @@ def enrich_game_from_wiki(game: str, wiki_url: str, *, repo_root: Path | None = 
     for path in (catalog_root, downloads_root, templates_root, masks_root):
         path.mkdir(parents=True, exist_ok=True)
 
-    source_records = [_fetch_source_record(wiki_url)]
+    source_records = [_fetch_source_record(source.url, source.role) for source in sources]
     normalized = _normalize_records(game, source_records)
     _download_assets(normalized["assets"], downloads_root, templates_root)
     _write_catalog_csvs(catalog_root, normalized)
@@ -145,13 +291,14 @@ def enrich_game_from_wiki(game: str, wiki_url: str, *, repo_root: Path | None = 
         "ok": True,
         "status": "ok",
         "game": game,
-        "wiki_url": wiki_url,
+        "wiki_url": sources[0].url if len(sources) == 1 else None,
         "draft_root": str(draft_root),
         "catalog_root": str(catalog_root),
         "downloads_root": str(downloads_root),
         "templates_root": str(templates_root),
         "masks_root": str(masks_root),
         "source_count": len(source_records),
+        "sources": [{"url": source.url, "role": source.role} for source in sources],
         "counts": {
             "games": len(normalized[_SECTION_GAME]),
             "entities": len(normalized[_SECTION_ENTITIES]),
@@ -170,19 +317,75 @@ def enrich_game_from_wiki(game: str, wiki_url: str, *, repo_root: Path | None = 
     }
 
 
-def _fetch_source_record(url: str) -> dict[str, Any]:
-    with urlopen(url) as response:
-        content_type = response.headers.get_content_type() if hasattr(response, "headers") else "text/html"
-        body = response.read()
-    text = body.decode("utf-8", errors="replace")
+def _fetch_source_record(url: str, role: str) -> dict[str, Any]:
+    try:
+        response_target = _build_fetch_target(url)
+        with urlopen(response_target, timeout=_DEFAULT_TIMEOUT_SECONDS) as response:
+            content_type = response.headers.get_content_type() if hasattr(response, "headers") else "text/html"
+            body = response.read()
+    except HTTPError as exc:
+        raise WikiFetchError(
+            source_url=url,
+            category="http_error",
+            message=f"failed to fetch source page: HTTP {exc.code}",
+            hint=_fetch_hint_for_status(exc.code),
+            http_status=exc.code,
+        ) from exc
+    except URLError as exc:
+        reason = getattr(exc, "reason", exc)
+        raise WikiFetchError(
+            source_url=url,
+            category="network_error",
+            message=f"failed to fetch source page: {reason}",
+            hint="The source may be unavailable or the current environment may not have network access.",
+        ) from exc
+
+    try:
+        text = body.decode("utf-8", errors="replace")
+    except UnicodeDecodeError as exc:
+        raise WikiFetchError(
+            source_url=url,
+            category="decode_error",
+            message="failed to decode source page as text",
+            hint="The source responded with content that could not be decoded as HTML text.",
+        ) from exc
+
     parser = _WikiHtmlParser(url)
     parser.feed(text)
+    page_type = _detect_page_type(url, _clean_text(parser.title), parser.category_items)
     return {
         "url": url,
+        "role": role,
         "content_type": content_type,
         "title": _clean_text(parser.title) or _slugify(urlparse(url).path) or "source",
+        "page_type": page_type,
         "sections": parser.sections,
+        "category_items": parser.category_items,
     }
+
+
+def _build_fetch_target(url: str) -> str | Request:
+    parsed = urlparse(url)
+    if parsed.scheme in {"http", "https"}:
+        return Request(
+            url,
+            headers={
+                "User-Agent": _BROWSER_USER_AGENT,
+                "Accept": _HTML_ACCEPT_HEADER,
+                "Accept-Language": _DEFAULT_ACCEPT_LANGUAGE,
+            },
+        )
+    return url
+
+
+def _fetch_hint_for_status(status_code: int) -> str:
+    if status_code == 403:
+        return "The source blocked the request even after browser-like headers were applied."
+    if status_code == 404:
+        return "The source URL was not found. Verify the page still exists."
+    if 500 <= status_code < 600:
+        return "The source site returned a server error. Retry later or choose another source."
+    return "The source returned an unexpected HTTP error."
 
 
 def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -190,109 +393,90 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
         "game_id": game,
         "display_name": _display_name_for_game(game),
         "seed_adapter": "call_of_duty",
-        "primary_source_kind": "explicit_url",
+        "primary_source_kind": "explicit_urls",
     }]
     entities_by_id: dict[str, dict[str, Any]] = {}
     abilities_by_id: dict[str, dict[str, Any]] = {}
     events_by_id: dict[str, dict[str, Any]] = {}
     assets: list[dict[str, Any]] = []
     fetch_log: list[dict[str, Any]] = []
+    seen_assets: set[tuple[str, str]] = set()
 
     for source in source_records:
         sections: list[ParsedSection] = source["sections"]
         fetch_log.append(
             {
                 "source_page_url": source["url"],
+                "source_role": source["role"],
                 "source_title": source["title"],
+                "page_type": source["page_type"],
                 "status": "fetched",
                 "content_type": source["content_type"],
                 "section_count": len(sections),
             }
         )
 
+        if source["page_type"] == "category":
+            _normalize_category_source(
+                game,
+                source,
+                entities_by_id,
+                abilities_by_id,
+                events_by_id,
+            )
+            continue
+
         for section in sections:
-            record_type = _classify_section(section.heading)
+            record_type = _classify_section(section.heading, source["role"])
             for item_text in section.items:
-                item_name = _normalize_item_name(item_text)
-                if not item_name:
+                item_name = _normalize_item_name(item_text, record_type=record_type, source_role=source["role"], section_heading=section.heading)
+                if not item_name or _should_ignore_row_text(item_name):
                     continue
-                if record_type == "character_or_operator":
-                    entity_id = _asset_entity_id(game, item_name)
-                    entities_by_id.setdefault(
-                        entity_id,
-                        {
-                            "entity_id": entity_id,
-                            "game_id": game,
-                            "entity_type": "character_or_operator",
-                            "display_name": item_name,
-                            "source_page_url": source["url"],
-                            "section_heading": section.heading,
-                        },
-                    )
-                elif record_type == "ability_or_equipment":
-                    ability_id = _asset_entity_id(game, item_name)
-                    abilities_by_id.setdefault(
-                        ability_id,
-                        {
-                            "ability_id": ability_id,
-                            "game_id": game,
-                            "display_name": item_name,
-                            "source_page_url": source["url"],
-                            "section_heading": section.heading,
-                        },
-                    )
-                else:
-                    event_id = _asset_entity_id(game, item_name)
-                    events_by_id.setdefault(
-                        event_id,
-                        {
-                            "event_id": event_id,
-                            "game_id": game,
-                            "display_name": item_name,
-                            "source_page_url": source["url"],
-                            "section_heading": section.heading,
-                        },
-                    )
+                _upsert_schema_row(
+                    game,
+                    source,
+                    section.heading,
+                    record_type,
+                    item_name,
+                    entities_by_id,
+                    abilities_by_id,
+                    events_by_id,
+                )
 
             for image in section.images:
-                record_type = _classify_section(image.section_text)
-                display_name = _normalize_item_name(image.alt or section.heading)
-                if not display_name:
-                    display_name = "unnamed_asset"
+                record_type = _classify_section(image.section_text, source["role"])
+                if record_type is None:
+                    continue
+                display_name = _normalize_item_name(
+                    image.alt or section.heading,
+                    record_type=record_type,
+                    source_role=source["role"],
+                    section_heading=image.section_text,
+                )
+                if not display_name or _should_ignore_row_text(display_name):
+                    continue
+                if not _should_keep_image(
+                    image.src,
+                    display_name,
+                    source_role=source["role"],
+                    section_heading=image.section_text,
+                ):
+                    continue
+                asset_key = (display_name.casefold(), image.src)
+                if asset_key in seen_assets:
+                    continue
+                seen_assets.add(asset_key)
                 entity_id = _asset_entity_id(game, display_name)
-                if record_type == "character_or_operator":
-                    entities_by_id.setdefault(
-                        entity_id,
-                        {
-                            "entity_id": entity_id,
-                            "game_id": game,
-                            "entity_type": "character_or_operator",
-                            "display_name": display_name,
-                            "source_page_url": source["url"],
-                            "section_heading": section.heading,
-                        },
-                    )
-                elif record_type == "ability_or_equipment":
-                    abilities_by_id.setdefault(
-                        entity_id,
-                        {
-                            "ability_id": entity_id,
-                            "game_id": game,
-                            "display_name": display_name,
-                            "source_page_url": source["url"],
-                            "section_heading": section.heading,
-                        },
-                    )
-                else:
-                    events_by_id.setdefault(
-                        entity_id,
-                        {
-                            "event_id": entity_id,
-                            "game_id": game,
-                            "display_name": display_name,
-                            "source_page_url": source["url"],
-                            "section_heading": section.heading,
-                        },
+                if not _should_skip_image_schema_upsert(display_name, record_type=record_type, source_role=source["role"]):
+                    _upsert_schema_row(
+                        game,
+                        source,
+                        section.heading,
+                        record_type,
+                        display_name,
+                        entities_by_id,
+                        abilities_by_id,
+                        events_by_id,
                     )
 
                 asset_id = f"{game}.{record_type}.{_slugify(display_name)}.{hashlib.sha1(image.src.encode('utf-8')).hexdigest()[:8]}"
@@ -306,6 +490,8 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
                         "display_name": display_name,
                         "source_url": image.src,
                         "source_page_url": source["url"],
+                        "source_role": source["role"],
+                        "source_title": source["title"],
                         "draft_local_path": "",
                         "template_path": "",
                         "mask_path": "",
@@ -325,6 +511,8 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
             "display_name": asset["display_name"],
             "qa_status": asset["qa_status"],
             "source_url": asset["source_url"],
+            "source_role": asset["source_role"],
+            "source_page_url": asset["source_page_url"],
         }
         for asset in assets
         if asset["qa_status"] != "verified_source"
@@ -423,6 +611,85 @@ def _write_draft_artifacts(draft_root: Path, game: str, normalized: dict[str, li
     (draft_root / "assets_manifest.json").write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
 
 
+def _normalize_category_source(
+    game: str,
+    source: dict[str, Any],
+    entities_by_id: dict[str, dict[str, Any]],
+    abilities_by_id: dict[str, dict[str, Any]],
+    events_by_id: dict[str, dict[str, Any]],
+) -> None:
+    record_type = _record_type_for_role(source["role"])
+    if record_type not in {"character_or_operator", "ability_or_equipment", "event_badge_or_medal"}:
+        return
+    for item in source.get("category_items", []):
+        item_name = _normalize_item_name(
+            item.name,
+            record_type=record_type,
+            source_role=source["role"],
+            section_heading="Category",
+        )
+        if not item_name or _should_ignore_row_text(item_name) or _should_ignore_category_row(item_name):
+            continue
+        _upsert_schema_row(
+            game,
+            source,
+            "Category",
+            record_type,
+            item_name,
+            entities_by_id,
+            abilities_by_id,
+            events_by_id,
+        )
+
+
+def _upsert_schema_row(
+    game: str,
+    source: dict[str, Any],
+    section_heading: str,
+    record_type: str | None,
+    display_name: str,
+    entities_by_id: dict[str, dict[str, Any]],
+    abilities_by_id: dict[str, dict[str, Any]],
+    events_by_id: dict[str, dict[str, Any]],
+) -> None:
+    if record_type is None:
+        return
+    row = {
+        "game_id": game,
+        "display_name": display_name,
+        "source_page_url": source["url"],
+        "source_role": source["role"],
+        "source_title": source["title"],
+        "section_heading": section_heading,
+    }
+    canonical_id = _asset_entity_id(game, display_name)
+    if record_type == "character_or_operator":
+        entities_by_id.setdefault(
+            canonical_id,
+            {
+                "entity_id": canonical_id,
+                "entity_type": "character_or_operator",
+                **row,
+            },
+        )
+    elif record_type == "ability_or_equipment":
+        abilities_by_id.setdefault(
+            canonical_id,
+            {
+                "ability_id": canonical_id,
+                **row,
+            },
+        )
+    elif record_type == "event_badge_or_medal":
+        events_by_id.setdefault(
+            canonical_id,
+            {
+                "event_id": canonical_id,
+                **row,
+            },
+        )
+
+
 def _headers_for_rows(rows: list[dict[str, Any]]) -> list[str]:
     headers: list[str] = []
     for row in rows:
@@ -445,15 +712,28 @@ def _stringify_row(row: dict[str, Any], headers: list[str]) -> dict[str, str]:
     return rendered
 
 
-def _classify_section(heading: str) -> str:
+def _classify_section(heading: str, source_role: str) -> str | None:
+    role_default = _record_type_for_role(source_role)
+    if role_default == "overview":
+        return None
     lowered = heading.lower()
+    if not lowered or any(token in lowered for token in _NEGATIVE_SECTION_HINTS):
+        return None
+    if _looks_like_toc_entry(heading):
+        return None
+    if source_role.strip().lower() == "events":
+        if any(token in lowered for token in ("contract", "intel", "map", "video", "progression", "crossplay", "vehicle", "weapon")):
+            return None
+        if any(token in lowered for token in _EVENT_SECTION_HINTS):
+            return "event_badge_or_medal"
+        return None
     if any(token in lowered for token in _EVENT_SECTION_HINTS):
         return "event_badge_or_medal"
     if any(token in lowered for token in _ABILITY_SECTION_HINTS):
         return "ability_or_equipment"
     if any(token in lowered for token in _ENTITY_SECTION_HINTS):
         return "character_or_operator"
-    return "event_badge_or_medal"
+    return role_default
 
 
 def _default_roi_ref(record_type: str) -> str:
@@ -508,7 +788,17 @@ def _display_name_for_game(game: str) -> str:
     return " ".join(part.capitalize() for part in game.split("_"))
 
 
-def _normalize_item_name(text: str) -> str:
+def _normalize_item_name(
+    text: str,
+    *,
+    record_type: str | None = None,
+    source_role: str | None = None,
+    section_heading: str | None = None,
+) -> str:
+    if record_type == "event_badge_or_medal" or (source_role or "").strip().lower() == "events":
+        event_name = _extract_event_name(text, section_heading=section_heading or "")
+        if event_name:
+            return event_name
     cleaned = _clean_text(re.sub(r"\s*[:\-–]\s*.*$", "", text))
     return cleaned
 
@@ -537,3 +827,168 @@ def _looks_like_direct_asset_url(url: str) -> bool:
 def _extension_for_url(url: str) -> str:
     extension = os.path.splitext(urlparse(url).path)[1].lower()
     return extension or ".bin"
+
+
+def _is_article_container(tag: str, attrs: dict[str, str | None]) -> bool:
+    classes = _attr_tokens(attrs.get("class"))
+    element_id = (attrs.get("id") or "").strip().lower()
+    if tag == "div" and "mw-parser-output" in classes:
+        return True
+    if element_id == "mw-content-text":
+        return True
+    return False
+
+
+def _is_ignored_container(tag: str, attrs: dict[str, str | None]) -> bool:
+    classes = _attr_tokens(attrs.get("class"))
+    element_id = (attrs.get("id") or "").strip().lower()
+    ignored_tokens = {
+        "toc",
+        "table-of-contents",
+        "portable-infobox",
+        "infobox",
+        "wds-global-navigation",
+        "page-header",
+        "comments",
+        "gallery",
+    }
+    if element_id in ignored_tokens:
+        return True
+    return any(token in classes for token in ignored_tokens)
+
+
+def _is_category_members_container(tag: str, attrs: dict[str, str | None]) -> bool:
+    classes = _attr_tokens(attrs.get("class"))
+    return any(
+        token in classes
+        for token in {
+            "category-page__members",
+            "category-page__trending-pages",
+            "category-page__member",
+            "category-page__members-for-char",
+            "category-page__pagination",
+        }
+    )
+
+
+def _attr_tokens(value: str | None) -> set[str]:
+    if not value:
+        return set()
+    return {token.strip().lower() for token in value.split() if token.strip()}
+
+
+def _looks_like_toc_entry(text: str) -> bool:
+    return bool(re.match(r"^\d+(?:\.\d+)*\s+", text.strip()))
+
+
+def _should_ignore_row_text(text: str) -> bool:
+    lowered = text.strip().lower()
+    if not lowered:
+        return True
+    if _looks_like_toc_entry(text):
+        return True
+    if lowered in {"contents", "trivia", "references", "external links", "see also"}:
+        return True
+    if "call of duty wiki" in lowered:
+        return True
+    if "subject of this article" in lowered:
+        return True
+    return False
+
+
+def _should_keep_image(source_url: str, display_name: str, *, source_role: str, section_heading: str) -> bool:
+    parsed = urlparse(source_url)
+    lowered_name = display_name.casefold()
+    lowered_url = source_url.casefold()
+    role = source_role.strip().lower()
+    section_lowered = section_heading.casefold()
+    if parsed.scheme == "data":
+        return False
+    if "site-logo" in lowered_url or "wiki-logo" in lowered_url:
+        return False
+    if "call of duty wiki" in lowered_name or "site logo" in lowered_name:
+        return False
+    if "subject of this article" in lowered_name:
+        return False
+    if "artwork" in lowered_name or "banner" in lowered_name:
+        return False
+    if role in {"overview", "maps"}:
+        return False
+    if role == "events":
+        if any(token in lowered_name for token in ("map", "verdansk", "rebirth", "launch", "season", "pre")):
+            return False
+        has_icon_like_name = any(token in lowered_name for token in ("icon", "logo", "badge", "medal", "event", "emblem"))
+        has_event_like_section = any(token in section_lowered for token in ("event", "medal", "badge"))
+        if not has_icon_like_name and not has_event_like_section:
+            return False
+        if not has_icon_like_name and _looks_like_prose(lowered_name):
+            return False
+    if role == "operators" and _looks_like_prose(lowered_name):
+        return False
+    if role == "equipment" and _looks_like_prose(lowered_name):
+        return False
+    return True
+
+
+def _record_type_for_role(source_role: str) -> str | None:
+    role = source_role.strip().lower()
+    if role in {"operators", "factions"}:
+        return "character_or_operator"
+    if role == "equipment":
+        return "ability_or_equipment"
+    if role == "events":
+        return "event_badge_or_medal"
+    if role in {"overview", "maps"}:
+        return "overview"
+    return None
+
+
+def _should_skip_image_schema_upsert(display_name: str, *, record_type: str | None, source_role: str) -> bool:
+    role = source_role.strip().lower()
+    lowered = display_name.casefold()
+    if role == "events" and record_type == "event_badge_or_medal":
+        if any(token in lowered for token in ("icon", "logo", "badge", "medal", "emblem")):
+            return True
+    return False
+
+
+def _detect_page_type(url: str, title: str, category_items: list[ParsedCategoryItem]) -> str:
+    parsed = urlparse(url)
+    path = parsed.path.casefold()
+    title_lowered = title.casefold()
+    if "/wiki/category:" in path or title_lowered.startswith("category:"):
+        return "category"
+    if category_items:
+        return "category"
+    return "article"
+
+
+def _extract_event_name(text: str, *, section_heading: str) -> str:
+    cleaned = _clean_text(text)
+    if not cleaned:
+        return ""
+    match = re.match(r"^(?:The\s+)?([A-Z][A-Za-z0-9'&().:/ -]{1,80}?)\s+event\b", cleaned)
+    if match:
+        return _clean_text(match.group(1))
+    if cleaned.count(" ") <= 5 and "." not in cleaned:
+        return _clean_text(re.sub(r"\s*[:\-–]\s*.*$", "", cleaned))
+    if "events" in section_heading.casefold():
+        return ""
+    return _clean_text(re.sub(r"\s*[:\-–]\s*.*$", "", cleaned))
+
+
+def _looks_like_prose(text: str) -> bool:
+    return len(text.split()) > 6 or "." in text
+
+
+def _should_ignore_category_row(text: str) -> bool:
+    lowered = text.strip().casefold()
+    if not lowered:
+        return True
+    if lowered.startswith("category:"):
+        return True
+    if lowered in {"trending pages", "all items", "popular pages", "recent changes"}:
+        return True
+    if len(lowered) == 1 and lowered.isalpha():
+        return True
+    return False

@@ -16,7 +16,7 @@ from pipeline.proxy_review_bridge import apply_proxy_review, cleanup_proxy_revie
 from pipeline.proxy_scanner import build_proxy_windows
 from pipeline.simple_yaml import load_yaml_file
 from pipeline.training_export import export_training_data
-from pipeline.wiki_enrichment import enrich_game_from_wiki
+from pipeline.wiki_enrichment import WikiFetchError, WikiSource, enrich_game_from_sources, enrich_game_from_wiki
 
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -221,8 +221,52 @@ def run_cleanup_proxy_review(session_manifest: str | Path, *, gpt_repo: str | Pa
     return cleanup_proxy_review(session_manifest, gpt_repo=gpt_repo)
 
 
-def run_enrich_game_from_wiki(game: str, wiki_url: str) -> dict[str, Any]:
-    return enrich_game_from_wiki(game, wiki_url)
+def run_enrich_game_from_wiki(
+    game: str,
+    wiki_url: str | None = None,
+    *,
+    wiki_manifest: str | Path | None = None,
+    wiki_sources: list[tuple[str, str]] | None = None,
+) -> dict[str, Any]:
+    try:
+        sources = _resolve_wiki_sources(wiki_url=wiki_url, wiki_manifest=wiki_manifest, wiki_sources=wiki_sources)
+        if len(sources) == 1 and sources[0].role == "overview" and wiki_url and not wiki_manifest and not wiki_sources:
+            return enrich_game_from_wiki(game, wiki_url)
+        return enrich_game_from_sources(game, sources)
+    except (ValueError, KeyError, TypeError) as exc:
+        return {
+            "ok": False,
+            "status": "invalid_wiki_sources",
+            "game": game,
+            "error": str(exc),
+        }
+    except WikiFetchError as exc:
+        return exc.to_dict()
+
+
+def _resolve_wiki_sources(
+    *,
+    wiki_url: str | None,
+    wiki_manifest: str | Path | None,
+    wiki_sources: list[tuple[str, str]] | None,
+) -> list[WikiSource]:
+    sources: list[WikiSource] = []
+    if wiki_url:
+        sources.append(WikiSource(url=wiki_url, role="overview"))
+    if wiki_manifest:
+        manifest_data = load_yaml_file(Path(wiki_manifest))
+        raw_sources = manifest_data.get("sources", manifest_data)
+        if not isinstance(raw_sources, list):
+            raise ValueError("wiki manifest must contain a list of sources or a top-level 'sources' list")
+        for row in raw_sources:
+            if not isinstance(row, dict):
+                raise ValueError("wiki manifest sources must be objects with 'url' and 'role'")
+            sources.append(WikiSource(url=str(row["url"]), role=str(row["role"])))
+    for role, url in wiki_sources or []:
+        sources.append(WikiSource(url=url, role=role))
+    if not sources:
+        raise ValueError("at least one wiki source is required")
+    return sources
 
 
 def run_scan_vod_batch(
@@ -453,6 +497,18 @@ def main() -> int:
         metavar="URL",
         help="Explicit source URL used by --enrich-game-from-wiki.",
     )
+    parser.add_argument(
+        "--wiki-manifest",
+        metavar="PATH",
+        help="Path to a manifest file listing explicit wiki source URLs and roles.",
+    )
+    parser.add_argument(
+        "--wiki-source",
+        nargs=2,
+        action="append",
+        metavar=("ROLE", "URL"),
+        help="Repeated role/URL source pair used by --enrich-game-from-wiki.",
+    )
     args = parser.parse_args()
 
     if args.list_games:
@@ -512,10 +568,16 @@ def main() -> int:
         return 0
 
     if args.enrich_game_from_wiki:
-        if not args.wiki_url:
-            parser.error("--enrich-game-from-wiki requires --wiki-url")
-        print(json.dumps(run_enrich_game_from_wiki(args.enrich_game_from_wiki, args.wiki_url), indent=2))
-        return 0
+        if not args.wiki_url and not args.wiki_manifest and not args.wiki_source:
+            parser.error("--enrich-game-from-wiki requires --wiki-url, --wiki-manifest, or --wiki-source")
+        result = run_enrich_game_from_wiki(
+            args.enrich_game_from_wiki,
+            args.wiki_url,
+            wiki_manifest=args.wiki_manifest,
+            wiki_sources=args.wiki_source,
+        )
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("ok") else 1
 
     parser.print_help()
     return 0

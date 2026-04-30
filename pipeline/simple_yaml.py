@@ -187,7 +187,11 @@ def _dump_dict(value: dict[str, Any], indent: int) -> str:
     lines: list[str] = []
     for key, item in value.items():
         prefix = (" " * indent) + f"{key}:"
-        if isinstance(item, (dict, list)):
+        if isinstance(item, dict) and not item:
+            lines.append(prefix + " {}\n")
+        elif isinstance(item, list) and not item:
+            lines.append(prefix + " []\n")
+        elif isinstance(item, (dict, list)):
             lines.append(prefix + "\n")
             lines.append(_dump_node(item, indent + 2))
         else:
