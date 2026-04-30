@@ -278,6 +278,48 @@ class WikiEnrichmentTests(unittest.TestCase):
             WikiSource(url=equipment_path.resolve().as_uri(), role="equipment"),
         ]
 
+    def _write_category_page_sources_with_thumbnails(self, root: Path) -> list[WikiSource]:
+        source_dir = root / "category_sources_thumbs"
+        source_dir.mkdir(parents=True, exist_ok=True)
+        operator_image = source_dir / "ghost.png"
+        equipment_image = source_dir / "flash_grenade.png"
+        operator_image.write_bytes(_ONE_BY_ONE_PNG)
+        equipment_image.write_bytes(_ONE_BY_ONE_PNG)
+        operators_html = f"""
+        <html>
+          <head><title>Category: Operators</title></head>
+          <body>
+            <section class="category-page__members">
+              <article class="category-page__member">
+                <img src="{operator_image.resolve().as_uri()}" alt="Ghost portrait" />
+                <a class="category-page__member-link" href="/wiki/Ghost">Ghost</a>
+              </article>
+            </section>
+          </body>
+        </html>
+        """
+        equipment_html = f"""
+        <html>
+          <head><title>Category: Equipment</title></head>
+          <body>
+            <section class="category-page__members">
+              <article class="category-page__member">
+                <img data-src="{equipment_image.resolve().as_uri()}" alt="Flash Grenade icon" />
+                <a class="category-page__member-link" href="/wiki/Flash_Grenade">Flash Grenade</a>
+              </article>
+            </section>
+          </body>
+        </html>
+        """
+        operators_path = source_dir / "category_operators.html"
+        equipment_path = source_dir / "category_equipment.html"
+        operators_path.write_text(operators_html, encoding="utf-8")
+        equipment_path.write_text(equipment_html, encoding="utf-8")
+        return [
+            WikiSource(url=operators_path.resolve().as_uri(), role="operators"),
+            WikiSource(url=equipment_path.resolve().as_uri(), role="equipment"),
+        ]
+
     def _write_events_role_fixture(self, root: Path) -> WikiSource:
         source_dir = root / "events_role"
         source_dir.mkdir(parents=True, exist_ok=True)
@@ -338,6 +380,30 @@ class WikiEnrichmentTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(result["source_count"], 1)
             self.assertEqual(result["sources"], [{"url": wiki_url, "role": "overview"}])
+
+    def test_plain_local_path_sources_are_resolved_to_file_uris(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            source_dir = repo_root / "source_local"
+            source_dir.mkdir(parents=True, exist_ok=True)
+            html_path = source_dir / "operators.html"
+            html_path.write_text(
+                """
+                <html><body><div class="mw-parser-output">
+                  <h2>Roster</h2>
+                  <ul><li>Operator Alpha</li></ul>
+                </div></body></html>
+                """,
+                encoding="utf-8",
+            )
+
+            result = enrich_game_from_sources(
+                "call_of_duty",
+                [WikiSource(url=str(html_path), role="operators")],
+                repo_root=repo_root,
+            )
+
+            self.assertTrue(result["sources"][0]["url"].startswith("file://"))
 
     def test_adapter_parses_entities_abilities_and_medals(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -471,6 +537,19 @@ class WikiEnrichmentTests(unittest.TestCase):
             self.assertIn("page_type", fetch_log.splitlines()[0])
             self.assertNotIn("Trending Pages", (draft_root / "catalog" / "entities.csv").read_text(encoding="utf-8"))
 
+    def test_category_member_thumbnails_bind_assets_to_existing_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            sources = self._write_category_page_sources_with_thumbnails(repo_root)
+
+            result = enrich_game_from_sources("call_of_duty", sources, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+            manifest = json.loads((draft_root / "assets_manifest.json").read_text(encoding="utf-8"))
+
+            self.assertEqual([row["display_name"] for row in manifest["assets"]], ["Ghost", "Flash Grenade"])
+            self.assertEqual([row["entity_id"] for row in manifest["assets"]], ["call_of_duty.ghost", "call_of_duty.flash_grenade"])
+            self.assertEqual([row["asset_family"] for row in manifest["assets"]], ["hero_portrait", "equipment_icon"])
+
     def test_events_role_only_emits_event_section_rows_and_icon_like_assets(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             repo_root = Path(tempdir)
@@ -483,7 +562,7 @@ class WikiEnrichmentTests(unittest.TestCase):
             events_csv = (draft_root / "catalog" / "events_or_medals.csv").read_text(encoding="utf-8")
 
             self.assertEqual([row["display_name"] for row in events["events"]], ["Fire Sale", "Jailbreak"])
-            self.assertEqual([row["display_name"] for row in manifest["assets"]], ["Fire Sale Icon"])
+            self.assertEqual([row["display_name"] for row in manifest["assets"]], ["Fire Sale"])
             self.assertNotIn("Bounty contract", events_csv)
             self.assertNotIn("hidden code", events_csv)
             self.assertFalse(any("Verdansk" in row["display_name"] for row in manifest["assets"]))
@@ -549,6 +628,10 @@ class WikiEnrichmentTests(unittest.TestCase):
         self.assertEqual(request.get_header("User-agent"), "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
         self.assertEqual(request.get_header("Accept"), "text/html,application/xhtml+xml")
         self.assertEqual(request.get_header("Accept-language"), "en-US,en;q=0.9")
+        self.assertEqual(request.get_header("Referer"), "https://example.com/")
+        self.assertEqual(request.get_header("Cache-control"), "no-cache")
+        self.assertEqual(request.get_header("Pragma"), "no-cache")
+        self.assertEqual(request.get_header("Upgrade-insecure-requests"), "1")
 
     def test_file_sources_keep_existing_fetch_path(self) -> None:
         self.assertTrue(_build_fetch_target("file:///tmp/wiki.html").startswith("file://"))
@@ -586,6 +669,35 @@ class WikiEnrichmentTests(unittest.TestCase):
         self.assertEqual(payload["wiki_url"], "https://example.com/wiki")
         self.assertEqual(payload["http_status"], 403)
         self.assertIn("browser-like headers", payload["hint"])
+        self.assertIn("Save the page locally", payload["hint"])
+
+    def test_atomic_failed_run_leaves_no_final_draft_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            final_slug = "20260101T000000Z"
+            drafts_root = repo_root / "assets" / "games" / "call_of_duty" / "drafts" / "wiki"
+
+            with patch("pipeline.wiki_enrichment._timestamp_slug", return_value=final_slug):
+                with patch(
+                    "pipeline.wiki_enrichment.urlopen",
+                    side_effect=HTTPError(
+                        url="https://example.com/wiki",
+                        code=403,
+                        msg="Forbidden",
+                        hdrs=None,
+                        fp=None,
+                    ),
+                ):
+                    with self.assertRaises(Exception):
+                        enrich_game_from_sources(
+                            "call_of_duty",
+                            [WikiSource(url="https://example.com/wiki", role="overview")],
+                            repo_root=repo_root,
+                        )
+
+            self.assertFalse((drafts_root / final_slug).exists())
+            if drafts_root.exists():
+                self.assertEqual(list(drafts_root.iterdir()), [])
 
     def test_cli_routes_to_wiki_enrichment(self) -> None:
         with patch("run.run_enrich_game_from_wiki", return_value={"ok": True}) as mocked:
