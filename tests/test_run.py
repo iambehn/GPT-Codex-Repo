@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import copy
+import io
 import json
 import math
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 import wave
 from pathlib import Path
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import pipeline.proxy_review_bridge as proxy_review_bridge
@@ -18,8 +21,11 @@ from run import (
     REPO_ROOT,
     _proxy_scan_batch_report_path,
     _sidecar_path,
+    main as run_main,
     run_apply_proxy_review,
     run_cleanup_proxy_review,
+    run_onboard_game,
+    run_publish_onboarding_draft,
     run_prepare_proxy_review,
     run_scan_chat_log,
     run_scan_vod,
@@ -181,6 +187,20 @@ def _write_gpt_review_repo(root: Path) -> None:
 
 
 class RunTests(unittest.TestCase):
+    def test_run_onboard_game_returns_invalid_status_for_bad_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            manifest_path = Path(tempdir) / "bad_sources.yaml"
+            manifest_path.write_text("game: marvel_rivals\nsources: {}\n", encoding="utf-8")
+            result = run_onboard_game("marvel_rivals", manifest_path)
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_onboarding_manifest")
+
+    def test_run_publish_onboarding_draft_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_publish_onboarding_draft(Path(tempdir))
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_onboarding_publish")
+
     def test_run_scan_chat_log_returns_signals_and_windows(self) -> None:
         log_text = "\n".join(
             [
@@ -252,6 +272,17 @@ class RunTests(unittest.TestCase):
             sidecar_path = Path(result["sidecar_path"])
             self.assertTrue(sidecar_path.is_file())
             self.assertEqual(json.loads(sidecar_path.read_text(encoding="utf-8")), result)
+
+    def test_cli_requires_source_manifest_for_onboard_game(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--onboard-game", "marvel_rivals"]
+            with self.assertRaises(SystemExit) as exc:
+                with redirect_stdout(io.StringIO()):
+                    run_main()
+            self.assertEqual(exc.exception.code, 2)
+        finally:
+            sys.argv = original_argv
 
     def test_run_scan_vod_returns_audio_results_and_sidecar(self) -> None:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as handle:

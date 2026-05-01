@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,7 +12,7 @@ from pipeline.simple_yaml import load_yaml_file
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STARTER_ASSETS_ROOT = REPO_ROOT / "starter_assets"
 ASSETS_ROOT = REPO_ROOT / "assets" / "games"
-REQUIRED_FILES = (
+STARTER_REQUIRED_FILES = (
     "game.yaml",
     "characters.yaml",
     "abilities.yaml",
@@ -20,6 +21,14 @@ REQUIRED_FILES = (
     "labels.yaml",
     "score_weights.yaml",
 )
+PUBLISHED_REQUIRED_FILES = (
+    "game.yaml",
+    "entities.yaml",
+    "hud.yaml",
+    "weights.yaml",
+    "manifests/assets_manifest.json",
+    "manifests/cv_templates.yaml",
+)
 
 
 @dataclass
@@ -27,9 +36,25 @@ class GamePack:
     game_id: str
     root: Path
     source: str
+    pack_format: str
     files: dict[str, Any]
 
     def summary(self) -> dict[str, Any]:
+        if self.pack_format == "published":
+            entities = self.files.get("entities.yaml", {})
+            templates = self.files.get("manifests/cv_templates.yaml", {}).get("templates", [])
+            return {
+                "game_id": self.game_id,
+                "source": self.source,
+                "root": str(self.root),
+                "pack_format": self.pack_format,
+                "character_count": len(entities.get("heroes", [])),
+                "ability_count": len(entities.get("abilities", [])),
+                "event_count": len(entities.get("events", [])),
+                "template_count": len(templates),
+                "required_files": list(PUBLISHED_REQUIRED_FILES),
+            }
+
         characters = self.files.get("characters.yaml", {}).get("characters", [])
         abilities = self.files.get("abilities.yaml", {}).get("abilities", [])
         moments = self.files.get("action_moments.yaml", {}).get("moments", [])
@@ -37,10 +62,11 @@ class GamePack:
             "game_id": self.game_id,
             "source": self.source,
             "root": str(self.root),
+            "pack_format": self.pack_format,
             "character_count": len(characters),
             "ability_count": len(abilities),
             "moment_count": len(moments),
-            "required_files": list(REQUIRED_FILES),
+            "required_files": list(STARTER_REQUIRED_FILES),
         }
 
 
@@ -67,28 +93,33 @@ def game_root(game_id: str) -> tuple[Path, str]:
 
 def load_game_pack(game_id: str) -> GamePack:
     root, source = game_root(game_id)
+    pack_format = _detect_pack_format(root)
+    required_files = PUBLISHED_REQUIRED_FILES if pack_format == "published" else STARTER_REQUIRED_FILES
     files: dict[str, Any] = {}
     missing: list[str] = []
-    for filename in REQUIRED_FILES:
+    for filename in required_files:
         path = root / filename
         if not path.exists():
             missing.append(filename)
             continue
-        files[filename] = load_yaml_file(path)
+        files[filename] = _load_pack_file(path)
     if missing:
         raise FileNotFoundError(f"Game pack {game_id} is missing required files: {missing}")
-    return GamePack(game_id=game_id, root=root, source=source, files=files)
+    return GamePack(game_id=game_id, root=root, source=source, pack_format=pack_format, files=files)
 
 
 def validate_game_pack(game_id: str) -> dict[str, Any]:
     root, source = game_root(game_id)
-    existing = sorted(path.name for path in root.glob("*.yaml"))
-    missing = [filename for filename in REQUIRED_FILES if not (root / filename).exists()]
+    pack_format = _detect_pack_format(root)
+    required_files = PUBLISHED_REQUIRED_FILES if pack_format == "published" else STARTER_REQUIRED_FILES
+    existing = sorted(str(path.relative_to(root)) for path in root.rglob("*") if path.is_file())
+    missing = [filename for filename in required_files if not (root / filename).exists()]
     result: dict[str, Any] = {
         "ok": not missing,
         "game": game_id,
         "source": source,
         "root": str(root),
+        "pack_format": pack_format,
         "existing_files": existing,
         "missing_files": missing,
     }
@@ -122,3 +153,14 @@ def init_game_pack(game_id: str, overwrite: bool = False) -> dict[str, Any]:
         "message": "Starter game pack copied into assets/games.",
     }
 
+
+def _detect_pack_format(root: Path) -> str:
+    if all((root / filename).exists() for filename in PUBLISHED_REQUIRED_FILES):
+        return "published"
+    return "starter"
+
+
+def _load_pack_file(path: Path) -> Any:
+    if path.suffix == ".json":
+        return json.loads(path.read_text(encoding="utf-8"))
+    return load_yaml_file(path)

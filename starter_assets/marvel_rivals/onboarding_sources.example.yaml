@@ -1,0 +1,14 @@
+game: marvel_rivals
+sources:
+  - role: overview
+    url: "https://marvelrivals.fandom.com/wiki/Marvel_Rivals"
+    notes: "Primary overview page for game metadata."
+  - role: roster
+    url: "https://marvelrivals.fandom.com/wiki/Category:Heroes"
+    notes: "Hero roster source."
+  - role: abilities
+    url: "https://marvelrivals.fandom.com/wiki/Category:Abilities"
+    notes: "Ability reference source."
+  - role: medals
+    url: "https://marvelrivals.fandom.com/wiki/Category:Medals"
+    notes: "Medal or accolade source."
