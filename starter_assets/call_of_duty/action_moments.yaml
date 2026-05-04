@@ -1,0 +1,9 @@
+moments:
+  - id: triple_kill
+    display_name: "Triple Kill"
+    aliases: ["triple kill"]
+    category: combat
+  - id: longshot
+    display_name: "Longshot"
+    aliases: ["long shot"]
+    category: combat

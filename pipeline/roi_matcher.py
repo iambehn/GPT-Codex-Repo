@@ -4,11 +4,13 @@ import csv
 import json
 import shutil
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 from pipeline.game_pack import load_game_pack
+from pipeline.runtime_ontology import load_runtime_signal_event_ontology, validate_runtime_rule_terms
+from pipeline.simple_yaml import load_yaml_file
 
 
 class RoiMatcherError(RuntimeError):
@@ -49,6 +51,41 @@ class TemplateSpec:
     temporal_window: int
     match_method: str
     asset_family: str
+    display_name: str | None = None
+    entity_id: str | None = None
+    ability_id: str | None = None
+    equipment_id: str | None = None
+    event_row_id: str | None = None
+
+
+@dataclass(frozen=True)
+class RuntimeCvRule:
+    asset_family: str
+    signal_type: str
+    event_type: str
+    target_field: str | None
+    target_id_source: str
+    target_value_field: str | None
+    collapse_strategy: str
+    identity_competition: str | None
+    cluster_gap_seconds: float | None
+    event_timestamp_mode: str
+
+
+@dataclass(frozen=True)
+class PublishedRuntimePack:
+    game: str
+    root: Path
+    pack_summary: dict[str, Any]
+    templates: list[TemplateSpec]
+    rois: dict[str, RoiBounds]
+    width: int
+    height: int
+    template_manifest: dict[str, Any]
+    detection_manifest: dict[str, Any]
+    runtime_rules_manifest: dict[str, Any]
+    fusion_rules_manifest: dict[str, Any]
+    runtime_rules: dict[str, RuntimeCvRule]
 
 
 @dataclass(frozen=True)
@@ -65,10 +102,16 @@ def match_roi_templates(
     sample_fps: float | None = None,
     limit_frames: int | None = None,
     min_score: float | None = None,
+    template_overrides: dict[str, dict[str, Any]] | None = None,
     output_path: str | Path | None = None,
     debug_output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    pack_summary, templates, rois, width, height = _load_published_pack_runtime(game)
+    runtime_pack = load_published_runtime_pack(game)
+    pack_summary = runtime_pack.pack_summary
+    templates = _apply_template_overrides(runtime_pack.templates, template_overrides)
+    rois = runtime_pack.rois
+    width = runtime_pack.width
+    height = runtime_pack.height
     if not templates:
         result = {
             "ok": True,
@@ -216,9 +259,102 @@ def _load_template_specs(pack_root: Path, hud_payload: dict[str, Any], template_
                 temporal_window=max(1, int(row.get("temporal_window", 1))),
                 match_method=str(row.get("match_method", "TM_CCOEFF_NORMED")),
                 asset_family=str(row.get("asset_family", "")),
+                display_name=str(row.get("display_name", "")).strip() or None,
+                entity_id=_normalized_optional_string(row.get("entity_id")),
+                ability_id=_normalized_optional_string(row.get("ability_id")),
+                equipment_id=_normalized_optional_string(row.get("equipment_id")),
+                event_row_id=_normalized_optional_string(row.get("event_row_id")),
             )
         )
     return templates
+
+
+def load_template_trial_overrides(path: str | Path) -> dict[str, dict[str, Any]]:
+    trial_path = Path(path).expanduser()
+    if not trial_path.is_absolute():
+        trial_path = (Path.cwd() / trial_path).resolve()
+    else:
+        trial_path = trial_path.resolve()
+    if not trial_path.exists() or not trial_path.is_file():
+        raise RoiMatcherError("invalid_template_trial", f"template trial path does not exist or is not a file: {trial_path}")
+    try:
+        if trial_path.suffix.lower() == ".json":
+            payload = json.loads(trial_path.read_text(encoding="utf-8"))
+        else:
+            payload = load_yaml_file(trial_path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise RoiMatcherError("invalid_template_trial", f"failed to load template trial file: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise RoiMatcherError("invalid_template_trial", "template trial file must be a mapping")
+    raw_overrides = payload.get("templates", payload)
+    if not isinstance(raw_overrides, dict):
+        raise RoiMatcherError("invalid_template_trial", "template trial file must contain a mapping of asset_id to override rows")
+    overrides: dict[str, dict[str, Any]] = {}
+    for asset_id, row in raw_overrides.items():
+        normalized_asset_id = str(asset_id).strip()
+        if normalized_asset_id in {"trial_name", "name"} and not isinstance(row, dict):
+            continue
+        if not normalized_asset_id:
+            raise RoiMatcherError("invalid_template_trial", "template trial rows must use non-empty asset_id keys")
+        if not isinstance(row, dict):
+            raise RoiMatcherError("invalid_template_trial", f"template trial row for '{normalized_asset_id}' must be an object")
+        override: dict[str, Any] = {}
+        for key in row.keys():
+            if key not in {"threshold", "scale_set", "temporal_window"}:
+                raise RoiMatcherError(
+                    "invalid_template_trial",
+                    f"template trial row for '{normalized_asset_id}' uses unsupported field '{key}'",
+                )
+        if "threshold" in row:
+            override["threshold"] = float(row["threshold"])
+        if "scale_set" in row:
+            if not isinstance(row["scale_set"], list) or not row["scale_set"]:
+                raise RoiMatcherError(
+                    "invalid_template_trial",
+                    f"template trial row for '{normalized_asset_id}' must use a non-empty scale_set list",
+                )
+            override["scale_set"] = [float(item) for item in row["scale_set"]]
+        if "temporal_window" in row:
+            override["temporal_window"] = max(1, int(row["temporal_window"]))
+        if not override:
+            raise RoiMatcherError(
+                "invalid_template_trial",
+                f"template trial row for '{normalized_asset_id}' must override at least one of threshold, scale_set, or temporal_window",
+            )
+        overrides[normalized_asset_id] = override
+    if not overrides:
+        raise RoiMatcherError("invalid_template_trial", "template trial file must contain at least one template override")
+    return overrides
+
+
+def _apply_template_overrides(
+    templates: list[TemplateSpec],
+    template_overrides: dict[str, dict[str, Any]] | None,
+) -> list[TemplateSpec]:
+    if not template_overrides:
+        return templates
+    template_ids = {template.asset_id for template in templates}
+    unknown_assets = sorted(asset_id for asset_id in template_overrides if asset_id not in template_ids)
+    if unknown_assets:
+        raise RoiMatcherError(
+            "invalid_template_trial",
+            f"template trial overrides reference unknown asset_id values: {unknown_assets}",
+        )
+    overridden: list[TemplateSpec] = []
+    for template in templates:
+        row = template_overrides.get(template.asset_id)
+        if row is None:
+            overridden.append(template)
+            continue
+        overridden.append(
+            replace(
+                template,
+                threshold=float(row.get("threshold", template.threshold)),
+                scale_set=[float(item) for item in row.get("scale_set", template.scale_set)],
+                temporal_window=max(1, int(row.get("temporal_window", template.temporal_window))),
+            )
+        )
+    return overridden
 
 
 def check_roi_runtime() -> dict[str, Any]:
@@ -253,19 +389,198 @@ def check_roi_runtime() -> dict[str, Any]:
     }
 
 
+def _load_runtime_cv_rules(runtime_rules_payload: dict[str, Any]) -> dict[str, RuntimeCvRule]:
+    ontology = load_runtime_signal_event_ontology()
+    event_mappings = runtime_rules_payload.get("event_mappings", {})
+    if not isinstance(event_mappings, dict) or not event_mappings:
+        raise RoiMatcherError(
+            "invalid_runtime_cv_rules",
+            "runtime_cv_rules.yaml must define a non-empty top-level 'event_mappings' mapping",
+        )
+
+    rules: dict[str, RuntimeCvRule] = {}
+    for asset_family, row in event_mappings.items():
+        if not isinstance(row, dict):
+            raise RoiMatcherError("invalid_runtime_cv_rules", f"runtime CV rule for '{asset_family}' must be an object")
+        normalized_family = str(asset_family).strip()
+        signal_type = str(row.get("signal_type", "")).strip()
+        event_type = str(row.get("event_type", "")).strip()
+        if not normalized_family or not signal_type or not event_type:
+            raise RoiMatcherError(
+                "invalid_runtime_cv_rules",
+                f"runtime CV rule for '{asset_family}' must include non-empty signal_type and event_type",
+            )
+        target_field = str(row.get("target_field", "")).strip() or None
+        target_id_source = str(row.get("target_id_source", "asset_id_suffix")).strip() or "asset_id_suffix"
+        if target_id_source not in {"asset_id_suffix", "template_field"}:
+            raise RoiMatcherError(
+                "invalid_runtime_cv_rules",
+                f"runtime CV rule for '{asset_family}' uses unsupported target_id_source '{target_id_source}'",
+            )
+        target_value_field = str(row.get("target_value_field", "")).strip() or None
+        if target_id_source == "template_field" and not target_value_field:
+            raise RoiMatcherError(
+                "invalid_runtime_cv_rules",
+                f"runtime CV rule for '{asset_family}' must include target_value_field when target_id_source is 'template_field'",
+            )
+        ontology_findings = validate_runtime_rule_terms(
+            ontology,
+            signal_type=signal_type,
+            event_type=event_type,
+            target_field=target_field,
+            target_value_field=target_value_field,
+        )
+        if ontology_findings:
+            raise RoiMatcherError(
+                "invalid_runtime_cv_rules",
+                f"runtime CV rule for '{asset_family}' uses invalid ontology terms: {ontology_findings}",
+            )
+        rules[normalized_family] = RuntimeCvRule(
+            asset_family=normalized_family,
+            signal_type=signal_type,
+            event_type=event_type,
+            target_field=target_field,
+            target_id_source=target_id_source,
+            target_value_field=target_value_field,
+            collapse_strategy=str(row.get("collapse_strategy", "contiguous_cluster")).strip() or "contiguous_cluster",
+            identity_competition=str(row.get("identity_competition", "")).strip() or None,
+            cluster_gap_seconds=float(row["cluster_gap_seconds"]) if row.get("cluster_gap_seconds") is not None else None,
+            event_timestamp_mode=str(row.get("event_timestamp_mode", "midpoint")).strip() or "midpoint",
+        )
+        if rules[normalized_family].collapse_strategy not in {"contiguous_cluster", "strict_cluster", "per_detection"}:
+            raise RoiMatcherError(
+                "invalid_runtime_cv_rules",
+                f"runtime CV rule for '{asset_family}' uses unsupported collapse_strategy '{rules[normalized_family].collapse_strategy}'",
+            )
+        if rules[normalized_family].event_timestamp_mode not in {"midpoint", "start", "end"}:
+            raise RoiMatcherError(
+                "invalid_runtime_cv_rules",
+                f"runtime CV rule for '{asset_family}' uses unsupported event_timestamp_mode '{rules[normalized_family].event_timestamp_mode}'",
+            )
+    return rules
+
+
+def resolve_template_target_value(game: str, template: TemplateSpec, rule: RuntimeCvRule) -> str | None:
+    if not rule.target_field:
+        return None
+    if rule.target_id_source == "template_field":
+        if not rule.target_value_field:
+            return None
+        value = getattr(template, rule.target_value_field, None)
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+    prefix = f"{game}."
+    suffix = f".{template.asset_family}"
+    asset_id = template.asset_id
+    if asset_id.startswith(prefix) and asset_id.endswith(suffix):
+        target = asset_id[len(prefix) : len(asset_id) - len(suffix)]
+        return target or None
+    return None
+
+
 def validate_published_pack(game: str) -> dict[str, Any]:
-    pack_summary, templates, rois, width, height = _load_published_pack_runtime(game)
+    runtime_pack = load_published_runtime_pack(game)
+    ontology = load_runtime_signal_event_ontology()
+    pack_summary = runtime_pack.pack_summary
+    templates = runtime_pack.templates
+    rois = runtime_pack.rois
+    width = runtime_pack.width
+    height = runtime_pack.height
+    detection_manifest = runtime_pack.detection_manifest
     warnings: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
     templates_by_roi: dict[str, int] = {}
     templates_by_asset_family: dict[str, int] = {}
+    templates_by_event_type: dict[str, int] = {}
     templates_missing_masks: list[str] = []
     templates_with_large_scale_sets: list[str] = []
     templates_with_roi_fit_warnings: list[dict[str, Any]] = []
+    templates_with_target_resolution_failures: list[dict[str, Any]] = []
+    legacy_target_id_rules: list[dict[str, Any]] = []
+    detection_rows = detection_manifest.get("rows", [])
+    if not isinstance(detection_rows, list):
+        failures.append(
+            {
+                "status": "invalid_detection_manifest",
+                "error": "detection_manifest.yaml must define a rows list",
+            }
+        )
+        detection_rows = []
+    detection_rows_by_asset_family: dict[str, int] = {}
+    detection_rows_missing_semantic_values: list[dict[str, Any]] = []
+    detection_rows_missing_assets: list[dict[str, Any]] = []
+    template_asset_ids = {template.asset_id for template in templates}
+
+    used_asset_families = {template.asset_family for template in templates}
+    runtime_rule_families = sorted(runtime_pack.runtime_rules.keys())
+    runtime_rules_without_templates = [asset_family for asset_family in runtime_rule_families if asset_family not in used_asset_families]
+    missing_runtime_rules_for_families: list[str] = []
+    ontology_findings: list[dict[str, Any]] = []
+    unknown_signal_types: list[str] = []
+    unknown_event_types: list[str] = []
+    unknown_target_fields: list[str] = []
+    invalid_group_by_fields: list[str] = []
+    for asset_family in sorted(used_asset_families):
+        if asset_family and asset_family not in runtime_pack.runtime_rules:
+            missing_runtime_rules_for_families.append(asset_family)
+            failures.append(
+                {
+                    "status": "missing_runtime_rule",
+                    "asset_family": asset_family,
+                    "error": f"no runtime CV rule is defined for asset family '{asset_family}'",
+                }
+            )
 
     for template in templates:
         templates_by_roi[template.roi_ref] = templates_by_roi.get(template.roi_ref, 0) + 1
         templates_by_asset_family[template.asset_family] = templates_by_asset_family.get(template.asset_family, 0) + 1
+        rule = runtime_pack.runtime_rules.get(template.asset_family)
+        if rule is not None:
+            templates_by_event_type[rule.event_type] = templates_by_event_type.get(rule.event_type, 0) + 1
+            rule_ontology_findings = validate_runtime_rule_terms(
+                ontology,
+                signal_type=rule.signal_type,
+                event_type=rule.event_type,
+                target_field=rule.target_field,
+                target_value_field=rule.target_value_field,
+            )
+            if rule_ontology_findings:
+                ontology_findings.extend({"asset_family": template.asset_family, **finding} for finding in rule_ontology_findings)
+                failures.extend({"asset_family": template.asset_family, **finding} for finding in rule_ontology_findings)
+                unknown_signal_types.extend(
+                    finding["signal_type"] for finding in rule_ontology_findings if finding.get("status") == "unknown_signal_type"
+                )
+                unknown_event_types.extend(
+                    finding["event_type"] for finding in rule_ontology_findings if finding.get("status") == "unknown_event_type"
+                )
+                unknown_target_fields.extend(
+                    finding.get("target_field", "") for finding in rule_ontology_findings if finding.get("status") == "unknown_target_field"
+                )
+            if rule.target_id_source == "asset_id_suffix":
+                legacy_row = {
+                    "asset_family": template.asset_family,
+                    "asset_id": template.asset_id,
+                    "target_field": rule.target_field,
+                    "signal_type": rule.signal_type,
+                }
+                legacy_target_id_rules.append(legacy_row)
+                warnings.append({"status": "legacy_target_id_source", **legacy_row})
+            target_value = resolve_template_target_value(game, template, rule)
+            if rule.target_field and target_value is None:
+                failure = {
+                    "status": "template_rule_target_mismatch",
+                    "asset_id": template.asset_id,
+                    "asset_family": template.asset_family,
+                    "signal_type": rule.signal_type,
+                    "event_type": rule.event_type,
+                    "target_field": rule.target_field,
+                    "target_id_source": rule.target_id_source,
+                    "target_value_field": rule.target_value_field,
+                }
+                templates_with_target_resolution_failures.append(failure)
+                failures.append(failure)
         if template.mask_path is None:
             templates_missing_masks.append(template.asset_id)
         if len(template.scale_set) > 3:
@@ -284,6 +599,100 @@ def validate_published_pack(game: str) -> dict[str, Any]:
             templates_with_roi_fit_warnings.append(warning)
             warnings.append({"status": "roi_fit_warning", **warning})
 
+    for row in detection_rows:
+        if not isinstance(row, dict):
+            failures.append({"status": "invalid_detection_row", "error": "detection manifest rows must be objects"})
+            continue
+        asset_family = str(row.get("asset_family", "")).strip()
+        detection_rows_by_asset_family[asset_family] = detection_rows_by_asset_family.get(asset_family, 0) + 1
+        if str(row.get("status", "")) == "missing_semantic_values":
+            failure = {
+                "status": "missing_semantic_values",
+                "detection_id": row.get("detection_id"),
+                "target_id": row.get("target_id"),
+                "asset_family": asset_family,
+            }
+            detection_rows_missing_semantic_values.append(failure)
+            failures.append(failure)
+        if bool(row.get("requires_asset", True)) and str(row.get("asset_status", "")) != "published":
+            failure = {
+                "status": "missing_published_asset",
+                "detection_id": row.get("detection_id"),
+                "target_id": row.get("target_id"),
+                "asset_family": asset_family,
+            }
+            detection_rows_missing_assets.append(failure)
+            failures.append(failure)
+        published_asset_id = str(row.get("published_asset_id", "")).strip()
+        if published_asset_id and published_asset_id not in template_asset_ids:
+            failures.append(
+                {
+                    "status": "published_asset_template_mismatch",
+                    "detection_id": row.get("detection_id"),
+                    "published_asset_id": published_asset_id,
+                }
+            )
+    raw_fusion_rules = runtime_pack.fusion_rules_manifest.get("rules", [])
+    if isinstance(raw_fusion_rules, list):
+        for rule in raw_fusion_rules:
+            if not isinstance(rule, dict):
+                failures.append({"status": "invalid_fusion_rule", "error": "fusion rules must be objects"})
+                continue
+            fusion_event_type = str(rule.get("event_type", "")).strip()
+            if fusion_event_type and fusion_event_type not in ontology.event_types:
+                finding = {"status": "unknown_event_type", "event_type": fusion_event_type, "surface": "fusion_rules"}
+                ontology_findings.append(finding)
+                failures.append(finding)
+                unknown_event_types.append(fusion_event_type)
+            signal_types = [str(item).strip() for item in rule.get("signal_types", []) if str(item).strip()]
+            for signal_type in signal_types:
+                if signal_type not in ontology.signal_types:
+                    finding = {"status": "unknown_signal_type", "signal_type": signal_type, "surface": "fusion_rules"}
+                    ontology_findings.append(finding)
+                    failures.append(finding)
+                    unknown_signal_types.append(signal_type)
+            group_by_fields = [str(item).strip() for item in rule.get("group_by", []) if str(item).strip()]
+            for field in group_by_fields:
+                if field not in ontology.group_by_fields:
+                    finding = {"status": "invalid_group_by_field", "group_by_field": field, "surface": "fusion_rules"}
+                    ontology_findings.append(finding)
+                    failures.append(finding)
+                    invalid_group_by_fields.append(field)
+
+    contract_summary = {
+        "canonical_contracts": {
+            "detection_manifest": str(detection_manifest.get("schema_version", "")).strip() or "game_detection_manifest_v1",
+            "cv_templates_present": True,
+            "runtime_cv_rules_present": True,
+            "fusion_rules_present": True,
+            "runtime_analysis": "runtime_analysis_v1",
+            "fused_analysis": "fused_analysis_v1",
+            "fusion_gold_manifest": "fusion_goldset_clip_v1",
+        },
+        "active_legacy_modes": ["target_id_source.asset_id_suffix"] if legacy_target_id_rules else [],
+        "contract_status": "drifted" if failures else ("legacy_assisted" if legacy_target_id_rules else "canonical"),
+        "ontology_version": ontology.schema_version,
+        "ontology_status": "invalid" if ontology_findings else "ok",
+    }
+    legacy_findings = []
+    for row in legacy_target_id_rules:
+        legacy_findings.append(
+            {
+                "status": "legacy_target_id_source",
+                "surface": "runtime_cv_rules.target_id_source",
+                **row,
+            }
+        )
+    runtime_contract_findings = list(templates_with_target_resolution_failures)
+    if missing_runtime_rules_for_families:
+        runtime_contract_findings.extend(
+            {
+                "status": "missing_runtime_rule",
+                "asset_family": asset_family,
+            }
+            for asset_family in missing_runtime_rules_for_families
+        )
+
     return {
         "ok": not failures,
         "status": "ok" if not failures else "invalid_published_pack",
@@ -294,27 +703,65 @@ def validate_published_pack(game: str) -> dict[str, Any]:
         "frame_dimensions": {"width": width, "height": height},
         "templates_by_roi": templates_by_roi,
         "templates_by_asset_family": templates_by_asset_family,
+        "templates_by_event_type": templates_by_event_type,
         "templates_missing_masks": templates_missing_masks,
         "templates_with_large_scale_sets": templates_with_large_scale_sets,
         "templates_with_roi_fit_warnings": templates_with_roi_fit_warnings,
+        "detection_manifest_row_count": len(detection_rows),
+        "detection_rows_by_asset_family": detection_rows_by_asset_family,
+        "detection_rows_missing_semantic_values": detection_rows_missing_semantic_values,
+        "detection_rows_missing_assets": detection_rows_missing_assets,
+        "runtime_rule_families": runtime_rule_families,
+        "fusion_rule_count": len(runtime_pack.fusion_rules_manifest.get("rules", [])) if isinstance(runtime_pack.fusion_rules_manifest.get("rules", []), list) else 0,
+        "runtime_rules_without_templates": runtime_rules_without_templates,
+        "missing_runtime_rules_for_families": missing_runtime_rules_for_families,
+        "templates_with_target_resolution_failures": templates_with_target_resolution_failures,
+        "legacy_target_id_rules": legacy_target_id_rules,
+        "legacy_findings": legacy_findings,
+        "runtime_contract_findings": runtime_contract_findings,
+        "ontology_version": ontology.schema_version,
+        "ontology_status": "invalid" if ontology_findings else "ok",
+        "unknown_signal_types": sorted({value for value in unknown_signal_types if value}),
+        "unknown_event_types": sorted({value for value in unknown_event_types if value}),
+        "unknown_target_fields": sorted({value for value in unknown_target_fields if value}),
+        "invalid_group_by_fields": sorted({value for value in invalid_group_by_fields if value}),
+        "ontology_findings": ontology_findings,
+        "contract_summary": contract_summary,
+        "canonical_contracts": contract_summary["canonical_contracts"],
+        "active_legacy_modes": contract_summary["active_legacy_modes"],
+        "contract_status": contract_summary["contract_status"],
         "warnings": warnings,
         "failures": failures,
     }
 
 
 def list_pack_templates(game: str) -> dict[str, Any]:
-    pack_summary, templates, _, width, height = _load_published_pack_runtime(game)
+    runtime_pack = load_published_runtime_pack(game)
+    pack_summary = runtime_pack.pack_summary
+    templates = runtime_pack.templates
+    width = runtime_pack.width
+    height = runtime_pack.height
     grouped: dict[str, list[dict[str, Any]]] = {}
     for template in templates:
+        rule = runtime_pack.runtime_rules.get(template.asset_family)
         grouped.setdefault(template.roi_ref, []).append(
             {
                 "asset_id": template.asset_id,
                 "asset_family": template.asset_family,
+                "display_name": template.display_name,
                 "threshold": template.threshold,
                 "scale_set": template.scale_set,
                 "temporal_window": template.temporal_window,
                 "match_method": template.match_method,
                 "has_mask": template.mask_path is not None,
+                "entity_id": template.entity_id,
+                "ability_id": template.ability_id,
+                "equipment_id": template.equipment_id,
+                "event_row_id": template.event_row_id,
+                "signal_type": rule.signal_type if rule is not None else None,
+                "event_type": rule.event_type if rule is not None else None,
+                "target_field": rule.target_field if rule is not None else None,
+                "target_id_source": rule.target_id_source if rule is not None else None,
             }
         )
     return {
@@ -339,22 +786,80 @@ def _load_cv_runtime() -> tuple[Any, Any]:
     return cv2, numpy
 
 
-def _load_published_pack_runtime(game: str) -> tuple[dict[str, Any], list[TemplateSpec], dict[str, RoiBounds], int, int]:
-    game_pack = load_game_pack(game)
+def load_published_runtime_pack(game: str) -> PublishedRuntimePack:
+    try:
+        game_pack = load_game_pack(game)
+    except FileNotFoundError as exc:
+        message = str(exc)
+        if "manifests/runtime_cv_rules.yaml" in message:
+            raise RoiMatcherError(
+                "missing_runtime_cv_rules",
+                f"published pack '{game}' is missing manifests/runtime_cv_rules.yaml",
+            ) from exc
+        if "manifests/fusion_rules.yaml" in message:
+            raise RoiMatcherError(
+                "missing_fusion_rules",
+                f"published pack '{game}' is missing manifests/fusion_rules.yaml",
+            ) from exc
+        if "manifests/detection_manifest.yaml" in message:
+            raise RoiMatcherError(
+                "missing_detection_manifest",
+                f"published pack '{game}' is missing manifests/detection_manifest.yaml",
+            ) from exc
+        raise
     if game_pack.pack_format != "published":
         raise RoiMatcherError("published_pack_required", f"game pack '{game}' is not a published runtime pack")
     hud_payload = game_pack.files.get("hud.yaml", {})
     template_payload = game_pack.files.get("manifests/cv_templates.yaml", {})
+    detection_manifest_payload = game_pack.files.get("manifests/detection_manifest.yaml", {})
+    runtime_rules_path = game_pack.root / "manifests" / "runtime_cv_rules.yaml"
+    fusion_rules_path = game_pack.root / "manifests" / "fusion_rules.yaml"
+    if not runtime_rules_path.exists():
+        raise RoiMatcherError(
+            "missing_runtime_cv_rules",
+            f"published pack '{game}' is missing manifests/runtime_cv_rules.yaml",
+        )
+    if not fusion_rules_path.exists():
+        raise RoiMatcherError(
+            "missing_fusion_rules",
+            f"published pack '{game}' is missing manifests/fusion_rules.yaml",
+        )
+    runtime_rules_payload = load_yaml_file(runtime_rules_path)
+    fusion_rules_payload = load_yaml_file(fusion_rules_path)
+    if not isinstance(runtime_rules_payload, dict):
+        raise RoiMatcherError("invalid_runtime_cv_rules", "runtime_cv_rules.yaml must parse to a top-level object")
+    if not isinstance(detection_manifest_payload, dict):
+        raise RoiMatcherError("invalid_detection_manifest", "detection_manifest.yaml must parse to a top-level object")
+    if not isinstance(fusion_rules_payload, dict):
+        raise RoiMatcherError("invalid_fusion_rules", "fusion_rules.yaml must parse to a top-level object")
     width, height = _target_dimensions(game_pack.files.get("game.yaml", {}))
     rois = _resolve_rois(hud_payload.get("rois", {}), width=width, height=height)
     templates = _load_template_specs(game_pack.root, hud_payload, template_payload)
+    runtime_rules = _load_runtime_cv_rules(runtime_rules_payload)
     pack_summary = {
+        "game": game,
         "game_root": str(game_pack.root),
         "pack_format": game_pack.pack_format,
         "template_count": len(templates),
         "roi_count": len(rois),
+        "detection_row_count": int(detection_manifest_payload.get("row_count", len(detection_manifest_payload.get("rows", [])) if isinstance(detection_manifest_payload.get("rows", []), list) else 0) or 0),
+        "runtime_rule_count": len(runtime_rules),
+        "fusion_rule_count": len(fusion_rules_payload.get("rules", [])) if isinstance(fusion_rules_payload.get("rules", []), list) else 0,
     }
-    return pack_summary, templates, rois, width, height
+    return PublishedRuntimePack(
+        game=game,
+        root=game_pack.root,
+        pack_summary=pack_summary,
+        templates=templates,
+        rois=rois,
+        width=width,
+        height=height,
+        template_manifest=template_payload,
+        detection_manifest=detection_manifest_payload,
+        runtime_rules_manifest=runtime_rules_payload,
+        fusion_rules_manifest=fusion_rules_payload,
+        runtime_rules=runtime_rules,
+    )
 
 
 def _target_dimensions(game_payload: dict[str, Any]) -> tuple[int, int]:
@@ -495,6 +1000,7 @@ def _best_match_for_template(*, roi_image: Any, template: TemplateSpec, cv2_modu
 
 def _confirm_detections(detections: list[dict[str, Any]], templates: list[TemplateSpec]) -> list[dict[str, Any]]:
     windows = {template.asset_id: template.temporal_window for template in templates}
+    templates_by_asset_id = {template.asset_id: template for template in templates}
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for row in detections:
         grouped.setdefault((row["asset_id"], row["roi_ref"]), []).append(row)
@@ -511,9 +1017,23 @@ def _confirm_detections(detections: list[dict[str, Any]], templates: list[Templa
             if int(row["frame_index"]) <= int(cluster[-1]["frame_index"]) + temporal_window:
                 cluster.append(row)
             else:
-                _append_confirmed_cluster(confirmed, asset_id, roi_ref, temporal_window, cluster)
+                _append_confirmed_cluster(
+                    confirmed,
+                    asset_id,
+                    roi_ref,
+                    temporal_window,
+                    cluster,
+                    template=templates_by_asset_id.get(asset_id),
+                )
                 cluster = [row]
-        _append_confirmed_cluster(confirmed, asset_id, roi_ref, temporal_window, cluster)
+        _append_confirmed_cluster(
+            confirmed,
+            asset_id,
+            roi_ref,
+            temporal_window,
+            cluster,
+            template=templates_by_asset_id.get(asset_id),
+        )
     return confirmed
 
 
@@ -523,20 +1043,31 @@ def _append_confirmed_cluster(
     roi_ref: str,
     temporal_window: int,
     cluster: list[dict[str, Any]],
+    *,
+    template: TemplateSpec | None,
 ) -> None:
     if len(cluster) < temporal_window:
         return
-    confirmed.append(
-        {
-            "asset_id": asset_id,
-            "roi_ref": roi_ref,
-            "first_timestamp": cluster[0]["timestamp"],
-            "last_timestamp": cluster[-1]["timestamp"],
-            "peak_score": max(float(row["score"]) for row in cluster),
-            "supporting_frames": len(cluster),
-            "temporal_window": temporal_window,
-        }
-    )
+    row = {
+        "asset_id": asset_id,
+        "roi_ref": roi_ref,
+        "first_timestamp": cluster[0]["timestamp"],
+        "last_timestamp": cluster[-1]["timestamp"],
+        "peak_score": max(float(row["score"]) for row in cluster),
+        "supporting_frames": len(cluster),
+        "temporal_window": temporal_window,
+    }
+    if template is not None:
+        row["asset_family"] = template.asset_family
+        if template.entity_id is not None:
+            row["entity_id"] = template.entity_id
+        if template.ability_id is not None:
+            row["ability_id"] = template.ability_id
+        if template.equipment_id is not None:
+            row["equipment_id"] = template.equipment_id
+        if template.event_row_id is not None:
+            row["event_row_id"] = template.event_row_id
+    confirmed.append(row)
 
 
 def _summary_rows(detections: list[dict[str, Any]], confirmed: list[dict[str, Any]], templates: list[TemplateSpec]) -> dict[str, Any]:
@@ -620,3 +1151,8 @@ def _write_confirmed_crops(crops_root: Path, confirmed_roi_images: list[tuple[st
         output_path = crops_root / filename
         bgr_image = cv2_module.cvtColor(image, cv2_module.COLOR_BGR2RGB) if getattr(image, "shape", (0, 0, 0))[-1:] == (3,) else image
         cv2_module.imwrite(str(output_path), bgr_image)
+
+
+def _normalized_optional_string(value: Any) -> str | None:
+    normalized = str(value).strip() if value is not None else ""
+    return normalized or None

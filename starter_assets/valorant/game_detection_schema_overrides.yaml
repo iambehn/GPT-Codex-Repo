@@ -1,0 +1,8 @@
+disabled_families:
+  - ability_icon
+  - medal_icon
+families:
+  equipment_icon:
+    threshold: 0.92
+  hero_portrait:
+    threshold: 0.89

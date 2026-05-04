@@ -16,16 +16,29 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import pipeline.proxy_review_bridge as proxy_review_bridge
+from pipeline.hf_adapters import HFAdapterError
 from run import (
     DEFAULT_CONFIG,
     REPO_ROOT,
     _proxy_scan_batch_report_path,
     _sidecar_path,
     main as run_main,
+    run_adapt_game_schema,
+    run_build_onboarding_draft,
+    run_ingest_game_sources,
+    run_audit_pipeline_contracts,
     run_apply_proxy_review,
+    run_apply_onboarding_identity_review,
     run_cleanup_proxy_review,
+    run_cleanup_onboarding_identity_review,
     run_onboard_game,
+    run_publish_onboarding_batch,
+    run_report_onboarding_batch,
     run_publish_onboarding_draft,
+    run_prepare_onboarding_identity_review,
+    run_validate_onboarding_publish,
+    run_query_clip_registry,
+    run_refresh_clip_registry,
     run_prepare_proxy_review,
     run_scan_chat_log,
     run_scan_vod,
@@ -195,11 +208,63 @@ class RunTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_onboarding_manifest")
 
+    def test_run_adapt_game_schema_returns_schema_draft(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            with patch("run.REPO_ROOT", Path(tempdir)), patch("pipeline.game_onboarding.REPO_ROOT", Path(tempdir)):
+                result = run_adapt_game_schema("marvel_rivals")
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["status"], "schema_adapted")
+
+    def test_run_ingest_game_sources_returns_invalid_status_for_bad_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            manifest_path = Path(tempdir) / "bad_sources.yaml"
+            manifest_path.write_text("game: marvel_rivals\nsources: {}\n", encoding="utf-8")
+            result = run_ingest_game_sources("marvel_rivals", manifest_path)
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_onboarding_sources")
+
+    def test_run_build_onboarding_draft_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_build_onboarding_draft(Path(tempdir))
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_onboarding_draft_build")
+
     def test_run_publish_onboarding_draft_returns_invalid_status_for_missing_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             result = run_publish_onboarding_draft(Path(tempdir))
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_onboarding_publish")
+
+    def test_run_validate_onboarding_publish_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_validate_onboarding_publish(Path(tempdir))
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_onboarding_publish_validation")
+
+    def test_run_report_onboarding_batch_returns_invalid_status_for_missing_root(self) -> None:
+        result = run_report_onboarding_batch("/tmp/does-not-exist-onboarding-report-root")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "invalid_onboarding_batch_report")
+
+    def test_run_prepare_onboarding_identity_review_returns_invalid_status_for_missing_draft(self) -> None:
+        result = run_prepare_onboarding_identity_review("/tmp/does-not-exist-onboarding-identity-draft")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "invalid_onboarding_identity_review_preparation")
+
+    def test_run_publish_onboarding_batch_returns_invalid_status_for_missing_root(self) -> None:
+        result = run_publish_onboarding_batch("/tmp/does-not-exist-onboarding-batch-root")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "invalid_onboarding_batch_publish")
+
+    def test_run_refresh_clip_registry_invalid_root_returns_error(self) -> None:
+        result = run_refresh_clip_registry("/tmp/does-not-exist-clip-registry-root")
+        self.assertFalse(result["ok"])
+        self.assertIn("error", result)
+
+    def test_run_query_clip_registry_missing_db_returns_error(self) -> None:
+        result = run_query_clip_registry(registry_path="/tmp/does-not-exist-clip-registry.sqlite")
+        self.assertFalse(result["ok"])
+        self.assertIn("error", result)
 
     def test_run_scan_chat_log_returns_signals_and_windows(self) -> None:
         log_text = "\n".join(
@@ -284,6 +349,17 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_requires_source_manifest_for_ingest_game_sources(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--ingest-game-sources", "marvel_rivals"]
+            with self.assertRaises(SystemExit) as exc:
+                with redirect_stdout(io.StringIO()):
+                    run_main()
+            self.assertEqual(exc.exception.code, 2)
+        finally:
+            sys.argv = original_argv
+
     def test_run_scan_vod_returns_audio_results_and_sidecar(self) -> None:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as handle:
             audio_path = Path(handle.name)
@@ -348,6 +424,153 @@ class RunTests(unittest.TestCase):
             self.assertTrue(any(signal["source"] == "visual_flash_spike" for signal in result["signals"]))
             self.assertTrue(any("visual_flash_spike" in window["sources"] for window in result["windows"]))
 
+    def test_run_scan_vod_includes_hf_multimodal_metadata_and_signals(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as handle:
+            clip_path = Path(handle.name)
+        self.addCleanup(clip_path.unlink)
+        _write_test_video(clip_path, [_solid_frame(80) for _ in range(16)])
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            config = _config_with_output_dir(tempdir)
+            config["proxy_scanner"]["sources"]["audio_prepass"]["enabled"] = False
+            config["proxy_scanner"]["sources"]["visual_prepass"]["enabled"] = False
+            config["proxy_scanner"]["sources"]["hf_multimodal"]["enabled"] = True
+            with (
+                patch("run.load_config", return_value=config),
+                patch(
+                    "pipeline.hf_adapters._run_transnetv2_backend",
+                    return_value={
+                        "boundaries": [{"timestamp_seconds": 2.0, "boundary_score": 0.9}],
+                        "proposals": [{"start_seconds": 0.0, "end_seconds": 5.0, "proposal_score": 0.9}],
+                    },
+                ),
+                patch(
+                    "pipeline.hf_adapters._run_whisper_backend",
+                    return_value={
+                        "transcript": "insane clutch wow",
+                        "segments": [{"start_seconds": 0.0, "end_seconds": 5.0, "text": "insane clutch wow"}],
+                    },
+                ),
+                patch(
+                    "pipeline.hf_adapters._run_xclip_backend",
+                    return_value={
+                        "segment_scores": [
+                            {
+                                "start_seconds": 0.0,
+                                "end_seconds": 5.0,
+                                "query_scores": {"highlight moment": 0.78},
+                                "top_query": "highlight moment",
+                                "semantic_score": 0.78,
+                            }
+                        ]
+                    },
+                ),
+                patch(
+                    "pipeline.hf_adapters._run_siglip_backend",
+                    return_value={
+                        "segments": [
+                            {
+                                "start_seconds": 0.0,
+                                "end_seconds": 5.0,
+                                "keyframe_timestamp_seconds": 2.5,
+                                "novelty_score": 0.74,
+                                "cluster_id": 1,
+                            }
+                        ]
+                    },
+                ),
+                patch(
+                    "pipeline.hf_adapters._run_smolvlm_backend",
+                    return_value={
+                        "candidates": [
+                            {
+                                "start_seconds": 0.0,
+                                "end_seconds": 5.0,
+                                "base_score": 0.6,
+                                "rerank_score": 0.91,
+                                "reason": "clear clutch swing",
+                                "reason_codes": ["clutch_swing"],
+                            }
+                        ]
+                    },
+                ),
+            ):
+                result = run_scan_vod(clip_path, "marvel_rivals")
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["source_results"]["hf_multimodal"]["status"], "ok")
+            self.assertIn("metadata", result["source_results"]["hf_multimodal"])
+            self.assertIn(
+                "duration_ms",
+                result["source_results"]["hf_multimodal"]["metadata"]["stages"]["shot_detector"],
+            )
+            self.assertIn(
+                "output_counts",
+                result["source_results"]["hf_multimodal"]["metadata"]["stages"]["reranker"],
+            )
+            self.assertIn(
+                "hf_rerank_highlight",
+                [signal["source"] for signal in result["signals"]],
+            )
+            self.assertTrue(
+                any("hf_multimodal" in window["source_families"] for window in result["windows"])
+            )
+
+    def test_run_scan_vod_hf_multimodal_dependency_failure_keeps_sidecar_valid(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as handle:
+            clip_path = Path(handle.name)
+        self.addCleanup(clip_path.unlink)
+        _write_test_video(clip_path, [_solid_frame(80) for _ in range(16)])
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            config = _config_with_output_dir(tempdir)
+            config["proxy_scanner"]["sources"]["audio_prepass"]["enabled"] = False
+            config["proxy_scanner"]["sources"]["visual_prepass"]["enabled"] = False
+            config["proxy_scanner"]["sources"]["hf_multimodal"]["enabled"] = True
+            with (
+                patch("run.load_config", return_value=config),
+                patch(
+                    "pipeline.hf_adapters._run_transnetv2_backend",
+                    return_value={
+                        "boundaries": [{"timestamp_seconds": 2.0, "boundary_score": 0.9}],
+                        "proposals": [{"start_seconds": 0.0, "end_seconds": 5.0, "proposal_score": 0.9}],
+                    },
+                ),
+                patch(
+                    "pipeline.hf_adapters._run_whisper_backend",
+                    side_effect=HFAdapterError("asr", "missing dependency or runtime capability: transformers"),
+                ),
+                patch(
+                    "pipeline.hf_adapters._run_xclip_backend",
+                    return_value={"segment_scores": []},
+                ),
+                patch(
+                    "pipeline.hf_adapters._run_siglip_backend",
+                    side_effect=HFAdapterError("keyframes", "requires a configured keyframe embedding backend"),
+                ),
+                patch(
+                    "pipeline.hf_adapters._run_smolvlm_backend",
+                    side_effect=HFAdapterError("reranker", "requires a configured multimodal reranker backend"),
+                ),
+            ):
+                result = run_scan_vod(clip_path, "marvel_rivals")
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["source_results"]["hf_multimodal"]["status"], "ok")
+            self.assertEqual(
+                result["source_results"]["hf_multimodal"]["metadata"]["stage_statuses"]["asr"],
+                "failed",
+            )
+            self.assertEqual(
+                result["source_results"]["hf_multimodal"]["metadata"]["stages"]["asr"]["reason"],
+                "missing dependency or runtime capability: transformers",
+            )
+            self.assertIn(
+                "duration_ms",
+                result["source_results"]["hf_multimodal"]["metadata"]["stages"]["asr"],
+            )
+            self.assertTrue(Path(result["sidecar_path"]).is_file())
+
     def test_disabled_source_is_skipped_cleanly(self) -> None:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as handle:
             audio_path = Path(handle.name)
@@ -377,6 +600,34 @@ class RunTests(unittest.TestCase):
             self.assertEqual(result["source_results"]["audio_prepass"]["status"], "ok")
             self.assertIn("sources", result["config"]["proxy_scanner"])
             self.assertNotIn("signals", result["config"]["proxy_scanner"])
+            self.assertEqual(result["config_warnings"][0]["status"], "legacy_proxy_signals_config")
+
+    def test_run_audit_pipeline_contracts_reports_legacy_proxy_signals_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            raw_config = {"proxy_scanner": {"signals": {"audio_prepass": {"enabled": True}}}}
+            with patch("run.REPO_ROOT", Path(tempdir)), patch("run._load_repo_config_file", return_value=raw_config), patch(
+                "run.audit_pipeline_contracts",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "game_filter": None,
+                    "pack_contracts": [],
+                    "legacy_usage": [
+                        {
+                            "status": "legacy_proxy_signals_config",
+                            "surface": "config.proxy_scanner.signals",
+                        }
+                    ],
+                    "onboarding_publish_consistency": [],
+                    "runtime_contract_findings": [],
+                    "fusion_contract_findings": [],
+                    "recommended_cleanup_order": [],
+                    "warnings": [],
+                },
+            ):
+                result = run_audit_pipeline_contracts()
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["legacy_usage"][0]["status"], "legacy_proxy_signals_config")
 
     def test_sources_take_precedence_over_legacy_signals(self) -> None:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as handle:
@@ -395,6 +646,227 @@ class RunTests(unittest.TestCase):
 
             self.assertEqual(result["source_results"]["audio_prepass"]["status"], "skipped")
             self.assertEqual(result["source_results"]["audio_prepass"]["reason"], "disabled by config")
+
+    def test_cli_routes_to_audit_pipeline_contracts(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--audit-pipeline-contracts", "--game", "marvel_rivals"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_audit_pipeline_contracts",
+                return_value={"ok": True, "status": "ok", "pack_contracts": []},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once()
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_refresh_clip_registry(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--refresh-clip-registry", "/tmp/sidecars"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_refresh_clip_registry",
+                return_value={"ok": True, "registry_path": "/tmp/registry.sqlite"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once()
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_query_clip_registry(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--query-clip-registry", "--mode", "fused-events"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_query_clip_registry",
+                return_value={"ok": True, "row_count": 1, "rows": []},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once()
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_onboarding_batch(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--report-onboarding-batch", "/tmp/onboarding", "--game", "marvel_rivals"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_report_onboarding_batch",
+                return_value={"ok": True, "draft_count": 1, "drafts": []},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/onboarding", game="marvel_rivals", output_path=None)
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_publish_onboarding_batch(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--publish-onboarding-batch", "/tmp/onboarding", "--game", "marvel_rivals", "--apply"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_publish_onboarding_batch",
+                return_value={"ok": True, "summary": {"published": 1}},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/onboarding", game="marvel_rivals", apply=True, output_path=None)
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_validate_onboarding_publish(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--validate-onboarding-publish", "/tmp/draft"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_validate_onboarding_publish",
+                return_value={"ok": True, "can_publish": False, "readiness": "needs_binding_review"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/draft")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_prepare_onboarding_identity_review(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--prepare-onboarding-identity-review", "/tmp/draft", "--session-name", "triage-a"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_prepare_onboarding_identity_review",
+                return_value={"ok": True, "item_count": 1},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/draft", gpt_repo=None, session_name="triage-a")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_apply_onboarding_identity_review(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--apply-onboarding-identity-review", "/tmp/session.json"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_apply_onboarding_identity_review",
+                return_value={"ok": True, "resolved_count": 1},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/session.json", gpt_repo=None)
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_cleanup_onboarding_identity_review(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--cleanup-onboarding-identity-review", "/tmp/session.json"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_cleanup_onboarding_identity_review",
+                return_value={"ok": True, "cleanup_count": 2},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/session.json", gpt_repo=None)
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_export_highlight_selection(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--export-highlight-selection",
+                "/tmp/example.proxy_scan.json",
+                "--output-path",
+                "/tmp/highlights.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_export_highlight_selection",
+                return_value={"ok": True, "manifest_path": "/tmp/highlights.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/example.proxy_scan.json", output_path="/tmp/highlights.json")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_launch_highlight_review_app(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--launch-highlight-review-app",
+                "/tmp/sidecars",
+                "--fixture-manifest",
+                "/tmp/fixtures.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_launch_highlight_review_app",
+                return_value={"ok": True, "launch_url": "http://127.0.0.1:7860"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/sidecars",
+                fixture_manifest="/tmp/fixtures.json",
+                fixture_comparison_report=None,
+                fixture_trial_batch_manifest=None,
+                proxy_calibration_report=None,
+                proxy_replay_report=None,
+                runtime_calibration_report=None,
+                runtime_replay_report=None,
+                output_path=None,
+                launch=True,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
 
     def test_sidecar_path_uses_repo_output_dir_by_default(self) -> None:
         sidecar_path = _sidecar_path("/tmp/example.wav", "marvel_rivals", {"output_dir": "outputs/proxy_scans"})

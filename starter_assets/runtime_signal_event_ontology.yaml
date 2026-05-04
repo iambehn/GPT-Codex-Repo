@@ -1,0 +1,91 @@
+schema_version: runtime_signal_event_ontology_v1
+signal_types:
+  - character_identity
+  - ability_visibility
+  - equipment_visibility
+  - medal_visibility
+  - hud_visibility
+  - audio_spike
+  - chat_spike
+  - playlist_spike
+  - playlist_discontinuity
+  - visual_motion_spike
+  - visual_flash_spike
+event_types:
+  - pov_character_identified
+  - ability_seen
+  - medal_seen
+  - ability_plus_medal_combo
+  - high_action_sequence
+  - multi_kill_confirmed
+semantic_target_fields:
+  - entity_id
+  - ability_id
+  - equipment_id
+  - event_row_id
+producer_families:
+  - runtime
+  - proxy
+group_by_fields:
+  - entity_id
+  - ability_id
+  - equipment_id
+  - event_row_id
+signal_event_targets:
+  character_identity:
+    event_types:
+      - pov_character_identified
+    target_fields:
+      - entity_id
+  ability_visibility:
+    event_types:
+      - ability_seen
+      - ability_plus_medal_combo
+      - high_action_sequence
+    target_fields:
+      - ability_id
+  equipment_visibility:
+    event_types:
+      - ability_seen
+      - ability_plus_medal_combo
+      - high_action_sequence
+    target_fields:
+      - equipment_id
+  medal_visibility:
+    event_types:
+      - medal_seen
+      - ability_plus_medal_combo
+      - high_action_sequence
+      - multi_kill_confirmed
+    target_fields:
+      - event_row_id
+  hud_visibility:
+    event_types:
+      - high_action_sequence
+    target_fields: []
+  audio_spike:
+    event_types:
+      - high_action_sequence
+      - multi_kill_confirmed
+    target_fields: []
+  chat_spike:
+    event_types:
+      - high_action_sequence
+      - multi_kill_confirmed
+    target_fields: []
+  playlist_spike:
+    event_types:
+      - high_action_sequence
+    target_fields: []
+  playlist_discontinuity:
+    event_types:
+      - high_action_sequence
+    target_fields: []
+  visual_motion_spike:
+    event_types:
+      - high_action_sequence
+    target_fields: []
+  visual_flash_spike:
+    event_types:
+      - high_action_sequence
+    target_fields: []

@@ -1,0 +1,9 @@
+abilities:
+  - id: flash_grenade
+    display_name: "Flash Grenade"
+    aliases: ["flash"]
+    class: equipment
+  - id: cluster_strike
+    display_name: "Cluster Strike"
+    aliases: ["cluster"]
+    class: equipment

@@ -16,6 +16,7 @@ from pipeline.roi_matcher import (
     _confirm_detections,
     check_roi_runtime,
     list_pack_templates,
+    load_template_trial_overrides,
     match_roi_templates,
     validate_published_pack,
 )
@@ -126,6 +127,10 @@ class RoiMatcherTests(unittest.TestCase):
                 [
                     f"  - asset_id: {row['asset_id']}",
                     f"    asset_family: {row.get('asset_family', 'hero_portrait')}",
+                    *([f"    entity_id: {row['entity_id']}"] if row.get("entity_id") is not None else []),
+                    *([f"    ability_id: {row['ability_id']}"] if row.get("ability_id") is not None else []),
+                    *([f"    equipment_id: {row['equipment_id']}"] if row.get("equipment_id") is not None else []),
+                    *([f"    event_row_id: {row['event_row_id']}"] if row.get("event_row_id") is not None else []),
                     f"    roi_ref: {row['roi_ref']}",
                     f'    template_path: "{row["template_path"]}"',
                     f'    mask_path: "{row.get("mask_path", "")}"',
@@ -136,6 +141,126 @@ class RoiMatcherTests(unittest.TestCase):
                 ]
             )
         (game_root / "manifests" / "cv_templates.yaml").write_text("\n".join(template_lines) + "\n", encoding="utf-8")
+        (game_root / "manifests" / "runtime_cv_rules.yaml").write_text(
+            "\n".join(
+                [
+                    "event_mappings:",
+                    "  hero_portrait:",
+                    "    signal_type: character_identity",
+                    "    event_type: pov_character_identified",
+                    "    target_field: entity_id",
+                    "    target_id_source: template_field",
+                    "    target_value_field: entity_id",
+                    "    identity_competition: strongest_overlap",
+                    "  medal_icon:",
+                    "    signal_type: medal_visibility",
+                    "    event_type: medal_seen",
+                    "    target_field: event_row_id",
+                    "    target_id_source: template_field",
+                    "    target_value_field: event_row_id",
+                    "  ability_icon:",
+                    "    signal_type: ability_visibility",
+                    "    event_type: ability_seen",
+                    "    target_field: ability_id",
+                    "    target_id_source: template_field",
+                    "    target_value_field: ability_id",
+                    "  equipment_icon:",
+                    "    signal_type: equipment_visibility",
+                    "    event_type: ability_seen",
+                    "    target_field: equipment_id",
+                    "    target_id_source: template_field",
+                    "    target_value_field: equipment_id",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (game_root / "manifests" / "fusion_rules.yaml").write_text(
+            "\n".join(
+                [
+                    "schema_version: fusion_rules_v1",
+                    "rules:",
+                    "  - rule_id: character_identity_atomic",
+                    "    event_type: pov_character_identified",
+                    '    signal_types: ["character_identity"]',
+                    '    required_signal_types: ["character_identity"]',
+                    "    window_seconds: 0.5",
+                    "    min_signal_count: 1",
+                    "    confidence_method: max",
+                    '    group_by: ["entity_id"]',
+                    "  - rule_id: medal_visibility_atomic",
+                    "    event_type: medal_seen",
+                    '    signal_types: ["medal_visibility"]',
+                    '    required_signal_types: ["medal_visibility"]',
+                    "    window_seconds: 0.5",
+                    "    min_signal_count: 1",
+                    "    confidence_method: max",
+                    '    group_by: ["event_row_id"]',
+                    "  - rule_id: ability_visibility_atomic",
+                    "    event_type: ability_seen",
+                    '    signal_types: ["ability_visibility"]',
+                    '    required_signal_types: ["ability_visibility"]',
+                    "    window_seconds: 0.5",
+                    "    min_signal_count: 1",
+                    "    confidence_method: max",
+                    '    group_by: ["ability_id"]',
+                    "  - rule_id: equipment_visibility_atomic",
+                    "    event_type: ability_seen",
+                    '    signal_types: ["equipment_visibility"]',
+                    '    required_signal_types: ["equipment_visibility"]',
+                    "    window_seconds: 0.5",
+                    "    min_signal_count: 1",
+                    "    confidence_method: max",
+                    '    group_by: ["equipment_id"]',
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        detection_lines = [
+            "schema_version: game_detection_manifest_v1",
+            "baseline_schema_version: runtime_detection_schema_v1",
+            "game_id: marvel_rivals",
+            f"row_count: {len(template_rows)}",
+            f"required_row_count: {len(template_rows)}",
+            f"ready_row_count: {len(template_rows)}",
+            "rows_needing_assets: 0",
+            "rows:",
+        ]
+        for row in template_rows:
+            asset_family = str(row.get("asset_family", "hero_portrait"))
+            target_id = (
+                str(row.get("entity_id") or row.get("ability_id") or row.get("equipment_id") or row.get("event_row_id") or "unknown")
+            )
+            semantic_field = (
+                "entity_id"
+                if row.get("entity_id") is not None
+                else "ability_id"
+                if row.get("ability_id") is not None
+                else "equipment_id"
+                if row.get("equipment_id") is not None
+                else "event_row_id"
+            )
+            detection_lines.extend(
+                [
+                    f"  - detection_id: marvel_rivals.{target_id}.{asset_family}",
+                    "    game_id: marvel_rivals",
+                    f"    target_kind: {'hero' if asset_family == 'hero_portrait' else 'event' if asset_family == 'medal_icon' else 'equipment' if asset_family == 'equipment_icon' else 'ability'}",
+                    f"    target_id: {target_id}",
+                    f"    target_display_name: {target_id}",
+                    "    ontology_collection: derived",
+                    f"    asset_family: {asset_family}",
+                    "    requires_asset: true",
+                    f'    required_semantic_fields: ["{semantic_field}"]',
+                    "    template_semantics:",
+                    f"      {semantic_field}: {target_id}",
+                    "    status: ready_for_binding",
+                    "    binding_status: accepted",
+                    "    asset_status: published",
+                    f"    published_asset_id: {row['asset_id']}",
+                ]
+            )
+        (game_root / "manifests" / "detection_manifest.yaml").write_text("\n".join(detection_lines) + "\n", encoding="utf-8")
         (game_root / "manifests" / "assets_manifest.json").write_text(
             json.dumps({"game_id": "marvel_rivals", "published_assets": []}, indent=2),
             encoding="utf-8",
@@ -212,7 +337,8 @@ class RoiMatcherTests(unittest.TestCase):
                 root,
                 template_rows=[
                     {
-                        "asset_id": "marvel_rivals.hero.punisher",
+                        "asset_id": "marvel_rivals.punisher.hero_portrait",
+                        "entity_id": "punisher",
                         "roi_ref": "hero_portrait",
                         "template_path": "templates/heroes/punisher.png",
                         "scale_set": [1.0, 4.0],
@@ -227,6 +353,32 @@ class RoiMatcherTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertTrue(result["templates_with_roi_fit_warnings"])
 
+    def test_validate_published_pack_reports_canonical_contract_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.punisher.hero_portrait",
+                        "entity_id": "punisher",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/punisher.png",
+                        "asset_family": "hero_portrait",
+                    }
+                ],
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root), patch(
+                "pipeline.roi_matcher._template_dimensions",
+                return_value=(10, 10),
+            ):
+                result = validate_published_pack("marvel_rivals")
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["contract_status"], "canonical")
+            self.assertFalse(result["active_legacy_modes"])
+
     def test_list_pack_templates_groups_rows_by_roi(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
@@ -237,12 +389,14 @@ class RoiMatcherTests(unittest.TestCase):
                 template_rows=[
                     {
                         "asset_id": "marvel_rivals.hero.punisher",
+                        "entity_id": "punisher",
                         "roi_ref": "hero_portrait",
                         "template_path": "templates/heroes/punisher.png",
                         "asset_family": "hero_portrait",
                     },
                     {
                         "asset_id": "marvel_rivals.medal.headshot",
+                        "event_row_id": "headshot",
                         "roi_ref": "medal_area",
                         "template_path": "templates/medals/headshot.png",
                         "asset_family": "medal_icon",
@@ -254,6 +408,194 @@ class RoiMatcherTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertIn("hero_portrait", result["templates_by_roi"])
             self.assertIn("medal_area", result["templates_by_roi"])
+            self.assertEqual(result["templates_by_roi"]["hero_portrait"][0]["event_type"], "pov_character_identified")
+            self.assertEqual(result["templates_by_roi"]["hero_portrait"][0]["signal_type"], "character_identity")
+            self.assertEqual(result["templates_by_roi"]["hero_portrait"][0]["entity_id"], "punisher")
+
+    def test_validate_published_pack_reports_missing_runtime_rule_for_family(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            game_root = self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.status.objective",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/objective.png",
+                        "asset_family": "hud_icon",
+                    }
+                ],
+            )
+            (game_root / "manifests" / "runtime_cv_rules.yaml").write_text(
+                "\n".join(
+                    [
+                        "event_mappings:",
+                        "  hero_portrait:",
+                        "    signal_type: character_identity",
+                        "    event_type: pov_character_identified",
+                        "    target_field: entity_id",
+                        "    target_id_source: template_field",
+                        "    target_value_field: entity_id",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root), patch(
+                "pipeline.roi_matcher._template_dimensions",
+                return_value=(10, 10),
+            ):
+                result = validate_published_pack("marvel_rivals")
+            self.assertFalse(result["ok"])
+            self.assertIn("hud_icon", result["missing_runtime_rules_for_families"])
+
+    def test_validate_published_pack_reports_semantic_target_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.frag-grenade.ability_icon",
+                        "roi_ref": "ability_hud",
+                        "template_path": "templates/abilities/frag-grenade.png",
+                        "asset_family": "ability_icon",
+                    }
+                ],
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root), patch(
+                "pipeline.roi_matcher._template_dimensions",
+                return_value=(10, 10),
+            ):
+                result = validate_published_pack("marvel_rivals")
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["failures"][0]["status"], "template_rule_target_mismatch")
+
+    def test_validate_published_pack_reports_ontology_status_for_canonical_pack(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.punisher.hero_portrait",
+                        "entity_id": "punisher",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/punisher.png",
+                        "asset_family": "hero_portrait",
+                    }
+                ],
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root), patch(
+                "pipeline.roi_matcher._template_dimensions",
+                return_value=(10, 10),
+            ):
+                result = validate_published_pack("marvel_rivals")
+            self.assertEqual(result["ontology_status"], "ok")
+            self.assertTrue(result["ontology_version"])
+
+    def test_runtime_rules_fail_on_unknown_ontology_signal_type(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            game_root = self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.punisher.hero_portrait",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/punisher.png",
+                        "asset_family": "hero_portrait",
+                    }
+                ],
+            )
+            (game_root / "manifests" / "runtime_cv_rules.yaml").write_text(
+                "\n".join(
+                    [
+                        "event_mappings:",
+                        "  hero_portrait:",
+                        "    signal_type: unknown_signal",
+                        "    event_type: pov_character_identified",
+                        "    target_field: entity_id",
+                        "    target_id_source: template_field",
+                        "    target_value_field: entity_id",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root):
+                with self.assertRaises(RoiMatcherError) as exc:
+                    match_roi_templates("/tmp/example.mp4", "marvel_rivals")
+            self.assertEqual(exc.exception.status, "invalid_runtime_cv_rules")
+
+    def test_validate_published_pack_flags_legacy_target_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            game_root = self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.punisher.hero_portrait",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/punisher.png",
+                        "asset_family": "hero_portrait",
+                    }
+                ],
+            )
+            (game_root / "manifests" / "runtime_cv_rules.yaml").write_text(
+                "\n".join(
+                    [
+                        "event_mappings:",
+                        "  hero_portrait:",
+                        "    signal_type: character_identity",
+                        "    event_type: pov_character_identified",
+                        "    target_field: entity_id",
+                        "    target_id_source: asset_id_suffix",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root), patch(
+                "pipeline.roi_matcher._template_dimensions",
+                return_value=(10, 10),
+            ):
+                result = validate_published_pack("marvel_rivals")
+            self.assertTrue(result["ok"])
+            self.assertTrue(result["legacy_target_id_rules"])
+            self.assertEqual(result["contract_status"], "legacy_assisted")
+            self.assertEqual(result["legacy_findings"][0]["status"], "legacy_target_id_source")
+
+    def test_matcher_reports_missing_runtime_rules_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            game_root = self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.hero.punisher",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/punisher.png",
+                    }
+                ],
+            )
+            (game_root / "manifests" / "runtime_cv_rules.yaml").unlink()
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root):
+                with self.assertRaises(RoiMatcherError) as exc:
+                    match_roi_templates("/tmp/example.mp4", "marvel_rivals")
+            self.assertEqual(exc.exception.status, "missing_runtime_cv_rules")
 
     def test_best_match_chooses_highest_scale_and_uses_mask(self) -> None:
         fake_cv2 = _FakeCv2()
@@ -341,6 +683,71 @@ class RoiMatcherTests(unittest.TestCase):
             self.assertGreaterEqual(len(result["detections"]), 3)
             self.assertEqual(len(result["confirmed_detections"]), 1)
             self.assertEqual(result["confirmed_detections"][0]["asset_id"], "marvel_rivals.hero.punisher")
+            self.assertEqual(result["confirmed_detections"][0]["asset_family"], "hero_portrait")
+
+    def test_load_template_trial_overrides_rejects_invalid_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            trial_path = root / "trial.yaml"
+            trial_path.write_text("templates:\n  marvel_rivals.hero.punisher:\n    unsupported: 1\n", encoding="utf-8")
+            with self.assertRaises(RoiMatcherError) as exc:
+                load_template_trial_overrides(trial_path)
+        self.assertEqual(exc.exception.status, "invalid_template_trial")
+
+    def test_matcher_applies_template_overrides_without_mutating_pack(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            game_root = self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.hero.punisher",
+                        "entity_id": "punisher",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/punisher.png",
+                        "asset_family": "hero_portrait",
+                        "threshold": 0.9,
+                        "temporal_window": 2,
+                    }
+                ],
+            )
+            original_manifest = (game_root / "manifests" / "cv_templates.yaml").read_text(encoding="utf-8")
+            frames = [
+                FrameBundle(frame_index=0, timestamp=0.0, image=_FakeImage((36, 64, 3))),
+                FrameBundle(frame_index=1, timestamp=0.25, image=_FakeImage((36, 64, 3))),
+            ]
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root
+            ), patch(
+                "pipeline.roi_matcher._load_cv_runtime",
+                return_value=(_FakeCv2(), object()),
+            ), patch(
+                "pipeline.roi_matcher._decode_video_frames",
+                return_value=frames,
+            ), patch(
+                "pipeline.roi_matcher._best_match_for_template",
+                return_value={"score": 0.85, "scale": 1.0},
+            ):
+                current = match_roi_templates("/tmp/example.mp4", "marvel_rivals", sample_fps=4.0)
+                trial = match_roi_templates(
+                    "/tmp/example.mp4",
+                    "marvel_rivals",
+                    sample_fps=4.0,
+                    template_overrides={
+                        "marvel_rivals.hero.punisher": {
+                            "threshold": 0.8,
+                            "scale_set": [1.25],
+                            "temporal_window": 1,
+                        }
+                    },
+                )
+            self.assertEqual(current["confirmed_detections"], [])
+            self.assertEqual(len(trial["confirmed_detections"]), 1)
+            self.assertEqual(trial["confirmed_detections"][0]["entity_id"], "punisher")
+            self.assertEqual(trial["confirmed_detections"][0]["temporal_window"], 1)
+            self.assertEqual((game_root / "manifests" / "cv_templates.yaml").read_text(encoding="utf-8"), original_manifest)
 
     def test_matcher_writes_output_report(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

@@ -1,0 +1,4 @@
+interface:
+  display_name: "HF Eval Operator"
+  short_description: "Hugging Face eval and replay workflow"
+  default_prompt: "Use $hf-eval-operator to run proxy or runtime calibration/replay and recommend the next config move."

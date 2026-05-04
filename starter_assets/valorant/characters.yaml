@@ -1,0 +1,9 @@
+characters:
+  - id: jett
+    display_name: "Jett"
+    aliases: ["jett"]
+    role: duelist
+  - id: sage
+    display_name: "Sage"
+    aliases: ["sage"]
+    role: strategist

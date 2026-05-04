@@ -1,0 +1,9 @@
+moments:
+  - id: radiant
+    display_name: "Radiant"
+    aliases: ["radiant"]
+    category: outcome
+  - id: immortal
+    display_name: "Immortal"
+    aliases: ["immortal"]
+    category: outcome

@@ -1,0 +1,35 @@
+{
+  "schema_version": "fusion_goldset_clip_v1",
+  "clip_id": "marvel-rivals-synergy-positive-01",
+  "game": "marvel_rivals",
+  "source": "clips/synergy-positive-01.mp4",
+  "coverage_tags": ["synergy_positive"],
+  "tolerances": {
+    "timestamp_tolerance_seconds": 0.4,
+    "boundary_tolerance_seconds": 0.8
+  },
+  "expected_detections": [],
+  "expected_runtime_events": [
+    {
+      "event_type": "ability_seen",
+      "ability_id": "frag-grenade",
+      "timestamp": 20.0
+    },
+    {
+      "event_type": "medal_seen",
+      "event_row_id": "double_kill",
+      "timestamp": 20.2
+    }
+  ],
+  "expected_fused_events": [
+    {
+      "event_type": "ability_plus_medal_combo",
+      "event_row_id": "double_kill",
+      "synergy_expected": true,
+      "minimum_required_signals_met": true,
+      "required_signal_types": ["ability_visibility", "medal_visibility"],
+      "timestamp": 20.2
+    }
+  ],
+  "expected_boundaries": []
+}

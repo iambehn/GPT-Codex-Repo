@@ -13,10 +13,29 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlparse
-from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from pipeline.asset_candidate_quality import analyze_asset_candidate
 from pipeline.simple_yaml import dump_yaml_file
+from pipeline.source_normalization import (
+    SourceFetchError,
+    build_fetch_target as _shared_build_fetch_target,
+    fetch_source_record as _shared_fetch_source_record,
+    image_anchor_text,
+    normalize_source_url as _shared_normalize_source_url,
+)
+from pipeline.structured_source_fields import (
+    aliases_equivalent,
+    clean_text,
+    extract_event_name,
+    extract_structured_fields,
+    find_explicit_listing_matches,
+    find_explicit_listing_match,
+    identity_keys,
+    merge_aliases,
+    reconcile_identity,
+    slugify,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -54,14 +73,7 @@ _NEGATIVE_SECTION_HINTS = (
     "gallery",
     "navigation",
 )
-_HTML_ACCEPT_HEADER = "text/html,application/xhtml+xml"
-_DEFAULT_ACCEPT_LANGUAGE = "en-US,en;q=0.9"
 _DEFAULT_TIMEOUT_SECONDS = 20
-_BROWSER_USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/124.0.0.0 Safari/537.36"
-)
 
 
 @dataclass
@@ -94,35 +106,7 @@ class WikiSource:
     role: str
 
 
-class WikiFetchError(RuntimeError):
-    def __init__(
-        self,
-        *,
-        source_url: str,
-        category: str,
-        message: str,
-        hint: str,
-        http_status: int | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.source_url = source_url
-        self.category = category
-        self.message = message
-        self.hint = hint
-        self.http_status = http_status
-
-    def to_dict(self) -> dict[str, Any]:
-        payload = {
-            "ok": False,
-            "status": "fetch_failed",
-            "wiki_url": self.source_url,
-            "error": self.message,
-            "hint": self.hint,
-            "failure_category": self.category,
-        }
-        if self.http_status is not None:
-            payload["http_status"] = self.http_status
-        return payload
+WikiFetchError = SourceFetchError
 
 
 def _normalize_source(source: WikiSource) -> WikiSource:
@@ -212,15 +196,15 @@ class _WikiHtmlParser(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         if tag == self._current_heading_tag and self._current_heading_tag:
-            heading = _clean_text(self._current_heading_text)
+            heading = clean_text(self._current_heading_text)
             if heading:
-                section_key = _slugify(heading)
+                section_key = slugify(heading)
                 self._current_section = ParsedSection(section_key=section_key, heading=heading)
                 self.sections.append(self._current_section)
             self._current_heading_tag = ""
             self._current_heading_text = ""
         elif tag == "li" and self._capture_li:
-            text = _clean_text(" ".join(self._current_text_parts))
+            text = clean_text(" ".join(self._current_text_parts))
             if text:
                 self._current_section.items.append(text)
             self._capture_li = False
@@ -228,7 +212,7 @@ class _WikiHtmlParser(HTMLParser):
         elif tag == "title":
             self._capture_title = False
         elif tag == "a" and self._capture_category_anchor:
-            item_name = _clean_text(self._current_category_anchor_text)
+            item_name = clean_text(self._current_category_anchor_text)
             if item_name and self._category_anchor_href and not _should_ignore_category_row(item_name):
                 self._current_category_member_name = item_name
                 self._current_category_member_href = self._category_anchor_href
@@ -329,8 +313,31 @@ def enrich_game_from_sources(game: str, sources: list[WikiSource], *, repo_root:
         path.mkdir(parents=True, exist_ok=True)
 
     try:
-        source_records = [_fetch_source_record(source.url, source.role) for source in normalized_sources]
+        source_records: list[dict[str, Any]] = []
+        source_failures: list[dict[str, Any]] = []
+        first_failure: WikiFetchError | None = None
+        for source in normalized_sources:
+            try:
+                source_records.append(_fetch_source_record(source.url, source.role))
+            except WikiFetchError as exc:
+                if first_failure is None:
+                    first_failure = exc
+                source_failures.append(_source_failure_row(source, exc))
+        if not source_records and first_failure is not None:
+            raise first_failure
         normalized = _normalize_records(game, source_records)
+        normalized[_SECTION_FETCH_LOG].extend(source_failures)
+        normalized[_SECTION_QA].extend(
+            {
+                "source_page_url": row["source_page_url"],
+                "source_role": row["source_role"],
+                "qa_status": row["status"],
+                "display_name": row["source_role"],
+                "candidate_quality": "",
+                "source_url": row["source_page_url"],
+            }
+            for row in source_failures
+        )
         _download_assets(normalized["assets"], downloads_root, templates_root)
         _write_catalog_csvs(catalog_root, normalized)
         _write_draft_artifacts(stage_root, game, normalized)
@@ -372,82 +379,17 @@ def enrich_game_from_sources(game: str, sources: list[WikiSource], *, repo_root:
 
 
 def _fetch_source_record(url: str, role: str) -> dict[str, Any]:
-    normalized_url = _normalize_source_url(url)
-    try:
-        response_target = _build_fetch_target(normalized_url)
-        with urlopen(response_target, timeout=_DEFAULT_TIMEOUT_SECONDS) as response:
-            content_type = response.headers.get_content_type() if hasattr(response, "headers") else "text/html"
-            body = response.read()
-    except HTTPError as exc:
-        raise WikiFetchError(
-            source_url=normalized_url,
-            category="http_error",
-            message=f"failed to fetch source page: HTTP {exc.code}",
-            hint=_fetch_hint_for_status(exc.code),
-            http_status=exc.code,
-        ) from exc
-    except URLError as exc:
-        reason = getattr(exc, "reason", exc)
-        raise WikiFetchError(
-            source_url=normalized_url,
-            category="network_error",
-            message=f"failed to fetch source page: {reason}",
-            hint="The source may be unavailable or the current environment may not have network access.",
-        ) from exc
-
-    try:
-        text = body.decode("utf-8", errors="replace")
-    except UnicodeDecodeError as exc:
-        raise WikiFetchError(
-            source_url=normalized_url,
-            category="decode_error",
-            message="failed to decode source page as text",
-            hint="The source responded with content that could not be decoded as HTML text.",
-        ) from exc
-
-    parser = _WikiHtmlParser(normalized_url)
-    parser.feed(text)
-    page_type = _detect_page_type(normalized_url, _clean_text(parser.title), parser.category_items)
-    source_scheme = urlparse(normalized_url).scheme or "file"
-    return {
-        "url": normalized_url,
-        "role": role,
-        "source_scheme": source_scheme,
-        "content_type": content_type,
-        "title": _clean_text(parser.title) or _slugify(urlparse(normalized_url).path) or "source",
-        "page_type": page_type,
-        "sections": parser.sections,
-        "category_items": parser.category_items,
-    }
+    return _shared_fetch_source_record(url, role)
 
 
 def _build_fetch_target(url: str) -> str | Request:
-    parsed = urlparse(url)
-    if parsed.scheme in {"http", "https"}:
-        referer = f"{parsed.scheme}://{parsed.netloc}/" if parsed.netloc else url
-        return Request(
-            url,
-            headers={
-                "User-Agent": _BROWSER_USER_AGENT,
-                "Accept": _HTML_ACCEPT_HEADER,
-                "Accept-Language": _DEFAULT_ACCEPT_LANGUAGE,
-                "Referer": referer,
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-                "Upgrade-Insecure-Requests": "1",
-            },
-        )
-    return url
+    return _shared_build_fetch_target(url)
 
 
 def _fetch_hint_for_status(status_code: int) -> str:
-    if status_code == 403:
-        return "The source blocked the request even after browser-like headers were applied. Save the page locally and point the manifest/source url at that HTML file."
-    if status_code == 404:
-        return "The source URL was not found. Verify the page still exists."
-    if 500 <= status_code < 600:
-        return "The source site returned a server error. Retry later or choose another source."
-    return "The source returned an unexpected HTTP error."
+    from pipeline.source_normalization import fetch_hint_for_status
+
+    return fetch_hint_for_status(status_code)
 
 
 def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -463,9 +405,11 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
     assets: list[dict[str, Any]] = []
     fetch_log: list[dict[str, Any]] = []
     seen_assets: set[tuple[str, str]] = set()
+    merge_qa: list[dict[str, Any]] = []
 
     for source in source_records:
         sections: list[ParsedSection] = source["sections"]
+        article_container_detected = bool(source.get("article_container_detected", False))
         source_known_names: dict[str, set[str]] = {
             "character_or_operator": set(),
             "ability_or_equipment": set(),
@@ -478,7 +422,7 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
                 "source_title": source["title"],
                 "source_scheme": source["source_scheme"],
                 "page_type": source["page_type"],
-                "status": "fetched",
+                "status": _source_record_status(source),
                 "content_type": source["content_type"],
                 "section_count": len(sections),
             }
@@ -494,7 +438,16 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
                 assets,
                 seen_assets,
                 source_known_names,
+                merge_qa,
             )
+            merge_qa.extend(_enrich_category_rows_from_detail_sections(
+                game,
+                source,
+                source_known_names,
+                entities_by_id,
+                abilities_by_id,
+                events_by_id,
+            ))
             continue
 
         for section in sections:
@@ -514,17 +467,28 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
                     entities_by_id,
                     abilities_by_id,
                     events_by_id,
+                    merge_qa,
+                    source_text=item_text,
                 )
 
             for image in section.images:
                 record_type = _classify_section(image.section_text, source["role"])
+                image_section_heading = image.section_text
+                if bool(getattr(image, "infobox_like", False)):
+                    record_type = _record_type_for_role(source["role"])
+                    image_section_heading = str(source.get("role", "")) or image.section_text
+                elif bool(getattr(image, "gallery_like", False)):
+                    if record_type is None:
+                        record_type = _record_type_for_role(source["role"])
+                    image_section_heading = image_anchor_text(image) or image.section_text
                 if record_type is None:
                     continue
+                anchor_strength = str(getattr(image, "anchor_strength", "weak"))
                 candidate_name = _normalize_item_name(
-                    image.alt or section.heading,
+                    image_anchor_text(image),
                     record_type=record_type,
                     source_role=source["role"],
-                    section_heading=image.section_text,
+                    section_heading=image_section_heading,
                 )
                 if not candidate_name or _should_ignore_row_text(candidate_name):
                     continue
@@ -540,13 +504,36 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
                     image.src,
                     candidate_name,
                     source_role=source["role"],
-                    section_heading=image.section_text,
+                    section_heading=image_section_heading,
                 ):
                     continue
                 asset_key = (display_name.casefold(), image.src)
                 if asset_key in seen_assets:
                     continue
                 seen_assets.add(asset_key)
+                allow_image_row = anchor_strength in {"strong", "medium"} and not bool(getattr(image, "infobox_like", False))
+                if bool(getattr(image, "gallery_like", False)):
+                    allow_image_row = anchor_strength == "strong"
+                    if not article_container_detected:
+                        allow_image_row = bool(getattr(image, "paragraph_backed", False)) and anchor_strength == "medium"
+                elif not article_container_detected:
+                    allow_image_row = (
+                        (bool(getattr(image, "captioned", False)) and anchor_strength == "strong")
+                        or (bool(getattr(image, "paragraph_backed", False)) and anchor_strength == "medium")
+                    )
+                if allow_image_row:
+                    _upsert_schema_row(
+                        game,
+                        source,
+                        image_section_heading,
+                        record_type,
+                        display_name,
+                        entities_by_id,
+                        abilities_by_id,
+                        events_by_id,
+                        merge_qa,
+                        source_text=image_anchor_text(image),
+                    )
                 _append_asset_row(
                     assets,
                     game=game,
@@ -554,6 +541,19 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
                     record_type=record_type,
                     display_name=display_name,
                     source_url=image.src,
+                    source_kind=(
+                        "infobox_image"
+                        if bool(getattr(image, "infobox_like", False))
+                        else "gallery_image"
+                        if bool(getattr(image, "gallery_like", False))
+                        else "page_image"
+                    ),
+                    section_heading=image_section_heading,
+                    raw_label=image_anchor_text(image) or candidate_name,
+                    anchor_source=str(getattr(image, "anchor_source", "")),
+                    anchor_ambiguous=bool(getattr(image, "paragraph_ambiguous", False)),
+                    anchor_ambiguity_type=str(getattr(image, "anchor_ambiguity_type", "")),
+                    paragraph_referential=bool(getattr(image, "paragraph_referential", False)),
                 )
 
     qa_queue = [
@@ -561,13 +561,90 @@ def _normalize_records(game: str, source_records: list[dict[str, Any]]) -> dict[
             "asset_id": asset["asset_id"],
             "display_name": asset["display_name"],
             "qa_status": asset["qa_status"],
+            "candidate_quality": asset.get("candidate_quality", ""),
             "source_url": asset["source_url"],
             "source_role": asset["source_role"],
             "source_page_url": asset["source_page_url"],
         }
         for asset in assets
-        if asset["qa_status"] != "verified_source"
+        if asset["qa_status"] != "verified_source" or asset.get("candidate_quality") == "low"
     ]
+    qa_queue.extend(
+        {
+            "asset_id": asset["asset_id"],
+            "display_name": asset["display_name"],
+            "qa_status": "filename_only_anchor",
+            "candidate_quality": asset.get("candidate_quality", ""),
+            "source_url": asset["source_url"],
+            "source_role": asset["source_role"],
+            "source_page_url": asset["source_page_url"],
+        }
+        for asset in assets
+        if str(asset.get("anchor_source", "")).strip() == "filename"
+    )
+    qa_queue.extend(
+        {
+            "asset_id": asset["asset_id"],
+            "display_name": asset["display_name"],
+            "qa_status": (
+                "surrounding_paragraph_ambiguous_anchor"
+                if str(asset.get("anchor_ambiguity_type", "")) == "surrounding_paragraph"
+                else "cross_paragraph_ambiguous_anchor"
+                if str(asset.get("anchor_ambiguity_type", "")) == "cross_paragraph"
+                else "ambiguous_paragraph_anchor"
+            ),
+            "candidate_quality": asset.get("candidate_quality", ""),
+            "source_url": asset["source_url"],
+            "source_role": asset["source_role"],
+            "source_page_url": asset["source_page_url"],
+        }
+        for asset in assets
+        if bool(asset.get("anchor_ambiguous", False))
+    )
+    qa_queue.extend(
+        {
+            "asset_id": asset["asset_id"],
+            "display_name": asset["display_name"],
+            "qa_status": "referential_paragraph_anchor",
+            "candidate_quality": asset.get("candidate_quality", ""),
+            "source_url": asset["source_url"],
+            "source_role": asset["source_role"],
+            "source_page_url": asset["source_page_url"],
+        }
+        for asset in assets
+        if bool(asset.get("paragraph_referential", False))
+    )
+    asset_groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for asset in assets:
+        group_key = (str(asset.get("binding_key", "")), str(asset.get("asset_family", "")))
+        asset_groups.setdefault(group_key, []).append(asset)
+    qa_queue.extend(
+        {
+            "asset_id": grouped[0]["asset_id"],
+            "display_name": grouped[0]["display_name"],
+            "qa_status": "infobox_only_candidate",
+            "candidate_quality": grouped[0].get("candidate_quality", ""),
+            "source_url": grouped[0]["source_url"],
+            "source_role": grouped[0]["source_role"],
+            "source_page_url": grouped[0]["source_page_url"],
+        }
+        for grouped in asset_groups.values()
+        if {str(row.get("source_kind", "")) for row in grouped} == {"infobox_image"}
+    )
+    qa_queue.extend(
+        {
+            "asset_id": grouped[0]["asset_id"],
+            "display_name": grouped[0]["display_name"],
+            "qa_status": "gallery_only_candidate",
+            "candidate_quality": grouped[0].get("candidate_quality", ""),
+            "source_url": grouped[0]["source_url"],
+            "source_role": grouped[0]["source_role"],
+            "source_page_url": grouped[0]["source_page_url"],
+        }
+        for grouped in asset_groups.values()
+        if {str(row.get("source_kind", "")) for row in grouped} == {"gallery_image"}
+    )
+    qa_queue.extend(merge_qa)
 
     return {
         _SECTION_GAME: games,
@@ -626,6 +703,8 @@ def _write_draft_artifacts(draft_root: Path, game: str, normalized: dict[str, li
             {
                 "id": row["entity_id"],
                 "display_name": row["display_name"],
+                "role": row.get("role", ""),
+                "aliases": row.get("aliases", []),
                 "source_page_url": row["source_page_url"],
             }
             for row in normalized[_SECTION_ENTITIES]
@@ -637,6 +716,8 @@ def _write_draft_artifacts(draft_root: Path, game: str, normalized: dict[str, li
             {
                 "id": row["ability_id"],
                 "display_name": row["display_name"],
+                "class": row.get("class", ""),
+                "aliases": row.get("aliases", []),
                 "source_page_url": row["source_page_url"],
             }
             for row in normalized[_SECTION_ABILITIES]
@@ -648,6 +729,8 @@ def _write_draft_artifacts(draft_root: Path, game: str, normalized: dict[str, li
             {
                 "id": row["event_id"],
                 "display_name": row["display_name"],
+                "category": row.get("category", ""),
+                "aliases": row.get("aliases", []),
                 "source_page_url": row["source_page_url"],
             }
             for row in normalized[_SECTION_EVENTS]
@@ -671,6 +754,7 @@ def _normalize_category_source(
     assets: list[dict[str, Any]],
     seen_assets: set[tuple[str, str]],
     source_known_names: dict[str, set[str]],
+    qa_rows: list[dict[str, Any]],
 ) -> None:
     record_type = _record_type_for_role(source["role"])
     if record_type not in {"character_or_operator", "ability_or_equipment", "event_badge_or_medal"}:
@@ -694,6 +778,8 @@ def _normalize_category_source(
             entities_by_id,
             abilities_by_id,
             events_by_id,
+            qa_rows,
+            source_text=item.name,
         )
         if not item.image_src:
             continue
@@ -715,6 +801,9 @@ def _normalize_category_source(
             record_type=record_type,
             display_name=item_name,
             source_url=item.image_src,
+            source_kind="category_member_image",
+            section_heading="Category",
+            raw_label=item.image_alt or item_name,
         )
 
 
@@ -727,43 +816,533 @@ def _upsert_schema_row(
     entities_by_id: dict[str, dict[str, Any]],
     abilities_by_id: dict[str, dict[str, Any]],
     events_by_id: dict[str, dict[str, Any]],
+    qa_rows: list[dict[str, Any]],
+    *,
+    source_text: str | None = None,
 ) -> None:
     if record_type is None:
         return
+    structured = extract_structured_fields(
+        source_text or display_name,
+        source_role=source["role"],
+        section_heading=section_heading,
+        record_type=record_type,
+    )
     row = {
         "game_id": game,
-        "display_name": display_name,
+        "display_name": structured["display_name"] or display_name,
         "source_page_url": source["url"],
         "source_role": source["role"],
         "source_title": source["title"],
         "section_heading": section_heading,
+        "aliases": list(structured.get("aliases", [])),
+        "aliases_source": structured.get("aliases_source", ""),
     }
-    canonical_id = _asset_entity_id(game, display_name)
+    merged_aliases, alias_rejections = merge_aliases([], row["aliases"], canonical_name=row["display_name"])
+    row["aliases"] = merged_aliases
+    for rejection in alias_rejections:
+        qa_rows.append(
+            {
+                "asset_id": "",
+                "display_name": row["display_name"],
+                "qa_status": rejection["status"],
+                "candidate_quality": "",
+                "source_url": source["url"],
+                "source_role": source["role"],
+                "source_page_url": source["url"],
+                "alias": rejection["alias"],
+            }
+        )
+    row["canonical_display_name_source"] = "source"
+    row["canonical_identity_basis"] = "source_initial"
+    candidate_row = {
+        "display_name": row["display_name"],
+        "canonical_id": _asset_entity_id(game, row["display_name"]),
+        "aliases": [str(item) for item in row.get("aliases", []) if str(item).strip()],
+    }
     if record_type == "character_or_operator":
-        entities_by_id.setdefault(
-            canonical_id,
-            {
-                "entity_id": canonical_id,
-                "entity_type": "character_or_operator",
-                **row,
-            },
-        )
+        rows_by_id = entities_by_id
+        id_field = "entity_id"
+        defaults = {
+            "entity_type": "character_or_operator",
+            "role": structured.get("role", ""),
+            "role_source": structured.get("role_source", ""),
+        }
+        field_kwargs = {"role": structured.get("role", ""), "role_source": structured.get("role_source", "")}
     elif record_type == "ability_or_equipment":
-        abilities_by_id.setdefault(
-            canonical_id,
+        rows_by_id = abilities_by_id
+        id_field = "ability_id"
+        defaults = {
+            "class": structured.get("class", ""),
+            "class_source": structured.get("class_source", ""),
+        }
+        field_kwargs = {"class_value": structured.get("class", ""), "class_source": structured.get("class_source", "")}
+    else:
+        rows_by_id = events_by_id
+        id_field = "event_id"
+        defaults = {
+            "category": structured.get("category", ""),
+            "category_source": structured.get("category_source", ""),
+        }
+        field_kwargs = {"category": structured.get("category", ""), "category_source": structured.get("category_source", "")}
+
+    existing_key, overlapping_keys = _find_existing_schema_row(rows_by_id, candidate_row=candidate_row, id_field=id_field)
+    if len(overlapping_keys) > 1:
+        qa_rows.append(
             {
-                "ability_id": canonical_id,
-                **row,
-            },
+                "asset_id": "",
+                "display_name": row["display_name"],
+                "qa_status": "ambiguous_identity_match",
+                "candidate_quality": "",
+                "source_url": source["url"],
+                "source_role": source["role"],
+                "source_page_url": source["url"],
+                "candidate_ids": ",".join(overlapping_keys),
+            }
         )
-    elif record_type == "event_badge_or_medal":
-        events_by_id.setdefault(
-            canonical_id,
+        existing_key = None
+
+    if existing_key is None:
+        canonical_id = candidate_row["canonical_id"]
+        rows_by_id[canonical_id] = {
+            id_field: canonical_id,
+            **defaults,
+            **row,
+        }
+        existing = rows_by_id[canonical_id]
+    else:
+        existing = rows_by_id[existing_key]
+        identity = reconcile_identity(
             {
-                "event_id": canonical_id,
-                **row,
+                "display_name": str(existing.get("display_name", "")),
+                "canonical_id": str(existing.get(id_field, "")),
+                "aliases": [str(item) for item in existing.get("aliases", []) if str(item).strip()],
             },
+            candidate_row,
+            preferred_source="source",
         )
+        if identity["match_status"] in {"conflicting_identity_match", "identity_match_rejected"}:
+            qa_rows.append(
+                {
+                    "asset_id": "",
+                    "display_name": str(existing.get("display_name", row["display_name"])),
+                    "qa_status": identity["match_status"],
+                    "candidate_quality": "",
+                    "source_url": source["url"],
+                    "source_role": source["role"],
+                    "source_page_url": source["url"],
+                }
+            )
+        elif identity["match_status"] == "canonical_identity_preference_applied":
+            old_id = str(existing.get(id_field, ""))
+            new_id = str(identity["chosen_canonical_id"])
+            existing["display_name"] = str(identity["chosen_display_name"])
+            existing[id_field] = new_id
+            existing["canonical_display_name_source"] = "source"
+            existing["canonical_identity_basis"] = str(identity.get("basis", ""))
+            if new_id != old_id:
+                rows_by_id.pop(old_id, None)
+                rows_by_id[new_id] = existing
+            qa_rows.append(
+                {
+                    "asset_id": "",
+                    "display_name": str(existing.get("display_name", "")),
+                    "qa_status": "canonical_identity_preference_applied",
+                    "candidate_quality": "",
+                    "source_url": source["url"],
+                    "source_role": source["role"],
+                    "source_page_url": source["url"],
+                }
+            )
+
+    _merge_additive_row_fields(
+        existing,
+        row,
+        qa_rows=qa_rows,
+        source=source,
+        **field_kwargs,
+    )
+
+
+def _merge_additive_row_fields(
+    existing: dict[str, Any],
+    row: dict[str, Any],
+    *,
+    qa_rows: list[dict[str, Any]],
+    source: dict[str, Any],
+    role: str = "",
+    role_source: str = "",
+    class_value: str = "",
+    class_source: str = "",
+    category: str = "",
+    category_source: str = "",
+) -> None:
+    if not existing.get("source_page_url"):
+        existing["source_page_url"] = row.get("source_page_url", "")
+    if not existing.get("source_role"):
+        existing["source_role"] = row.get("source_role", "")
+    if not existing.get("source_title"):
+        existing["source_title"] = row.get("source_title", "")
+    if not existing.get("section_heading"):
+        existing["section_heading"] = row.get("section_heading", "")
+    if row.get("aliases"):
+        merged_aliases, alias_rejections = merge_aliases(
+            [str(item) for item in existing.get("aliases", []) if str(item).strip()],
+            [str(item) for item in row["aliases"]],
+            canonical_name=str(existing.get("display_name", row.get("display_name", ""))),
+        )
+        if merged_aliases:
+            existing["aliases"] = merged_aliases
+            if not existing.get("aliases_source"):
+                existing["aliases_source"] = row.get("aliases_source", "")
+        for rejection in alias_rejections:
+            qa_rows.append(
+                {
+                    "asset_id": "",
+                    "display_name": str(existing.get("display_name", row.get("display_name", ""))),
+                    "qa_status": rejection["status"],
+                    "candidate_quality": "",
+                    "source_url": source["url"],
+                    "source_role": source["role"],
+                    "source_page_url": source["url"],
+                    "alias": rejection["alias"],
+                    "target_id": existing.get("entity_id", existing.get("ability_id", existing.get("event_id", ""))),
+                }
+            )
+    if role and not existing.get("role"):
+        existing["role"] = role
+        existing["role_source"] = role_source
+    if class_value and not existing.get("class"):
+        existing["class"] = class_value
+        existing["class_source"] = class_source
+    if category and not existing.get("category"):
+        existing["category"] = category
+        existing["category_source"] = category_source
+
+
+def _find_existing_schema_row(
+    rows_by_id: dict[str, dict[str, Any]],
+    *,
+    candidate_row: dict[str, Any],
+    id_field: str,
+) -> tuple[str | None, list[str]]:
+    candidate_keys = identity_keys(
+        str(candidate_row.get("display_name", "")),
+        canonical_id=str(candidate_row.get("canonical_id", "")),
+        aliases=[str(item) for item in candidate_row.get("aliases", []) if str(item).strip()],
+    )
+    overlapping_keys: list[str] = []
+    for row_id, row in rows_by_id.items():
+        row_keys = identity_keys(
+            str(row.get("display_name", "")),
+            canonical_id=str(row.get(id_field, row_id)),
+            aliases=[str(item) for item in row.get("aliases", []) if str(item).strip()],
+        )
+        if candidate_keys & row_keys:
+            overlapping_keys.append(row_id)
+    if len(overlapping_keys) == 1:
+        return overlapping_keys[0], overlapping_keys
+    return None, overlapping_keys
+
+
+def _enrich_category_rows_from_detail_sections(
+    game: str,
+    source: dict[str, Any],
+    source_known_names: dict[str, set[str]],
+    entities_by_id: dict[str, dict[str, Any]],
+    abilities_by_id: dict[str, dict[str, Any]],
+    events_by_id: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    role = str(source.get("role", ""))
+    record_type = _record_type_for_role(role)
+    if record_type not in {"character_or_operator", "ability_or_equipment", "event_badge_or_medal"}:
+        return []
+    candidate_names = sorted(source_known_names.get(record_type, set()))
+    if not candidate_names:
+        return []
+    qa_rows: list[dict[str, Any]] = []
+    detail_contributions: dict[str, list[dict[str, Any]]] = {}
+    for section in source.get("sections", []):
+        for paragraph_text in getattr(section, "paragraphs", []):
+            matched_names = find_explicit_listing_matches(paragraph_text, candidate_names)
+            if len(matched_names) > 1:
+                qa_rows.append(
+                    {
+                        "asset_id": "",
+                        "display_name": "",
+                        "qa_status": "ambiguous_listing_detail_enrichment",
+                        "candidate_quality": "",
+                        "source_url": source["url"],
+                        "source_role": role,
+                        "source_page_url": source["url"],
+                    }
+                )
+                continue
+            matched_name = find_explicit_listing_match(paragraph_text, candidate_names)
+            if not matched_name:
+                continue
+            structured = extract_structured_fields(
+                paragraph_text,
+                source_role=role,
+                section_heading=str(getattr(section, "heading", "")),
+                record_type=record_type,
+            )
+            detail_contributions.setdefault(matched_name, []).append(
+                {
+                    "aliases": list(structured.get("aliases", [])),
+                    "aliases_source": structured.get("aliases_source", ""),
+                    "role": structured.get("role", ""),
+                    "role_source": structured.get("role_source", ""),
+                    "class": structured.get("class", ""),
+                    "class_source": structured.get("class_source", ""),
+                    "category": structured.get("category", ""),
+                    "category_source": structured.get("category_source", ""),
+                }
+            )
+    for matched_name, contributions in detail_contributions.items():
+        canonical_id = _asset_entity_id(game, matched_name)
+        if record_type == "character_or_operator":
+            target_row = entities_by_id.get(canonical_id)
+        elif record_type == "ability_or_equipment":
+            target_row = abilities_by_id.get(canonical_id)
+        else:
+            target_row = events_by_id.get(canonical_id)
+        if target_row is None:
+            continue
+        conflict_fields = _resolve_detail_conflict_fields(
+            contributions,
+            target_row=target_row,
+            qa_rows=qa_rows,
+            source=source,
+            display_name=matched_name,
+        )
+        conflict_fields = _append_existing_row_detail_conflicts(
+            contributions,
+            conflict_fields=conflict_fields,
+            target_row=target_row,
+            qa_rows=qa_rows,
+            source=source,
+            display_name=matched_name,
+        )
+        merged_aliases = _merge_nonconflicting_detail_aliases(
+            contributions,
+            conflict_fields,
+            target_row=target_row,
+            qa_rows=qa_rows,
+            source=source,
+            display_name=matched_name,
+        )
+        _merge_additive_row_fields(
+            target_row,
+            {
+                "aliases": merged_aliases,
+                "aliases_source": "source" if merged_aliases else "",
+            },
+            qa_rows=qa_rows,
+            source=source,
+            role=_resolve_consistent_detail_field(contributions, "role", target_row=target_row),
+            role_source="source",
+            class_value=_resolve_consistent_detail_field(contributions, "class", target_row=target_row),
+            class_source="source",
+            category=_resolve_consistent_detail_field(contributions, "category", target_row=target_row),
+            category_source="source",
+        )
+    return qa_rows
+
+
+def _resolve_detail_conflict_fields(
+    contributions: list[dict[str, Any]],
+    *,
+    target_row: dict[str, Any],
+    qa_rows: list[dict[str, Any]],
+    source: dict[str, Any],
+    display_name: str,
+) -> set[str]:
+    conflict_fields: set[str] = set()
+    for field_name in ("role", "class", "category"):
+        values = sorted({clean_text(str(row.get(field_name, ""))) for row in contributions if clean_text(str(row.get(field_name, "")))})
+        if len(values) <= 1:
+            continue
+        conflict_fields.add(field_name)
+        qa_rows.append(
+            {
+                "asset_id": "",
+                "display_name": display_name,
+                "qa_status": "conflicting_listing_detail_enrichment",
+                "candidate_quality": "",
+                "source_url": source["url"],
+                "source_role": source["role"],
+                "source_page_url": source["url"],
+                "field": field_name,
+                "candidate_values": values,
+                "target_id": target_row.get("id", ""),
+            }
+        )
+    return conflict_fields
+
+
+def _append_existing_row_detail_conflicts(
+    contributions: list[dict[str, Any]],
+    *,
+    conflict_fields: set[str],
+    target_row: dict[str, Any],
+    qa_rows: list[dict[str, Any]],
+    source: dict[str, Any],
+    display_name: str,
+) -> set[str]:
+    merged_conflict_fields = set(conflict_fields)
+    for field_name in ("role", "class", "category"):
+        detail_value = _resolve_consistent_detail_field(contributions, field_name)
+        existing_value = clean_text(str(target_row.get(field_name, "")))
+        if not detail_value or not existing_value or detail_value == existing_value:
+            continue
+        merged_conflict_fields.add(field_name)
+        qa_rows.append(
+            {
+                "asset_id": "",
+                "display_name": display_name,
+                "qa_status": "existing_listing_detail_enrichment_conflict",
+                "candidate_quality": "",
+                "source_url": source["url"],
+                "source_role": source["role"],
+                "source_page_url": source["url"],
+                "field": field_name,
+                "candidate_values": [detail_value],
+                "existing_value": existing_value,
+                "target_id": target_row.get("id", ""),
+            }
+        )
+    return merged_conflict_fields
+
+
+def _merge_nonconflicting_detail_aliases(
+    contributions: list[dict[str, Any]],
+    conflict_fields: set[str],
+    *,
+    target_row: dict[str, Any],
+    qa_rows: list[dict[str, Any]],
+    source: dict[str, Any],
+    display_name: str,
+) -> list[str]:
+    merged_aliases: list[str] = []
+    existing_aliases = [clean_text(str(item)) for item in target_row.get("aliases", []) if clean_text(str(item))]
+    for row in contributions:
+        row_conflicted = _detail_contribution_conflicts_row(row, conflict_fields, target_row=target_row)
+        conflict_field_names = _detail_contribution_conflict_fields(row, conflict_fields, target_row=target_row)
+        if row_conflicted:
+            for alias in row.get("aliases", []):
+                cleaned = clean_text(str(alias))
+                if not cleaned:
+                    continue
+                qa_rows.append(
+                    {
+                        "asset_id": "",
+                        "display_name": display_name,
+                        "qa_status": "alias_suppressed_by_detail_conflict",
+                        "candidate_quality": "",
+                        "source_url": source["url"],
+                        "source_role": source["role"],
+                        "source_page_url": source["url"],
+                        "alias": cleaned,
+                        "conflict_fields": sorted(conflict_field_names),
+                        "target_id": target_row.get("id", ""),
+                    }
+                )
+            continue
+        for alias in row.get("aliases", []):
+            cleaned = clean_text(str(alias))
+            if not cleaned:
+                continue
+            if aliases_equivalent(cleaned, str(target_row.get("display_name", ""))):
+                qa_rows.append(
+                    {
+                        "asset_id": "",
+                        "display_name": display_name,
+                        "qa_status": "alias_equivalent_to_canonical_name",
+                        "candidate_quality": "",
+                        "source_url": source["url"],
+                        "source_role": source["role"],
+                        "source_page_url": source["url"],
+                        "alias": cleaned,
+                        "target_id": target_row.get("id", ""),
+                    }
+                )
+                continue
+            if any(aliases_equivalent(cleaned, existing_alias) for existing_alias in existing_aliases + merged_aliases):
+                qa_rows.append(
+                    {
+                        "asset_id": "",
+                        "display_name": display_name,
+                        "qa_status": "alias_equivalent_to_existing_alias",
+                        "candidate_quality": "",
+                        "source_url": source["url"],
+                        "source_role": source["role"],
+                        "source_page_url": source["url"],
+                        "alias": cleaned,
+                        "target_id": target_row.get("id", ""),
+                    }
+                )
+                continue
+            merged_aliases.append(cleaned)
+    return merged_aliases
+
+
+def _detail_contribution_conflicts_row(
+    row: dict[str, Any],
+    conflict_fields: set[str],
+    *,
+    target_row: dict[str, Any],
+) -> bool:
+    for field_name in conflict_fields:
+        field_value = clean_text(str(row.get(field_name, "")))
+        if not field_value:
+            continue
+        existing_value = clean_text(str(target_row.get(field_name, "")))
+        if existing_value and field_value != existing_value:
+            return True
+        if not existing_value:
+            return True
+    return False
+
+
+def _detail_contribution_conflict_fields(
+    row: dict[str, Any],
+    conflict_fields: set[str],
+    *,
+    target_row: dict[str, Any],
+) -> set[str]:
+    row_conflicts: set[str] = set()
+    for field_name in conflict_fields:
+        field_value = clean_text(str(row.get(field_name, "")))
+        if not field_value:
+            continue
+        existing_value = clean_text(str(target_row.get(field_name, "")))
+        if existing_value and field_value != existing_value:
+            row_conflicts.add(field_name)
+        elif not existing_value:
+            row_conflicts.add(field_name)
+    return row_conflicts
+
+
+def _resolve_consistent_detail_field(
+    contributions: list[dict[str, Any]],
+    field_name: str,
+    *,
+    target_row: dict[str, Any] | None = None,
+) -> str:
+    values = [clean_text(str(row.get(field_name, ""))) for row in contributions if clean_text(str(row.get(field_name, "")))]
+    unique_values: list[str] = []
+    for value in values:
+        if value not in unique_values:
+            unique_values.append(value)
+    if len(unique_values) != 1:
+        return ""
+    resolved_value = unique_values[0]
+    if target_row is not None:
+        existing_value = clean_text(str(target_row.get(field_name, "")))
+        if existing_value and existing_value != resolved_value:
+            return ""
+    return resolved_value
 
 
 def _append_asset_row(
@@ -774,10 +1353,26 @@ def _append_asset_row(
     record_type: str,
     display_name: str,
     source_url: str,
+    source_kind: str = "page_image",
+    section_heading: str = "",
+    raw_label: str = "",
+    anchor_source: str = "",
+    anchor_ambiguous: bool = False,
+    anchor_ambiguity_type: str = "",
+    paragraph_referential: bool = False,
 ) -> None:
     entity_id = _asset_entity_id(game, display_name)
     asset_id = f"{game}.{record_type}.{_slugify(display_name)}.{hashlib.sha1(source_url.encode('utf-8')).hexdigest()[:8]}"
     qa_status = "verified_source" if _looks_like_direct_asset_url(source_url) else "needs_manual_crop"
+    quality = analyze_asset_candidate(
+        display_name=display_name,
+        asset_family=_ASSET_FAMILY_DEFAULTS[record_type],
+        source_role=source["role"],
+        source_kind=source_kind,
+        source_url=source_url,
+        section_heading=section_heading,
+        raw_label=raw_label or display_name,
+    )
     assets.append(
         {
             "asset_id": asset_id,
@@ -785,10 +1380,24 @@ def _append_asset_row(
             "entity_id": entity_id,
             "asset_family": _ASSET_FAMILY_DEFAULTS[record_type],
             "display_name": display_name,
+            "binding_key": quality["binding_key"],
+            "candidate_quality": quality["candidate_quality"],
+            "quality_score": quality["quality_score"],
+            "quality_reasons": quality["quality_reasons"],
+            "portrait_like": quality["portrait_like"],
+            "icon_like": quality["icon_like"],
+            "badge_like": quality["badge_like"],
+            "artwork_like": quality["artwork_like"],
+            "generic_page_art": quality["generic_page_art"],
             "source_url": source_url,
             "source_page_url": source["url"],
             "source_role": source["role"],
             "source_title": source["title"],
+            "source_kind": source_kind,
+            "anchor_source": anchor_source,
+            "anchor_ambiguous": bool(anchor_ambiguous),
+            "anchor_ambiguity_type": anchor_ambiguity_type,
+            "paragraph_referential": bool(paragraph_referential),
             "draft_local_path": "",
             "template_path": "",
             "mask_path": "",
@@ -810,6 +1419,33 @@ def _headers_for_rows(rows: list[dict[str, Any]]) -> list[str]:
             if key not in headers:
                 headers.append(key)
     return headers or ["empty"]
+
+
+def _source_record_status(source: dict[str, Any]) -> str:
+    if str(source.get("page_type", "")) == "category" and not source.get("category_items"):
+        return "empty_source"
+    if str(source.get("page_type", "")) == "article":
+        sections = source.get("sections", [])
+        has_content = any(getattr(section, "items", []) or getattr(section, "images", []) for section in sections)
+        if not has_content:
+            return "empty_source"
+    return "fetched"
+
+
+def _source_failure_row(source: WikiSource, error: WikiFetchError) -> dict[str, Any]:
+    return {
+        "source_page_url": source.url,
+        "source_role": source.role,
+        "source_title": "",
+        "source_scheme": urlparse(source.url).scheme or "file",
+        "page_type": "",
+        "status": "fetch_failed",
+        "content_type": "",
+        "section_count": 0,
+        "failure_category": error.category,
+        "error": error.message,
+        "hint": error.hint,
+    }
 
 
 def _stringify_row(row: dict[str, Any], headers: list[str]) -> dict[str, str]:
@@ -908,21 +1544,21 @@ def _normalize_item_name(
     source_role: str | None = None,
     section_heading: str | None = None,
 ) -> str:
-    if record_type == "event_badge_or_medal" or (source_role or "").strip().lower() == "events":
-        event_name = _extract_event_name(text, section_heading=section_heading or "")
-        if event_name:
-            return event_name
-    cleaned = _clean_text(re.sub(r"\s*[:\-–]\s*.*$", "", text))
-    return cleaned
+    structured = extract_structured_fields(
+        text,
+        source_role=(source_role or ""),
+        section_heading=(section_heading or ""),
+        record_type=record_type,
+    )
+    return structured["display_name"]
 
 
 def _clean_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text or "").strip()
+    return clean_text(text)
 
 
 def _slugify(value: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
-    return slug or "item"
+    return slugify(value)
 
 
 def _timestamp_slug() -> str:
@@ -930,14 +1566,7 @@ def _timestamp_slug() -> str:
 
 
 def _normalize_source_url(url: str) -> str:
-    stripped = (url or "").strip()
-    parsed = urlparse(stripped)
-    if parsed.scheme in {"http", "https", "file"}:
-        return stripped
-    path = Path(stripped).expanduser()
-    if path.exists():
-        return path.resolve().as_uri()
-    return stripped
+    return _shared_normalize_source_url(url)
 
 
 def _looks_like_direct_asset_url(url: str) -> bool:
@@ -1039,6 +1668,18 @@ def _should_ignore_row_text(text: str) -> bool:
 
 
 def _should_keep_image(source_url: str, display_name: str, *, source_role: str, section_heading: str) -> bool:
+    asset_family = _ASSET_FAMILY_DEFAULTS.get(_record_type_for_role(source_role) or "", "hud_icon")
+    quality = analyze_asset_candidate(
+        display_name=display_name,
+        asset_family=asset_family,
+        source_role=source_role,
+        source_kind="page_image",
+        source_url=source_url,
+        section_heading=section_heading,
+        raw_label=display_name,
+    )
+    if quality["hard_reject"]:
+        return False
     parsed = urlparse(source_url)
     lowered_name = display_name.casefold()
     lowered_url = source_url.casefold()
@@ -1101,17 +1742,7 @@ def _detect_page_type(url: str, title: str, category_items: list[ParsedCategoryI
 
 
 def _extract_event_name(text: str, *, section_heading: str) -> str:
-    cleaned = _clean_text(text)
-    if not cleaned:
-        return ""
-    match = re.match(r"^(?:The\s+)?([A-Z][A-Za-z0-9'&().:/ -]{1,80}?)\s+event\b", cleaned)
-    if match:
-        return _clean_text(match.group(1))
-    if cleaned.count(" ") <= 5 and "." not in cleaned:
-        return _clean_text(re.sub(r"\s*[:\-–]\s*.*$", "", cleaned))
-    if "events" in section_heading.casefold():
-        return ""
-    return _clean_text(re.sub(r"\s*[:\-–]\s*.*$", "", cleaned))
+    return extract_event_name(text, section_heading=section_heading)
 
 
 def _looks_like_prose(text: str) -> bool:
@@ -1126,12 +1757,21 @@ def _bind_image_to_known_name(
     source_role: str,
 ) -> str:
     normalized_candidate = _clean_text(candidate_name)
-    if not normalized_candidate or not known_names:
+    if not normalized_candidate:
         return ""
+    if not known_names:
+        return normalized_candidate
     if normalized_candidate in known_names:
         return normalized_candidate
 
-    aliases = [_strip_image_label_suffixes(normalized_candidate)]
+    structured = extract_structured_fields(
+        normalized_candidate,
+        source_role=source_role,
+        section_heading="Events" if record_type == "event_badge_or_medal" else "",
+        record_type=record_type,
+    )
+    aliases = [_strip_image_label_suffixes(normalized_candidate), structured.get("display_name", "")]
+    aliases.extend(structured.get("aliases", []))
     if record_type == "event_badge_or_medal" or source_role.strip().lower() == "events":
         aliases.append(_extract_event_name(normalized_candidate, section_heading="Events"))
 

@@ -1,0 +1,14 @@
+# Optional runtime dependencies for local Hugging Face execution in `hf_multimodal`.
+# Base repo installs stay lightweight; install this file only when enabling the
+# TransNetV2 / PySceneDetect / Whisper / Distil-Whisper / X-CLIP local backend path.
+#
+# External system requirement:
+#   - ffmpeg available on PATH
+
+torch>=2.3,<3
+transformers>=4.46,<5
+huggingface-hub>=0.25,<1
+safetensors>=0.4,<1
+transnetv2-pytorch>=1.0.2,<2
+scenedetect>=0.6,<1
+Pillow>=10,<12

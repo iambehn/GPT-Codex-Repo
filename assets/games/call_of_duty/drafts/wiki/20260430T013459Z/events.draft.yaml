@@ -1,0 +1,1288 @@
+events:
+  - id: call_of_duty.10_trivia
+    display_name: 10 Trivia
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.11_references
+    display_name: 11 References
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_10_vehicles
+    display_name: 1.10 Vehicles
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_11_progression_and_crossplay
+    display_name: 1.11 Progression and Crossplay
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_1_health
+    display_name: 1.1 Health
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_2_weapons
+    display_name: 1.2 Weapons
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_3_weapon_tiers
+    display_name: 1.3 Weapon Tiers
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_4_contracts
+    display_name: 1.4 Contracts
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_5_buy_station
+    display_name: 1.5 Buy Station
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_6_playzones
+    display_name: 1.6 Playzones
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_7_supply_boxes
+    display_name: 1.7 Supply Boxes
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_8_gulag
+    display_name: 1.8 Gulag
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_9_events
+    display_name: 1.9 Events
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.1_hour_double_xp_token
+    display_name: 1 Hour Double XP Token
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.2_1_battle_royale
+    display_name: 2.1 Battle Royale
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.2_2_plunder
+    display_name: 2.2 Plunder
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.2_3_resurgence
+    display_name: 2.3 Resurgence
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.3_1_verdansk
+    display_name: 3.1 Verdansk
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.3_2_rebirth_island
+    display_name: 3.2 Rebirth Island
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.3_3_caldera
+    display_name: 3.3 Caldera
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.3_4_fortune_s_keep
+    display_name: "3.4 Fortune's Keep"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.4_1_modern_warfare_storyline
+    display_name: 4.1 Modern Warfare Storyline
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.4_2_black_ops_cold_war_storyline
+    display_name: 4.2 Black Ops Cold War Storyline
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.4_3_vanguard_storyline
+    display_name: 4.3 Vanguard Storyline
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.5_1_1_bunker_11
+    display_name: 5.1.1 Bunker 11
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.5_2_stadium
+    display_name: 5.2 Stadium
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.5_3_metro_station
+    display_name: 5.3 Metro Station
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.6_intel_missions
+    display_name: 6 Intel Missions
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.7_1_modern_warfare
+    display_name: 7.1 Modern Warfare
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.7_2_black_ops_cold_war
+    display_name: 7.2 Black Ops Cold War
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.7_3_vanguard
+    display_name: 7.3 Vanguard
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.8_1_call_of_duty
+    display_name: 8.1 Call of Duty
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.8_2_1_rebirth_island
+    display_name: 8.2.1 Rebirth Island
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.8_2_2_verdansk_84
+    display_name: "8.2.2 Verdansk '84"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.8_3_1_caldera
+    display_name: 8.3.1 Caldera
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.8_3_2_rebirth_island_reinforced
+    display_name: 8.3.2 Rebirth Island Reinforced
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.8_3_3_fortune_s_keep
+    display_name: "8.3.3 Fortune's Keep"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.9_videos
+    display_name: 9 Videos
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_big_game_bounty_contract_marks_a_player_with_a_high_elimination_count_to_be_eliminated_in_a_limited_time_the_contract_is_shown_on_the_tac_map_at_the_end_of_the_first_playzone_and_will_not_target_the_same_player_several_times_in_a_row
+    display_name: A Big Game Bounty contract marks a player with a high elimination count to be eliminated in a limited time. The contract is shown on the Tac Map at the end of the first playzone and will not target the same player several times in a row.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_bounty_contract_tasks_the_team_with_killing_a_specific_player_who_is_marked_by_a_yellow_circle_revealing_their_approximate_position_on_the_map_when_a_player_is_marked_as_a_bounty_target_they_and_their_team_can_see_a_bar_on_their_heads
+    display_name: A Bounty contract tasks the team with killing a specific player, who is marked by a yellow circle revealing their approximate position on the map. When a player is marked as a bounty target, they and their team can see a bar on their heads
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_cctv_near_metro_exits_may_have_spotted_something
+    display_name: A CCTV near metro exits may have spotted something...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_contraband_contract_has_a_small_chance_of_occurring_after_completing_any_of_the_aforementioned_contracts_among_the_loot_the_team_is_rewarded_with_contraband_will_spawn_appearing_as_a_bright_blue_suitcase_it_must_be_picked_up_and_brought_to_a_highlighted_point_for_helicopter_extraction_within_a_time_limit_this_contract_rewards_the_team_with_an_unlock_for_one_of_many_unique_weapon_blueprints
+    display_name: A Contraband contract has a small chance of occurring after completing any of the aforementioned contracts. Among the loot the team is rewarded with, Contraband will spawn, appearing as a bright blue suitcase. It must be picked up and brought to a highlighted point for helicopter extraction within a time limit. This contract rewards the team with an unlock for one of many unique weapon blueprints.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_corrupted_image_could_give_a_clearer_picture
+    display_name: A corrupted image could give a clearer picture...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_downed_aircraft_tried_to_contact_arklov_air_force_base
+    display_name: A downed aircraft tried to contact Arklov Air Force base...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_hidden_code_was_found_in_the_prison
+    display_name: A hidden code was found in the prison...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_meeting_took_place_downtown
+    display_name: A meeting took place downtown...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_most_wanted_contract_marks_its_user_for_all_enemies_to_see_offering_a_reward_to_any_player_who_can_eliminate_them_in_a_limited_time_letting_the_time_run_out_completes_the_contract_rewarding_the_player_and_their_team_with_cash_as_well_as_redeploying_any_eliminated_teammates
+    display_name: A Most Wanted contract marks its user for all enemies to see, offering a reward to any player who can eliminate them in a limited time. Letting the time run out completes the contract, rewarding the player and their team with Cash as well as redeploying any eliminated teammates.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_prisoner_in_the_gulag_had_intel_on_the_chemical_s_origins
+    display_name: "A prisoner in the gulag had intel on the chemical's origins..."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_radiological_threat_was_detected
+    display_name: A radiological threat was detected...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_recon_contract_will_have_the_team_capture_a_set_point_in_the_map_by_standing_near_it_similar_to_a_point_in_domination_completing_the_contract_will_give_the_team_one_circle_peek_doing_more_recon_contracts_can_give_additional_circle_peeks_until_the_final_circle_is_revealed
+    display_name: A Recon contract will have the team capture a set point in the map by standing near it, similar to a point in Domination . Completing the contract will give the team one circle peek. Doing more Recon contracts can give additional circle peeks, until the final circle is revealed.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_scavenger_contract_will_mark_3_supply_boxes_located_near_the_player_s_location_one_at_a_time_and_task_the_team_with_looting_each_in_a_limited_time_an_armor_satchel_is_guaranteed_in_the_final_supply_box
+    display_name: "A Scavenger contract will mark 3 Supply Boxes located near the player's location, one at a time, and task the team with looting each in a limited time. An Armor Satchel is guaranteed in the final supply box."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_secret_code_could_open_new_doors
+    display_name: A secret code could open new doors...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_shipment_came_from_the_radiological_lab
+    display_name: A shipment came from the radiological lab...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_shipment_was_moved_from_the_metro
+    display_name: A shipment was moved from the metro...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_sketch_could_provide_a_monumental_clue
+    display_name: A sketch could provide a monumental clue...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_supply_drop_contract_marks_an_area_for_a_supply_crate_filled_with_loot_and_with_the_exact_location_only_highlighted_for_the_team_which_activated_the_active_contract_the_green_smoke_of_the_marker_can_still_be_viewed_by_other_teams
+    display_name: A Supply Drop contract marks an area for a Supply Crate filled with loot and with the exact location only highlighted for the team which activated the active contract. The green smoke of the marker can still be viewed by other teams.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_supply_run_contract_will_have_the_team_travel_to_a_marked_buy_station_approximately_500m_away_in_a_limited_time_upon_completion_each_team_member_will_be_able_to_purchase_one_discounted_item_or_get_a_self_revive_kit_or_revive_a_teammate_for_free
+    display_name: A Supply Run contract will have the team travel to a marked Buy Station approximately 500m away in a limited time. Upon completion, each team member will be able to purchase one discounted item, or get a Self Revive Kit or revive a teammate for free.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_team_was_ambushed_at_the_train_station
+    display_name: A team was ambushed at the train station...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_threat_revealed
+    display_name: A threat revealed.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.a_top_secret_contract_will_randomly_select_one_of_the_other_contracts_to_be_completed_with_increased_rewards
+    display_name: "A [TOP SECRET] contract will randomly select one of the other contracts to be completed, with increased rewards."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.aa_utility_truck_icon_wz
+    display_name: AA Utility Truck Icon WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.about
+    display_name: About
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.active_measures_fueled_the_conflict
+    display_name: Active measures fueled the conflict...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.administrators
+    display_name: Administrators
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.aerial_pursuit_epic_calling_card
+    display_name: "\"Aerial Pursuit\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.all
+    display_name: "\"All"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.all_editors_are_equal
+    display_name: All Editors Are Equal
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.all_pages
+    display_name: All Pages
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.an_armistice_group_was_stationed_at_the_torsky_housing_area
+    display_name: An Armistice group was stationed at the Torsky Housing Area...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.an_enemy_laptop_could_supply_intel_require_spotter
+    display_name: An enemy laptop could supply intel... (Require Spotter)
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.ancient_ruins_legendary_dp27_weapon_blueprint
+    display_name: "\"Ancient Ruins\" Legendary DP27 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.arm_3
+    display_name: ARM 3
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.armor_box
+    display_name: Armor Box
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.armor_plate_bundle
+    display_name: Armor Plate Bundle
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.armored_suv_icon_wz
+    display_name: Armored SUV Icon WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.armored_truck_icon_wz
+    display_name: Armored Truck Icon WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.armored_vehicle_epic_calling_card
+    display_name: "\"Armored Vehicle\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.articles_awaiting_canon_confirmations
+    display_name: Articles awaiting Canon confirmations
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.articles_for_deletion
+    display_name: Articles for Deletion
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.articles_with_sections_needing_improvement
+    display_name: Articles with sections needing improvement
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.assassin_s_creed_wiki
+    display_name: "Assassin's Creed Wiki"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.assault_strike_chain
+    display_name: Assault Strike Chain
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.at_the_launch_of_warzone_uk_team_leader_was_the_announcer_for_the_operators_of_the_coalition_as_well_as_the_training_and_practice_modes_for_the_game_while_russian_team_leader_was_the_announcer_for_the_operators_of_the_allegiance_following_the_integration_of_call_of_duty
+    display_name: "At the launch of Warzone , \"UK Team Leader\" was the announcer for the Operators of the Coalition as well as the training and practice modes for the game while \" Russian Team Leader \" was the announcer for the Operators of the Allegiance . Following the integration of Call of Duty"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.atv_icon_mw
+    display_name: ATV Icon MW
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.authoritarian_epic_ffar_1_weapon_blueprint
+    display_name: "\"Authoritarian\" Epic FFAR 1 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.ball_and_chain_epic_weapon_charm
+    display_name: "\"Ball and Chain\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.battle_royale
+    display_name: Battle Royale
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.battlefield_wiki
+    display_name: Battlefield Wiki
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.battleroyale_icon_vg_wz
+    display_name: BattleRoyale Icon VG WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.bear_trap_epic_weapon_charm
+    display_name: "\"Bear Trap\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.begin_the_search_for_the_uav
+    display_name: Begin the search for the UAV.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.black_ops_cold_war
+    display_name: "Black Ops Cold War[]"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.blog_patrol
+    display_name: Blog Patrol
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.blood_moon_legendary_emblem
+    display_name: "\"Blood Moon\" Legendary Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.blue_glitz_legendary_einhorn_revolving_weapon_blueprint
+    display_name: "\"Blue Glitz\" Legendary Einhorn Revolving Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.body_work_epic_emblem
+    display_name: "\"Body Work\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.bomb_rider_epic_weapon_sticker
+    display_name: "\"Bomb Rider\" Epic Weapon Sticker"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.bomber_plane_icon_wz
+    display_name: Bomber Plane Icon WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.boonie_epic_knife_weapon_blueprint
+    display_name: "\"Boonie\" Epic Knife Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.box_cutter_epic_combat_knife_weapon_blueprint
+    display_name: "\"Box Cutter\" Epic Combat Knife Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.broadcast_the_abort_code_from_downtown
+    display_name: Broadcast the abort code from downtown...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.bunker_09
+    display_name: Bunker 09
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.bushwacker_legendary_padmavati_operator_skin
+    display_name: "\"Bushwacker\" Legendary Padmavati Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.caldera_after_the_november_28th_2022_relaunch
+    display_name: Caldera after the November 28th, 2022 relaunch.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.caldera_at_launch_during_season_one_of_vanguard
+    display_name: Caldera at launch during Season One of Vanguard.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.caldera_during_season_five_of_vanguard
+    display_name: Caldera during Season Five of Vanguard.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.caldera_during_season_four_of_vanguard
+    display_name: Caldera during Season Four of Vanguard.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.caldera_during_season_three_of_vanguard
+    display_name: Caldera during Season Three of Vanguard.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.caldera_during_season_two_of_vanguard
+    display_name: Caldera during Season Two of Vanguard.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.call_of_duty
+    display_name: Call of Duty
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.call_of_duty_2
+    display_name: Call of Duty 2
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.call_of_duty_3
+    display_name: Call of Duty 3
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.call_of_duty_4
+    display_name: Call of Duty 4
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.call_of_duty_hq_social_icon
+    display_name: Call of Duty HQ Social Icon.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.call_of_duty_online
+    display_name: Call of Duty Online
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.call_of_duty_subreddit
+    display_name: Call of Duty Subreddit
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.call_of_duty_wiki
+    display_name: Call of Duty Wiki
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.call_of_duty_wiki_clan
+    display_name: Call of Duty Wiki Clan
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.candy_perks
+    display_name: Candy Perks
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.careers
+    display_name: Careers
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.cargo_may_have_arrived_via_ports_of_entry
+    display_name: Cargo may have arrived via ports of entry.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.cargo_truck_icon_mw
+    display_name: Cargo Truck Icon MW
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.categories
+    display_name: Categories
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.characters
+    display_name: Characters
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.checkout_epic_emblem
+    display_name: "\"Checkout\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.chosen_cog_epic_weapon_sticker
+    display_name: "\"Chosen Cog\" Epic Weapon Sticker"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.cigars_epic_weapon_charm
+    display_name: "\"Cigars\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.cluster_strike
+    display_name: Cluster Strike
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.comandante_epic_garcia_operator_skin
+    display_name: "\"Comandante\" Epic Garcia Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.combat_fatigue_epic_weapon_charm
+    display_name: "\"Combat Fatigue\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.combined_logo_used_in_conjunction_with_call_of_duty
+    display_name: Combined logo used in conjunction with Call of Duty
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.common_no_attachment_included
+    display_name: Common (No attachment included)
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.communication_interference_tracked_to_western_bunker
+    display_name: Communication interference tracked to Western bunker...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.communications_went_down_before_the_attack_follow_the_trail
+    display_name: Communications went down before the attack. Follow the trail...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.community
+    display_name: Community
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.community_central
+    display_name: Community Central
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.computer_system_after_rebooted
+    display_name: Computer system after rebooted.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.computer_waiting_for_a_reboot_in_bunker_11
+    display_name: Computer waiting for a reboot in Bunker 11.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.contact
+    display_name: Contact
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.covert_operation_epic_calling_card
+    display_name: "\"Covert Operation\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.crash_bandicoot_wiki
+    display_name: Crash Bandicoot Wiki
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.custodians
+    display_name: Custodians
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.cyber_skull_epic_emblem
+    display_name: "\"Cyber Skull\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.dead_pharaoh_legendary_rpd_weapon_blueprint
+    display_name: "\"Dead Pharaoh\" Legendary RPD Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.development_of_warzone_started_in_2017_under_the_name_magma_after_infinity_ward_and_raven_software_witnessed_the_rise_in_popularity_of_playerunknown_s_battlegrounds_the_mode_was_originally_set_in_kabul_afghanistan_before_the_studios_settled_with_verdansk_17
+    display_name: "Development of Warzone started in 2017, under the name \"Magma\", after Infinity Ward and Raven Software witnessed the rise in popularity of PlayerUnknown's Battlegrounds . The mode was originally set in Kabul, Afghanistan before the studios settled with Verdansk . [ 17 ]"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.digital_services_act
+    display_name: Digital Services Act
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.direct_impact_epic_calling_card
+    display_name: "\"Direct Impact\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.dirt_bike_icon_wz
+    display_name: Dirt Bike Icon WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.discuss
+    display_name: Discuss
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.don_t_back_down_epic_calling_card
+    display_name: "\"Don't Back Down\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.don_t_delete_discussions
+    display_name: "Don't Delete Discussions"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.down_in_blazes_legendary_calling_card
+    display_name: "\"Down In Blazes\" Legendary Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.dune_sentry_epic_emblem
+    display_name: "\"Dune Sentry\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.dune_whisper_epic_pelington_703_weapon_blueprint
+    display_name: "\"Dune Whisper\" Epic Pelington 703 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.dusk_legendary_calling_card
+    display_name: "\"Dusk\" Legendary Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.endurance_epic_baker_operator_skin
+    display_name: "\"Endurance\" Epic Baker Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.epic_4_attachments
+    display_name: Epic (4 attachments)
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.essentials
+    display_name: Essentials
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.evacuations_were_underway
+    display_name: Evacuations were underway...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.excess_chemicals_were_being_stored
+    display_name: Excess chemicals were being stored...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.expeditionary_force_legendary_double_barrel_weapon_blueprint
+    display_name: "\"Expeditionary Force\" Legendary Double Barrel Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.extinction
+    display_name: Extinction
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.fallen_brush_epic_watch
+    display_name: "\"Fallen Brush\" Epic Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.fanatical
+    display_name: Fanatical
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.fandom
+    display_name: Fandom
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.fandom_app_logo
+    display_name: Fandom App logo
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.fandom_logo
+    display_name: Fandom logo
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.fighter_plane_icon_wz
+    display_name: Fighter Plane Icon WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.find_the_location_in_the_message_ghost_sent_you
+    display_name: Find the location in the message Ghost sent you.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.find_the_source_of_back
+    display_name: Find the source of back
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.first_wave_legendary_wade_operator_skin
+    display_name: "\"First Wave\" Legendary Wade Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.florentine_cover_legendary_constanze_operator_skin
+    display_name: "\"Florentine Cover\" Legendary Constanze Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.follow_the_trail_left_by_arm_3
+    display_name: Follow the trail left by ARM 3
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.footage_of_warzone_was_featured_in_the_modern_warfare_reveal_trailer_released_on_may_30th_2019_18
+    display_name: "Footage of Warzone was featured in the Modern Warfare reveal trailer released on May 30th, 2019. [ 18 ]"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.fortune_s_keep_at_launch
+    display_name: "Fortune's Keep at launch."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.fractured
+    display_name: Fractured
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.fran_ais
+    display_name: Français
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.games
+    display_name: Games
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.gamespot
+    display_name: GameSpot
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.gametypes
+    display_name: Gametypes
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.gas_mask
+    display_name: Gas Mask
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.german_tourism_epic_weapon_sticker
+    display_name: "\"German Tourism\" Epic Weapon Sticker"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.ghost_tracked_arm_3
+    display_name: Ghost tracked ARM 3
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.global_sitemap
+    display_name: Global Sitemap
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.gold_hawk_legendary_welgun_weapon_blueprint
+    display_name: "\"Gold Hawk\" Legendary Welgun Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.golden_plunders_epic_weapon_sticker
+    display_name: "\"Golden Plunders\" Epic Weapon Sticker"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.good_company_epic_357_weapon_blueprint
+    display_name: "\"Good Company\" Epic .357 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.griffin_strike_epic_emblem
+    display_name: "\"Griffin Strike\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.gulag_epic_emblem
+    display_name: "\"Gulag\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.half
+    display_name: Half
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.hardware_was_delivered_to_suite_320_entry_requires_an_access_code
+    display_name: Hardware was delivered to Suite 320. Entry requires an access code...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.hawk_epic_weapon_charm
+    display_name: "\"Hawk\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.heavy_foliage_legendary_mg42_weapon_blueprint
+    display_name: "\"Heavy Foliage\" Legendary MG42 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.heli_icon_mw
+    display_name: Heli Icon MW
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.help
+    display_name: Help
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.help_desk
+    display_name: Help Desk
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.hidden_cargo
+    display_name: Hidden Cargo
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.history
+    display_name: History
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.homeland_or_death_legendary_calling_card
+    display_name: "\"Homeland or Death\" Legendary Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.honest_entertainment
+    display_name: Honest Entertainment
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.horror
+    display_name: Horror
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.https
+    display_name: ↑ https
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.human_element_wiki
+    display_name: Human Element Wiki
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.hunting_the_enemy
+    display_name: Hunting the Enemy
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.illuminated_epic_watch
+    display_name: "\"Illuminated\" Epic Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.in_the_dark_epic_vargas_operator_skin
+    display_name: "\"In The Dark\" Epic Vargas Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.injury_time_epic_watch
+    display_name: "\"Injury Time\" Epic Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.intel_missions
+    display_name: "Intel Missions[]"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.intel_was_leaked_from_verdansk_bank
+    display_name: Intel was leaked from Verdansk Bank...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.interactive_maps
+    display_name: Interactive Maps
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.interference_is_coming_from_bunker_11
+    display_name: Interference is coming from Bunker 11...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.it_was_all_part_of_the_plan
+    display_name: It was all part of the plan.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.jailbird_epic_rodion_operator_skin
+    display_name: "\"Jailbird\" Epic Rodion Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.jewel_encrusted_epic_watch
+    display_name: "\"Jewel Encrusted\" Epic Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.keeping_watch_epic_calling_card
+    display_name: "\"Keeping Watch\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.killing_time_legendary_watch
+    display_name: "\"Killing Time\" Legendary Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.killstreaks
+    display_name: Killstreaks
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.learn_about_the_office_of_requiem
+    display_name: Learn about the Office of Requiem.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.learn_the_status_of_the_19
+    display_name: Learn the status of the 19
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.learn_the_truth_behind_the_attack
+    display_name: Learn the truth behind the attack.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.legendary_5_attachments
+    display_name: Legendary (5 attachments)
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.listening_device_epic_weapon_charm
+    display_name: "\"Listening Device\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.local_sitemap
+    display_name: Local Sitemap
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.lock_and_stock_epic_otter_operator_skin
+    display_name: "\"Lock and Stock\" Epic Otter Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.logo
+    display_name: Logo.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.logo_for_rebirth_island
+    display_name: Logo for Rebirth Island.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.loot_dig_epic_calling_card
+    display_name: "\"Loot Dig\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.main_page
+    display_name: Main Page
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.makarovnuke
+    display_name: MakarovNuke
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.manual_of_style
+    display_name: Manual of Style
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.map_for_the_bunker_11_quest
+    display_name: Map for the Bunker 11 quest.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.maps
+    display_name: Maps
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.mara_gave_a_debrief_after_the_port_attack
+    display_name: Mara gave a debrief after the port attack.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.mark_locations_for_the_assault_teams
+    display_name: Mark locations for the assault teams.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.media_kit
+    display_name: Media Kit
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.mercier_mini_epic_weapon_charm
+    display_name: "\"Mercier Mini\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.mermaid_scale_legendary_fs_fighting_knife_weapon_blueprint
+    display_name: "\"Mermaid Scale\" Legendary FS Fighting Knife Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.metacritic
+    display_name: Metacritic
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.metro_alarms_may_have_been_tripped
+    display_name: Metro alarms may have been tripped...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.modern_warfare
+    display_name: "Modern Warfare[]"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.more
+    display_name: More...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.motorpool_epic_song_operator_skin
+    display_name: "\"Motorpool\" Epic Song Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.mulled_wine_legendary_double_barrel_weapon_blueprint
+    display_name: "\"Mulled Wine\" Legendary Double Barrel Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.munitions_box
+    display_name: Munitions Box
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.nature_provides_epic_calling_card
+    display_name: "\"Nature Provides\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.neptune_legendary_gracey_auto_weapon_blueprint
+    display_name: "\"Neptune\" Legendary Gracey Auto Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.new_perspectives
+    display_name: New Perspectives
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.new_threats
+    display_name: New Threats
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.news
+    display_name: News
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.news_team
+    display_name: News Team
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.night_watch_legendary_calling_card
+    display_name: "\"Night Watch\" Legendary Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.nikolai_received_the_message_can_he_get_it_price_in_time
+    display_name: Nikolai received the message. Can he get it Price in time?
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.noir_rose_legendary_3
+    display_name: "\"Noir Rose\" Legendary 3"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.nuclear_material_has_been_weaponized
+    display_name: Nuclear material has been weaponized.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.nuclear_warheads_in_bunker_11
+    display_name: Nuclear warheads in Bunker 11.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.off_the_lawn_rare_spray
+    display_name: "\"Off The Lawn!\" Rare Spray"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.old_bird_epic_weapon_charm
+    display_name: "\"Old Bird\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.old_wounds
+    display_name: Old Wounds
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.on_february_25_with_title_update_1_15_the_slide_was_updated_to_display_transmission_incoming_under_classified
+    display_name: "On February 25, with Title Update 1.15, the slide was updated to display \"Transmission Incoming\" under \"Classified\"."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.on_march_9_after_the_announcement_of_warzone_a_24_hour_countdown_timer_was_added_to_the_slide_the_slide_displayed_incoming_transmission_the_next_day_before_the_release_of_title_update_1_17_and_warzone
+    display_name: "On March 9, after the announcement of Warzone , a 24 hour countdown timer was added to the slide. The slide displayed \"Incoming Transmission\" the next day before the release of Title Update 1.17 and Warzone ."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.on_the_volley_epic_aug_weapon_blueprint
+    display_name: "\"On the Volley\" Epic AUG Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.open_season_legendary_kar98k_weapon_blueprint
+    display_name: "\"Open Season\" Legendary Kar98k Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.our_men_trophy_icon_wwii
+    display_name: Our Men trophy icon WWII
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.outside_influence
+    display_name: Outside Influence
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.overlord_legendary_bar_weapon_blueprint
+    display_name: "\"Overlord\" Legendary BAR Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.overprepared_legendary_halima_operator_skin
+    display_name: "\"Overprepared\" Legendary Halima Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.peace_breaker_epic_1911_weapon_blueprint
+    display_name: "\"Peace Breaker\" Epic 1911 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.penumbra_epic_sims_operator_skin
+    display_name: "\"Penumbra\" Epic Sims Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.perk
+    display_name: Perk
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.perks
+    display_name: Perks
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.player_loadouts_default_weapons_and_or_obtained_via_loadout_drops
+    display_name: Player Loadouts (Default weapons and/or obtained via Loadout Drops)
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.plunder_icon_vg_wz
+    display_name: Plunder Icon VG WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.power_is_being_re
+    display_name: Power is being re
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.pre
+    display_name: Pre
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.precision_airstrike
+    display_name: Precision Airstrike
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.press
+    display_name: Press
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.price_check_epic_weapon_charm
+    display_name: "\"Price Check\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.privacy_policy
+    display_name: Privacy Policy
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.purge
+    display_name: Purge
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.rare_3_attachments
+    display_name: Rare (3 attachments)
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.ravine_wrench_epic_aug_weapon_blueprint
+    display_name: "\"Ravine Wrench\" Epic AUG Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.rebirth_island_after_season_five_of_vanguard
+    display_name: Rebirth Island after Season Five of Vanguard.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.rebirth_island_after_season_three_reloaded_of_black_ops_cold_war
+    display_name: Rebirth Island after Season Three Reloaded of Black Ops Cold War.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.rebirth_island_after_season_two_reloaded_of_vanguard
+    display_name: Rebirth Island after Season Two Reloaded of Vanguard.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.rebirth_island_at_launch
+    display_name: Rebirth Island at launch.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.rebirth_island_during_the_destruction_of_verdansk_event
+    display_name: Rebirth Island during The Destruction of Verdansk event.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.rebirth_island_during_the_rebirth_of_the_dead_game_mode
+    display_name: Rebirth Island during the Rebirth of the Dead game mode.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.recent_blog_posts
+    display_name: Recent Blog Posts
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.remote_device_epic_weapon_sticker
+    display_name: "\"Remote Device\" Epic Weapon Sticker"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.requested_featured_articles
+    display_name: Requested Featured Articles
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.requested_improvement_drive_articles
+    display_name: Requested Improvement Drive Articles
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.requests_for_adminship
+    display_name: Requests for Adminship
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.resurgence
+    display_name: Resurgence
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.resurgence_logo_wz
+    display_name: Resurgence Logo WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.roll_back_edits
+    display_name: Roll back edits
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.rustic_model_epic_emblem
+    display_name: "\"Rustic Model\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sci
+    display_name: Sci
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sea_brine_epic_watch
+    display_name: "\"Sea Brine\" Epic Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.season_five
+    display_name: Season Five
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.season_five_reloaded
+    display_name: Season Five Reloaded
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.season_four
+    display_name: Season Four
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.season_one
+    display_name: Season One
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.season_six
+    display_name: Season Six
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.season_three
+    display_name: Season Three
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.season_two
+    display_name: Season Two
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.secret_trails
+    display_name: Secret Trails
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.secrets_locked_in_a_vault
+    display_name: Secrets locked in a vault...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.self_revive_kit
+    display_name: Self Revive Kit
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.serpentine_epic_watch
+    display_name: "\"Serpentine\" Epic Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.shipments_arrived_via_the_verdansk_port
+    display_name: Shipments arrived via the Verdansk port...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.shipments_were_tracked_to_the_quarry
+    display_name: Shipments were tracked to the quarry...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.shivvie_epic_combat_knife_weapon_blueprint
+    display_name: "\"Shivvie\" Epic Combat Knife Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.shop_smart_epic_calling_card
+    display_name: "\"Shop Smart\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.showstopper_epic_model_680_weapon_blueprint
+    display_name: "\"Showstopper\" Epic Model 680 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.shredded_epic_weapon_charm
+    display_name: "\"Shredded\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.shuriken_epic_weapon_charm
+    display_name: "\"Shuriken\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sight_unseen_legendary_emblem
+    display_name: "\"Sight Unseen\" Legendary Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sigint_was_relayed_from_airport_military_wing
+    display_name: SIGINT was relayed from Airport military wing...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.signal_interference_prevents_locating_the_missing_operator
+    display_name: Signal interference prevents locating the missing operator.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.signals_intelligence_decrypted_a_message_after_the_attack
+    display_name: Signals Intelligence decrypted a message after the attack.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.silent_cloak_legendary_bullfrog_weapon_blueprint
+    display_name: "\"Silent Cloak\" Legendary Bullfrog Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.single_player
+    display_name: Single Player
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sins_of_the_father
+    display_name: Sins of the Father
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.skilltrack_56_legendary_watch
+    display_name: "\"Skilltrack 56\" Legendary Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sky_blue_jalopy_epic_weapon_charm
+    display_name: "\"Sky Blue Jalopy\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sky_legend_legendary_watch
+    display_name: "\"Sky Legend\" Legendary Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.skyhook_epic_park_operator_skin
+    display_name: "\"Skyhook\" Epic Park Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.slipshod_legendary_1911_weapon_blueprint
+    display_name: "\"Slipshod\" Legendary 1911 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sniper_park_legendary_calling_card
+    display_name: "\"Sniper Park\" Legendary Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sockpuppetry
+    display_name: Sockpuppetry
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.someone_was_paid_off_to_keep_an_area_clear
+    display_name: Someone was paid off to keep an area clear.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.something_was_stashed_in_the_denied_area
+    display_name: Something was stashed in the denied area...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sovereignty_epic_emblem
+    display_name: "\"Sovereignty\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.sparks_pride_epic_emblem
+    display_name: "\"Sparks Pride\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.specialist_strike_chain
+    display_name: Specialist Strike Chain
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.spoiler_policy
+    display_name: Spoiler Policy
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.squad_transport_icon_wz
+    display_name: Squad Transport Icon WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.store_icon
+    display_name: Store icon
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.stunning_strike_epic_calling_card
+    display_name: "\"Stunning Strike\" Epic Calling Card"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.supply_box_uav
+    display_name: Supply Box UAV
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.support
+    display_name: Support
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.support_strike_chain
+    display_name: Support Strike Chain
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.surprise_inside_epic_weapon_sticker
+    display_name: "\"Surprise Inside\" Epic Weapon Sticker"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.survival_tactics_epic_emblem
+    display_name: "\"Survival Tactics\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.suv_icon_mw
+    display_name: SUV Icon MW
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.tac_rover_icon_mw
+    display_name: Tac Rover Icon MW
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.talk_0
+    display_name: Talk (0)
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.tent_pole_epic_sledgehammer_weapon_blueprint
+    display_name: "\"Tent Pole\" Epic Sledgehammer Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.terms_of_use
+    display_name: Terms of Use
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_cargo_was_headed_to_a_whp_site
+    display_name: The cargo was headed to a WHP site.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_cash_drop_event_spawns_several_cash_drop_crates_on_the_map_similarly_to_a_regular_match_of_plunder
+    display_name: The Cash Drop event spawns several Cash Drop crates on the map, similarly to a regular match of Plunder.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_down_uav_was_being_repaired
+    display_name: The down UAV was being repaired.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_enemy_wants_to_catch_a_train
+    display_name: The enemy wants to catch a train...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_footballer_epic_zane_operator_skin
+    display_name: "\"The Footballer\" Epic Zane Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_heavy_weapons_crate_event_spawns_several_supply_crates_filled_with_high
+    display_name: The Heavy Weapons Crate event spawns several supply crates filled with high
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_jailbreak_event_allows_every_down_player_in_gulag_to_be_redeployed_into_the_map_other_players_are_notified_1_minute_before_the_jailbreak_happens
+    display_name: The Jailbreak event allows every down player in Gulag to be redeployed into the map. Other players are notified 1 minute before the jailbreak happens.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_lost_team
+    display_name: The Lost Team
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_meeting_room_with_the_countdown_in_bunker_11
+    display_name: The meeting room with the countdown in Bunker 11.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_prisoner_left_a_message
+    display_name: The prisoner left a message...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_restock_event_resupplies_every_supply_box_which_can_be_opened_again
+    display_name: The Restock event resupplies every Supply Box which can be opened again.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_resurgence_event_allows_player_to_respawn_after_being_killed_as_long_as_one_of_their_teammates_are_alive
+    display_name: The Resurgence event allows player to respawn after being killed as long as one of their teammates are alive.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_shipment_was_tracked_to_the_stadium
+    display_name: The shipment was tracked to the Stadium...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_sparks_epic_weapon_charm
+    display_name: "\"The Sparks\" Epic Weapon Charm"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_subject_of_this_article_appears_in_call_of_duty
+    display_name: The subject of this article appears in Call of Duty
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_subject_of_this_article_exists_in_or_is_relevant_to_the_real_world
+    display_name: The subject of this article exists in or is relevant to the real world.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_team_was_on_their_way_to_a_bunker
+    display_name: The team was on their way to a bunker...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_titan_frenzy_event_was_a_limited_time_event_added_for_operation_monarch_it_made_kong_and_godzilla_become_enraged_and_to_attack_any_nearby_players_if_the_player_or_team_deals_the_most_damage_to_a_titan_they_will_receive_a_s_c_r_e_a_m_device
+    display_name: The Titan Frenzy event was a limited time event added for Operation Monarch . It made Kong and Godzilla become enraged and to attack any nearby players. If the player or team deals the most damage to a titan, they will receive a S.C.R.E.A.M. Device .
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_uav_was_being_controlled_from_the_airport
+    display_name: The UAV was being controlled from the airport.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_war_room
+    display_name: The War Room
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_woodsman_epic_wyatt_operator_skin
+    display_name: "\"The Woodsman\" Epic Wyatt Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.there_was_a_broadcast_from_the_parking_structure
+    display_name: There was a broadcast from the parking structure...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.there_was_an_inspection_scheduled_at_the_port
+    display_name: There was an inspection scheduled at the port.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.there_were_survivors_of_the_helicopter_crash
+    display_name: There were survivors of the helicopter crash...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.tiger_claw_epic_m16_weapon_blueprint
+    display_name: "\"Tiger Claw\" Epic M16 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.tighten_the_noose
+    display_name: Tighten the Noose
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.titanfall_wiki
+    display_name: Titanfall Wiki
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.tooled_up_epic_lucas_operator_skin
+    display_name: "\"Tooled Up\" Epic Lucas Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.toothpick_epic_combat_knife_weapon_blueprint
+    display_name: "\"Toothpick\" Epic Combat Knife Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.track_star_epic_yegor_operator_skin
+    display_name: "\"Track Star\" Epic Yegor Operator Skin"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.tv_guide
+    display_name: TV Guide
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.ultra_unobtainable_from_ground_loot
+    display_name: Ultra (Unobtainable from ground loot)
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.uncommon_1_attachment
+    display_name: Uncommon (1 attachment)
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.user_treatment_policy
+    display_name: User Treatment Policy
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.using_at_least_3_uavs_at_a_time_grants_an_effect_similar_to_the_advanced_uav
+    display_name: Using at least 3 UAVs at a time grants an effect similar to the Advanced UAV .
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.utility_truck_icon_wz
+    display_name: Utility Truck Icon WZ
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.vanguard
+    display_name: "Vanguard[]"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_84_at_the_start_of_season_three_of_black_ops_cold_war
+    display_name: "Verdansk '84 at the start of Season Three of Black Ops Cold War."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_84_during_season_five_of_black_ops_cold_war
+    display_name: "Verdansk '84 during Season Five of Black Ops Cold War."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_84_during_season_four_of_black_ops_cold_war
+    display_name: "Verdansk '84 during Season Four of Black Ops Cold War."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_84_during_season_six_of_black_ops_cold_war
+    display_name: "Verdansk '84 during Season Six of Black Ops Cold War."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_84_during_the_80s_action_heroes_event
+    display_name: "Verdansk '84 during the 80s Action Heroes event."
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_at_launch
+    display_name: Verdansk at launch.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_atc_reported_a_transponder_went_offline
+    display_name: Verdansk ATC reported a transponder went offline...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_during_season_five_of_modern_warfare
+    display_name: Verdansk during Season Five of Modern Warfare.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_during_season_four_of_modern_warfare
+    display_name: Verdansk during Season Four of Modern Warfare.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_during_season_one_of_black_ops_cold_war
+    display_name: Verdansk during Season One of Black Ops Cold War.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdansk_during_season_two_of_black_ops_cold_war
+    display_name: Verdansk during Season Two of Black Ops Cold War.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.verdnask_during_season_six_of_modern_warfare
+    display_name: Verdnask during Season Six of Modern Warfare.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.videos
+    display_name: "Videos[]"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.war_room
+    display_name: War Room
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_as_warzone_caldera_after_the_november_28th_2022_relaunch
+    display_name: Warzone Artwork as Warzone Caldera after the November 28th, 2022 relaunch.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_codwarzone_mw
+    display_name: Warzone Artwork CoDWarzone MW
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_black_ops_cold_war_season_five
+    display_name: Warzone Artwork for Black Ops Cold War Season Five.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_black_ops_cold_war_season_four
+    display_name: Warzone Artwork for Black Ops Cold War Season Four.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_black_ops_cold_war_season_six
+    display_name: Warzone Artwork for Black Ops Cold War Season Six.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_black_ops_cold_war_season_three
+    display_name: Warzone Artwork for Black Ops Cold War Season Three.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_black_ops_cold_war_season_two
+    display_name: Warzone Artwork for Black Ops Cold War Season Two.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_black_ops_cold_war_season_two_reloaded
+    display_name: Warzone Artwork for Black Ops Cold War Season Two Reloaded.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_vanguard_season_five
+    display_name: Warzone Artwork for Vanguard Season Five.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_vanguard_season_four
+    display_name: Warzone Artwork for Vanguard Season Four.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_vanguard_season_one
+    display_name: Warzone Artwork for Vanguard Season One.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_vanguard_season_three_after_operation_monarch
+    display_name: Warzone Artwork for Vanguard Season Three after Operation Monarch.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_vanguard_season_three_during_operation_monarch
+    display_name: Warzone Artwork for Vanguard Season Three during Operation Monarch.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_artwork_for_vanguard_season_two
+    display_name: Warzone Artwork for Vanguard Season Two.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.warzone_pacific_logo
+    display_name: Warzone Pacific logo.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.watercooler
+    display_name: Watercooler
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.watery_grave_epic_emblem
+    display_name: "\"Watery Grave\" Epic Emblem"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.weapons
+    display_name: Weapons
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.what_is_fandom
+    display_name: What is Fandom?
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.wisdom_seeker_legendary_watch
+    display_name: "\"Wisdom Seeker\" Legendary Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.with_the_release_of_the_season_one_of_call_of_duty
+    display_name: With the release of the Season One of Call of Duty
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.working_hours_epic_watch
+    display_name: "\"Working Hours\" Epic Watch"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.yellow_belly_legendary_m19_weapon_blueprint
+    display_name: "\"Yellow Belly\" Legendary M19 Weapon Blueprint"
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.z_and_perseus_wanted_more_power
+    display_name: Z and Perseus wanted more power...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.z_hijacked_the_uav_signal_to_ignite_a_conflict
+    display_name: Z hijacked the UAV signal to ignite a conflict.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.zakhaev_has_his_target
+    display_name: Zakhaev has his target.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.zakhaev_was_using_an_office_in_the_prison
+    display_name: Zakhaev was using an office in the prison...
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.zombies
+    display_name: Zombies
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.zombies_plus_workshop
+    display_name: Zombies Plus Workshop
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"

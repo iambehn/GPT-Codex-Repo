@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Bridge Operator"
+  short_description: "Review bridge session prep, apply, and cleanup"
+  default_prompt: "Use $review-bridge-operator to prepare, apply, or audit a proxy, runtime, fused, or onboarding review session."

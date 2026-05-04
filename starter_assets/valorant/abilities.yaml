@@ -1,0 +1,9 @@
+abilities:
+  - id: vandal
+    display_name: "Vandal"
+    aliases: ["vandal"]
+    class: equipment
+  - id: phantom
+    display_name: "Phantom"
+    aliases: ["phantom"]
+    class: equipment

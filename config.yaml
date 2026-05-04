@@ -33,6 +33,82 @@ proxy_scanner:
       suppress_initial_seconds: 1.0
       suppress_final_seconds: 1.0
       min_cluster_frames: 2
+    hf_multimodal:
+      enabled: false
+      shortlist_count: 5
+      generic_queries:
+        - "highlight moment"
+        - "clutch play"
+        - "high action combat"
+        - "objective swing"
+      transcript_keywords:
+        - "ace"
+        - "clutch"
+        - "crazy"
+        - "huge"
+        - "insane"
+        - "lets go"
+        - "no way"
+        - "team wipe"
+        - "wow"
+      stage_weights:
+        proposal: 0.35
+        transcript: 0.20
+        semantic: 0.25
+        novelty: 0.20
+      signal_thresholds:
+        proposal: 0.55
+        transcript: 0.60
+        semantic: 0.60
+        novelty: 0.60
+        rerank: 0.65
+      components:
+        shot_detector:
+          enabled: true
+          model_id: "georgesung/shot-boundary-detection-transnet-v2"
+          revision: "main"
+          execution_mode: "local"
+          runtime_options:
+            proposal_backend: "transnetv2"
+            device: "auto"
+            threshold: 0.5
+        asr:
+          enabled: true
+          model_id: "openai/whisper-large-v3-turbo"
+          revision: "main"
+          execution_mode: "local"
+          runtime_options:
+            asr_backend: "whisper"
+            device: "auto"
+            sample_rate: 16000
+            chunk_length_s: 30
+            batch_size: 8
+        semantic:
+          enabled: true
+          model_id: "microsoft/xclip-base-patch32"
+          revision: "main"
+          execution_mode: "local"
+          runtime_options:
+            device: "auto"
+            frame_count: 8
+        keyframes:
+          enabled: true
+          model_id: "google/siglip-so400m-patch14-384"
+          revision: "main"
+          execution_mode: "local"
+          runtime_options:
+            device: "auto"
+            cluster_similarity_threshold: 0.92
+        reranker:
+          enabled: true
+          model_id: "HuggingFaceTB/SmolVLM2-2.2B-Instruct"
+          revision: "main"
+          execution_mode: "local"
+          runtime_options:
+            device: "auto"
+            frames_per_candidate: 3
+            max_new_tokens: 96
+            temperature: 0.0
   weights:
     chat_spike: 3.5
     playlist_spike: 2.5
@@ -40,6 +116,11 @@ proxy_scanner:
     audio_spike: 3.0
     visual_motion_spike: 2.8
     visual_flash_spike: 2.6
+    hf_shot_boundary: 2.4
+    hf_transcript_salience: 2.2
+    hf_semantic_match: 2.6
+    hf_keyframe_novelty: 2.0
+    hf_rerank_highlight: 3.2
   candidate_selection:
     dedupe_gap_seconds: 3
     merge_gap_seconds: 30

@@ -15,6 +15,7 @@ KNOWN_SOURCE_STATUS_COLUMNS = (
     "playlist_hls",
     "audio_prepass",
     "visual_prepass",
+    "hf_multimodal",
     "chat_velocity",
 )
 KNOWN_SIGNAL_SOURCE_COLUMNS = (
@@ -24,6 +25,11 @@ KNOWN_SIGNAL_SOURCE_COLUMNS = (
     "audio_spike",
     "visual_motion_spike",
     "visual_flash_spike",
+    "hf_shot_boundary",
+    "hf_transcript_salience",
+    "hf_semantic_match",
+    "hf_keyframe_novelty",
+    "hf_rerank_highlight",
 )
 
 

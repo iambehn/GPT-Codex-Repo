@@ -8,6 +8,7 @@ from typing import Any
 
 from pipeline.event_mapper import EventMapperError, load_matcher_report, map_matcher_result, write_event_debug_bundle
 from pipeline.game_pack import load_game_pack
+from pipeline.roi_matcher import validate_published_pack
 from pipeline.roi_matcher import RoiMatcherError, match_roi_templates
 
 
@@ -42,6 +43,8 @@ def analyze_roi_runtime(
     matcher_report: str | Path | None = None,
     sample_fps: float | None = None,
     limit_frames: int | None = None,
+    template_overrides: dict[str, dict[str, Any]] | None = None,
+    runtime_rule_overrides: dict[str, dict[str, Any]] | None = None,
     output_path: str | Path | None = None,
     debug_output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
@@ -60,10 +63,16 @@ def analyze_roi_runtime(
             game,
             sample_fps=sample_fps,
             limit_frames=limit_frames,
+            template_overrides=template_overrides,
             debug_output_dir=debug_output_dir,
         )
 
-    event_result = map_matcher_result(game, matcher_result, fallback_source=source)
+    event_result = map_matcher_result(
+        game,
+        matcher_result,
+        fallback_source=source,
+        runtime_rule_overrides=runtime_rule_overrides,
+    )
     if debug_output_dir is not None:
         write_event_debug_bundle(debug_output_dir, event_result)
 
@@ -78,6 +87,7 @@ def analyze_roi_runtime(
         "source": str(matcher_result.get("source") or source),
         "sidecar_path": str(sidecar_path),
         "game_pack": game_pack.summary(),
+        "contract_summary": _runtime_contract_summary(game),
         "matcher": {
             "status": matcher_result.get("status"),
             "frame_count": int(matcher_result.get("frame_count", 0) or 0),
@@ -87,9 +97,11 @@ def analyze_roi_runtime(
             "top_scores": matcher_result.get("top_scores", {}),
             "unseen_templates": matcher_result.get("unseen_templates", []),
             "confirmed_detections": matcher_result.get("confirmed_detections", []),
+            "signals": event_result.get("signals", []),
         },
         "events": {
             "status": event_result.get("status"),
+            "signal_count": int(event_result.get("signal_count", 0) or 0),
             "event_count": int(event_result.get("event_count", 0) or 0),
             "event_summary": event_result.get("event_summary", {}),
             "rows": event_result.get("events", []),
@@ -101,6 +113,22 @@ def analyze_roi_runtime(
     except OSError as exc:
         raise RuntimeAnalysisError("sidecar_write_failed", str(exc)) from exc
     return payload
+
+
+def _runtime_contract_summary(game: str) -> dict[str, Any]:
+    try:
+        validation = validate_published_pack(game)
+    except RoiMatcherError as exc:
+        return {
+            "status": "missing",
+            "error": exc.message,
+            "active_legacy_modes": [],
+        }
+    return {
+        "status": validation.get("contract_status", "canonical"),
+        "active_legacy_modes": validation.get("active_legacy_modes", []),
+        "canonical_contracts": validation.get("canonical_contracts", {}),
+    }
 
 
 def _runtime_analysis_path(source: str | Path, game: str, output_path: str | Path | None) -> Path:

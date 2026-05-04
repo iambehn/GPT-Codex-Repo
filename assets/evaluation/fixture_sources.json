@@ -1,0 +1,54 @@
+{
+  "schema_version": "fixture_source_manifest_v1",
+  "fixtures": [
+    {
+      "fixture_id": "commentary-heavy-001",
+      "game": "marvel_rivals",
+      "source_path": "./fixtures/commentary-heavy-001.mp4",
+      "produce_layers": {
+        "proxy": true,
+        "runtime": true,
+        "fused": true
+      },
+      "notes": "Local fixture media path placeholder for commentary-led evaluation."
+    },
+    {
+      "fixture_id": "action-gameplay-001",
+      "game": "marvel_rivals",
+      "source_path": "./fixtures/action-gameplay-001.mp4",
+      "produce_layers": {
+        "proxy": true,
+        "runtime": true,
+        "fused": true
+      },
+      "notes": "Primary gameplay benchmark path placeholder."
+    },
+    {
+      "fixture_id": "noisy-multispeaker-001",
+      "game": "marvel_rivals",
+      "source_path": "./fixtures/noisy-multispeaker-001.mp4",
+      "produce_layers": {
+        "proxy": true
+      },
+      "notes": "Speech-noise stress case path placeholder."
+    },
+    {
+      "fixture_id": "music-heavy-001",
+      "game": "marvel_rivals",
+      "source_path": "./fixtures/music-heavy-001.mp4",
+      "produce_layers": {
+        "proxy": true
+      },
+      "notes": "Music-heavy path placeholder."
+    },
+    {
+      "fixture_id": "hard-negative-motion-001",
+      "game": "marvel_rivals",
+      "source_path": "./fixtures/hard-negative-motion-001.mp4",
+      "produce_layers": {
+        "proxy": true
+      },
+      "notes": "Hard-negative motion path placeholder."
+    }
+  ]
+}

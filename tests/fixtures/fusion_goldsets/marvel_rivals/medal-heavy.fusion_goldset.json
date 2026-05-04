@@ -1,0 +1,34 @@
+{
+  "schema_version": "fusion_goldset_clip_v1",
+  "clip_id": "marvel-rivals-medal-heavy-01",
+  "game": "marvel_rivals",
+  "source": "clips/medal-heavy-01.mp4",
+  "coverage_tags": ["medal_heavy"],
+  "tolerances": {
+    "timestamp_tolerance_seconds": 0.4,
+    "boundary_tolerance_seconds": 0.8
+  },
+  "expected_detections": [
+    {
+      "asset_family": "medal_icon",
+      "event_row_id": "double_kill",
+      "roi_ref": "medal_area",
+      "timestamp": 5.1
+    }
+  ],
+  "expected_runtime_events": [
+    {
+      "event_type": "medal_seen",
+      "event_row_id": "double_kill",
+      "timestamp": 5.1
+    }
+  ],
+  "expected_fused_events": [
+    {
+      "event_type": "medal_seen",
+      "event_row_id": "double_kill",
+      "timestamp": 5.1
+    }
+  ],
+  "expected_boundaries": []
+}

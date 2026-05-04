@@ -28,6 +28,9 @@ PUBLISHED_REQUIRED_FILES = (
     "weights.yaml",
     "manifests/assets_manifest.json",
     "manifests/cv_templates.yaml",
+    "manifests/detection_manifest.yaml",
+    "manifests/runtime_cv_rules.yaml",
+    "manifests/fusion_rules.yaml",
 )
 
 
@@ -43,6 +46,9 @@ class GamePack:
         if self.pack_format == "published":
             entities = self.files.get("entities.yaml", {})
             templates = self.files.get("manifests/cv_templates.yaml", {}).get("templates", [])
+            detection_manifest = self.files.get("manifests/detection_manifest.yaml", {})
+            runtime_rules = self.files.get("manifests/runtime_cv_rules.yaml", {}).get("event_mappings", {})
+            fusion_rules = self.files.get("manifests/fusion_rules.yaml", {}).get("rules", [])
             return {
                 "game_id": self.game_id,
                 "source": self.source,
@@ -52,6 +58,9 @@ class GamePack:
                 "ability_count": len(entities.get("abilities", [])),
                 "event_count": len(entities.get("events", [])),
                 "template_count": len(templates),
+                "detection_row_count": int(detection_manifest.get("row_count", len(detection_manifest.get("rows", [])) if isinstance(detection_manifest, dict) else 0) or 0),
+                "runtime_rule_count": len(runtime_rules) if isinstance(runtime_rules, dict) else 0,
+                "fusion_rule_count": len(fusion_rules) if isinstance(fusion_rules, list) else 0,
                 "required_files": list(PUBLISHED_REQUIRED_FILES),
             }
 
@@ -155,7 +164,14 @@ def init_game_pack(game_id: str, overwrite: bool = False) -> dict[str, Any]:
 
 
 def _detect_pack_format(root: Path) -> str:
-    if all((root / filename).exists() for filename in PUBLISHED_REQUIRED_FILES):
+    published_markers = (
+        "entities.yaml",
+        "hud.yaml",
+        "weights.yaml",
+        "manifests/assets_manifest.json",
+        "manifests/cv_templates.yaml",
+    )
+    if any((root / filename).exists() for filename in published_markers):
         return "published"
     return "starter"
 

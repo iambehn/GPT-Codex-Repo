@@ -1,0 +1,15 @@
+{
+  "schema_version": "fusion_goldset_clip_v1",
+  "clip_id": "marvel-rivals-low-signal-negative-01",
+  "game": "marvel_rivals",
+  "source": "clips/low-signal-negative-01.mp4",
+  "coverage_tags": ["low_signal_negative"],
+  "tolerances": {
+    "timestamp_tolerance_seconds": 0.5,
+    "boundary_tolerance_seconds": 1.0
+  },
+  "expected_detections": [],
+  "expected_runtime_events": [],
+  "expected_fused_events": [],
+  "expected_boundaries": []
+}

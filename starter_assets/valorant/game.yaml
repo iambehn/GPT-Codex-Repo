@@ -1,0 +1,5 @@
+game_id: valorant
+display_name: "VALORANT"
+genre: tactical_shooter
+camera_mode: first_person
+ui_version: draft

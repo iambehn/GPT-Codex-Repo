@@ -1,0 +1,17 @@
+disabled_families: []
+families:
+  hero_portrait:
+    threshold: 0.88
+    scale_set: [0.95, 1.0, 1.05]
+    temporal_window: 4
+  ability_icon:
+    threshold: 0.91
+    scale_set: [0.95, 1.0, 1.05]
+    temporal_window: 4
+  equipment_icon:
+    threshold: 0.91
+    scale_set: [0.95, 1.0, 1.05]
+    temporal_window: 4
+  medal_icon:
+    threshold: 0.94
+    temporal_window: 3

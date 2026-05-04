@@ -1,0 +1,4 @@
+game_id: call_of_duty
+display_name: Call Of Duty
+seed_adapter: call_of_duty
+primary_source_kind: explicit_url

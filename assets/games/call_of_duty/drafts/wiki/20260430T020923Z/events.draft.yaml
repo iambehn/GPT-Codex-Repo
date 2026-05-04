@@ -1,0 +1,25 @@
+events:
+  - id: call_of_duty.armor_plate_bundle
+    display_name: Armor Plate Bundle
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.cash_drop
+    display_name: Cash Drop
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.cluster_strike
+    display_name: Cluster Strike
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.heavy_weapons_crate
+    display_name: Heavy Weapons Crate
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.jailbreak
+    display_name: Jailbreak
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.restock
+    display_name: Restock
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.resurgence
+    display_name: Resurgence
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.titan_frenzy
+    display_name: Titan Frenzy
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"

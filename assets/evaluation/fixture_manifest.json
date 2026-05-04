@@ -1,0 +1,83 @@
+{
+  "schema_version": "evaluation_fixture_manifest_v1",
+  "fixtures": [
+    {
+      "fixture_id": "commentary-heavy-001",
+      "label": "Commentary-heavy clip",
+      "task_intent": "Speech-led highlight ranking with strong transcript salience",
+      "expected_review_outcome": "approved",
+      "latency_budget_class": "smoke",
+      "expected_artifacts": {
+        "proxy": true,
+        "runtime": true,
+        "fused": true
+      },
+      "notes": "Use to validate transcript-heavy highlight cues and review alignment.",
+      "artifact_refs": {
+        "proxy_sidecar": "outputs/fixtures/commentary-heavy-001.proxy_scan.json",
+        "runtime_sidecar": "outputs/fixtures/commentary-heavy-001.runtime_analysis.json",
+        "fused_sidecar": "outputs/fixtures/commentary-heavy-001.fused_analysis.json"
+      }
+    },
+    {
+      "fixture_id": "action-gameplay-001",
+      "label": "Action-heavy gameplay clip",
+      "task_intent": "Fast combat clip for proposal, semantic, novelty, and rerank validation",
+      "expected_review_outcome": "approved",
+      "latency_budget_class": "integration",
+      "expected_artifacts": {
+        "proxy": true,
+        "runtime": true,
+        "fused": true
+      },
+      "notes": "Primary gameplay benchmark for the hf_multimodal stack.",
+      "artifact_refs": {
+        "proxy_sidecar": "outputs/fixtures/action-gameplay-001.proxy_scan.json",
+        "runtime_sidecar": "outputs/fixtures/action-gameplay-001.runtime_analysis.json",
+        "fused_sidecar": "outputs/fixtures/action-gameplay-001.fused_analysis.json"
+      }
+    },
+    {
+      "fixture_id": "noisy-multispeaker-001",
+      "label": "Noisy multi-speaker clip",
+      "task_intent": "Stress ASR and diarization-adjacent review conditions",
+      "expected_review_outcome": "approved",
+      "latency_budget_class": "golden",
+      "expected_artifacts": {
+        "proxy": true
+      },
+      "notes": "Use for transcript robustness and later pyannote-style extensions.",
+      "artifact_refs": {
+        "proxy_sidecar": "outputs/fixtures/noisy-multispeaker-001.proxy_scan.json"
+      }
+    },
+    {
+      "fixture_id": "music-heavy-001",
+      "label": "Music-heavy clip",
+      "task_intent": "Audio-heavy clip with weaker speech cues and stronger visual/audio salience dependence",
+      "expected_review_outcome": "approved",
+      "latency_budget_class": "slow",
+      "expected_artifacts": {
+        "proxy": true
+      },
+      "notes": "Use for non-speech salience and future AST-style trials.",
+      "artifact_refs": {
+        "proxy_sidecar": "outputs/fixtures/music-heavy-001.proxy_scan.json"
+      }
+    },
+    {
+      "fixture_id": "hard-negative-motion-001",
+      "label": "Hard negative motion clip",
+      "task_intent": "Visual motion without strong highlight value",
+      "expected_review_outcome": "rejected",
+      "latency_budget_class": "golden",
+      "expected_artifacts": {
+        "proxy": true
+      },
+      "notes": "Use to guard against false positives from action-like movement.",
+      "artifact_refs": {
+        "proxy_sidecar": "outputs/fixtures/hard-negative-motion-001.proxy_scan.json"
+      }
+    }
+  ]
+}

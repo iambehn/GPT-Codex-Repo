@@ -1,0 +1,8 @@
+game: valorant
+sources:
+  - role: agents
+    url: "file:///path/to/agents.html"
+  - role: gear
+    url: "file:///path/to/gear.html"
+  - role: ranks
+    url: "file:///path/to/ranks.html"

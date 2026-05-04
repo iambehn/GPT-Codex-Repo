@@ -1,0 +1,40 @@
+abilities:
+  - id: call_of_duty.armor_plates
+    display_name: Armor Plates
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.armor_satchel
+    display_name: Armor Satchel
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.artillery_marker
+    display_name: Artillery Marker
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.ascender
+    display_name: Ascender
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.body_armor_gear
+    display_name: Body Armor (gear)
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.gas_mask_equipment
+    display_name: Gas Mask (equipment)
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.ghillie_suit
+    display_name: Ghillie Suit
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.gulag_entry_token
+    display_name: Gulag Entry Token
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.parachute
+    display_name: Parachute
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.propane_tank
+    display_name: Propane Tank
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.redeploy_extraction_token
+    display_name: Redeploy Extraction Token
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.self_revive
+    display_name: Self Revive
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - id: call_of_duty.speed_boost
+    display_name: Speed Boost
+    source_page_url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"

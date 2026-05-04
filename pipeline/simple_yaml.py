@@ -217,14 +217,28 @@ def _dump_list(value: list[Any], indent: int) -> str:
                     first = False
                     continue
                 if first:
-                    lines.append(prefix + f"{key}:\n")
-                    lines.append(_dump_node(child, indent + 4))
+                    if isinstance(child, dict) and not child:
+                        lines.append(prefix + f"{key}: {{}}\n")
+                    elif isinstance(child, list) and not child:
+                        lines.append(prefix + f"{key}: []\n")
+                    else:
+                        lines.append(prefix + f"{key}:\n")
+                        lines.append(_dump_node(child, indent + 4))
                     first = False
                     continue
                 child_prefix = (" " * (indent + 2)) + f"{key}:"
-                if isinstance(child, (dict, list)):
-                    lines.append(child_prefix + "\n")
-                    lines.append(_dump_node(child, indent + 4))
+                if isinstance(child, dict):
+                    if not child:
+                        lines.append(child_prefix + " {}\n")
+                    else:
+                        lines.append(child_prefix + "\n")
+                        lines.append(_dump_node(child, indent + 4))
+                elif isinstance(child, list):
+                    if not child:
+                        lines.append(child_prefix + " []\n")
+                    else:
+                        lines.append(child_prefix + "\n")
+                        lines.append(_dump_node(child, indent + 4))
                 else:
                     lines.append(child_prefix + f" {_dump_scalar(child)}\n")
             continue

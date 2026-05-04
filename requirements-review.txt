@@ -1,0 +1,4 @@
+# Optional local review-surface dependencies.
+# Install this file only when using the Gradio-backed review app.
+
+gradio>=5,<6

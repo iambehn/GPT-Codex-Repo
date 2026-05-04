@@ -1,0 +1,5 @@
+game_id: call_of_duty
+display_name: "Call of Duty: Warzone"
+genre: battle_royale
+camera_mode: first_person
+ui_version: draft

@@ -1,0 +1,25 @@
+events:
+  - id: call_of_duty.armor_plate_bundle
+    display_name: Armor Plate Bundle
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.cluster_strike
+    display_name: Cluster Strike
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_cash_drop_event_spawns_several_cash_drop_crates_on_the_map_similarly_to_a_regular_match_of_plunder
+    display_name: The Cash Drop event spawns several Cash Drop crates on the map, similarly to a regular match of Plunder.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_heavy_weapons_crate_event_spawns_several_supply_crates_filled_with_high
+    display_name: The Heavy Weapons Crate event spawns several supply crates filled with high
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_jailbreak_event_allows_every_down_player_in_gulag_to_be_redeployed_into_the_map_other_players_are_notified_1_minute_before_the_jailbreak_happens
+    display_name: The Jailbreak event allows every down player in Gulag to be redeployed into the map. Other players are notified 1 minute before the jailbreak happens.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_restock_event_resupplies_every_supply_box_which_can_be_opened_again
+    display_name: The Restock event resupplies every Supply Box which can be opened again.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_resurgence_event_allows_player_to_respawn_after_being_killed_as_long_as_one_of_their_teammates_are_alive
+    display_name: The Resurgence event allows player to respawn after being killed as long as one of their teammates are alive.
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"
+  - id: call_of_duty.the_titan_frenzy_event_was_a_limited_time_event_added_for_operation_monarch_it_made_kong_and_godzilla_become_enraged_and_to_attack_any_nearby_players_if_the_player_or_team_deals_the_most_damage_to_a_titan_they_will_receive_a_s_c_r_e_a_m_device
+    display_name: The Titan Frenzy event was a limited time event added for Operation Monarch . It made Kong and Godzilla become enraged and to attack any nearby players. If the player or team deals the most damage to a titan, they will receive a S.C.R.E.A.M. Device .
+    source_page_url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"

@@ -1,0 +1,9 @@
+characters:
+  - id: ghost
+    display_name: "Ghost"
+    aliases: ["simon riley"]
+    role: operator
+  - id: farah
+    display_name: "Farah"
+    aliases: ["farah karim"]
+    role: operator

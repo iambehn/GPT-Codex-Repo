@@ -1,0 +1,8 @@
+game: call_of_duty
+sources:
+  - role: operators
+    url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Operators"
+  - role: equipment
+    url: "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment"
+  - role: events
+    url: "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone"

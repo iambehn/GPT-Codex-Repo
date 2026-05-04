@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from pipeline.audio_scanner import scan_audio_source
 from pipeline.chat_scanner import scan_chat_log
+from pipeline.hf_highlight import ProxySourceEmission, scan_hf_multimodal_source
 from pipeline.media_probe import probe_has_video_stream
 from pipeline.playlist_scanner import is_playlist_source, scan_playlist_source
 from pipeline.proxy_scanner import ProxySignal
@@ -23,7 +24,7 @@ class ProxyScanContext:
 @dataclass(frozen=True)
 class ProxySourceDefinition:
     name: str
-    scan: Callable[[ProxyScanContext, dict[str, Any]], list[ProxySignal]]
+    scan: Callable[[ProxyScanContext, dict[str, Any]], list[ProxySignal] | ProxySourceEmission]
 
 
 class ProxySourceSkipped(RuntimeError):
@@ -65,11 +66,19 @@ def run_proxy_sources(
                 "reason": str(exc),
             }
         else:
-            signals.extend(emitted)
-            source_results[definition.name] = {
-                "status": "ok",
-                "signal_count": len(emitted),
-            }
+            if isinstance(emitted, ProxySourceEmission):
+                signals.extend(emitted.signals)
+                source_results[definition.name] = {
+                    "status": "ok",
+                    "signal_count": len(emitted.signals),
+                    **({"metadata": emitted.metadata} if emitted.metadata else {}),
+                }
+            else:
+                signals.extend(emitted)
+                source_results[definition.name] = {
+                    "status": "ok",
+                    "signal_count": len(emitted),
+                }
 
     return signals, source_results
 
@@ -109,6 +118,27 @@ def _scan_visual_prepass(context: ProxyScanContext, config: dict[str, Any]) -> l
     return scan_visual_source(source_path, config, media_duration_seconds=context.media_duration_seconds)
 
 
+def _scan_hf_multimodal(context: ProxyScanContext, config: dict[str, Any]) -> ProxySourceEmission:
+    if _is_remote_source(context.source):
+        raise ProxySourceSkipped("hf multimodal source supports local media only")
+    if is_playlist_source(context.source):
+        raise ProxySourceSkipped("source is not a decodable local video file")
+
+    source_path = Path(str(context.source))
+    if not source_path.exists() or not source_path.is_file():
+        raise ProxySourceSkipped("local media file is missing or unreadable")
+
+    has_video_stream = probe_has_video_stream(source_path)
+    if has_video_stream is False:
+        raise ProxySourceSkipped("source has no video stream")
+
+    return scan_hf_multimodal_source(
+        source_path,
+        config,
+        media_duration_seconds=context.media_duration_seconds,
+    )
+
+
 def _is_local_playlist_snapshot(source: str | Path) -> bool:
     if not is_playlist_source(source):
         return False
@@ -125,5 +155,6 @@ _SOURCE_REGISTRY = (
     ProxySourceDefinition(name="playlist_hls", scan=_scan_playlist_hls),
     ProxySourceDefinition(name="audio_prepass", scan=_scan_audio_prepass),
     ProxySourceDefinition(name="visual_prepass", scan=_scan_visual_prepass),
+    ProxySourceDefinition(name="hf_multimodal", scan=_scan_hf_multimodal),
     ProxySourceDefinition(name="chat_velocity", scan=_scan_chat_velocity),
 )
