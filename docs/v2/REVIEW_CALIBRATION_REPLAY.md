@@ -28,6 +28,8 @@ Stable policies:
 - fixture-based baseline vs trial workflows should stay deterministic
 - recommendation artifacts should remain human-decision aids, not auto-promotion logic
 - viewer and review surfaces should make disagreement cases easy to inspect
+- hook evaluation remains advisory in V1 even when its comparisons are queryable and registry-backed
+- non-trivial detector, fusion, schema, and publish-workflow changes should pass through review-backed validation before promotion
 
 Measured outcomes belong in experiment ledgers, not here.
 
@@ -37,6 +39,39 @@ This doc should stay focused on:
 - what artifacts they consume
 - what recommendation states mean
 - how review outcomes feed later decisions
+
+## Release-Gate Role
+
+Replay, calibration, and review-backed comparison are V2 release gates, not just debugging helpers.
+
+That means:
+
+- regressions should be surfaced before publish or promotion
+- recommendation artifacts should stay stable enough to compare baseline vs trial behavior
+- reviewer approvals and rejections should remain reusable evidence for later tuning
+- compact operator reporting should still expose enough state to debug a blocked release
+
+## Hook Comparison Integration
+
+Hook evaluation now sits inside the same review-backed comparison loop as other fixture and trial work.
+
+Relevant artifacts:
+
+- `hook_candidate_comparison_v1`
+- `hook_evaluation_report_v1`
+
+The comparison flow is:
+
+1. compare baseline and trial hook sidecars on the same fixture manifest
+2. summarize recommendation state from matched rows
+3. join registry-backed approved/exported hook rollups
+4. preserve disagreement cases where fused quality and hook quality diverge
+
+This is intentionally not promotion logic. The V1 report is for:
+
+- measuring whether a hook trial improved editorial quality
+- exposing which hook modes and archetypes are actually surviving selection and export
+- showing whether disagreement patterns are strong enough to justify future gate review
 
 ## What Belongs Elsewhere
 

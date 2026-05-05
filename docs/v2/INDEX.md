@@ -47,12 +47,18 @@ This index is the categorization authority.
 
 ## Current V2 Priorities
 
-The first active V2 items remain:
+The active V2 execution phases are now:
 
-1. Canonical documentation and source-of-truth setup
-2. Unified replay/debug and report-aware inspection hardening
-3. Persistent registry and queryable artifact state
-4. Candidate and review lifecycle hardening
-5. Hook candidate artifact family and measurable editorial logic
+1. Manifest and publish hardening
+2. Runtime and fusion contract hardening
+3. Review, calibration, and replay release gating
+4. Candidate, export, and downstream analytics integration
 
-Everything else should sequence behind those unless the roadmap changes.
+The roadmap also treats the following as completed baseline:
+
+- unified replay/debug and report-aware inspection
+- fixture trial/comparison/batch evaluation flow
+- persistent registry and queryable artifact state
+- fused-event lifecycle registry
+- fused highlight-selection export linkage
+- hook candidate sidecars with registry and viewer integration

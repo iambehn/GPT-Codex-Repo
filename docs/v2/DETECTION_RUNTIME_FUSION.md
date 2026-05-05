@@ -31,6 +31,25 @@ Stable policies:
 - reranking stays top-N only
 - heavy VLM work should never become a full-video default path
 
+## Shared Signal Contract
+
+V2 should treat normalized signals as one internal contract across proxy, runtime CV, audio, and fused layers.
+
+Minimum expectations:
+
+- one canonical time anchor per signal
+- explicit modality and detector identity
+- confidence preserved without hidden rescaling
+- provenance back to the originating artifact or sidecar
+- enough payload to explain why a downstream fused event exists
+
+Fusion hardening rules:
+
+- keep base evidence separate from interaction or confirmation logic
+- preserve disagreement cases instead of collapsing them into opaque scores
+- prefer cheap-to-expensive gating before broader inference
+- do not introduce hidden timing or threshold changes without reviewable evidence
+
 Detector expansion policy:
 
 - add heavier detector families only when replay and reviewed evidence show unresolved recall gaps
