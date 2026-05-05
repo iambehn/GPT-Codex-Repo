@@ -1,0 +1,8 @@
+{
+  "schema_version": "game_onboarding_state_v1",
+  "game_id": "call_of_duty",
+  "phase_status": "ready_to_publish",
+  "schema_path": "manifests/game_detection_schema.yaml",
+  "source_count": 6,
+  "updated_at": "2026-05-05T22:38:11.719886+00:00"
+}

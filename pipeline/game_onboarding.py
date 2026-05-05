@@ -390,6 +390,17 @@ def build_onboarding_draft(
         manifest_payload=updated_manifest,
         state_payload=state_payload,
     )
+    phase_status = _refresh_phase_status_from_publish_readiness(
+        draft_root,
+        ontology=ontology,
+        detection_manifest=detection_manifest,
+        candidates=candidates,
+        bindings=bindings,
+        qa_queue=qa_queue,
+        manifest_payload=updated_manifest,
+        state_payload=state_payload,
+        repo_root=repo_root,
+    )
 
     return {
         "ok": True,
@@ -425,6 +436,365 @@ def build_onboarding_draft(
     }
 
 
+def report_unresolved_derived_rows(
+    draft_root: str | Path,
+    *,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    from pipeline.derived_detection_manifest import derive_game_detection_manifest
+
+    resolved_root = Path(draft_root).expanduser().resolve()
+    derive_result = derive_game_detection_manifest(resolved_root)
+    manifest_path = Path(str(derive_result["manifest_path"]))
+    manifest_payload = load_yaml_file(manifest_path)
+    if not isinstance(manifest_payload, dict):
+        raise ValueError(f"derived detection manifest must be a mapping: {manifest_path}")
+
+    rows = manifest_payload.get("rows", [])
+    if not isinstance(rows, list):
+        raise ValueError(f"derived detection manifest rows must be a list: {manifest_path}")
+
+    bindings = _read_csv_rows(resolved_root / "catalog" / "bindings.csv")
+    candidates_by_id = _load_candidates_by_id_from_assets_manifest(resolved_root / "manifests" / "assets_manifest.json")
+    binding_rows_by_detection: dict[str, list[dict[str, str]]] = {}
+    for row in bindings:
+        detection_id = str(row.get("detection_id", "")).strip()
+        if detection_id:
+            binding_rows_by_detection.setdefault(detection_id, []).append(row)
+
+    unresolved_rows: list[dict[str, Any]] = []
+    for row in rows:
+        if not bool(row.get("required", False)) or str(row.get("status", "")).strip() == "resolved":
+            continue
+        detection_id = str(row.get("detection_id", "")).strip()
+        detection_bindings = binding_rows_by_detection.get(detection_id, [])
+        accepted_binding = next((item for item in detection_bindings if str(item.get("status", "")).strip() == "accepted"), None)
+        unresolved_rows.append(
+            {
+                "detection_id": detection_id,
+                "target_kind": str(row.get("target_kind", "")).strip(),
+                "target_id": str(row.get("target_id", "")).strip(),
+                "target_display_name": str(row.get("target_display_name", "")).strip(),
+                "asset_family": str(row.get("asset_family", "")).strip(),
+                "status": str(row.get("status", "")).strip(),
+                "binding_status": str(row.get("binding_status", "")).strip(),
+                "reason": str(row.get("reason", "")).strip(),
+                "blocking_publish": bool(row.get("blocking_publish", False)),
+                "current_candidate_count": len(detection_bindings),
+                "current_accepted_binding": {
+                    "binding_id": str(accepted_binding.get("binding_id", "")).strip(),
+                    "candidate_id": str(accepted_binding.get("candidate_id", "")).strip(),
+                }
+                if accepted_binding is not None
+                else None,
+                "current_candidate_ids": [
+                    str(item.get("candidate_id", "")).strip()
+                    for item in sorted(
+                        detection_bindings,
+                        key=lambda binding: (-float(binding.get("confidence", 0.0) or 0.0), str(binding.get("candidate_id", ""))),
+                    )
+                    if str(item.get("candidate_id", "")).strip()
+                ],
+                "current_candidate_summaries": [
+                    {
+                        "candidate_id": candidate_id,
+                        "display_name": str(candidate.get("display_name", "")).strip(),
+                        "source_url": str(candidate.get("source_url", "")).strip(),
+                        "source_kind": str(candidate.get("source_kind", "")).strip(),
+                        "candidate_quality": str(candidate.get("candidate_quality", "")).strip(),
+                        "fetch_status": str(candidate.get("fetch_status", "")).strip(),
+                    }
+                    for candidate_id in [
+                        str(item.get("candidate_id", "")).strip()
+                        for item in sorted(
+                            detection_bindings,
+                            key=lambda binding: (-float(binding.get("confidence", 0.0) or 0.0), str(binding.get("candidate_id", ""))),
+                        )
+                        if str(item.get("candidate_id", "")).strip()
+                    ]
+                    if (candidate := candidates_by_id.get(candidate_id))
+                ],
+            }
+        )
+
+    unresolved_rows.sort(key=lambda item: (item["status"], item["asset_family"], item["target_id"]))
+    payload = {
+        "ok": True,
+        "status": "unresolved_derived_rows_reported",
+        "game": str(manifest_payload.get("game_id", "")).strip(),
+        "draft_root": str(resolved_root),
+        "derived_manifest_path": str(manifest_path),
+        "unresolved_required_count": len(unresolved_rows),
+        "rows": unresolved_rows,
+    }
+    if output_path is not None:
+        report_path = Path(output_path).expanduser().resolve()
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        payload["output_path"] = str(report_path)
+    return payload
+
+
+def fill_derived_detection_rows(
+    draft_root: str | Path,
+    detection_ids: list[str],
+    *,
+    source_manifests: list[str | Path],
+    repo_root: Path | None = None,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    from pipeline.derived_detection_manifest import derive_game_detection_manifest
+
+    repo_root = (repo_root or REPO_ROOT).resolve()
+    resolved_root = Path(draft_root).expanduser().resolve()
+    if not source_manifests:
+        raise ValueError("targeted row fill requires at least one source manifest")
+
+    requested_detection_ids = _ordered_unique_nonempty_values(detection_ids)
+    if not requested_detection_ids:
+        raise ValueError("targeted row fill requires at least one detection_id")
+
+    derive_result = derive_game_detection_manifest(resolved_root)
+    derived_manifest_path = Path(str(derive_result["manifest_path"]))
+    derived_manifest = load_yaml_file(derived_manifest_path)
+    if not isinstance(derived_manifest, dict):
+        raise ValueError(f"derived detection manifest must be a mapping: {derived_manifest_path}")
+
+    game = str(derived_manifest.get("game_id", "")).strip()
+    if not game:
+        raise ValueError(f"derived detection manifest is missing game_id: {derived_manifest_path}")
+    adapter = get_onboarding_adapter(game)
+
+    derived_rows = derived_manifest.get("rows", [])
+    if not isinstance(derived_rows, list):
+        raise ValueError(f"derived detection manifest rows must be a list: {derived_manifest_path}")
+    derived_rows_by_id = {
+        detection_id: row
+        for row in derived_rows
+        if isinstance(row, dict)
+        and (detection_id := str(row.get("detection_id", "")).strip())
+    }
+    missing_detection_ids = [item for item in requested_detection_ids if item not in derived_rows_by_id]
+    if missing_detection_ids:
+        raise ValueError(f"unknown detection_id values for targeted row fill: {', '.join(missing_detection_ids)}")
+
+    selected_rows = [derived_rows_by_id[item] for item in requested_detection_ids]
+    unsupported_rows = [
+        {
+            "detection_id": str(row.get("detection_id", "")).strip(),
+            "status": str(row.get("status", "")).strip(),
+            "reason": str(row.get("reason", "")).strip(),
+        }
+        for row in selected_rows
+        if str(row.get("status", "")).strip() in {"resolved", "unresolved_missing_semantics", "optional_family_disabled"}
+        or not bool(row.get("required", False))
+    ]
+    actionable_detection_ids = [
+        str(row.get("detection_id", "")).strip()
+        for row in selected_rows
+        if bool(row.get("required", False))
+        and str(row.get("status", "")).strip() in {"unresolved", "unresolved_pending_review"}
+    ]
+    if not actionable_detection_ids:
+        raise ValueError("no selected detection rows are actionable for targeted fill")
+
+    manifest_path = resolved_root / "manifests" / "assets_manifest.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"draft does not contain assets manifest: {manifest_path}")
+    manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    candidates = manifest_payload.get("candidates", [])
+    if not isinstance(candidates, list):
+        raise ValueError("draft assets manifest candidates must be a list")
+
+    ontology_payload = load_yaml_file(resolved_root / "entities.yaml")
+    if not isinstance(ontology_payload, dict):
+        raise ValueError("draft entities.yaml must be a mapping")
+    ontology = {
+        "heroes": ontology_payload.get("heroes", []),
+        "abilities": ontology_payload.get("abilities", []),
+        "events": ontology_payload.get("events", []),
+    }
+    detection_schema = _load_game_detection_schema(resolved_root)
+    detection_manifest = _derive_detection_manifest(game, ontology, detection_schema, adapter=adapter)
+    detection_rows = detection_manifest.get("rows", [])
+    if not isinstance(detection_rows, list):
+        raise ValueError("refreshed draft detection manifest must define a rows list")
+    detection_rows_by_id = {
+        detection_id: row
+        for row in detection_rows
+        if isinstance(row, dict)
+        and (detection_id := str(row.get("detection_id", "")).strip())
+    }
+    selected_detection_rows = [detection_rows_by_id[item] for item in actionable_detection_ids if item in detection_rows_by_id]
+    if len(selected_detection_rows) != len(actionable_detection_ids):
+        missing_rows = [item for item in actionable_detection_ids if item not in detection_rows_by_id]
+        raise ValueError(f"draft detection manifest is missing requested rows: {', '.join(missing_rows)}")
+
+    extra_sources: list[OnboardingSource] = []
+    loaded_manifest_paths: list[str] = []
+    for manifest in source_manifests:
+        source_game, manifest_sources = _load_onboarding_sources_from_manifest(manifest, expected_game=game)
+        if source_game != game:
+            raise ValueError(f"source manifest game '{source_game}' does not match draft game '{game}'")
+        loaded_manifest_paths.append(str(Path(manifest).expanduser().resolve()))
+        extra_sources.extend(manifest_sources)
+
+    normalized_sources = [_normalize_source(source) for source in extra_sources]
+    source_records: list[dict[str, Any]] = []
+    source_failures: list[dict[str, Any]] = []
+    first_failure: WikiFetchError | None = None
+    for source in normalized_sources:
+        if source.role not in adapter.supported_source_roles:
+            raise ValueError(f"unsupported onboarding source role for '{game}': {source.role}")
+        try:
+            source_records.append(_fetch_source_record(source))
+        except WikiFetchError as exc:
+            if first_failure is None:
+                first_failure = exc
+            source_failures.append(_source_failure_row(source, exc))
+    if not source_records and first_failure is not None:
+        raise first_failure
+
+    new_candidates = _collect_candidate_assets(source_records, resolved_root / "masters", adapter=adapter)
+    new_bindings = _build_binding_candidates(game, selected_detection_rows, new_candidates, adapter=adapter)
+    relevant_candidate_ids = {
+        str(row.get("candidate_id", "")).strip()
+        for row in new_bindings
+        if str(row.get("candidate_id", "")).strip()
+    }
+    selected_new_candidates = [
+        row
+        for row in new_candidates
+        if str(row.get("candidate_id", "")).strip() in relevant_candidate_ids
+    ]
+
+    merged_candidates = _merge_candidates_by_id(candidates, selected_new_candidates)
+    existing_bindings = _read_csv_rows(resolved_root / "catalog" / "bindings.csv")
+    preserved_bindings = [
+        row
+        for row in existing_bindings
+        if str(row.get("detection_id", "")).strip() not in set(actionable_detection_ids)
+    ]
+    rebuilt_selected_bindings = _build_binding_candidates(game, selected_detection_rows, merged_candidates, adapter=adapter)
+    merged_bindings = preserved_bindings + rebuilt_selected_bindings
+    merged_bindings.sort(key=lambda row: (-float(row.get("confidence", 0.0) or 0.0), str(row.get("target_id", "")), str(row.get("candidate_id", ""))))
+
+    merged_source_fetch_log = _merge_source_fetch_log_rows(
+        list(manifest_payload.get("source_fetch_log", [])) if isinstance(manifest_payload.get("source_fetch_log", []), list) else [],
+        [_source_log_row(record) for record in source_records],
+        source_failures,
+    )
+    population_findings = list(manifest_payload.get("population_findings", [])) if isinstance(manifest_payload.get("population_findings", []), list) else []
+    qa_queue = _build_qa_queue(
+        detection_rows,
+        merged_candidates,
+        merged_bindings,
+        existing_qa=_build_population_qa_queue(
+            ontology,
+            merged_candidates,
+            population_findings,
+            source_failures=[
+                row
+                for row in merged_source_fetch_log
+                if str(row.get("status", "")).strip() == "fetch_failed"
+            ],
+        ),
+    )
+    phase_status = "ready_to_publish" if not qa_queue else "bindings_pending"
+    updated_manifest = dict(manifest_payload)
+    updated_manifest["candidates"] = merged_candidates
+    updated_manifest["bindings"] = merged_bindings
+    updated_manifest["source_fetch_log"] = merged_source_fetch_log
+    updated_manifest["source_count"] = sum(
+        1 for row in merged_source_fetch_log if str(row.get("status", "")).strip() not in {"fetch_failed", ""}
+    )
+    updated_manifest["phase_status"] = phase_status
+    state_payload = _build_onboarding_state(
+        game,
+        phase_status=phase_status,
+        source_count=int(updated_manifest.get("source_count", 0) or 0),
+        schema_path="manifests/game_detection_schema.yaml",
+    )
+    _write_binding_review_artifacts(
+        resolved_root,
+        ontology=ontology,
+        detection_manifest=detection_manifest,
+        candidates=merged_candidates,
+        bindings=merged_bindings,
+        qa_queue=qa_queue,
+        manifest_payload=updated_manifest,
+        state_payload=state_payload,
+    )
+    phase_status = _refresh_phase_status_from_publish_readiness(
+        resolved_root,
+        ontology=ontology,
+        detection_manifest=detection_manifest,
+        candidates=merged_candidates,
+        bindings=merged_bindings,
+        qa_queue=qa_queue,
+        manifest_payload=updated_manifest,
+        state_payload=state_payload,
+        repo_root=repo_root,
+    )
+
+    final_derive_result = derive_game_detection_manifest(resolved_root)
+    final_manifest_path = Path(str(final_derive_result["manifest_path"]))
+    final_manifest_payload = load_yaml_file(final_manifest_path)
+    if not isinstance(final_manifest_payload, dict):
+        raise ValueError(f"derived detection manifest must be a mapping: {final_manifest_path}")
+    final_rows = final_manifest_payload.get("rows", [])
+    if not isinstance(final_rows, list):
+        raise ValueError(f"derived detection manifest rows must be a list: {final_manifest_path}")
+    final_rows_by_id = {
+        detection_id: row
+        for row in final_rows
+        if isinstance(row, dict)
+        and (detection_id := str(row.get("detection_id", "")).strip())
+    }
+
+    result = {
+        "ok": True,
+        "status": "targeted_row_fill_completed",
+        "game": game,
+        "draft_root": str(resolved_root),
+        "selected_detection_ids": requested_detection_ids,
+        "actionable_detection_ids": actionable_detection_ids,
+        "unsupported_rows": unsupported_rows,
+        "source_manifest_paths": loaded_manifest_paths,
+        "counts": {
+            "source_records_loaded": len(source_records),
+            "source_failures": len(source_failures),
+            "new_candidates_collected": len(new_candidates),
+            "new_candidates_matched": len(selected_new_candidates),
+            "selected_bindings_rebuilt": len(rebuilt_selected_bindings),
+            "remaining_unresolved_required_rows": int(final_derive_result["counts"]["unresolved_required_row_count"]),
+        },
+        "row_updates": [
+            {
+                "detection_id": detection_id,
+                "before_status": str(derived_rows_by_id[detection_id].get("status", "")).strip(),
+                "after_status": str(final_rows_by_id.get(detection_id, {}).get("status", "")).strip(),
+                "before_binding_candidate_count": int(derived_rows_by_id[detection_id].get("binding_candidate_count", 0) or 0),
+                "after_binding_candidate_count": int(final_rows_by_id.get(detection_id, {}).get("binding_candidate_count", 0) or 0),
+            }
+            for detection_id in requested_detection_ids
+            if detection_id in derived_rows_by_id
+        ],
+        "artifacts": {
+            "assets_manifest": str(manifest_path),
+            "bindings_csv": str(resolved_root / "catalog" / "bindings.csv"),
+            "qa_queue_csv": str(resolved_root / "catalog" / "qa_queue.csv"),
+            "derived_detection_manifest": str(final_manifest_path),
+        },
+    }
+    if output_path is not None:
+        report_path = Path(output_path).expanduser().resolve()
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        result["output_path"] = str(report_path)
+    return result
+
+
 def publish_onboarding_draft(
     draft_root: str | Path,
     *,
@@ -436,6 +806,9 @@ def publish_onboarding_draft(
     if not manifest_path.exists():
         raise FileNotFoundError(f"draft does not contain assets manifest: {manifest_path}")
 
+    from pipeline.derived_detection_manifest import derive_game_detection_manifest
+
+    derive_game_detection_manifest(draft_root)
     readiness = validate_onboarding_publish(draft_root, repo_root=repo_root)
     if not readiness.get("can_publish"):
         readiness_name = str(readiness.get("readiness", "unknown"))
@@ -473,6 +846,7 @@ def publish_onboarding_draft(
     try:
         game_payload = load_yaml_file(draft_root / "game.yaml")
         entities_payload = load_yaml_file(draft_root / "entities.yaml")
+        medals_payload = _build_medals_payload(entities_payload)
         hud_payload = load_yaml_file(draft_root / "hud.yaml")
         weights_payload = load_yaml_file(draft_root / "weights.yaml")
         cv_templates: list[dict[str, Any]] = []
@@ -505,6 +879,8 @@ def publish_onboarding_draft(
             published_template_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source_path, published_master_path)
             shutil.copyfile(source_path, published_template_path)
+            file_hash = _sha256_file(published_master_path)
+            patch_tag = str(game_payload.get("patch_tag") or game_payload.get("ui_version") or "draft").strip() or "draft"
 
             asset_id = f"{game}.{detection_row['target_id']}.{asset_family}"
             template_row = {
@@ -522,7 +898,11 @@ def publish_onboarding_draft(
                 "source_url": candidate["source_url"],
                 "source_page_url": candidate["source_page_url"],
                 "source_kind": candidate["source_kind"],
+                "source_license_note": candidate.get("license_note", "unknown"),
                 "license_note": candidate.get("license_note", "unknown"),
+                "patch_tag": patch_tag,
+                "file_hash": file_hash,
+                "qa_status": "verified",
                 "binding_status": "accepted",
             }
             for field, value in dict(detection_row.get("template_semantics", {})).items():
@@ -540,7 +920,11 @@ def publish_onboarding_draft(
                     "source_url": candidate["source_url"],
                     "source_page_url": candidate["source_page_url"],
                     "source_kind": candidate["source_kind"],
+                    "source_license_note": candidate.get("license_note", "unknown"),
                     "license_note": candidate.get("license_note", "unknown"),
+                    "patch_tag": patch_tag,
+                    "file_hash": file_hash,
+                    "qa_status": "verified",
                     "detection_id": detection_row["detection_id"],
                 }
             )
@@ -555,9 +939,17 @@ def publish_onboarding_draft(
 
         runtime_cv_rules = _build_runtime_cv_rules_manifest(published_detection_rows)
         fusion_rules = _build_fusion_rules_manifest(published_detection_rows, detection_schema)
+        provenance_failures = _published_asset_provenance_failures(published_assets)
+        if provenance_failures:
+            fields = ", ".join(
+                f"{row['asset_id']}:{row['field']}"
+                for row in provenance_failures[:5]
+            )
+            raise ValueError(f"published asset provenance is incomplete: {fields}")
 
         dump_yaml_file(stage_root / "game.yaml", game_payload)
         dump_yaml_file(stage_root / "entities.yaml", entities_payload)
+        dump_yaml_file(stage_root / "medals.yaml", medals_payload)
         dump_yaml_file(stage_root / "hud.yaml", hud_payload)
         dump_yaml_file(stage_root / "weights.yaml", weights_payload)
         dump_yaml_file(manifests_root / "cv_templates.yaml", {"templates": cv_templates})
@@ -627,6 +1019,7 @@ def publish_onboarding_draft(
         "artifacts": {
             "game": str(published_root / "game.yaml"),
             "entities": str(published_root / "entities.yaml"),
+            "medals": str(published_root / "medals.yaml"),
             "hud": str(published_root / "hud.yaml"),
             "weights": str(published_root / "weights.yaml"),
             "cv_templates": str(published_root / "manifests" / "cv_templates.yaml"),
@@ -1602,7 +1995,7 @@ def _build_candidate_row(
         "reject_reasons": quality["reject_reasons"],
         "fetch_status": "pending",
         "master_path": "",
-        "license_note": "unknown",
+        "license_note": str(source.get("notes", "")).strip() or "unknown",
     }
 
 
@@ -1690,9 +2083,18 @@ def _build_qa_queue(
     *,
     existing_qa: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    qa_rows: list[dict[str, Any]] = list(existing_qa or [])
-    binding_targets = {row["detection_id"] for row in bindings}
-    bound_candidates = {row["candidate_id"] for row in bindings}
+    qa_rows: list[dict[str, Any]] = [
+        row
+        for row in (existing_qa or [])
+        if str(row.get("status", "")).strip() in {"needs_population_review", "needs_source_review", "info"}
+    ]
+    active_bindings = [
+        row
+        for row in bindings
+        if str(row.get("status", "")).strip() not in {"rejected", "superseded"}
+    ]
+    binding_targets = {row["detection_id"] for row in active_bindings}
+    bound_candidates = {row["candidate_id"] for row in active_bindings}
 
     for detection_row in detection_rows:
         if detection_row["status"] == "missing_semantic_values":
@@ -1871,7 +2273,7 @@ def _build_qa_queue(
             )
 
     bindings_by_detection: dict[str, list[dict[str, Any]]] = {}
-    for binding in bindings:
+    for binding in active_bindings:
         bindings_by_detection.setdefault(str(binding["detection_id"]), []).append(binding)
         qa_rows.append(
             {
@@ -1883,7 +2285,7 @@ def _build_qa_queue(
                 "reason": binding["reason"],
             }
         )
-        if binding.get("weak_name_match"):
+        if _csv_truthy(binding.get("weak_name_match")):
             qa_rows.append(
                 {
                     "item_type": "weak_name_match",
@@ -1894,7 +2296,7 @@ def _build_qa_queue(
                     "reason": "binding is plausible but relies on a weak name match",
                 }
             )
-        if binding.get("lower_trust_source_kind"):
+        if _csv_truthy(binding.get("lower_trust_source_kind")):
             qa_rows.append(
                 {
                     "item_type": "lower_trust_source_kind",
@@ -1905,7 +2307,7 @@ def _build_qa_queue(
                     "reason": "binding candidate is strong but comes from a lower-trust source kind",
                 }
             )
-        if binding.get("image_kind_mismatch"):
+        if _csv_truthy(binding.get("image_kind_mismatch")):
             qa_rows.append(
                 {
                     "item_type": "binding_image_kind_mismatch",
@@ -2310,6 +2712,40 @@ def _write_binding_review_artifacts(
     _write_csv(catalog_root / "source_fetch_log.csv", manifest_payload["source_fetch_log"])
 
 
+def _refresh_phase_status_from_publish_readiness(
+    draft_root: Path,
+    *,
+    ontology: dict[str, list[dict[str, Any]]],
+    detection_manifest: dict[str, Any],
+    candidates: list[dict[str, Any]],
+    bindings: list[dict[str, Any]],
+    qa_queue: list[dict[str, Any]],
+    manifest_payload: dict[str, Any],
+    state_payload: dict[str, Any],
+    repo_root: Path | None = None,
+) -> str:
+    from pipeline.derived_detection_manifest import derive_game_detection_manifest
+
+    derive_game_detection_manifest(draft_root)
+    readiness = validate_onboarding_publish(draft_root, repo_root=repo_root)
+    final_phase_status = "ready_to_publish" if bool(readiness.get("can_publish")) else "bindings_pending"
+    if str(manifest_payload.get("phase_status", "")).strip() == final_phase_status and str(state_payload.get("phase_status", "")).strip() == final_phase_status:
+        return final_phase_status
+    manifest_payload["phase_status"] = final_phase_status
+    state_payload["phase_status"] = final_phase_status
+    _write_binding_review_artifacts(
+        draft_root,
+        ontology=ontology,
+        detection_manifest=detection_manifest,
+        candidates=candidates,
+        bindings=bindings,
+        qa_queue=qa_queue,
+        manifest_payload=manifest_payload,
+        state_payload=state_payload,
+    )
+    return final_phase_status
+
+
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     headers = sorted({key for row in rows for key in row.keys()}) if rows else ["empty"]
     with path.open("w", encoding="utf-8", newline="") as handle:
@@ -2326,6 +2762,15 @@ def _csv_value(value: Any) -> Any:
     if isinstance(value, list):
         return json.dumps(value)
     return value
+
+
+def _csv_truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if not text:
+        return False
+    return text in {"1", "true", "yes", "y", "on"}
 
 
 def _best_accepted_bindings_by_detection(bindings: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -3053,6 +3498,54 @@ def _timestamp_slug() -> str:
     return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
+
+
+def _build_medals_payload(entities_payload: dict[str, Any]) -> dict[str, Any]:
+    raw_events = list(entities_payload.get("events", [])) if isinstance(entities_payload.get("events", []), list) else []
+    medals: list[dict[str, Any]] = []
+    for row in raw_events:
+        if not isinstance(row, dict):
+            continue
+        medals.append(
+            {
+                "medal_id": str(row.get("event_id", "")).strip(),
+                "display_name": str(row.get("display_name", "")).strip(),
+                "aliases": [str(item).strip() for item in list(row.get("aliases", [])) if str(item).strip()],
+                "medal_class": str(row.get("category", "unknown") or "unknown").strip() or "unknown",
+                "category": str(row.get("category", "unknown") or "unknown").strip() or "unknown",
+                "category_source": str(row.get("category_source", "")).strip() or None,
+                "source_page_url": str(row.get("source_page_url", "")).strip() or None,
+                "source_role": str(row.get("source_role", "")).strip() or None,
+                "canonical_display_name_source": str(row.get("canonical_display_name_source", "")).strip() or None,
+                "canonical_id_source": str(row.get("canonical_id_source", "")).strip() or None,
+                "canonical_identity_basis": str(row.get("canonical_identity_basis", "")).strip() or None,
+                "starter_seed_applied": bool(row.get("starter_seed_applied")),
+                "starter_seed_source": str(row.get("starter_seed_source", "")).strip() or None,
+            }
+        )
+    return {"medals": medals}
+
+
+def _published_asset_provenance_failures(published_assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    required_fields = ("source_url", "source_license_note", "patch_tag", "file_hash", "qa_status")
+    failures: list[dict[str, Any]] = []
+    for row in published_assets:
+        if not isinstance(row, dict):
+            continue
+        asset_id = str(row.get("asset_id", "")).strip() or "<unknown>"
+        for field in required_fields:
+            value = str(row.get(field, "")).strip()
+            if not value or (field in {"patch_tag", "source_license_note"} and value.lower() in {"draft", "unknown"}):
+                failures.append({"asset_id": asset_id, "field": field})
+    return failures
+
+
 def _looks_like_direct_image_url(url: str) -> bool:
     return Path(urlparse(url).path).suffix.lower() in _DIRECT_IMAGE_EXTENSIONS
 
@@ -3064,3 +3557,101 @@ def _read_csv_rows(path: Path) -> list[dict[str, str]]:
     if rows and list(rows[0].keys()) == ["empty"]:
         return []
     return rows
+
+
+def _load_candidates_by_id_from_assets_manifest(path: Path) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"assets manifest must be a mapping: {path}")
+    candidates = payload.get("candidates", [])
+    if not isinstance(candidates, list):
+        raise ValueError(f"assets manifest candidates must be a list: {path}")
+    return {
+        candidate_id: row
+        for row in candidates
+        if isinstance(row, dict)
+        and (candidate_id := str(row.get("candidate_id", "")).strip())
+    }
+
+
+def _ordered_unique_nonempty_values(values: list[str]) -> list[str]:
+    ordered: list[str] = []
+    for value in values:
+        cleaned = str(value).strip()
+        if cleaned and cleaned not in ordered:
+            ordered.append(cleaned)
+    return ordered
+
+
+def _load_onboarding_sources_from_manifest(
+    source_manifest: str | Path,
+    *,
+    expected_game: str | None = None,
+) -> tuple[str, list[OnboardingSource]]:
+    manifest_path = Path(source_manifest).expanduser().resolve()
+    manifest_data = load_yaml_file(manifest_path)
+    if not isinstance(manifest_data, dict):
+        raise ValueError(f"source manifest must be a mapping: {manifest_path}")
+    manifest_game = str(manifest_data.get("game", "")).strip()
+    if not manifest_game:
+        raise ValueError(f"source manifest must define game: {manifest_path}")
+    if expected_game is not None and manifest_game != str(expected_game).strip():
+        raise ValueError(f"source manifest game '{manifest_game}' does not match expected game '{expected_game}'")
+    raw_sources = manifest_data.get("sources")
+    if not isinstance(raw_sources, list) or not raw_sources:
+        raise ValueError("source manifest must define a non-empty 'sources' list")
+    sources: list[OnboardingSource] = []
+    for row in raw_sources:
+        if not isinstance(row, dict):
+            raise ValueError("source rows must be objects with 'role' and 'url'")
+        role = str(row.get("role", "")).strip()
+        url = str(row.get("url", "")).strip()
+        notes = str(row.get("notes", "")).strip()
+        if not role or not url:
+            raise ValueError("source rows must include 'role' and 'url'")
+        sources.append(OnboardingSource(role=role, url=url, notes=notes))
+    return manifest_game, sources
+
+
+def _merge_candidates_by_id(
+    existing_candidates: list[dict[str, Any]],
+    new_candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    ordered_ids: list[str] = []
+    for row in existing_candidates + new_candidates:
+        if not isinstance(row, dict):
+            continue
+        candidate_id = str(row.get("candidate_id", "")).strip()
+        if not candidate_id:
+            continue
+        if candidate_id not in merged:
+            ordered_ids.append(candidate_id)
+        merged[candidate_id] = row
+    return [merged[candidate_id] for candidate_id in ordered_ids]
+
+
+def _merge_source_fetch_log_rows(
+    existing_rows: list[dict[str, Any]],
+    new_success_rows: list[dict[str, Any]],
+    new_failure_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    seen_keys: set[tuple[str, str, str, str, str]] = set()
+    for row in [*existing_rows, *new_success_rows, *new_failure_rows]:
+        if not isinstance(row, dict):
+            continue
+        key = (
+            str(row.get("source_page_url", "")).strip(),
+            str(row.get("source_role", "")).strip(),
+            str(row.get("status", "")).strip(),
+            str(row.get("failure_category", "")).strip(),
+            str(row.get("error", "")).strip(),
+        )
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        merged.append(row)
+    return merged

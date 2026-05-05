@@ -1,0 +1,14 @@
+event_mappings:
+  equipment_icon:
+    signal_type: equipment_visibility
+    event_type: ability_seen
+    target_field: equipment_id
+    target_id_source: template_field
+    target_value_field: equipment_id
+  hero_portrait:
+    signal_type: character_identity
+    event_type: pov_character_identified
+    target_field: entity_id
+    target_id_source: template_field
+    target_value_field: entity_id
+    identity_competition: strongest_overlap

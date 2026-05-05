@@ -1,0 +1,102 @@
+{
+  "schema_version": "derived_row_review_v1",
+  "review_id": "derived-row-review-fcc039dc0179",
+  "created_at": "2026-05-05T21:37:52.949557+00:00",
+  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z",
+  "game": "call_of_duty",
+  "detection_id": "call_of_duty.ascender.equipment_icon",
+  "row_snapshot": {
+    "detection_id": "call_of_duty.ascender.equipment_icon",
+    "game_id": "call_of_duty",
+    "target_kind": "equipment",
+    "target_id": "ascender",
+    "target_display_name": "Ascender",
+    "target_aliases": [],
+    "ontology_collection": "abilities",
+    "asset_family": "equipment_icon",
+    "requires_asset": true,
+    "required_semantic_fields": [
+      "equipment_id"
+    ],
+    "template_semantics": {
+      "equipment_id": "ascender"
+    },
+    "template_defaults": {
+      "roi_ref": "ability_hud",
+      "match_method": "TM_CCOEFF_NORMED",
+      "threshold": 0.92,
+      "scale_set": [
+        0.9,
+        1.0,
+        1.1
+      ],
+      "temporal_window": 3
+    },
+    "runtime_rule": {
+      "signal_type": "equipment_visibility",
+      "event_type": "ability_seen",
+      "target_field": "equipment_id",
+      "target_id_source": "template_field",
+      "target_value_field": "equipment_id"
+    },
+    "fusion_rule_ids": [
+      "equipment_visibility_atomic",
+      "ability_or_equipment_plus_medal_combo"
+    ],
+    "status": "unresolved_pending_review",
+    "binding_status": "pending_review",
+    "source_page_url": "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment",
+    "required": true,
+    "blocking_publish": true,
+    "reason": "candidate bindings exist but no accepted binding has been selected yet",
+    "semantic_ids": [
+      "equipment_id"
+    ],
+    "accepted_candidate_id": "null",
+    "accepted_candidate_master_path": "null",
+    "accepted_candidate_source_url": "null",
+    "binding_candidate_count": 1,
+    "provenance_basis": {
+      "ontology_collection": "abilities",
+      "source_page_url": "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Equipment",
+      "source_role": "equipment",
+      "canonical_identity_basis": "source_initial"
+    }
+  },
+  "allowed_review_statuses": [
+    "approved",
+    "rejected",
+    "unreviewed"
+  ],
+  "allowed_decisions": [
+    "accept_candidate",
+    "defer_row",
+    "reject_all_candidates"
+  ],
+  "candidate_option_count": 1,
+  "candidate_options": [
+    {
+      "binding_id": "binding_f10b6fefdadb",
+      "candidate_id": "candidate_51fac440ffe6",
+      "candidate_display_name": "Ascender",
+      "confidence": 0.92,
+      "binding_score": 0.92,
+      "status": "pending_review",
+      "reason": "exact normalized or alias match; high-quality candidate; category member source; icon-like image kind",
+      "source_url": "https://static.wikia.nocookie.net/callofduty/images/a/aa/Ascender_MWIII.png/revision/latest/smart/width/40/height/30?cb=20231103033335",
+      "source_kind": "category_member_image",
+      "candidate_quality": "high",
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/equipment/ascender-40ffe6.png"
+    }
+  ],
+  "review_status": "approved",
+  "review_decision": "accept_candidate",
+  "selected_candidate_id": "candidate_51fac440ffe6",
+  "review_notes": "auto-applied recommended candidate",
+  "apply_status": "applied",
+  "recommended_decision": "accept_candidate",
+  "recommended_candidate_id": "candidate_51fac440ffe6",
+  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/review/derived_row_reviews/call-of-duty-ascender-equipment-icon.review.json",
+  "auto_populated_in_run": false,
+  "applied_at": "2026-05-05T22:38:11.689337+00:00"
+}

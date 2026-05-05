@@ -1,0 +1,102 @@
+{
+  "schema_version": "derived_row_review_v1",
+  "review_id": "derived-row-review-ce20843d6a98",
+  "created_at": "2026-05-05T21:37:52.964120+00:00",
+  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z",
+  "game": "call_of_duty",
+  "detection_id": "call_of_duty.mil.hero_portrait",
+  "row_snapshot": {
+    "detection_id": "call_of_duty.mil.hero_portrait",
+    "game_id": "call_of_duty",
+    "target_kind": "hero",
+    "target_id": "mil",
+    "target_display_name": "Mil",
+    "target_aliases": [],
+    "ontology_collection": "heroes",
+    "asset_family": "hero_portrait",
+    "requires_asset": true,
+    "required_semantic_fields": [
+      "entity_id"
+    ],
+    "template_semantics": {
+      "entity_id": "mil"
+    },
+    "template_defaults": {
+      "roi_ref": "hero_portrait",
+      "match_method": "TM_CCOEFF_NORMED",
+      "threshold": 0.89,
+      "scale_set": [
+        0.9,
+        1.0,
+        1.1
+      ],
+      "temporal_window": 3
+    },
+    "runtime_rule": {
+      "signal_type": "character_identity",
+      "event_type": "pov_character_identified",
+      "target_field": "entity_id",
+      "target_id_source": "template_field",
+      "target_value_field": "entity_id",
+      "identity_competition": "strongest_overlap"
+    },
+    "fusion_rule_ids": [
+      "character_identity_atomic"
+    ],
+    "status": "unresolved_pending_review",
+    "binding_status": "pending_review",
+    "source_page_url": "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Operators",
+    "required": true,
+    "blocking_publish": true,
+    "reason": "candidate bindings exist but no accepted binding has been selected yet",
+    "semantic_ids": [
+      "entity_id"
+    ],
+    "accepted_candidate_id": "null",
+    "accepted_candidate_master_path": "null",
+    "accepted_candidate_source_url": "null",
+    "binding_candidate_count": 1,
+    "provenance_basis": {
+      "ontology_collection": "heroes",
+      "source_page_url": "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Operators",
+      "source_role": "operators",
+      "canonical_identity_basis": "source_initial"
+    }
+  },
+  "allowed_review_statuses": [
+    "approved",
+    "rejected",
+    "unreviewed"
+  ],
+  "allowed_decisions": [
+    "accept_candidate",
+    "defer_row",
+    "reject_all_candidates"
+  ],
+  "candidate_option_count": 1,
+  "candidate_options": [
+    {
+      "binding_id": "binding_3590e12ef828",
+      "candidate_id": "candidate_c0e015dcf2f3",
+      "candidate_display_name": "Mil-Sim",
+      "confidence": 0.8,
+      "binding_score": 0.8,
+      "status": "pending_review",
+      "reason": "target tokens fully contained in candidate name; high-quality candidate; category member source; portrait-like image kind",
+      "source_url": "https://static.wikia.nocookie.net/callofduty/images/8/8c/MilSim_Coalition_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163827",
+      "source_kind": "category_member_image",
+      "candidate_quality": "high",
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/mil_sim-dcf2f3.png"
+    }
+  ],
+  "review_status": "approved",
+  "review_decision": "accept_candidate",
+  "selected_candidate_id": "candidate_c0e015dcf2f3",
+  "review_notes": "auto-applied recommended candidate",
+  "apply_status": "applied",
+  "recommended_decision": "accept_candidate",
+  "recommended_candidate_id": "candidate_c0e015dcf2f3",
+  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/review/derived_row_reviews/call-of-duty-mil-hero-portrait.review.json",
+  "auto_populated_in_run": false,
+  "applied_at": "2026-05-05T22:38:11.705473+00:00"
+}

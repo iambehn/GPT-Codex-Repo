@@ -1,0 +1,86 @@
+{
+  "schema_version": "derived_row_review_v1",
+  "review_id": "derived-row-review-8e9aeddfd2e4",
+  "created_at": "2026-05-05T22:17:00.773767+00:00",
+  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z",
+  "game": "call_of_duty",
+  "detection_id": "call_of_duty.atv.medal_icon",
+  "row_snapshot": {
+    "detection_id": "call_of_duty.atv.medal_icon",
+    "game_id": "call_of_duty",
+    "target_kind": "event",
+    "target_id": "atv",
+    "target_display_name": "ATV",
+    "target_aliases": [],
+    "ontology_collection": "events",
+    "asset_family": "medal_icon",
+    "requires_asset": true,
+    "required_semantic_fields": [
+      "event_row_id"
+    ],
+    "template_semantics": {
+      "event_row_id": "atv"
+    },
+    "template_defaults": {
+      "roi_ref": "medal_area",
+      "match_method": "TM_CCORR_NORMED",
+      "threshold": 0.95,
+      "scale_set": [
+        0.9,
+        1.0
+      ],
+      "temporal_window": 2
+    },
+    "runtime_rule": {
+      "signal_type": "medal_visibility",
+      "event_type": "medal_seen",
+      "target_field": "event_row_id",
+      "target_id_source": "template_field",
+      "target_value_field": "event_row_id"
+    },
+    "fusion_rule_ids": [
+      "medal_visibility_atomic",
+      "ability_or_equipment_plus_medal_combo"
+    ],
+    "status": "unresolved",
+    "binding_status": "unbound",
+    "source_page_url": "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone",
+    "required": true,
+    "blocking_publish": true,
+    "reason": "no accepted binding exists for this required detection row yet",
+    "semantic_ids": [
+      "event_row_id"
+    ],
+    "accepted_candidate_id": "null",
+    "accepted_candidate_master_path": "null",
+    "accepted_candidate_source_url": "null",
+    "binding_candidate_count": 0,
+    "provenance_basis": {
+      "ontology_collection": "events",
+      "source_page_url": "https://callofduty.fandom.com/wiki/Call_of_Duty:_Warzone",
+      "source_role": "events",
+      "canonical_identity_basis": "source_initial"
+    }
+  },
+  "allowed_review_statuses": [
+    "approved",
+    "rejected",
+    "unreviewed"
+  ],
+  "allowed_decisions": [
+    "accept_candidate",
+    "defer_row",
+    "reject_all_candidates"
+  ],
+  "candidate_option_count": 0,
+  "candidate_options": [],
+  "review_status": "unreviewed",
+  "review_decision": "",
+  "selected_candidate_id": "",
+  "review_notes": "",
+  "apply_status": "missing_detection_row",
+  "recommended_decision": "defer_row",
+  "recommended_candidate_id": "",
+  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/review/derived_row_reviews/call-of-duty-atv-medal-icon.review.json",
+  "auto_populated_in_run": false
+}

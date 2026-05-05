@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,16 +9,24 @@ from unittest.mock import patch
 
 from pipeline.onboarding_batch_publish import publish_onboarding_batch
 from pipeline.onboarding_publish_readiness import validate_onboarding_publish
-from pipeline.simple_yaml import load_yaml_file
+from pipeline.simple_yaml import dump_yaml_file, load_yaml_file
 from pipeline.asset_candidate_quality import score_binding_candidate
 from pipeline.game_onboarding import (
+    _build_qa_queue,
     _load_runtime_detection_schema,
     OnboardingSource,
     adapt_game_schema,
     build_onboarding_draft,
+    fill_derived_detection_rows,
     ingest_onboarding_sources,
     onboard_game_from_manifest,
     publish_onboarding_draft,
+    report_unresolved_derived_rows,
+)
+from pipeline.derived_row_review import (
+    apply_derived_row_review,
+    prepare_derived_row_review,
+    summarize_derived_row_review,
 )
 from pipeline.game_pack import load_game_pack
 
@@ -42,6 +51,7 @@ class GameOnboardingTests(unittest.TestCase):
                     'display_name: "Marvel Rivals"',
                     "genre: hero_shooter",
                     "camera_mode: first_person",
+                    "patch_tag: 2026-05",
                     "ui_version: draft",
                 ]
             )
@@ -106,6 +116,7 @@ class GameOnboardingTests(unittest.TestCase):
                     'display_name: "Call of Duty: Warzone"',
                     "genre: battle_royale",
                     "camera_mode: first_person",
+                    "patch_tag: 2026-05",
                     "ui_version: draft",
                 ]
             )
@@ -189,6 +200,7 @@ class GameOnboardingTests(unittest.TestCase):
                     'display_name: "VALORANT"',
                     "genre: tactical_shooter",
                     "camera_mode: first_person",
+                    "patch_tag: 2026-05",
                     "ui_version: draft",
                 ]
             )
@@ -320,10 +332,13 @@ class GameOnboardingTests(unittest.TestCase):
                     "sources:",
                     f"  - role: roster",
                     f"    url: \"{_ref(roster_path)}\"",
+                    '    notes: "internal_review_required"',
                     f"  - role: abilities",
                     f"    url: \"{_ref(abilities_path)}\"",
+                    '    notes: "internal_review_required"',
                     f"  - role: medals",
                     f"    url: \"{_ref(medals_path)}\"",
+                    '    notes: "internal_review_required"',
                 ]
             )
             + "\n",
@@ -430,6 +445,38 @@ class GameOnboardingTests(unittest.TestCase):
                     "sources:",
                     f"  - role: operators",
                     f"    url: \"{operators_path.resolve().as_uri()}\"",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return manifest_path
+
+    def _write_extra_marvel_ability_source(self, root: Path, *, ability_name: str, image_name: str = "extra_ability.png") -> Path:
+        image_root = root / "extra_marvel_images"
+        image_root.mkdir(parents=True, exist_ok=True)
+        ability_png = image_root / image_name
+        ability_png.write_bytes(_ONE_BY_ONE_PNG)
+        abilities_html = f"""
+        <html><body><div class="mw-parser-output">
+          <h2>Abilities</h2>
+          <ul>
+            <li>{ability_name}</li>
+          </ul>
+          <img src="{ability_png.resolve().as_uri()}" alt="{ability_name} icon" />
+        </div></body></html>
+        """
+        abilities_path = root / "extra_ability.html"
+        abilities_path.write_text(abilities_html, encoding="utf-8")
+        manifest_path = root / "extra_ability_sources.yaml"
+        manifest_path.write_text(
+            "\n".join(
+                [
+                    "game: marvel_rivals",
+                    "sources:",
+                    "  - role: abilities",
+                    f'    url: "{abilities_path.resolve().as_uri()}"',
+                    '    notes: "internal_review_required"',
                 ]
             )
             + "\n",
@@ -1937,6 +1984,92 @@ class GameOnboardingTests(unittest.TestCase):
             self.assertEqual(hero_row["canonical_display_name_source"], "starter_seed")
             self.assertTrue(any(row["item_type"] == "canonical_identity_preference_applied" for row in qa_rows))
 
+    def test_build_qa_queue_drops_stale_binding_rows_from_existing_queue(self) -> None:
+        detection_rows = [
+            {
+                "detection_id": "call_of_duty.alex_keller.hero_portrait",
+                "target_id": "alex_keller",
+                "target_display_name": "Alex Keller",
+                "status": "ready",
+                "requires_asset": True,
+            }
+        ]
+        candidates = [
+            {
+                "candidate_id": "candidate_1",
+                "display_name": "Alex Keller",
+                "anchor_source": "text",
+                "anchor_ambiguous": False,
+                "paragraph_referential": False,
+                "raw_label": "Alex Keller",
+                "candidate_quality": "high",
+                "quality_reasons": [],
+                "artwork_like": False,
+                "generic_page_art": False,
+                "source_page_url": "https://example.test/alex-keller",
+                "binding_key": "alex keller",
+                "asset_family": "hero_portrait",
+                "source_kind": "category_member_image",
+            }
+        ]
+        bindings = [
+            {
+                "detection_id": "call_of_duty.alex_keller.hero_portrait",
+                "target_id": "alex_keller",
+                "target_display_name": "Alex Keller",
+                "candidate_id": "candidate_1",
+                "status": "accepted",
+                "reason": "clean accepted binding",
+                "weak_name_match": "False",
+                "lower_trust_source_kind": "False",
+                "image_kind_mismatch": "False",
+                "confidence": 0.92,
+            }
+        ]
+        existing_qa = [
+            {
+                "item_type": "weak_name_match",
+                "detection_id": "call_of_duty.alex_keller.hero_portrait",
+                "target_id": "alex_keller",
+                "display_name": "Alex Keller",
+                "status": "needs_binding_review",
+                "reason": "stale binding heuristic",
+            },
+            {
+                "item_type": "lower_trust_source_kind",
+                "detection_id": "call_of_duty.alex_keller.hero_portrait",
+                "target_id": "alex_keller",
+                "display_name": "Alex Keller",
+                "status": "needs_binding_review",
+                "reason": "stale binding heuristic",
+            },
+            {
+                "item_type": "binding_image_kind_mismatch",
+                "detection_id": "call_of_duty.alex_keller.hero_portrait",
+                "target_id": "alex_keller",
+                "display_name": "Alex Keller",
+                "status": "needs_binding_review",
+                "reason": "stale binding heuristic",
+            },
+            {
+                "item_type": "missing_classification",
+                "target_kind": "ability",
+                "target_id": "armor_plates",
+                "display_name": "Armor Plates",
+                "status": "needs_population_review",
+                "reason": "population issue should persist",
+            },
+        ]
+
+        qa_rows = _build_qa_queue(detection_rows, candidates, bindings, existing_qa=existing_qa)
+
+        item_types = [row["item_type"] for row in qa_rows]
+        self.assertIn("binding_candidate", item_types)
+        self.assertIn("missing_classification", item_types)
+        self.assertNotIn("weak_name_match", item_types)
+        self.assertNotIn("lower_trust_source_kind", item_types)
+        self.assertNotIn("binding_image_kind_mismatch", item_types)
+
     def test_source_ingestion_reports_conflicting_source_identity_match(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             repo_root = Path(tempdir)
@@ -2121,6 +2254,7 @@ class GameOnboardingTests(unittest.TestCase):
     def test_publish_only_accepted_bindings_generate_templates(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
             manifest_path = self._write_sources(repo_root)
             result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
             draft_root = Path(result["draft_root"])
@@ -2135,14 +2269,474 @@ class GameOnboardingTests(unittest.TestCase):
             self.assertEqual(second_publish["contract_consistency"]["status"], "canonical")
             published_templates = Path(second_publish["artifacts"]["cv_templates"]).read_text(encoding="utf-8")
             self.assertIn("asset_id:", published_templates)
+            self.assertIn("file_hash:", published_templates)
+            self.assertIn("patch_tag:", published_templates)
+            self.assertIn("qa_status:", published_templates)
             self.assertTrue(Path(second_publish["artifacts"]["runtime_cv_rules"]).exists())
             self.assertTrue(Path(second_publish["artifacts"]["fusion_rules"]).exists())
             published_detection_manifest = Path(second_publish["artifacts"]["detection_manifest"]).read_text(encoding="utf-8")
             self.assertIn("published_asset_id:", published_detection_manifest)
+            published_assets_manifest = json.loads(Path(second_publish["artifacts"]["assets_manifest"]).read_text(encoding="utf-8"))
+            published_asset = published_assets_manifest["published_assets"][0]
+            self.assertTrue(str(published_asset["file_hash"]).startswith("sha256:"))
+            self.assertEqual(published_asset["qa_status"], "verified")
+
+    def test_publish_blocks_on_unresolved_required_derived_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+            self._accept_all_bindings(draft_root)
+
+            entities = load_yaml_file(draft_root / "entities.yaml")
+            entities["abilities"].append(
+                {
+                    "ability_id": "culling_turret",
+                    "display_name": "Culling Turret",
+                    "aliases": ["culling turret"],
+                    "source_page_url": "https://example.com/abilities",
+                    "source_role": "abilities",
+                }
+            )
+            dump_yaml_file(draft_root / "entities.yaml", entities)
+
+            with self.assertRaisesRegex(ValueError, "required derived detection row"):
+                publish_onboarding_draft(draft_root, repo_root=repo_root)
+
+    def test_report_unresolved_derived_rows_lists_required_unresolved_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+
+            entities = load_yaml_file(draft_root / "entities.yaml")
+            entities["abilities"].append(
+                {
+                    "ability_id": "culling_turret",
+                    "display_name": "Culling Turret",
+                    "aliases": ["culling turret"],
+                    "source_page_url": "https://example.com/abilities",
+                    "source_role": "abilities",
+                    "class": "ability",
+                }
+            )
+            dump_yaml_file(draft_root / "entities.yaml", entities)
+
+            report = report_unresolved_derived_rows(draft_root)
+            self.assertTrue(report["ok"])
+            self.assertGreaterEqual(report["unresolved_required_count"], 1)
+            culling_row = next(row for row in report["rows"] if row["target_display_name"] == "Culling Turret")
+            self.assertEqual(culling_row["asset_family"], "equipment_icon")
+            self.assertEqual(culling_row["current_candidate_count"], 0)
+
+    def test_fill_derived_detection_rows_rebuilds_selected_row_bindings_from_extra_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+
+            entities = load_yaml_file(draft_root / "entities.yaml")
+            entities["abilities"].append(
+                {
+                    "ability_id": "culling_turret",
+                    "display_name": "Culling Turret",
+                    "aliases": ["culling turret"],
+                    "source_page_url": "https://example.com/abilities",
+                    "source_role": "abilities",
+                    "class": "ability",
+                }
+            )
+            dump_yaml_file(draft_root / "entities.yaml", entities)
+
+            initial_report = report_unresolved_derived_rows(draft_root)
+            detection_id = next(
+                row["detection_id"]
+                for row in initial_report["rows"]
+                if row["target_display_name"] == "Culling Turret"
+            )
+            extra_manifest = self._write_extra_marvel_ability_source(repo_root, ability_name="Culling Turret")
+            fill_result = fill_derived_detection_rows(
+                draft_root,
+                [detection_id],
+                source_manifests=[extra_manifest],
+                repo_root=repo_root,
+            )
+            self.assertTrue(fill_result["ok"])
+            self.assertEqual(fill_result["counts"]["new_candidates_matched"], 1)
+            self.assertEqual(fill_result["row_updates"][0]["before_status"], "unresolved")
+            self.assertEqual(fill_result["row_updates"][0]["after_status"], "unresolved_pending_review")
+
+            bindings = self._read_csv(draft_root / "catalog" / "bindings.csv")
+            self.assertTrue(
+                any(
+                    row["detection_id"] == detection_id
+                    and row["candidate_display_name"] == "Culling Turret"
+                    for row in bindings
+                )
+            )
+
+    def test_prepare_derived_row_review_creates_one_review_file_per_selected_row(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+            self._accept_all_bindings(draft_root)
+
+            entities = load_yaml_file(draft_root / "entities.yaml")
+            entities["abilities"].append(
+                {
+                    "ability_id": "culling_turret",
+                    "display_name": "Culling Turret",
+                    "aliases": ["culling turret"],
+                    "source_page_url": "https://example.com/abilities",
+                    "source_role": "abilities",
+                    "class": "ability",
+                }
+            )
+            dump_yaml_file(draft_root / "entities.yaml", entities)
+
+            fill_manifest = self._write_extra_marvel_ability_source(repo_root, ability_name="Culling Turret")
+            fill_report = report_unresolved_derived_rows(draft_root)
+            detection_id = next(
+                row["detection_id"]
+                for row in fill_report["rows"]
+                if row["target_display_name"] == "Culling Turret"
+            )
+            fill_derived_detection_rows(
+                draft_root,
+                [detection_id],
+                source_manifests=[fill_manifest],
+                repo_root=repo_root,
+            )
+
+            prepared = prepare_derived_row_review(draft_root, [detection_id])
+            self.assertTrue(prepared["ok"])
+            self.assertEqual(prepared["item_count"], 1)
+            review_file = Path(prepared["items"][0]["review_file_path"])
+            self.assertTrue(review_file.exists())
+            payload = json.loads(review_file.read_text(encoding="utf-8"))
+            self.assertEqual(payload["schema_version"], "derived_row_review_v1")
+            self.assertEqual(payload["candidate_option_count"], 1)
+            self.assertEqual(payload["recommended_decision"], "accept_candidate")
+
+    def test_apply_derived_row_review_accept_candidate_resolves_selected_row(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+            self._accept_all_bindings(draft_root)
+
+            entities = load_yaml_file(draft_root / "entities.yaml")
+            entities["abilities"].append(
+                {
+                    "ability_id": "culling_turret",
+                    "display_name": "Culling Turret",
+                    "aliases": ["culling turret"],
+                    "source_page_url": "https://example.com/abilities",
+                    "source_role": "abilities",
+                    "class": "ability",
+                }
+            )
+            dump_yaml_file(draft_root / "entities.yaml", entities)
+
+            fill_manifest = self._write_extra_marvel_ability_source(repo_root, ability_name="Culling Turret")
+            fill_report = report_unresolved_derived_rows(draft_root)
+            detection_id = next(
+                row["detection_id"]
+                for row in fill_report["rows"]
+                if row["target_display_name"] == "Culling Turret"
+            )
+            fill_derived_detection_rows(
+                draft_root,
+                [detection_id],
+                source_manifests=[fill_manifest],
+                repo_root=repo_root,
+            )
+
+            prepared = prepare_derived_row_review(draft_root, [detection_id])
+            review_file = Path(prepared["items"][0]["review_file_path"])
+            review_payload = json.loads(review_file.read_text(encoding="utf-8"))
+            review_payload["review_status"] = "approved"
+            review_payload["review_decision"] = "accept_candidate"
+            review_payload["selected_candidate_id"] = review_payload["candidate_options"][0]["candidate_id"]
+            review_payload["review_notes"] = "resolved via targeted row review"
+            review_file.write_text(json.dumps(review_payload, indent=2), encoding="utf-8")
+
+            applied = apply_derived_row_review(review_file)
+            self.assertTrue(applied["ok"])
+            self.assertEqual(applied["applied_count"], 1)
+
+            bindings = self._read_csv(draft_root / "catalog" / "bindings.csv")
+            accepted = [
+                row
+                for row in bindings
+                if row["detection_id"] == detection_id and row["status"] == "accepted"
+            ]
+            self.assertEqual(len(accepted), 1)
+            self.assertEqual(accepted[0]["derived_row_review_decision"], "accept_candidate")
+
+            derived_manifest = load_yaml_file(draft_root / "manifests" / "derived_detection_manifest.yaml")
+            selected_row = next(
+                row
+                for row in derived_manifest["rows"]
+                if row["detection_id"] == detection_id
+            )
+            self.assertEqual(selected_row["status"], "resolved")
+
+    def test_summarize_derived_row_review_from_draft_root_reports_auto_accept_eligibility(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+            self._accept_all_bindings(draft_root)
+
+            entities = load_yaml_file(draft_root / "entities.yaml")
+            entities["abilities"].append(
+                {
+                    "ability_id": "culling_turret",
+                    "display_name": "Culling Turret",
+                    "aliases": ["culling turret"],
+                    "source_page_url": "https://example.com/abilities",
+                    "source_role": "abilities",
+                    "class": "ability",
+                }
+            )
+            dump_yaml_file(draft_root / "entities.yaml", entities)
+
+            fill_manifest = self._write_extra_marvel_ability_source(repo_root, ability_name="Culling Turret")
+            fill_report = report_unresolved_derived_rows(draft_root)
+            detection_id = next(
+                row["detection_id"]
+                for row in fill_report["rows"]
+                if row["target_display_name"] == "Culling Turret"
+            )
+            fill_derived_detection_rows(
+                draft_root,
+                [detection_id],
+                source_manifests=[fill_manifest],
+                repo_root=repo_root,
+            )
+            prepare_derived_row_review(draft_root, [detection_id])
+
+            summary = summarize_derived_row_review(draft_root)
+            self.assertTrue(summary["ok"])
+            self.assertEqual(summary["review_file_count"], 1)
+            self.assertEqual(summary["pending_count"], 1)
+            self.assertEqual(summary["auto_accept_eligible_count"], 1)
+            self.assertEqual(summary["rows"][0]["detection_id"], detection_id)
+            self.assertTrue(summary["rows"][0]["auto_accept_eligible"])
+
+    def test_apply_derived_row_review_accept_recommended_uses_single_recommended_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+            self._accept_all_bindings(draft_root)
+
+            entities = load_yaml_file(draft_root / "entities.yaml")
+            entities["abilities"].append(
+                {
+                    "ability_id": "culling_turret",
+                    "display_name": "Culling Turret",
+                    "aliases": ["culling turret"],
+                    "source_page_url": "https://example.com/abilities",
+                    "source_role": "abilities",
+                    "class": "ability",
+                }
+            )
+            dump_yaml_file(draft_root / "entities.yaml", entities)
+
+            fill_manifest = self._write_extra_marvel_ability_source(repo_root, ability_name="Culling Turret")
+            fill_report = report_unresolved_derived_rows(draft_root)
+            detection_id = next(
+                row["detection_id"]
+                for row in fill_report["rows"]
+                if row["target_display_name"] == "Culling Turret"
+            )
+            fill_derived_detection_rows(
+                draft_root,
+                [detection_id],
+                source_manifests=[fill_manifest],
+                repo_root=repo_root,
+            )
+
+            prepared = prepare_derived_row_review(draft_root, [detection_id])
+            review_file = Path(prepared["items"][0]["review_file_path"])
+            applied = apply_derived_row_review(review_file, accept_recommended=True)
+            self.assertTrue(applied["ok"])
+            self.assertEqual(applied["applied_count"], 1)
+            self.assertTrue(applied["accept_recommended"])
+
+            updated_review_payload = json.loads(review_file.read_text(encoding="utf-8"))
+            self.assertEqual(updated_review_payload["review_status"], "approved")
+            self.assertEqual(updated_review_payload["review_decision"], "accept_candidate")
+            self.assertTrue(updated_review_payload["selected_candidate_id"])
+
+            derived_manifest = load_yaml_file(draft_root / "manifests" / "derived_detection_manifest.yaml")
+            selected_row = next(
+                row
+                for row in derived_manifest["rows"]
+                if row["detection_id"] == detection_id
+            )
+            self.assertEqual(selected_row["status"], "resolved")
+            readiness = validate_onboarding_publish(draft_root, repo_root=repo_root)
+            if readiness["can_publish"]:
+                state_payload = json.loads((draft_root / "manifests" / "onboarding_state.json").read_text(encoding="utf-8"))
+                manifest_payload = json.loads((draft_root / "manifests" / "assets_manifest.json").read_text(encoding="utf-8"))
+                self.assertEqual(state_payload["phase_status"], "ready_to_publish")
+                self.assertEqual(manifest_payload["phase_status"], "ready_to_publish")
+
+    def test_apply_derived_row_review_only_auto_populated_skips_manual_approved_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+            self._accept_all_bindings(draft_root)
+
+            entities = load_yaml_file(draft_root / "entities.yaml")
+            entities["abilities"].extend(
+                [
+                    {
+                        "ability_id": "turret_overload",
+                        "display_name": "Turret Overload",
+                        "aliases": ["turret overload"],
+                        "source_page_url": "https://example.com/abilities",
+                        "source_role": "abilities",
+                        "class": "ability",
+                    },
+                    {
+                        "ability_id": "empty_row_ability",
+                        "display_name": "Empty Row Ability",
+                        "aliases": ["empty row ability"],
+                        "source_page_url": "https://example.com/abilities",
+                        "source_role": "abilities",
+                        "class": "ability",
+                    },
+                ]
+            )
+            dump_yaml_file(draft_root / "entities.yaml", entities)
+
+            fill_manifest_b = self._write_extra_marvel_ability_source(repo_root, ability_name="Turret Overload")
+            fill_report = report_unresolved_derived_rows(draft_root)
+            overload_detection_id = next(
+                row["detection_id"]
+                for row in fill_report["rows"]
+                if row["target_display_name"] == "Turret Overload"
+            )
+            empty_detection_id = next(
+                row["detection_id"]
+                for row in fill_report["rows"]
+                if row["target_display_name"] == "Empty Row Ability"
+            )
+            fill_derived_detection_rows(
+                draft_root,
+                [overload_detection_id],
+                source_manifests=[fill_manifest_b],
+                repo_root=repo_root,
+            )
+
+            prepared = prepare_derived_row_review(draft_root, [empty_detection_id, overload_detection_id])
+            overload_review_file = next(
+                Path(item["review_file_path"])
+                for item in prepared["items"]
+                if item["detection_id"] == overload_detection_id
+            )
+            overload_review_payload = json.loads(overload_review_file.read_text(encoding="utf-8"))
+            overload_review_payload["review_status"] = "approved"
+            overload_review_payload["review_decision"] = "accept_candidate"
+            overload_review_payload["selected_candidate_id"] = overload_review_payload["candidate_options"][0]["candidate_id"]
+            overload_review_payload["review_notes"] = "manual approved review should be skipped"
+            overload_review_file.write_text(json.dumps(overload_review_payload, indent=2), encoding="utf-8")
+
+            applied = apply_derived_row_review(
+                draft_root / "review" / "derived_row_reviews",
+                reject_zero_candidate=True,
+                only_auto_populated=True,
+            )
+            self.assertTrue(applied["ok"])
+            self.assertEqual(applied["applied_count"], 1)
+            self.assertEqual(applied["skipped_count"], 1)
+
+            bindings = self._read_csv(draft_root / "catalog" / "bindings.csv")
+            overload_accepted = [
+                row
+                for row in bindings
+                if row["detection_id"] == overload_detection_id and row["status"] == "accepted"
+            ]
+            self.assertEqual(len(overload_accepted), 0)
+
+            empty_review_file = next(
+                Path(item["review_file_path"])
+                for item in prepared["items"]
+                if item["detection_id"] == empty_detection_id
+            )
+            empty_review_payload = json.loads(empty_review_file.read_text(encoding="utf-8"))
+            self.assertEqual(empty_review_payload["review_decision"], "reject_all_candidates")
+            self.assertEqual(empty_review_payload["apply_status"], "applied")
+
+    def test_apply_derived_row_review_reject_zero_candidate_auto_populates_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+            self._accept_all_bindings(draft_root)
+
+            entities = load_yaml_file(draft_root / "entities.yaml")
+            entities["abilities"].append(
+                {
+                    "ability_id": "empty_row_ability",
+                    "display_name": "Empty Row Ability",
+                    "aliases": ["empty row ability"],
+                    "source_page_url": "https://example.com/abilities",
+                    "source_role": "abilities",
+                    "class": "ability",
+                }
+            )
+            dump_yaml_file(draft_root / "entities.yaml", entities)
+
+            fill_report = report_unresolved_derived_rows(draft_root)
+            detection_id = next(
+                row["detection_id"]
+                for row in fill_report["rows"]
+                if row["target_display_name"] == "Empty Row Ability"
+            )
+            prepared = prepare_derived_row_review(draft_root, [detection_id])
+            review_file = Path(prepared["items"][0]["review_file_path"])
+
+            applied = apply_derived_row_review(
+                review_file,
+                reject_zero_candidate=True,
+                only_auto_populated=True,
+            )
+            self.assertTrue(applied["ok"])
+            self.assertEqual(applied["applied_count"], 1)
+
+            review_payload = json.loads(review_file.read_text(encoding="utf-8"))
+            self.assertEqual(review_payload["review_decision"], "reject_all_candidates")
+            self.assertEqual(review_payload["review_status"], "approved")
 
     def test_publish_fails_when_generated_contracts_drift_from_detection_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
             manifest_path = self._write_sources(repo_root)
             result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
             draft_root = Path(result["draft_root"])
@@ -2155,6 +2749,7 @@ class GameOnboardingTests(unittest.TestCase):
     def test_load_game_pack_supports_published_pack_structure(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
             manifest_path = self._write_sources(repo_root)
             result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
             draft_root = Path(result["draft_root"])

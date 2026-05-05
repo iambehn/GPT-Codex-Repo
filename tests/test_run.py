@@ -22,20 +22,28 @@ from run import (
     REPO_ROOT,
     _proxy_scan_batch_report_path,
     _sidecar_path,
+    run_apply_derived_row_review,
     main as run_main,
     run_adapt_game_schema,
     run_build_onboarding_draft,
+    run_derive_game_detection_manifest,
+    run_fill_derived_detection_rows,
     run_ingest_game_sources,
     run_audit_pipeline_contracts,
     run_apply_proxy_review,
     run_apply_onboarding_identity_review,
     run_cleanup_proxy_review,
     run_cleanup_onboarding_identity_review,
+    run_create_workflow_run,
     run_onboard_game,
     run_publish_onboarding_batch,
+    run_prepare_derived_row_review,
+    run_query_workflow_queue,
     run_report_onboarding_batch,
+    run_report_unresolved_derived_rows,
     run_publish_onboarding_draft,
     run_prepare_onboarding_identity_review,
+    run_summarize_derived_row_review,
     run_validate_onboarding_publish,
     run_query_clip_registry,
     run_refresh_clip_registry,
@@ -228,6 +236,46 @@ class RunTests(unittest.TestCase):
             result = run_build_onboarding_draft(Path(tempdir))
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_onboarding_draft_build")
+
+    def test_run_report_unresolved_derived_rows_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_report_unresolved_derived_rows(Path(tempdir))
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_unresolved_derived_rows_report")
+
+    def test_run_derive_game_detection_manifest_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_derive_game_detection_manifest(Path(tempdir))
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_derived_detection_manifest")
+
+    def test_run_fill_derived_detection_rows_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_fill_derived_detection_rows(
+                Path(tempdir),
+                detection_ids=["demo.row"],
+                source_manifests=["/tmp/demo.yaml"],
+            )
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_derived_row_fill")
+
+    def test_run_prepare_derived_row_review_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_prepare_derived_row_review(Path(tempdir), detection_ids=["demo.row"])
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_derived_row_review_preparation")
+
+    def test_run_apply_derived_row_review_returns_invalid_status_for_missing_review_target(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_apply_derived_row_review(Path(tempdir) / "missing.review.json")
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_derived_row_review_application")
+
+    def test_run_summarize_derived_row_review_returns_invalid_status_for_missing_review_target(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_summarize_derived_row_review(Path(tempdir) / "missing.review.json")
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_derived_row_review_summary")
 
     def test_run_publish_onboarding_draft_returns_invalid_status_for_missing_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -690,7 +738,7 @@ class RunTests(unittest.TestCase):
             stdout = io.StringIO()
             with patch(
                 "run.run_query_clip_registry",
-                return_value={"ok": True, "row_count": 1, "rows": []},
+                return_value={"ok": True, "row_count": 10, "rows": [{"id": index} for index in range(10)]},
             ) as mock_run:
                 with redirect_stdout(stdout):
                     exit_code = run_main()
@@ -698,6 +746,1827 @@ class RunTests(unittest.TestCase):
             mock_run.assert_called_once()
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
+            self.assertIn("rows_sample", payload)
+            self.assertNotIn("rows", payload)
+            self.assertEqual(payload["rows_omitted_count"], 2)
+            self.assertTrue(payload["truncated"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_query_clip_registry_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--query-clip-registry", "--mode", "fused-events", "--full-json"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_query_clip_registry",
+                return_value={"ok": True, "row_count": 10, "rows": [{"id": index} for index in range(10)]},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once()
+            payload = json.loads(stdout.getvalue())
+            self.assertIn("rows", payload)
+            self.assertNotIn("rows_sample", payload)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_export_v2_training_datasets(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--export-v2-training-datasets",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--output-root",
+                "/tmp/v2-datasets",
+                "--hook-mode",
+                "natural",
+                "--platform",
+                "youtube",
+                "--evidence-mode",
+                "real_only",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_export_v2_training_datasets",
+                return_value={"ok": True, "dataset_export_id": "v2-training-123", "manifest_path": "/tmp/v2-datasets/out.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                registry_path="/tmp/registry.sqlite",
+                output_root="/tmp/v2-datasets",
+                game="marvel_rivals",
+                fixture_id=None,
+                candidate_id=None,
+                lifecycle_state=None,
+                hook_archetype=None,
+                hook_mode="natural",
+                platform="youtube",
+                account_id=None,
+                evidence_mode="real_only",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_run_shadow_ranking_replay(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--run-shadow-ranking-replay",
+                "--dataset-manifest",
+                "/tmp/dataset.manifest.json",
+                "--model-family",
+                "deterministic_shadow_baseline",
+                "--model-version",
+                "v1",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_run_shadow_ranking_replay",
+                return_value={"ok": True, "manifest_path": "/tmp/replay.json", "row_count": 2},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/dataset.manifest.json",
+                model_path=None,
+                model_family="deterministic_shadow_baseline",
+                model_version="v1",
+                output_path=None,
+                game=None,
+                fixture_id=None,
+                candidate_id=None,
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_compare_shadow_ranking_replay(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--compare-shadow-ranking-replay",
+                "/tmp/replay.shadow_ranking_replay.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_compare_shadow_ranking_replay",
+                return_value={"ok": True, "report_path": "/tmp/comparison.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/replay.shadow_ranking_replay.json",
+                output_path=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_train_shadow_ranking_model(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--train-shadow-ranking-model",
+                "--dataset-manifest",
+                "/tmp/dataset.manifest.json",
+                "--model-family",
+                "gradient_boosted_shadow_ranker",
+                "--model-output-path",
+                "/tmp/model.json",
+                "--training-target",
+                "approved_or_selected_probability",
+                "--split-key",
+                "candidate_id",
+                "--train-fraction",
+                "0.75",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_train_shadow_ranking_model",
+                return_value={"ok": True, "manifest_path": "/tmp/model.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/dataset.manifest.json",
+                model_output_path="/tmp/model.json",
+                model_family="gradient_boosted_shadow_ranker",
+                training_target="approved_or_selected_probability",
+                split_key="candidate_id",
+                train_fraction=0.75,
+                game=None,
+                fixture_id=None,
+                candidate_id=None,
+                platform=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_compare_shadow_model_families(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--compare-shadow-model-families",
+                "/tmp/linear.shadow_ranking_experiment.json",
+                "/tmp/boosted.shadow_ranking_experiment.json",
+                "--training-target",
+                "approved_or_selected_probability",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--output-path",
+                "/tmp/families.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_compare_shadow_model_families",
+                return_value={"ok": True, "manifest_path": "/tmp/families.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                ["/tmp/linear.shadow_ranking_experiment.json", "/tmp/boosted.shadow_ranking_experiment.json"],
+                output_path="/tmp/families.json",
+                training_target="approved_or_selected_probability",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_run_shadow_benchmark_matrix(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--run-shadow-benchmark-matrix",
+                "--dataset-manifest",
+                "/tmp/dataset.manifest.json",
+                "--policy-path",
+                "/tmp/policy.json",
+                "--model-family",
+                "gradient_boosted_shadow_ranker",
+                "--training-target",
+                "export_selection_probability",
+                "--platform",
+                "youtube",
+                "--output-path",
+                "/tmp/benchmark.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_run_shadow_benchmark_matrix",
+                return_value={"ok": True, "manifest_path": "/tmp/benchmark.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/dataset.manifest.json",
+                policy_path="/tmp/policy.json",
+                model_family="gradient_boosted_shadow_ranker",
+                training_target="export_selection_probability",
+                split_key="fixture_id",
+                train_fraction=0.8,
+                game=None,
+                platform="youtube",
+                output_path="/tmp/benchmark.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_shadow_benchmark_matrix(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-shadow-benchmark-matrix",
+                "/tmp/benchmark.json",
+                "--training-target",
+                "approved_or_selected_probability",
+                "--recommendation-decision",
+                "prefer_shadow",
+                "--model-family",
+                "linear_shadow_ranker",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_shadow_benchmark_matrix",
+                return_value={"ok": True, "row_count": 1},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/benchmark.json",
+                registry_path=None,
+                training_target="approved_or_selected_probability",
+                game=None,
+                platform=None,
+                recommendation_decision="prefer_shadow",
+                model_family="linear_shadow_ranker",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_review_shadow_benchmark_results(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--review-shadow-benchmark-results",
+                "/tmp/one.shadow_benchmark_matrix.json",
+                "/tmp/two.shadow_benchmark_matrix.json",
+                "--training-target",
+                "export_selection_probability",
+                "--model-family",
+                "gradient_boosted_shadow_ranker",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--output-path",
+                "/tmp/review.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_review_shadow_benchmark_results",
+                return_value={"ok": True, "manifest_path": "/tmp/review.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                ["/tmp/one.shadow_benchmark_matrix.json", "/tmp/two.shadow_benchmark_matrix.json"],
+                output_path="/tmp/review.json",
+                training_target="export_selection_probability",
+                model_family="gradient_boosted_shadow_ranker",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_compare_shadow_benchmark_evidence_modes(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--compare-shadow-benchmark-evidence-modes",
+                "/tmp/real.shadow_benchmark_review.json",
+                "/tmp/synthetic.shadow_benchmark_review.json",
+                "--training-target",
+                "post_performance_score",
+                "--platform",
+                "youtube",
+                "--output-path",
+                "/tmp/compare.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_compare_shadow_benchmark_evidence_modes",
+                return_value={"ok": True, "manifest_path": "/tmp/compare.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/real.shadow_benchmark_review.json",
+                "/tmp/synthetic.shadow_benchmark_review.json",
+                output_path="/tmp/compare.json",
+                training_target="post_performance_score",
+                game=None,
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_shadow_target_readiness(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-shadow-target-readiness",
+                "/tmp/review.shadow_benchmark_review.json",
+                "--training-target",
+                "post_performance_score",
+                "--model-family",
+                "linear_shadow_ranker",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_shadow_target_readiness",
+                return_value={"ok": True, "row_count": 1},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/review.shadow_benchmark_review.json",
+                registry_path=None,
+                training_target="post_performance_score",
+                game="marvel_rivals",
+                platform="youtube",
+                model_family="linear_shadow_ranker",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_evaluate_shadow_ranking_model(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--evaluate-shadow-ranking-model",
+                "--model-path",
+                "/tmp/model.json",
+                "--dataset-manifest",
+                "/tmp/dataset.manifest.json",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_evaluate_shadow_ranking_model",
+                return_value={"ok": True, "manifest_path": "/tmp/experiment.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                model_path="/tmp/model.json",
+                dataset_manifest="/tmp/dataset.manifest.json",
+                output_path=None,
+                game=None,
+                fixture_id=None,
+                candidate_id=None,
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_evaluate_shadow_experiment_policy(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--evaluate-shadow-experiment-policy",
+                "--experiment-manifest",
+                "/tmp/experiment.shadow_ranking_experiment.json",
+                "--policy-path",
+                "/tmp/policy.shadow_evaluation_policy.json",
+                "--target",
+                "export_selection_probability",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_evaluate_shadow_experiment_policy",
+                return_value={"ok": True, "manifest_path": "/tmp/ledger.shadow_experiment_ledger.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/experiment.shadow_ranking_experiment.json",
+                policy_path="/tmp/policy.shadow_evaluation_policy.json",
+                target="export_selection_probability",
+                output_path=None,
+                game=None,
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_shadow_experiment_ledger(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-shadow-experiment-ledger",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--target",
+                "post_performance_score",
+                "--training-target",
+                "approved_or_selected_probability",
+                "--recommendation-decision",
+                "prefer_shadow",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_shadow_experiment_ledger",
+                return_value={"ok": True, "target_count": 1, "targets": []},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                registry_path="/tmp/registry.sqlite",
+                target="post_performance_score",
+                game=None,
+                platform=None,
+                recommendation_decision="prefer_shadow",
+                training_target="approved_or_selected_probability",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_create_workflow_run(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--create-workflow-run", "--workflow-type", "selection_queue"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_create_workflow_run",
+                return_value={"ok": True, "workflow_run_id": "workflow-123", "manifest_path": "/tmp/workflow.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "selection_queue",
+                registry_path=None,
+                output_path=None,
+                game=None,
+                fixture_id=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_materialize_synthetic_post_coverage(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--materialize-synthetic-post-coverage",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--synthetic-profile",
+                "balanced",
+                "--include-rejected",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_materialize_synthetic_post_coverage",
+                return_value={"ok": True, "candidate_count": 2},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                fixture_id=None,
+                platform=None,
+                account_id=None,
+                workflow_run_id=None,
+                output_root=None,
+                synthetic_profile="balanced",
+                include_rejected=True,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_import_real_posted_lineage(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--import-real-posted-lineage",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--source-root",
+                "/tmp/source-a",
+                "--source-root",
+                "/tmp/source-b",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_import_real_posted_lineage",
+                return_value={"ok": True, "manifest_path": "/tmp/import.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                source_roots=["/tmp/source-a", "/tmp/source-b"],
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                output_path=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_validate_real_artifact_intake(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--validate-real-artifact-intake",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--output-path",
+                "/tmp/validation.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_validate_real_artifact_intake",
+                return_value={"ok": True, "manifest_path": "/tmp/validation.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+                output_path="/tmp/validation.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_bootstrap_real_artifact_intake_bundle(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--bootstrap-real-artifact-intake-bundle",
+                "--bundle-name",
+                "session-001",
+                "--intake-root",
+                "/tmp/intake",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_bootstrap_real_artifact_intake_bundle",
+                return_value={"ok": True, "bundle_root": "/tmp/intake/bundles/session-001"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "session-001",
+                intake_root="/tmp/intake",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_real_artifact_intake(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-real-artifact-intake",
+                "/tmp/validation.json",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_real_artifact_intake",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_summary_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/validation.json",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_real_artifact_intake_coverage(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--report-real-artifact-intake-coverage",
+                "/tmp/validation.json",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_report_real_artifact_intake_coverage",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_coverage_report_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/validation.json",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_preflight_real_artifact_intake_refresh(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--preflight-real-artifact-intake-refresh",
+                "/tmp/validation.json",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--require-resolved-dedup",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_preflight_real_artifact_intake_refresh",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_refresh_preflight_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/validation.json",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=True,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_record_real_artifact_intake_preflight_history(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--record-real-artifact-intake-preflight-history",
+                "/tmp/validation.json",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--require-resolved-dedup",
+                "--output-path",
+                "/tmp/preflight-history.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_record_real_artifact_intake_preflight_history",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_refresh_preflight_history_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/validation.json",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=True,
+                output_path="/tmp/preflight-history.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_real_artifact_intake_preflight_history(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-real-artifact-intake-preflight-history",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_real_artifact_intake_preflight_history",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_refresh_preflight_history_summary_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_real_artifact_intake_preflight_trends(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--report-real-artifact-intake-preflight-trends",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_report_real_artifact_intake_preflight_trends",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_refresh_preflight_trend_report_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_record_real_artifact_intake_refresh_outcome_history(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--record-real-artifact-intake-refresh-outcome-history",
+                "--intake-root",
+                "/tmp/intake",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--require-resolved-dedup",
+                "--output-root",
+                "/tmp/out",
+                "--output-path",
+                "/tmp/history.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_record_real_artifact_intake_refresh_outcome_history",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_refresh_outcome_history_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=True,
+                output_root="/tmp/out",
+                output_path="/tmp/history.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_real_artifact_intake_refresh_outcome_history(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-real-artifact-intake-refresh-outcome-history",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_real_artifact_intake_refresh_outcome_history",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_refresh_outcome_history_summary_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_real_artifact_intake_refresh_outcome_trends(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--report-real-artifact-intake-refresh-outcome-trends",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_report_real_artifact_intake_refresh_outcome_trends",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_refresh_outcome_trend_report_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_real_artifact_intake_history_comparison(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--report-real-artifact-intake-history-comparison",
+                "/tmp/comparison.json",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_report_real_artifact_intake_history_comparison",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_history_comparison_report_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/comparison.json",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_render_real_artifact_intake_dashboard(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--render-real-artifact-intake-dashboard",
+                "/tmp/comparison.json",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--output-path",
+                "/tmp/dashboard.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_render_real_artifact_intake_dashboard",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_dashboard_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/comparison.json",
+                validation_manifest=None,
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+                output_path="/tmp/dashboard.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_real_artifact_intake_dashboard_registry(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-real-artifact-intake-dashboard-registry",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_real_artifact_intake_dashboard_registry",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_dashboard_registry_summary_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_real_artifact_intake_comparison_targets(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-real-artifact-intake-comparison-targets",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_real_artifact_intake_comparison_targets",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_comparison_target_summary_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_record_real_artifact_intake_dashboard_summary_history(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--record-real-artifact-intake-dashboard-summary-history",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--output-path",
+                "/tmp/dashboard-summary-history.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_record_real_artifact_intake_dashboard_summary_history",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_dashboard_summary_history_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                registry_path="/tmp/registry.sqlite",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+                output_path="/tmp/dashboard-summary-history.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_real_artifact_intake_dashboard_summary_history(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-real-artifact-intake-dashboard-summary-history",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_real_artifact_intake_dashboard_summary_history",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_dashboard_summary_history_summary_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_real_artifact_intake_dashboard_summary_trends(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--report-real-artifact-intake-dashboard-summary-trends",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_report_real_artifact_intake_dashboard_summary_trends",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_dashboard_summary_trend_report_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_advise_real_artifact_intake_dedup(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--advise-real-artifact-intake-dedup",
+                "/tmp/validation.json",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_advise_real_artifact_intake_dedup",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_dedup_advisory_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/validation.json",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_materialize_real_artifact_intake_dedup_resolutions(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--materialize-real-artifact-intake-dedup-resolutions",
+                "/tmp/advisory.json",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_materialize_real_artifact_intake_dedup_resolutions",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_dedup_resolution_materialization_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/advisory.json",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_real_artifact_intake_dedup_resolutions(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-real-artifact-intake-dedup-resolutions",
+                "/tmp/advisory.json",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_real_artifact_intake_dedup_resolutions",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_dedup_resolution_summary_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/advisory.json",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_update_real_artifact_intake_dedup_resolution(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--update-real-artifact-intake-dedup-resolution",
+                "/tmp/advisory.json",
+                "--group-id",
+                "dedup-abc123",
+                "--resolution-status",
+                "accepted",
+                "--reviewed-by",
+                "tj",
+                "--notes",
+                "canonical confirmed",
+                "--intake-root",
+                "/tmp/intake",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_update_real_artifact_intake_dedup_resolution",
+                return_value={"ok": True, "schema_version": "real_artifact_intake_dedup_resolution_update_v1"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/advisory.json",
+                group_id="dedup-abc123",
+                status="accepted",
+                reviewed_by="tj",
+                notes="canonical confirmed",
+                intake_root="/tmp/intake",
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_refresh_real_only_benchmark(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--refresh-real-only-benchmark",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--source-root",
+                "/tmp/source-a",
+                "--source-root",
+                "/tmp/source-b",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--output-root",
+                "/tmp/real-refresh",
+                "--output-path",
+                "/tmp/import.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_refresh_real_only_benchmark",
+                return_value={"ok": True, "review_manifest_path": "/tmp/review.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                source_roots=["/tmp/source-a", "/tmp/source-b"],
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                output_root="/tmp/real-refresh",
+                output_path="/tmp/import.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_refresh_real_artifact_intake(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--refresh-real-artifact-intake",
+                "--intake-root",
+                "/tmp/intake",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--output-root",
+                "/tmp/real-refresh",
+                "--output-path",
+                "/tmp/validation.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_refresh_real_artifact_intake",
+                return_value={"ok": True, "review_manifest_path": "/tmp/review.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=False,
+                record_dashboard_summary_history=False,
+                record_refresh_outcome_history=False,
+                render_dashboard=False,
+                refresh_artifact_registry=False,
+                comparison_manifest=None,
+                output_root="/tmp/real-refresh",
+                output_path="/tmp/validation.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_refresh_real_artifact_intake_with_dedup_gate(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--refresh-real-artifact-intake",
+                "--intake-root",
+                "/tmp/intake",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--require-resolved-dedup",
+                "--output-root",
+                "/tmp/real-refresh",
+                "--output-path",
+                "/tmp/validation.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_refresh_real_artifact_intake",
+                return_value={"ok": True, "review_manifest_path": "/tmp/review.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=True,
+                record_dashboard_summary_history=False,
+                record_refresh_outcome_history=False,
+                render_dashboard=False,
+                refresh_artifact_registry=False,
+                comparison_manifest=None,
+                output_root="/tmp/real-refresh",
+                output_path="/tmp/validation.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_refresh_real_artifact_intake_with_dashboard_summary_history(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--refresh-real-artifact-intake",
+                "--intake-root",
+                "/tmp/intake",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--record-dashboard-summary-history-on-refresh",
+                "--output-root",
+                "/tmp/real-refresh",
+                "--output-path",
+                "/tmp/validation.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_refresh_real_artifact_intake",
+                return_value={"ok": True, "review_manifest_path": "/tmp/review.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=False,
+                record_dashboard_summary_history=True,
+                record_refresh_outcome_history=False,
+                render_dashboard=False,
+                refresh_artifact_registry=False,
+                comparison_manifest=None,
+                output_root="/tmp/real-refresh",
+                output_path="/tmp/validation.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_refresh_real_artifact_intake_with_refresh_outcome_history(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--refresh-real-artifact-intake",
+                "--intake-root",
+                "/tmp/intake",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--record-refresh-outcome-history-on-refresh",
+                "--output-root",
+                "/tmp/real-refresh",
+                "--output-path",
+                "/tmp/validation.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_refresh_real_artifact_intake",
+                return_value={"ok": True, "review_manifest_path": "/tmp/review.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=False,
+                record_dashboard_summary_history=False,
+                record_refresh_outcome_history=True,
+                render_dashboard=False,
+                refresh_artifact_registry=False,
+                comparison_manifest=None,
+                output_root="/tmp/real-refresh",
+                output_path="/tmp/validation.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_refresh_real_artifact_intake_with_dashboard_render(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--refresh-real-artifact-intake",
+                "--intake-root",
+                "/tmp/intake",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--render-dashboard-on-refresh",
+                "--output-root",
+                "/tmp/real-refresh",
+                "--output-path",
+                "/tmp/validation.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_refresh_real_artifact_intake",
+                return_value={"ok": True, "review_manifest_path": "/tmp/review.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=False,
+                record_dashboard_summary_history=False,
+                record_refresh_outcome_history=False,
+                render_dashboard=True,
+                refresh_artifact_registry=False,
+                comparison_manifest=None,
+                output_root="/tmp/real-refresh",
+                output_path="/tmp/validation.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_refresh_real_artifact_intake_with_artifact_registry_refresh(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--refresh-real-artifact-intake",
+                "--intake-root",
+                "/tmp/intake",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--refresh-artifact-registry-on-refresh",
+                "--output-root",
+                "/tmp/real-refresh",
+                "--output-path",
+                "/tmp/validation.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_refresh_real_artifact_intake",
+                return_value={"ok": True, "review_manifest_path": "/tmp/review.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=False,
+                record_dashboard_summary_history=False,
+                record_refresh_outcome_history=False,
+                render_dashboard=False,
+                refresh_artifact_registry=True,
+                comparison_manifest=None,
+                output_root="/tmp/real-refresh",
+                output_path="/tmp/validation.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_refresh_real_artifact_intake_with_evidence_comparison(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--refresh-real-artifact-intake",
+                "--intake-root",
+                "/tmp/intake",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--compare-evidence-on-refresh",
+                "/tmp/synthetic-review.json",
+                "--output-root",
+                "/tmp/real-refresh",
+                "--output-path",
+                "/tmp/validation.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_refresh_real_artifact_intake",
+                return_value={"ok": True, "review_manifest_path": "/tmp/review.json"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                intake_root="/tmp/intake",
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                require_resolved_dedup=False,
+                record_dashboard_summary_history=False,
+                record_refresh_outcome_history=False,
+                render_dashboard=False,
+                refresh_artifact_registry=False,
+                comparison_manifest="/tmp/synthetic-review.json",
+                output_root="/tmp/real-refresh",
+                output_path="/tmp/validation.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_query_workflow_queue(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--query-workflow-queue", "--workflow-type", "export_queue", "--limit", "5"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_query_workflow_queue",
+                return_value={"ok": True, "row_count": 10, "rows": [{"id": index} for index in range(10)]},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "export_queue",
+                registry_path=None,
+                game=None,
+                fixture_id=None,
+                limit=5,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+            self.assertIn("rows_sample", payload)
+            self.assertNotIn("rows", payload)
+            self.assertEqual(payload["rows_omitted_count"], 2)
+            self.assertTrue(payload["truncated"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_posted_performance(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--report-posted-performance", "--platform", "youtube"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_report_posted_performance",
+                return_value={"ok": True, "row_count": 10, "rows": [{"id": index} for index in range(10)]},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                registry_path=None,
+                game=None,
+                platform="youtube",
+                account_id=None,
+                workflow_run_id=None,
+                candidate_id=None,
+                fixture_id=None,
+                hook_archetype=None,
+                hook_mode=None,
+                output_path=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+            self.assertIn("rows_sample", payload)
+            self.assertNotIn("rows", payload)
+            self.assertEqual(payload["rows_omitted_count"], 2)
+            self.assertTrue(payload["truncated"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_scan_vod_batch(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--scan-vod-batch", "/tmp/clips", "marvel_rivals", "--limit", "5"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_scan_vod_batch",
+                return_value={
+                    "schema_version": "proxy_scan_batch_v1",
+                    "batch_id": "batch-1",
+                    "game": "marvel_rivals",
+                    "root": "/tmp/clips",
+                    "file_count": 10,
+                    "scanned_count": 10,
+                    "success_count": 10,
+                    "failed_count": 0,
+                    "window_count_total": 20,
+                    "skip_count": 1,
+                    "inspect_count": 2,
+                    "download_candidate_count": 7,
+                    "results": [{"source": f"/tmp/{index}.mp4"} for index in range(10)],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/clips", "marvel_rivals", pattern="*.mp4", limit=5)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["batch_id"], "batch-1")
+            self.assertIn("results_sample", payload)
+            self.assertNotIn("results", payload)
+            self.assertEqual(payload["results_omitted_count"], 2)
+            self.assertTrue(payload["truncated"])
         finally:
             sys.argv = original_argv
 
@@ -708,7 +2577,12 @@ class RunTests(unittest.TestCase):
             stdout = io.StringIO()
             with patch(
                 "run.run_report_onboarding_batch",
-                return_value={"ok": True, "draft_count": 1, "drafts": []},
+                return_value={
+                    "ok": True,
+                    "draft_count": 10,
+                    "drafts": [{"draft_root": f"/tmp/draft-{index}"} for index in range(10)],
+                    "summary": {"ready": 1},
+                },
             ) as mock_run:
                 with redirect_stdout(stdout):
                     exit_code = run_main()
@@ -716,6 +2590,10 @@ class RunTests(unittest.TestCase):
             mock_run.assert_called_once_with("/tmp/onboarding", game="marvel_rivals", output_path=None)
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
+            self.assertIn("drafts_sample", payload)
+            self.assertNotIn("drafts", payload)
+            self.assertEqual(payload["drafts_omitted_count"], 2)
+            self.assertTrue(payload["truncated"])
         finally:
             sys.argv = original_argv
 
@@ -726,7 +2604,15 @@ class RunTests(unittest.TestCase):
             stdout = io.StringIO()
             with patch(
                 "run.run_publish_onboarding_batch",
-                return_value={"ok": True, "summary": {"published": 1}},
+                return_value={
+                    "ok": True,
+                    "summary": {"published": 10},
+                    "published": [{"game": f"game_{index}"} for index in range(10)],
+                    "ready": [],
+                    "blocked": [],
+                    "failed": [],
+                    "skipped": [],
+                },
             ) as mock_run:
                 with redirect_stdout(stdout):
                     exit_code = run_main()
@@ -734,6 +2620,33 @@ class RunTests(unittest.TestCase):
             mock_run.assert_called_once_with("/tmp/onboarding", game="marvel_rivals", apply=True, output_path=None)
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
+            self.assertIn("published_sample", payload)
+            self.assertNotIn("published", payload)
+            self.assertEqual(payload["published_omitted_count"], 2)
+            self.assertTrue(payload["truncated"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_onboarding_batch_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--report-onboarding-batch", "/tmp/onboarding", "--full-json"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_report_onboarding_batch",
+                return_value={
+                    "ok": True,
+                    "draft_count": 10,
+                    "drafts": [{"draft_root": f"/tmp/draft-{index}"} for index in range(10)],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/onboarding", game=None, output_path=None)
+            payload = json.loads(stdout.getvalue())
+            self.assertIn("drafts", payload)
+            self.assertNotIn("drafts_sample", payload)
         finally:
             sys.argv = original_argv
 
@@ -744,7 +2657,12 @@ class RunTests(unittest.TestCase):
             stdout = io.StringIO()
             with patch(
                 "run.run_validate_onboarding_publish",
-                return_value={"ok": True, "can_publish": False, "readiness": "needs_binding_review"},
+                return_value={
+                    "ok": True,
+                    "can_publish": False,
+                    "readiness": "needs_binding_review",
+                    "findings": [{"type": "a"} for _ in range(12)],
+                },
             ) as mock_run:
                 with redirect_stdout(stdout):
                     exit_code = run_main()
@@ -752,6 +2670,212 @@ class RunTests(unittest.TestCase):
             mock_run.assert_called_once_with("/tmp/draft")
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
+            self.assertIn("findings_sample", payload)
+            self.assertNotIn("findings", payload)
+            self.assertEqual(payload["findings_omitted_count"], 4)
+            self.assertTrue(payload["truncated"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_derive_game_detection_manifest(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--derive-game-detection-manifest", "/tmp/draft", "--output-path", "/tmp/derived.yaml"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_derive_game_detection_manifest",
+                return_value={"ok": True, "manifest_path": "/tmp/derived.yaml"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/draft", output_path="/tmp/derived.yaml")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_unresolved_derived_rows(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--report-unresolved-derived-rows", "/tmp/draft", "--output-path", "/tmp/report.json"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_report_unresolved_derived_rows",
+                return_value={
+                    "ok": True,
+                    "unresolved_required_count": 10,
+                    "rows": [{"detection_id": f"row_{index}"} for index in range(10)],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/draft", output_path="/tmp/report.json")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+            self.assertIn("rows_sample", payload)
+            self.assertNotIn("rows", payload)
+            self.assertEqual(payload["rows_omitted_count"], 2)
+            self.assertTrue(payload["truncated"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_fill_derived_detection_rows(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--fill-derived-detection-rows",
+                "/tmp/draft",
+                "--detection-id",
+                "game.row_a",
+                "--detection-id",
+                "game.row_b",
+                "--fill-source-manifest",
+                "/tmp/source-a.yaml",
+                "--fill-source-manifest",
+                "/tmp/source-b.yaml",
+                "--output-path",
+                "/tmp/fill.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_fill_derived_detection_rows",
+                return_value={"ok": True, "status": "targeted_row_fill_completed"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/draft",
+                detection_ids=["game.row_a", "game.row_b"],
+                source_manifests=["/tmp/source-a.yaml", "/tmp/source-b.yaml"],
+                output_path="/tmp/fill.json",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_prepare_derived_row_review(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--prepare-derived-row-review",
+                "/tmp/draft",
+                "--detection-id",
+                "game.row_a",
+                "--detection-id",
+                "game.row_b",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_prepare_derived_row_review",
+                return_value={"ok": True, "item_count": 2},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/draft",
+                detection_ids=["game.row_a", "game.row_b"],
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_apply_derived_row_review(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--apply-derived-row-review",
+                "/tmp/review-dir",
+                "--accept-recommended",
+                "--only-auto-populated",
+                "--reject-zero-candidate",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_apply_derived_row_review",
+                return_value={
+                    "ok": True,
+                    "applied_count": 10,
+                    "skipped_count": 0,
+                    "failed_count": 0,
+                    "applied_reviews": [{"detection_id": f"row_{index}"} for index in range(10)],
+                    "skipped_reviews": [],
+                    "failed_reviews": [],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/review-dir",
+                accept_recommended=True,
+                only_auto_populated=True,
+                reject_zero_candidate=True,
+                defer_zero_candidate=False,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+            self.assertIn("applied_reviews_sample", payload)
+            self.assertNotIn("applied_reviews", payload)
+            self.assertEqual(payload["applied_reviews_omitted_count"], 2)
+            self.assertTrue(payload["truncated"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_derived_row_review(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--summarize-derived-row-review", "/tmp/draft"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_derived_row_review",
+                return_value={
+                    "ok": True,
+                    "review_file_count": 10,
+                    "rows": [{"detection_id": f"row_{index}"} for index in range(10)],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/draft")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+            self.assertIn("rows_sample", payload)
+            self.assertNotIn("rows", payload)
+            self.assertEqual(payload["rows_omitted_count"], 2)
+            self.assertTrue(payload["truncated"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_summarize_derived_row_review_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--summarize-derived-row-review", "/tmp/draft", "--full-json"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_summarize_derived_row_review",
+                return_value={
+                    "ok": True,
+                    "review_file_count": 10,
+                    "rows": [{"detection_id": f"row_{index}"} for index in range(10)],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/draft")
+            payload = json.loads(stdout.getvalue())
+            self.assertIn("rows", payload)
+            self.assertNotIn("rows_sample", payload)
         finally:
             sys.argv = original_argv
 
@@ -827,7 +2951,36 @@ class RunTests(unittest.TestCase):
                 with redirect_stdout(stdout):
                     exit_code = run_main()
             self.assertEqual(exit_code, 0)
-            mock_run.assert_called_once_with("/tmp/example.proxy_scan.json", output_path="/tmp/highlights.json")
+            mock_run.assert_called_once_with("/tmp/example.proxy_scan.json", fused_sidecar=None, output_path="/tmp/highlights.json")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_export_highlight_selection_from_fused_sidecar(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--export-highlight-selection",
+                "--fused-sidecar",
+                "/tmp/example.fused_analysis.json",
+                "--output-path",
+                "/tmp/highlights.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_export_highlight_selection",
+                return_value={"ok": True, "manifest_path": "/tmp/highlights.json", "selection_basis": "fused"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                None,
+                fused_sidecar="/tmp/example.fused_analysis.json",
+                output_path="/tmp/highlights.json",
+            )
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
         finally:
@@ -860,6 +3013,7 @@ class RunTests(unittest.TestCase):
                 proxy_replay_report=None,
                 runtime_calibration_report=None,
                 runtime_replay_report=None,
+                registry_path=None,
                 output_path=None,
                 launch=True,
             )

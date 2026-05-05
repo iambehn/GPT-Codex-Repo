@@ -1,0 +1,165 @@
+schema_version: game_detection_schema_v1
+families:
+  hero_portrait:
+    ontology_collection: heroes
+    target_kind: hero
+    target_id_field: hero_id
+    template_semantic_field: entity_id
+    requires_asset: true
+    roi_ref: hero_portrait
+    match_method: TM_CCOEFF_NORMED
+    threshold: 0.89
+    scale_set:
+      - 0.9
+      - 1.0
+      - 1.1
+    temporal_window: 3
+    runtime_rule:
+      signal_type: character_identity
+      event_type: pov_character_identified
+      target_field: entity_id
+      target_id_source: template_field
+      target_value_field: entity_id
+      identity_competition: strongest_overlap
+    fusion_rule_ids:
+      - character_identity_atomic
+  ability_icon:
+    ontology_collection: abilities
+    target_kind: ability
+    target_id_field: ability_id
+    template_semantic_field: ability_id
+    requires_asset: true
+    roi_ref: ability_hud
+    match_method: TM_CCOEFF_NORMED
+    threshold: 0.93
+    scale_set:
+      - 0.9
+      - 1.0
+      - 1.1
+    temporal_window: 3
+    runtime_rule:
+      signal_type: ability_visibility
+      event_type: ability_seen
+      target_field: ability_id
+      target_id_source: template_field
+      target_value_field: ability_id
+    fusion_rule_ids:
+      - ability_visibility_atomic
+      - ability_or_equipment_plus_medal_combo
+    enabled: false
+  equipment_icon:
+    ontology_collection: abilities
+    target_kind: equipment
+    target_id_field: ability_id
+    template_semantic_field: equipment_id
+    requires_asset: true
+    roi_ref: ability_hud
+    match_method: TM_CCOEFF_NORMED
+    threshold: 0.92
+    scale_set:
+      - 0.9
+      - 1.0
+      - 1.1
+    temporal_window: 3
+    runtime_rule:
+      signal_type: equipment_visibility
+      event_type: ability_seen
+      target_field: equipment_id
+      target_id_source: template_field
+      target_value_field: equipment_id
+    fusion_rule_ids:
+      - equipment_visibility_atomic
+      - ability_or_equipment_plus_medal_combo
+  medal_icon:
+    ontology_collection: events
+    target_kind: event
+    target_id_field: event_id
+    template_semantic_field: event_row_id
+    requires_asset: true
+    roi_ref: medal_area
+    match_method: TM_CCORR_NORMED
+    threshold: 0.95
+    scale_set:
+      - 0.9
+      - 1.0
+    temporal_window: 2
+    runtime_rule:
+      signal_type: medal_visibility
+      event_type: medal_seen
+      target_field: event_row_id
+      target_id_source: template_field
+      target_value_field: event_row_id
+    fusion_rule_ids:
+      - medal_visibility_atomic
+      - ability_or_equipment_plus_medal_combo
+fusion_rules:
+  character_identity_atomic:
+    rule_id: character_identity_atomic
+    event_type: pov_character_identified
+    signal_types:
+      - character_identity
+    required_signal_types:
+      - character_identity
+    window_seconds: 0.5
+    min_signal_count: 1
+    confidence_method: max
+    group_by:
+      - entity_id
+  ability_visibility_atomic:
+    rule_id: ability_visibility_atomic
+    event_type: ability_seen
+    signal_types:
+      - ability_visibility
+    required_signal_types:
+      - ability_visibility
+    window_seconds: 0.5
+    min_signal_count: 1
+    confidence_method: max
+    group_by:
+      - ability_id
+  equipment_visibility_atomic:
+    rule_id: equipment_visibility_atomic
+    event_type: ability_seen
+    signal_types:
+      - equipment_visibility
+    required_signal_types:
+      - equipment_visibility
+    window_seconds: 0.5
+    min_signal_count: 1
+    confidence_method: max
+    group_by:
+      - equipment_id
+  medal_visibility_atomic:
+    rule_id: medal_visibility_atomic
+    event_type: medal_seen
+    signal_types:
+      - medal_visibility
+    required_signal_types:
+      - medal_visibility
+    window_seconds: 0.5
+    min_signal_count: 1
+    confidence_method: max
+    group_by:
+      - event_row_id
+  ability_or_equipment_plus_medal_combo:
+    rule_id: ability_or_equipment_plus_medal_combo
+    event_type: ability_plus_medal_combo
+    signal_types:
+      - ability_visibility
+      - equipment_visibility
+      - medal_visibility
+    required_signal_types:
+      - medal_visibility
+    window_seconds: 0.5
+    min_signal_count: 2
+    confidence_method: mean
+    corroboration_bonus_per_extra_signal: 0.05
+    max_bonus: 0.1
+_schema_path: /Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/starter_assets/runtime_detection_schema.yaml
+_ontology_version: runtime_signal_event_ontology_v1
+baseline_schema_version: runtime_detection_schema_v1
+game_id: call_of_duty
+active_asset_families:
+  - equipment_icon
+  - hero_portrait
+  - medal_icon

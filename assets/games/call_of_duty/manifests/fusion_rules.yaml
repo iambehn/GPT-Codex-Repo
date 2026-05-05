@@ -1,0 +1,37 @@
+schema_version: fusion_rules_v1
+rules:
+  - rule_id: ability_or_equipment_plus_medal_combo
+    event_type: ability_plus_medal_combo
+    signal_types:
+      - ability_visibility
+      - equipment_visibility
+      - medal_visibility
+    required_signal_types:
+      - medal_visibility
+    window_seconds: 0.5
+    min_signal_count: 2
+    confidence_method: mean
+    corroboration_bonus_per_extra_signal: 0.05
+    max_bonus: 0.1
+  - rule_id: character_identity_atomic
+    event_type: pov_character_identified
+    signal_types:
+      - character_identity
+    required_signal_types:
+      - character_identity
+    window_seconds: 0.5
+    min_signal_count: 1
+    confidence_method: max
+    group_by:
+      - entity_id
+  - rule_id: equipment_visibility_atomic
+    event_type: ability_seen
+    signal_types:
+      - equipment_visibility
+    required_signal_types:
+      - equipment_visibility
+    window_seconds: 0.5
+    min_signal_count: 1
+    confidence_method: max
+    group_by:
+      - equipment_id

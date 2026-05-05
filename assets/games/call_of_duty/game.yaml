@@ -1,0 +1,6 @@
+game_id: call_of_duty
+display_name: "Call of Duty: Warzone"
+genre: battle_royale
+camera_mode: first_person
+patch_tag: 2026-05
+ui_version: draft

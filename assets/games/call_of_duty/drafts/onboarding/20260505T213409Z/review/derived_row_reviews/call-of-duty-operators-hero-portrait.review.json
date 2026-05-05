@@ -1,0 +1,87 @@
+{
+  "schema_version": "derived_row_review_v1",
+  "review_id": "derived-row-review-08041f9337a0",
+  "created_at": "2026-05-05T22:17:00.765176+00:00",
+  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z",
+  "game": "call_of_duty",
+  "detection_id": "call_of_duty.operators.hero_portrait",
+  "row_snapshot": {
+    "detection_id": "call_of_duty.operators.hero_portrait",
+    "game_id": "call_of_duty",
+    "target_kind": "hero",
+    "target_id": "operators",
+    "target_display_name": "Operators",
+    "target_aliases": [],
+    "ontology_collection": "heroes",
+    "asset_family": "hero_portrait",
+    "requires_asset": true,
+    "required_semantic_fields": [
+      "entity_id"
+    ],
+    "template_semantics": {
+      "entity_id": "operators"
+    },
+    "template_defaults": {
+      "roi_ref": "hero_portrait",
+      "match_method": "TM_CCOEFF_NORMED",
+      "threshold": 0.89,
+      "scale_set": [
+        0.9,
+        1.0,
+        1.1
+      ],
+      "temporal_window": 3
+    },
+    "runtime_rule": {
+      "signal_type": "character_identity",
+      "event_type": "pov_character_identified",
+      "target_field": "entity_id",
+      "target_id_source": "template_field",
+      "target_value_field": "entity_id",
+      "identity_competition": "strongest_overlap"
+    },
+    "fusion_rule_ids": [
+      "character_identity_atomic"
+    ],
+    "status": "unresolved",
+    "binding_status": "unbound",
+    "source_page_url": "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Operators",
+    "required": true,
+    "blocking_publish": true,
+    "reason": "no accepted binding exists for this required detection row yet",
+    "semantic_ids": [
+      "entity_id"
+    ],
+    "accepted_candidate_id": "null",
+    "accepted_candidate_master_path": "null",
+    "accepted_candidate_source_url": "null",
+    "binding_candidate_count": 0,
+    "provenance_basis": {
+      "ontology_collection": "heroes",
+      "source_page_url": "https://callofduty.fandom.com/wiki/Category:Call_of_Duty:_Warzone_Operators",
+      "source_role": "operators",
+      "canonical_identity_basis": "source_initial"
+    }
+  },
+  "allowed_review_statuses": [
+    "approved",
+    "rejected",
+    "unreviewed"
+  ],
+  "allowed_decisions": [
+    "accept_candidate",
+    "defer_row",
+    "reject_all_candidates"
+  ],
+  "candidate_option_count": 0,
+  "candidate_options": [],
+  "review_status": "unreviewed",
+  "review_decision": "",
+  "selected_candidate_id": "",
+  "review_notes": "",
+  "apply_status": "missing_detection_row",
+  "recommended_decision": "defer_row",
+  "recommended_candidate_id": "",
+  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/review/derived_row_reviews/call-of-duty-operators-hero-portrait.review.json",
+  "auto_populated_in_run": false
+}
