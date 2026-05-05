@@ -586,7 +586,8 @@ def fill_derived_detection_rows(
             "reason": str(row.get("reason", "")).strip(),
         }
         for row in selected_rows
-        if str(row.get("status", "")).strip() in {"resolved", "unresolved_missing_semantics", "optional_family_disabled"}
+        if str(row.get("status", "")).strip()
+        in {"resolved", "unresolved_missing_semantics", "optional_family_disabled", "optional_unsupported"}
         or not bool(row.get("required", False))
     ]
     actionable_detection_ids = [

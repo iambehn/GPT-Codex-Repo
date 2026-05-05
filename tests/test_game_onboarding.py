@@ -1313,6 +1313,15 @@ class GameOnboardingTests(unittest.TestCase):
         with path.open(encoding="utf-8", newline="") as handle:
             return list(csv.DictReader(handle))
 
+    def _assert_phase_status_matches_publish_readiness(self, draft_root: Path, *, repo_root: Path) -> dict[str, object]:
+        readiness = validate_onboarding_publish(draft_root, repo_root=repo_root)
+        expected_phase_status = "ready_to_publish" if bool(readiness["can_publish"]) else "bindings_pending"
+        state_payload = json.loads((draft_root / "manifests" / "onboarding_state.json").read_text(encoding="utf-8"))
+        manifest_payload = json.loads((draft_root / "manifests" / "assets_manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(state_payload["phase_status"], expected_phase_status)
+        self.assertEqual(manifest_payload["phase_status"], expected_phase_status)
+        return readiness
+
     def test_onboarding_manifest_requires_valid_sources(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             repo_root = Path(tempdir)
@@ -2371,6 +2380,8 @@ class GameOnboardingTests(unittest.TestCase):
             self.assertEqual(fill_result["counts"]["new_candidates_matched"], 1)
             self.assertEqual(fill_result["row_updates"][0]["before_status"], "unresolved")
             self.assertEqual(fill_result["row_updates"][0]["after_status"], "unresolved_pending_review")
+            readiness = self._assert_phase_status_matches_publish_readiness(draft_root, repo_root=repo_root)
+            self.assertFalse(readiness["can_publish"])
 
             bindings = self._read_csv(draft_root / "catalog" / "bindings.csv")
             self.assertTrue(
@@ -2380,6 +2391,45 @@ class GameOnboardingTests(unittest.TestCase):
                     for row in bindings
                 )
             )
+
+    def test_fill_derived_detection_rows_rejects_optional_unsupported_selected_row(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            self._write_marvel_starter_seed(repo_root)
+            manifest_path = self._write_sources(repo_root)
+            result = onboard_game_from_manifest("marvel_rivals", manifest_path, repo_root=repo_root)
+            draft_root = Path(result["draft_root"])
+
+            initial_report = report_unresolved_derived_rows(draft_root)
+            detection_id = next(
+                row["detection_id"]
+                for row in initial_report["rows"]
+                if row["target_display_name"] == "Final Judgment"
+            )
+            derived_manifest_path = draft_root / "manifests" / "derived_detection_manifest.yaml"
+            derived_manifest = load_yaml_file(derived_manifest_path)
+            selected_row = next(
+                row
+                for row in derived_manifest["rows"]
+                if row["detection_id"] == detection_id
+            )
+            selected_row["status"] = "optional_unsupported"
+            selected_row["required"] = False
+            selected_row["blocking_publish"] = False
+            selected_row["reason"] = "family is intentionally unsupported for this draft"
+            dump_yaml_file(derived_manifest_path, derived_manifest)
+
+            with patch(
+                "pipeline.derived_detection_manifest.derive_game_detection_manifest",
+                return_value={"manifest_path": str(derived_manifest_path)},
+            ):
+                with self.assertRaisesRegex(ValueError, "no selected detection rows are actionable for targeted fill"):
+                    fill_derived_detection_rows(
+                        draft_root,
+                        [detection_id],
+                        source_manifests=[manifest_path],
+                        repo_root=repo_root,
+                    )
 
     def test_prepare_derived_row_review_creates_one_review_file_per_selected_row(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -2593,12 +2643,8 @@ class GameOnboardingTests(unittest.TestCase):
                 if row["detection_id"] == detection_id
             )
             self.assertEqual(selected_row["status"], "resolved")
-            readiness = validate_onboarding_publish(draft_root, repo_root=repo_root)
-            if readiness["can_publish"]:
-                state_payload = json.loads((draft_root / "manifests" / "onboarding_state.json").read_text(encoding="utf-8"))
-                manifest_payload = json.loads((draft_root / "manifests" / "assets_manifest.json").read_text(encoding="utf-8"))
-                self.assertEqual(state_payload["phase_status"], "ready_to_publish")
-                self.assertEqual(manifest_payload["phase_status"], "ready_to_publish")
+            readiness = self._assert_phase_status_matches_publish_readiness(draft_root, repo_root=repo_root)
+            self.assertTrue(readiness["can_publish"])
 
     def test_apply_derived_row_review_only_auto_populated_skips_manual_approved_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
