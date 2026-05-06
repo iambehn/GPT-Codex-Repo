@@ -81,6 +81,10 @@ This repo also tracks installed skill metadata in:
 | External docs and current model research | `firecrawl` |
 | Local review UI testing | `Browser Use` |
 
+For the shadow operator wrapper:
+- use `python3 run.py --run-shadow-operator ...`
+- the canonical target-specific runbook for `approved_or_selected_probability` lives in [docs/v2/REVIEW_CALIBRATION_REPLAY.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/REVIEW_CALIBRATION_REPLAY.md)
+
 ## Validation standard
 
 When adding or relying on a skill or plugin for this repo:

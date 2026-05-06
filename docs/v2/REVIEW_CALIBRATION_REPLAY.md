@@ -64,6 +64,37 @@ Shadow promotion decisions are target-specific.
 
 Warnings should stay target-relevant. Approved-target and export-target runs should not inherit `sparse_post_performance_target` warnings from inactive heads.
 
+### Approved-Target Operator Runbook
+
+Use this flow when validating `candidate_approval_probability` from the shadow stack against a real-only dataset.
+
+Command:
+
+```bash
+python3 run.py \
+  --run-shadow-operator \
+  --mode full \
+  --dataset-manifest /absolute/path/to/v2-training.manifest.json \
+  --policy-path /absolute/path/to/default.shadow_evaluation_policy.json \
+  --training-target approved_or_selected_probability \
+  --target candidate_approval_probability \
+  --split-key candidate_id \
+  --train-fraction 0.75 \
+  --output-root /absolute/path/to/output-root
+```
+
+Promotion-ready result for this target means all of the following hold in the resulting `shadow_operator_run_v1` artifact:
+
+- `status: ok`
+- `final_recommendation.decision: prefer_shadow`
+- `final_summary.warning_count: 0`
+- `step_results.train_model.warning_count: 0`
+- `step_results.run_benchmark_matrix.warning_count: 0`
+- benchmark review reports the target ready for next iteration
+- governance reports sufficient coverage for `candidate_approval_probability`
+
+This runbook is intentionally narrow. It does not imply that `post_performance_score` is ready, and it should not be used as a proxy for broader multi-target promotion.
+
 ## Hook Comparison Integration
 
 Hook evaluation now sits inside the same review-backed comparison loop as other fixture and trial work.
