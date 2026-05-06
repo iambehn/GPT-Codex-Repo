@@ -1819,6 +1819,7 @@ def _ingest_posted_metrics_snapshot(path: Path, rows: dict[str, Any], *, game: s
             _warning(rows, path=path, reason="missing_post_record_lineage", detail=f"posted_metrics_snapshot_row row_index={index} post_record_id={post_record_id}")
         if export_id and _export_details(rows, export_id=export_id, candidate_id=str(candidate.get('candidate_id') or '').strip() or None) is None:
             _warning(rows, path=path, reason="missing_export_lineage", detail=f"posted_metrics_snapshot_row row_index={index} export_id={export_id}")
+        post_record_details = _post_record_details(rows, post_record_id=post_record_id) or {}
         rows["posted_metrics_snapshot_rows"].append(
             {
                 "manifest_path": manifest_path,
@@ -1843,6 +1844,7 @@ def _ingest_posted_metrics_snapshot(path: Path, rows: dict[str, Any], *, game: s
                 "average_watch_time_seconds": record.get("average_watch_time_seconds"),
                 "completion_rate": record.get("completion_rate"),
                 "engagement_rate": record.get("engagement_rate"),
+                "selected_highlight_details_json": str(post_record_details.get("selected_highlight_details_json") or "").strip() or "{}",
                 "metadata_json": json.dumps(record.get("metadata_json", {}), sort_keys=True),
                 "game": row_game,
             }
@@ -3655,6 +3657,7 @@ def _create_schema(connection: sqlite3.Connection) -> None:
             average_watch_time_seconds REAL,
             completion_rate REAL,
             engagement_rate REAL,
+            selected_highlight_details_json TEXT,
             metadata_json TEXT,
             game TEXT,
             PRIMARY KEY (manifest_path, snapshot_index)
@@ -4137,6 +4140,7 @@ def _create_schema(connection: sqlite3.Connection) -> None:
     _ensure_table_column(connection, "candidate_lifecycles", "selected_highlight_details_json", "TEXT")
     _ensure_table_column(connection, "highlight_exports", "selected_highlight_details_json", "TEXT")
     _ensure_table_column(connection, "posted_highlights", "selected_highlight_details_json", "TEXT")
+    _ensure_table_column(connection, "posted_metrics_snapshot_rows", "selected_highlight_details_json", "TEXT")
     _ensure_table_column(connection, "hook_candidates", "created_at", "TEXT")
     _ensure_columns(
         connection,
@@ -4868,7 +4872,7 @@ def _query_rows(
                    r.account_id, r.external_post_id, r.external_url,
                    r.view_count, r.like_count, r.comment_count, r.share_count, r.save_count,
                    r.watch_time_seconds, r.average_watch_time_seconds, r.completion_rate, r.engagement_rate,
-                   r.metadata_json, r.game,
+                   r.selected_highlight_details_json, r.metadata_json, r.game,
                    e.fixture_id, e.hook_archetype, e.hook_mode, e.packaging_strategy,
                    p.posted_at, p.post_status
             FROM posted_metrics_snapshot_rows r
@@ -5589,7 +5593,7 @@ def _posted_performance_rollups(
         SELECT r.post_record_id, r.export_id, r.candidate_id, r.hook_id, r.platform, r.account_id,
                r.captured_at, r.view_count, r.like_count, r.comment_count, r.share_count, r.save_count,
                r.watch_time_seconds, r.average_watch_time_seconds, r.completion_rate, r.engagement_rate,
-               COALESCE(r.game, e.game) AS game,
+               r.selected_highlight_details_json, COALESCE(r.game, e.game) AS game,
                e.fixture_id, e.hook_archetype, e.hook_mode, e.packaging_strategy
         FROM posted_metrics_snapshot_rows r
         LEFT JOIN highlight_exports e ON e.export_id = r.export_id
@@ -5652,6 +5656,8 @@ def _posted_performance_rollups(
             "by_hook_archetype_json": json.dumps(_aggregate_posted_metric_rows(rows, "hook_archetype"), sort_keys=True),
             "by_hook_mode_json": json.dumps(_aggregate_posted_metric_rows(rows, "hook_mode"), sort_keys=True),
             "by_packaging_strategy_json": json.dumps(_aggregate_posted_metric_rows(rows, "packaging_strategy"), sort_keys=True),
+            "by_selected_event_type_json": json.dumps(_aggregate_selected_highlight_field(rows, "event_type"), sort_keys=True),
+            "by_selected_producer_family_json": json.dumps(_aggregate_selected_highlight_list(rows, "contributing_producer_families"), sort_keys=True),
             "latest_snapshot_by_post_record_json": json.dumps(latest_by_post_record, sort_keys=True),
         }
     ]
@@ -5917,6 +5923,44 @@ def _aggregate_posted_metric_rows(rows: list[dict[str, Any]], group_key: str) ->
             "post_performance_missing_field_counts": dict(bucket["missing_field_counts"]),
         }
     return result
+
+
+def _selected_highlight_details_from_row(row: dict[str, Any]) -> dict[str, Any]:
+    payload = row.get("selected_highlight_details_json")
+    if not isinstance(payload, str) or not payload.strip():
+        return {}
+    try:
+        parsed = json.loads(payload)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _aggregate_selected_highlight_field(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        details = _selected_highlight_details_from_row(row)
+        value = str(details.get(field) or "").strip() or "unknown"
+        counts[value] = counts.get(value, 0) + 1
+    return counts
+
+
+def _aggregate_selected_highlight_list(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        details = _selected_highlight_details_from_row(row)
+        values = details.get(field)
+        if not isinstance(values, list) or not values:
+            counts["unknown"] = counts.get("unknown", 0) + 1
+            continue
+        seen: set[str] = set()
+        for value in values:
+            normalized = str(value or "").strip()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            counts[normalized] = counts.get(normalized, 0) + 1
+    return counts
 
 
 def _average_or_none(values: list[float]) -> float | None:
@@ -6590,6 +6634,7 @@ _POSTED_METRICS_SNAPSHOT_ROW_COLUMNS = (
     "average_watch_time_seconds",
     "completion_rate",
     "engagement_rate",
+    "selected_highlight_details_json",
     "metadata_json",
     "game",
 )

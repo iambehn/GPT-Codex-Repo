@@ -343,12 +343,15 @@ def _highlight_selection_manifest(
                     {
                         "highlight_id": "highlight-0",
                         "candidate_id": candidate_id,
+                        "fusion_id": "fusion-001",
                         "event_id": event_id or "fused-event-1",
                         "start_seconds": 0.5,
                         "end_seconds": 3.2,
                         "final_score": 0.92,
                         "recommended_action": "highlight_candidate",
                         "gate_status": "confirmed",
+                        "event_type": "ability_plus_medal_combo",
+                        "contributing_producer_families": ["runtime"],
                     }
                     if selection_basis == "fused"
                     else {
@@ -446,6 +449,45 @@ def _posted_highlight_ledger(
                     "caption_text": "caption",
                     "duration_seconds": 2.7,
                     "media_asset_path": str((path.parent / "posted" / "export-1.mp4").resolve()),
+                }
+            ],
+        },
+    )
+
+
+def _posted_metrics_snapshot(
+    path: Path,
+    *,
+    post_ledger_manifest_path: Path,
+) -> None:
+    _write_json(
+        path,
+        {
+            "schema_version": "posted_highlight_metrics_snapshot_v1",
+            "snapshot_id": "metrics-1",
+            "platform": "tiktok",
+            "account_id": "acct-1",
+            "workflow_run_id": "workflow-metrics-1",
+            "captured_at": "2026-05-06T02:00:00+00:00",
+            "snapshot_count": 1,
+            "snapshots": [
+                {
+                    "snapshot_row_id": "snapshot-row-1",
+                    "post_record_id": "post-1",
+                    "export_id": "export-1",
+                    "candidate_id": None,
+                    "post_ledger_manifest_path": str(post_ledger_manifest_path.resolve()),
+                    "external_post_id": "ext-1",
+                    "external_url": "https://example.com/post/1",
+                    "view_count": 100,
+                    "like_count": 20,
+                    "comment_count": 5,
+                    "share_count": 3,
+                    "save_count": 2,
+                    "watch_time_seconds": 50.0,
+                    "average_watch_time_seconds": 5.5,
+                    "completion_rate": 0.7,
+                    "engagement_rate": 0.3,
                 }
             ],
         },
@@ -855,6 +897,75 @@ class ClipRegistryTests(unittest.TestCase):
             posted_selected = json.loads(posted_rows["rows"][0]["selected_highlight_details_json"])
             self.assertEqual(posted_selected["candidate_id"], candidate_id)
             self.assertEqual(posted_selected["event_id"], "fused-event-1")
+
+    def test_refresh_preserves_selected_highlight_details_in_posted_metrics_and_rollups(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            candidate_id = _candidate_id(
+                game="marvel_rivals",
+                source=str(media.resolve()),
+                fused_sidecar_path=str(fused_path.resolve()),
+                event_id="fused-event-1",
+            )
+            selection_manifest_path = root / "exports" / "alpha.highlight_selection.json"
+            _highlight_selection_manifest(
+                selection_manifest_path,
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            export_batch_path = root / "exports" / "alpha.highlight_export_batch.json"
+            _highlight_export_batch_manifest(
+                export_batch_path,
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                selection_manifest_path=selection_manifest_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            post_ledger_path = root / "posted" / "alpha.posted_highlight_ledger.json"
+            _posted_highlight_ledger(
+                post_ledger_path,
+                export_batch_manifest_path=export_batch_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            _posted_metrics_snapshot(
+                root / "posted" / "alpha.posted_highlight_metrics_snapshot.json",
+                post_ledger_manifest_path=post_ledger_path,
+            )
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            metrics_rows = query_clip_registry(
+                mode="posted-metrics",
+                candidate_id=candidate_id,
+                registry_path=registry_path,
+            )
+            self.assertEqual(metrics_rows["row_count"], 1)
+            selected_details = json.loads(metrics_rows["rows"][0]["selected_highlight_details_json"])
+            self.assertEqual(selected_details["candidate_id"], candidate_id)
+            self.assertEqual(selected_details["event_type"], "ability_plus_medal_combo")
+
+            rollups = query_clip_registry(
+                mode="posted-performance-rollups",
+                candidate_id=candidate_id,
+                registry_path=registry_path,
+            )
+            self.assertEqual(rollups["row_count"], 1)
+            row = rollups["rows"][0]
+            self.assertEqual(json.loads(row["by_selected_event_type_json"]), {"ability_plus_medal_combo": 1})
+            self.assertEqual(json.loads(row["by_selected_producer_family_json"]), {"runtime": 1})
 
     def test_transition_candidate_lifecycle_updates_state_and_history(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
