@@ -5936,9 +5936,22 @@ def _selected_highlight_details_from_row(row: dict[str, Any]) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
+def _dedupe_rows_by_post_record_id(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    unique_rows: list[dict[str, Any]] = []
+    seen_post_record_ids: set[str] = set()
+    for row in rows:
+        post_record_id = str(row.get("post_record_id") or "").strip()
+        if post_record_id:
+            if post_record_id in seen_post_record_ids:
+                continue
+            seen_post_record_ids.add(post_record_id)
+        unique_rows.append(row)
+    return unique_rows
+
+
 def _aggregate_selected_highlight_field(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
     counts: dict[str, int] = {}
-    for row in rows:
+    for row in _dedupe_rows_by_post_record_id(rows):
         details = _selected_highlight_details_from_row(row)
         value = str(details.get(field) or "").strip() or "unknown"
         counts[value] = counts.get(value, 0) + 1
@@ -5947,7 +5960,7 @@ def _aggregate_selected_highlight_field(rows: list[dict[str, Any]], field: str) 
 
 def _aggregate_selected_highlight_list(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
     counts: dict[str, int] = {}
-    for row in rows:
+    for row in _dedupe_rows_by_post_record_id(rows):
         details = _selected_highlight_details_from_row(row)
         values = details.get(field)
         if not isinstance(values, list) or not values:

@@ -118,6 +118,8 @@ def validate_real_artifact_intake(
         "imported_post_count": 0,
         "imported_posted_metrics_row_count": 0,
         "eligible_real_post_performance_label_count": 0,
+        "selected_event_type_counts": {},
+        "selected_producer_family_counts": {},
         "workspace_root": str(validation_root.resolve()),
         "game": game,
         "platform": platform,
@@ -3448,7 +3450,7 @@ def _selected_highlight_details(row: dict[str, Any]) -> dict[str, Any]:
 
 def _selected_highlight_field_counts(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
     counts: dict[str, int] = {}
-    for row in rows:
+    for row in _dedupe_metric_rows_by_post_record_id(rows):
         details = _selected_highlight_details(row)
         value = str(details.get(field) or "").strip()
         if not value:
@@ -3459,7 +3461,7 @@ def _selected_highlight_field_counts(rows: list[dict[str, Any]], field: str) -> 
 
 def _selected_highlight_list_counts(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
     counts: dict[str, int] = {}
-    for row in rows:
+    for row in _dedupe_metric_rows_by_post_record_id(rows):
         details = _selected_highlight_details(row)
         values = details.get(field)
         if not isinstance(values, list):
@@ -3472,6 +3474,19 @@ def _selected_highlight_list_counts(rows: list[dict[str, Any]], field: str) -> d
             seen.add(normalized)
             counts[normalized] = counts.get(normalized, 0) + 1
     return counts
+
+
+def _dedupe_metric_rows_by_post_record_id(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    unique_rows: list[dict[str, Any]] = []
+    seen_post_record_ids: set[str] = set()
+    for row in rows:
+        post_record_id = str(row.get("post_record_id") or "").strip()
+        if post_record_id:
+            if post_record_id in seen_post_record_ids:
+                continue
+            seen_post_record_ids.add(post_record_id)
+        unique_rows.append(row)
+    return unique_rows
 
 
 def _source_root_summary(source_root: Path, *, platform: str | None) -> dict[str, Any]:

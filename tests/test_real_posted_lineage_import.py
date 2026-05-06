@@ -179,6 +179,8 @@ class RealPostedLineageImportTests(unittest.TestCase):
             self.assertEqual(result["bundle_count"], 0)
             self.assertEqual(result["intake_status"], "empty_intake_root")
             self.assertEqual(result["coverage_inventory"]["imported_candidate_count"], 0)
+            self.assertEqual(result["coverage_inventory"]["selected_event_type_counts"], {})
+            self.assertEqual(result["coverage_inventory"]["selected_producer_family_counts"], {})
             self.assertEqual(result["bundle_readiness_rollups"]["benchmark_ready_bundle_count"], 0)
             self.assertTrue(Path(result["manifest_path"]).exists())
 
@@ -233,8 +235,8 @@ class RealPostedLineageImportTests(unittest.TestCase):
             self.assertEqual(payload["coverage_inventory"]["imported_candidate_count"], 2)
             self.assertEqual(payload["coverage_inventory"]["imported_hook_count"], 1)
             self.assertEqual(payload["coverage_inventory"]["eligible_real_post_performance_label_count"], 2)
-            self.assertEqual(payload["coverage_inventory"]["selected_event_type_counts"], {"ability_plus_medal_combo": 2})
-            self.assertEqual(payload["coverage_inventory"]["selected_producer_family_counts"], {"runtime": 2})
+            self.assertEqual(payload["coverage_inventory"]["selected_event_type_counts"], {"ability_plus_medal_combo": 1})
+            self.assertEqual(payload["coverage_inventory"]["selected_producer_family_counts"], {"runtime": 1})
 
             exported = export_v2_training_datasets(
                 registry_path=workspace_registry,
@@ -272,8 +274,8 @@ class RealPostedLineageImportTests(unittest.TestCase):
             self.assertEqual(result["coverage_inventory"]["imported_candidate_count"], 2)
             self.assertEqual(result["coverage_inventory"]["imported_post_count"], 1)
             self.assertEqual(result["coverage_inventory"]["eligible_real_post_performance_label_count"], 2)
-            self.assertEqual(result["coverage_inventory"]["selected_event_type_counts"], {"ability_plus_medal_combo": 2})
-            self.assertEqual(result["coverage_inventory"]["selected_producer_family_counts"], {"runtime": 2})
+            self.assertEqual(result["coverage_inventory"]["selected_event_type_counts"], {"ability_plus_medal_combo": 1})
+            self.assertEqual(result["coverage_inventory"]["selected_producer_family_counts"], {"runtime": 1})
             self.assertEqual(result["bundle_summaries"][0]["status"], "lineage_complete")
             self.assertEqual(result["bundle_summaries"][0]["readiness_status"], "benchmark_ready")
             self.assertEqual(result["bundle_summaries"][0]["dominant_gap_reason"], "benchmark_ready")
