@@ -32,6 +32,9 @@ class OnboardingPublishReadinessTests(unittest.TestCase):
         source_fetch_log: list[dict[str, str]] | None = None,
         duplicate_accept: bool = False,
         write_asset_file: bool = True,
+        patch_tag: str = "2026-05",
+        source_url: str = "https://example.com/punisher.png",
+        license_note: str = "internal_review_required",
     ) -> Path:
         draft_root = root / "assets" / "games" / "marvel_rivals" / "drafts" / "onboarding" / "20260503T120000Z"
         manifests_root = draft_root / "manifests"
@@ -45,6 +48,14 @@ class OnboardingPublishReadinessTests(unittest.TestCase):
         if write_asset_file:
             candidate_path.write_bytes(b"fakepng")
 
+        dump_yaml_file(
+            draft_root / "game.yaml",
+            {
+                "game_id": "marvel_rivals",
+                "display_name": "Marvel Rivals",
+                "patch_tag": patch_tag,
+            },
+        )
         dump_yaml_file(
             draft_root / "entities.yaml",
             {"heroes": [], "abilities": [], "events": []},
@@ -92,6 +103,8 @@ class OnboardingPublishReadinessTests(unittest.TestCase):
                         {
                             "candidate_id": "candidate-1",
                             "master_path": str(candidate_path),
+                            "source_url": source_url,
+                            "license_note": license_note,
                         }
                     ],
                     "bindings": [],
@@ -166,6 +179,45 @@ class OnboardingPublishReadinessTests(unittest.TestCase):
             self.assertFalse(result["can_publish"])
             self.assertEqual(result["readiness"], "structurally_invalid")
             self.assertTrue(any(row["type"] == "conflicting_accepted_bindings" for row in result["findings"]))
+
+    def test_validate_onboarding_publish_reports_missing_provenance_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            draft_root = self._write_draft(
+                Path(tempdir),
+                accepted=True,
+                patch_tag="draft",
+                license_note="unknown",
+            )
+            result = validate_onboarding_publish(draft_root)
+            self.assertFalse(result["can_publish"])
+            self.assertEqual(result["readiness"], "needs_binding_review")
+            self.assertTrue(any(row["type"] == "missing_asset_provenance" for row in result["findings"]))
+            self.assertTrue(any(row.get("field") == "patch_tag" for row in result["findings"]))
+            self.assertTrue(any(row.get("field") == "source_license_note" for row in result["findings"]))
+
+    def test_validate_onboarding_publish_reports_unresolved_required_derived_row(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            draft_root = self._write_draft(Path(tempdir), accepted=True)
+            dump_yaml_file(
+                draft_root / "manifests" / "derived_detection_manifest.yaml",
+                {
+                    "schema_version": "derived_game_detection_manifest_v1",
+                    "rows": [
+                        {
+                            "detection_id": "marvel_rivals.final_judgment.ability_icon",
+                            "target_id": "final_judgment",
+                            "required": True,
+                            "status": "unresolved",
+                            "reason": "no accepted binding exists for this required detection row yet",
+                        }
+                    ],
+                },
+            )
+            result = validate_onboarding_publish(draft_root)
+            self.assertFalse(result["can_publish"])
+            self.assertEqual(result["readiness"], "needs_binding_review")
+            self.assertEqual(result["counts"]["completeness_findings"], 1)
+            self.assertTrue(any(row["type"] == "unresolved_required_derived_row" for row in result["findings"]))
 
 
 if __name__ == "__main__":

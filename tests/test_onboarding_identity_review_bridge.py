@@ -69,6 +69,14 @@ class OnboardingIdentityReviewBridgeTests(unittest.TestCase):
         asset_path.write_bytes(b"fakepng")
 
         dump_yaml_file(
+            draft_root / "game.yaml",
+            {
+                "game_id": "marvel_rivals",
+                "display_name": "Marvel Rivals",
+                "patch_tag": "2026-05",
+            },
+        )
+        dump_yaml_file(
             draft_root / "entities.yaml",
             {
                 "heroes": [
@@ -123,7 +131,14 @@ class OnboardingIdentityReviewBridgeTests(unittest.TestCase):
                     "phase_status": "bindings_pending",
                     "source_count": 1,
                     "source_fetch_log": [{"status": "fetched", "source_role": "roster"}],
-                    "candidates": [{"candidate_id": "candidate-1", "master_path": str(asset_path)}],
+                    "candidates": [
+                        {
+                            "candidate_id": "candidate-1",
+                            "master_path": str(asset_path),
+                            "source_url": "https://example.com/punisher.png",
+                            "license_note": "internal_review_required",
+                        }
+                    ],
                     "bindings": [],
                 },
                 indent=2,
