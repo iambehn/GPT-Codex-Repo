@@ -192,6 +192,26 @@ def train_shadow_ranking_model(
             "dataset_manifest_path": str(manifest_path),
             "error": "no candidate rows matched the requested dataset filters",
         }
+    overall_positive_count, overall_negative_count = _training_label_counts(
+        feature_rows,
+        training_target=training_target,
+    )
+    if _requires_strict_target_label_balance(training_target) and (
+        overall_positive_count == 0 or overall_negative_count == 0
+    ):
+        return {
+            "ok": False,
+            "status": "insufficient_target_label_balance",
+            "dataset_manifest_path": str(manifest_path),
+            "training_target": training_target,
+            "row_count": len(feature_rows),
+            "positive_count": overall_positive_count,
+            "negative_count": overall_negative_count,
+            "error": (
+                f"{training_target} requires both positive and negative labels after target construction "
+                f"(positive_count={overall_positive_count}, negative_count={overall_negative_count})"
+            ),
+        }
 
     train_rows, eval_rows = _split_rows(
         feature_rows,
@@ -633,6 +653,10 @@ def _training_label_counts(rows: list[dict[str, Any]], *, training_target: str) 
     positive_count = sum(1 for row in rows if float(row[TARGET_PRIMARY]) >= 0.5)
     negative_count = len(rows) - positive_count
     return positive_count, negative_count
+
+
+def _requires_strict_target_label_balance(training_target: str) -> bool:
+    return training_target == "approved_or_selected_probability"
 
 
 def _fit_linear_family(rows: list[dict[str, Any]]) -> dict[str, Any]:

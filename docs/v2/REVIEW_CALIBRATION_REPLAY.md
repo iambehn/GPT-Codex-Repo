@@ -60,6 +60,7 @@ Shadow promotion decisions are target-specific.
   - benchmark review marks the target ready for next iteration
   - governance coverage is sufficient and policy recommends `prefer_shadow`
 - explicit review outcomes outrank downstream lifecycle state for this target
+- approval-target datasets must contain both positive and negative labels after target construction
 - sparse post-performance coverage does not block this target by itself
 - `post_performance_score` remains a separate target and should stay blocked until usable post-performance labels exist
 

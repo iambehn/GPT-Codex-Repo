@@ -171,6 +171,49 @@ def _prepare_dataset(root: Path) -> tuple[dict, Path]:
     return dataset, registry_path
 
 
+def _write_minimal_v2_dataset(root: Path, *, candidate_rows: list[dict]) -> dict:
+    dataset_root = root / "minimal_dataset"
+    dataset_root.mkdir(parents=True, exist_ok=True)
+    views = {
+        "candidates": candidate_rows,
+        "hooks": [],
+        "outcomes": [],
+        "performance": [],
+    }
+    manifest = {
+        "schema_version": "v2_training_dataset_export_v1",
+        "dataset_export_id": "minimal-v2-dataset",
+        "filters": {"game": "marvel_rivals"},
+        "dataset_views": {},
+        "row_count": sum(len(rows) for rows in views.values()),
+        "coverage_counts": {
+            "candidate_count": len(candidate_rows),
+            "hook_count": 0,
+            "outcome_count": 0,
+            "performance_count": 0,
+        },
+        "warning_count": 0,
+        "warnings": [],
+    }
+    for view, rows in views.items():
+        jsonl_path = dataset_root / f"{view}.jsonl"
+        csv_path = dataset_root / f"{view}.csv"
+        jsonl_path.write_text(
+            "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+            encoding="utf-8",
+        )
+        csv_path.write_text("", encoding="utf-8")
+        manifest["dataset_views"][view] = {
+            "jsonl_path": str(jsonl_path),
+            "csv_path": str(csv_path),
+            "row_count": len(rows),
+        }
+    manifest_path = dataset_root / "v2-training-minimal.manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    manifest["manifest_path"] = str(manifest_path)
+    return manifest
+
+
 class ShadowModelTrainingTests(unittest.TestCase):
     def test_approved_target_rejected_review_outweighs_posted_lifecycle(self) -> None:
         value = _target_value(
@@ -191,6 +234,48 @@ class ShadowModelTrainingTests(unittest.TestCase):
             training_target="approved_or_selected_probability",
         )
         self.assertEqual(value, 1.0)
+
+    def test_train_shadow_model_rejects_all_positive_approval_labels(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            dataset = _write_minimal_v2_dataset(
+                root,
+                candidate_rows=[
+                    {
+                        "candidate_id": "candidate-a",
+                        "game": "marvel_rivals",
+                        "source": "a.mp4",
+                        "lifecycle_state": "posted",
+                        "review_outcome": None,
+                        "final_score": 0.9,
+                        "export_present": True,
+                        "post_present": True,
+                        "metrics_present": False,
+                    },
+                    {
+                        "candidate_id": "candidate-b",
+                        "game": "marvel_rivals",
+                        "source": "b.mp4",
+                        "lifecycle_state": "posted",
+                        "review_outcome": None,
+                        "final_score": 0.8,
+                        "export_present": True,
+                        "post_present": True,
+                        "metrics_present": False,
+                    },
+                ],
+            )
+
+            model = train_shadow_ranking_model(
+                dataset["manifest_path"],
+                training_target="approved_or_selected_probability",
+                split_key="candidate_id",
+                train_fraction=0.75,
+            )
+            self.assertFalse(model["ok"])
+            self.assertEqual(model["status"], "insufficient_target_label_balance")
+            self.assertEqual(model["positive_count"], 2)
+            self.assertEqual(model["negative_count"], 0)
 
     def test_train_and_evaluate_shadow_model_with_registry_ingest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

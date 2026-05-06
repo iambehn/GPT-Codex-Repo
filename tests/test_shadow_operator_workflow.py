@@ -9,7 +9,7 @@ from unittest.mock import patch
 from pipeline.shadow_model_training import evaluate_shadow_ranking_model, train_shadow_ranking_model
 from pipeline.shadow_operator_workflow import run_shadow_operator_workflow
 from pipeline.shadow_evaluation_policy import write_shadow_evaluation_policy
-from tests.test_shadow_model_training import _prepare_dataset
+from tests.test_shadow_model_training import _prepare_dataset, _write_minimal_v2_dataset
 
 
 class ShadowOperatorWorkflowTests(unittest.TestCase):
@@ -356,6 +356,54 @@ class ShadowOperatorWorkflowTests(unittest.TestCase):
             step_map = {step["step_name"]: step for step in result["step_results"]}
             self.assertEqual(step_map["train_model"]["warning_count"], 0)
             self.assertEqual(step_map["run_benchmark_matrix"]["warning_count"], 0)
+
+    def test_full_mode_fails_early_on_insufficient_approval_label_balance(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            dataset = _write_minimal_v2_dataset(
+                root,
+                candidate_rows=[
+                    {
+                        "candidate_id": "candidate-a",
+                        "game": "marvel_rivals",
+                        "source": "a.mp4",
+                        "lifecycle_state": "posted",
+                        "review_outcome": None,
+                        "final_score": 0.9,
+                        "export_present": True,
+                        "post_present": True,
+                        "metrics_present": False,
+                    },
+                    {
+                        "candidate_id": "candidate-b",
+                        "game": "marvel_rivals",
+                        "source": "b.mp4",
+                        "lifecycle_state": "posted",
+                        "review_outcome": None,
+                        "final_score": 0.8,
+                        "export_present": True,
+                        "post_present": True,
+                        "metrics_present": False,
+                    },
+                ],
+            )
+            policy = write_shadow_evaluation_policy(root / "policy" / "default.shadow_evaluation_policy.json")
+            result = run_shadow_operator_workflow(
+                mode="full",
+                dataset_manifest=dataset["manifest_path"],
+                policy_path=policy["manifest_path"],
+                split_key="candidate_id",
+                train_fraction=0.75,
+                output_root=root / "shadow-operator",
+                training_target="approved_or_selected_probability",
+                target="candidate_approval_probability",
+            )
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual(len(result["step_results"]), 1)
+            self.assertEqual(result["step_results"][0]["step_name"], "train_model")
+            self.assertEqual(result["step_results"][0]["status"], "failed")
+            self.assertEqual(result["step_results"][0]["error"], "approved_or_selected_probability requires both positive and negative labels after target construction (positive_count=2, negative_count=0)")
 
 
 if __name__ == "__main__":
