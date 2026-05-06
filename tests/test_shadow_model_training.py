@@ -14,6 +14,7 @@ from pipeline.highlight_export_batch import (
 from pipeline.highlight_selection_export import export_highlight_selection
 from pipeline.hook_candidate_export import derive_hook_candidates
 from pipeline.shadow_model_training import (
+    _target_value,
     compare_shadow_model_families,
     evaluate_shadow_ranking_model,
     train_shadow_ranking_model,
@@ -171,6 +172,26 @@ def _prepare_dataset(root: Path) -> tuple[dict, Path]:
 
 
 class ShadowModelTrainingTests(unittest.TestCase):
+    def test_approved_target_rejected_review_outweighs_posted_lifecycle(self) -> None:
+        value = _target_value(
+            {
+                "lifecycle_state": "posted",
+                "review_outcome": "rejected",
+            },
+            training_target="approved_or_selected_probability",
+        )
+        self.assertEqual(value, 0.0)
+
+    def test_approved_target_approved_review_outweighs_lifecycle(self) -> None:
+        value = _target_value(
+            {
+                "lifecycle_state": "rejected",
+                "review_outcome": "approved",
+            },
+            training_target="approved_or_selected_probability",
+        )
+        self.assertEqual(value, 1.0)
+
     def test_train_and_evaluate_shadow_model_with_registry_ingest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)

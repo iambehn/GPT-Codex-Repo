@@ -511,9 +511,13 @@ def _target_value(candidate: dict[str, Any], *, training_target: str) -> float |
     lifecycle_state = str(candidate.get("lifecycle_state") or "").strip()
     review_outcome = str(candidate.get("review_outcome") or "").strip().lower()
     if training_target == "approved_or_selected_probability":
-        if lifecycle_state in {"approved", "selected_for_export", "exported", "posted"} or review_outcome == "approved":
+        if review_outcome == "rejected":
+            return 0.0
+        if review_outcome == "approved":
             return 1.0
-        if lifecycle_state in {"pending_review", "rejected", "invalidated", "superseded"} or review_outcome == "rejected":
+        if lifecycle_state in {"approved", "selected_for_export", "exported", "posted"}:
+            return 1.0
+        if lifecycle_state in {"pending_review", "rejected", "invalidated", "superseded"}:
             return 0.0
         return None
     if training_target == "export_selection_probability":
