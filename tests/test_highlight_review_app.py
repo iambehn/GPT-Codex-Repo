@@ -6,6 +6,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from pipeline.clip_registry import refresh_clip_registry
+from pipeline.highlight_selection_export import export_highlight_selection
+from pipeline.hook_candidate_export import derive_hook_candidates
 from pipeline.highlight_review_app import launch_highlight_review_app, load_highlight_review_records
 
 
@@ -18,6 +21,37 @@ def _proxy_sidecar(source: Path) -> dict[str, object]:
         "source": str(source.resolve()),
         "proxy_review": {"review_status": "approved"},
         "windows": [],
+    }
+
+
+def _fused_sidecar(source: Path) -> dict[str, object]:
+    return {
+        "schema_version": "fused_analysis_v1",
+        "fusion_id": "fused-123abc",
+        "ok": True,
+        "game": "marvel_rivals",
+        "source": str(source.resolve()),
+        "normalized_signals": [
+            {
+                "signal_id": "signal-runtime-1",
+                "producer_family": "runtime",
+            }
+        ],
+        "fused_events": [
+            {
+                "event_id": "fused-1",
+                "event_type": "ability_plus_medal_combo",
+                "final_score": 0.91,
+                "confidence": 0.91,
+                "gate_status": "confirmed",
+                "minimum_required_signals_met": True,
+                "suggested_start_timestamp": 0.5,
+                "suggested_end_timestamp": 3.0,
+                "contributing_signals": ["signal-runtime-1"],
+                "metadata": {},
+            }
+        ],
+        "fused_review": {"events": {"fused-1": {"review_status": "approved"}}},
     }
 
 
@@ -154,6 +188,33 @@ class HighlightReviewAppTests(unittest.TestCase):
 
             self.assertTrue(result["ok"])
             self.assertEqual(sidecar.read_text(encoding="utf-8"), original_text)
+
+    def test_load_highlight_review_records_includes_candidate_lifecycle_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "alpha.mp4"
+            media.write_bytes(b"video")
+            fused_sidecar = root / "alpha.fused_analysis.json"
+            fused_sidecar.write_text(json.dumps(_fused_sidecar(media), indent=2), encoding="utf-8")
+            registry_path = root / "registry.sqlite"
+            export_highlight_selection(fused_sidecar=fused_sidecar, output_path=root / "exports" / "alpha.highlight_selection.json")
+            refresh_clip_registry(root, registry_path=registry_path)
+            derive_hook_candidates(fused_sidecar, registry_path=registry_path, output_path=root / "exports" / "alpha.hook_candidates.json")
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            records = load_highlight_review_records(
+                sidecar_root=root,
+                registry_path=registry_path,
+            )
+
+            sidecar_record = next(row for row in records if row["kind"] == "sidecar")
+            self.assertEqual(sidecar_record["candidate_lifecycle_count"], 1)
+            self.assertIn("selected_for_export", sidecar_record["candidate_lifecycle_states"])
+            self.assertEqual(sidecar_record["selected_highlight_event_types"], ["ability_plus_medal_combo"])
+            self.assertEqual(sidecar_record["selected_highlight_producer_families"], ["runtime"])
+            self.assertEqual(sidecar_record["selected_highlight_fusion_ids"], ["fused-123abc"])
+            self.assertEqual(sidecar_record["hook_candidate_count"], 1)
+            self.assertTrue(sidecar_record["strongest_hook_archetype"])
 
 
 if __name__ == "__main__":

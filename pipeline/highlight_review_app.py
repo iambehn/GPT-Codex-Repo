@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from pipeline.clip_registry import load_candidate_lifecycle_details, load_hook_candidate_details
 from pipeline.evaluation_fixtures import load_evaluation_fixture_manifest
 from pipeline.unified_replay_viewer import render_unified_replay_viewer
 
@@ -15,6 +16,7 @@ def load_highlight_review_records(
     fixture_manifest_path: str | Path | None = None,
     fixture_comparison_report: str | Path | None = None,
     fixture_trial_batch_manifest: str | Path | None = None,
+    registry_path: str | Path | None = None,
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     comparison_rows_by_fixture: dict[str, list[dict[str, Any]]] = {}
@@ -110,6 +112,64 @@ def load_highlight_review_records(
                             record["fused_review_status"] = next(iter(statuses))
                         elif statuses:
                             record["fused_review_status"] = "mixed"
+                lifecycle_rows = load_candidate_lifecycle_details(
+                    game=str(payload.get("game", "")).strip() or None,
+                    source=str(payload.get("source", "")).strip() or None,
+                    fused_sidecar_path=path,
+                    registry_path=registry_path,
+                )
+                if lifecycle_rows:
+                    record["candidate_lifecycle_states"] = sorted(
+                        {
+                            str(row.get("lifecycle_state") or "").strip()
+                            for row in lifecycle_rows
+                            if str(row.get("lifecycle_state") or "").strip()
+                        }
+                    )
+                    record["candidate_lifecycle_count"] = len(lifecycle_rows)
+                    record["selected_highlight_event_types"] = sorted(
+                        {
+                            event_type
+                            for row in lifecycle_rows
+                            for event_type in [_selected_highlight_details_from_lifecycle_row(row).get("event_type")]
+                            if isinstance(event_type, str) and event_type.strip()
+                        }
+                    )
+                    record["selected_highlight_producer_families"] = sorted(
+                        {
+                            family
+                            for row in lifecycle_rows
+                            for family in _selected_highlight_producer_families_from_lifecycle_row(row)
+                        }
+                    )
+                    record["selected_highlight_fusion_ids"] = sorted(
+                        {
+                            fusion_id
+                            for row in lifecycle_rows
+                            for fusion_id in [_selected_highlight_details_from_lifecycle_row(row).get("fusion_id")]
+                            if isinstance(fusion_id, str) and fusion_id.strip()
+                        }
+                    )
+                hook_rows = load_hook_candidate_details(
+                    game=str(payload.get("game", "")).strip() or None,
+                    source=str(payload.get("source", "")).strip() or None,
+                    fused_sidecar_path=path,
+                    registry_path=registry_path,
+                )
+                if hook_rows:
+                    record["hook_candidate_count"] = len(hook_rows)
+                    record["hook_modes"] = sorted(
+                        {
+                            str(row.get("hook_mode") or "").strip()
+                            for row in hook_rows
+                            if str(row.get("hook_mode") or "").strip()
+                        }
+                    )
+                    strongest = max(
+                        hook_rows,
+                        key=lambda row: float(row.get("hook_strength", 0.0) or 0.0),
+                    )
+                    record["strongest_hook_archetype"] = str(strongest.get("hook_archetype") or "").strip() or None
 
         records.extend(
             sorted(grouped.values(), key=lambda row: (str(row.get("game") or ""), str(row.get("source") or "")))
@@ -127,6 +187,7 @@ def launch_highlight_review_app(
     proxy_replay_report: str | Path | None = None,
     runtime_calibration_report: str | Path | None = None,
     runtime_replay_report: str | Path | None = None,
+    registry_path: str | Path | None = None,
     output_path: str | Path | None = None,
     launch: bool = True,
 ) -> dict[str, Any]:
@@ -135,6 +196,7 @@ def launch_highlight_review_app(
         fixture_manifest_path=fixture_manifest_path,
         fixture_comparison_report=fixture_comparison_report,
         fixture_trial_batch_manifest=fixture_trial_batch_manifest,
+        registry_path=registry_path,
     )
     if not records:
         return {
@@ -175,6 +237,7 @@ def launch_highlight_review_app(
                     proxy_replay_report=proxy_replay_report,
                     runtime_calibration_report=runtime_calibration_report,
                     runtime_replay_report=runtime_replay_report,
+                    registry_path=registry_path,
                     output_path=output_path,
                 )
                 trial_path = _render_fixture_viewer(
@@ -186,6 +249,7 @@ def launch_highlight_review_app(
                     proxy_replay_report=proxy_replay_report,
                     runtime_calibration_report=runtime_calibration_report,
                     runtime_replay_report=runtime_replay_report,
+                    registry_path=registry_path,
                     output_path=output_path,
                 )
                 render_payload["preferred_comparison"] = preferred
@@ -202,6 +266,7 @@ def launch_highlight_review_app(
             proxy_replay_report=proxy_replay_report,
             runtime_calibration_report=runtime_calibration_report,
             runtime_replay_report=runtime_replay_report,
+            registry_path=registry_path,
             output_path=output_path,
         )
         return summary, str(result.get("viewer_path", "")), "", json.dumps(result, indent=2)
@@ -250,6 +315,14 @@ def _base_sidecar_record(payload: dict[str, Any]) -> dict[str, Any]:
         "proxy_review_status": None,
         "runtime_review_status": None,
         "fused_review_status": None,
+        "candidate_lifecycle_states": [],
+        "candidate_lifecycle_count": 0,
+        "hook_candidate_count": 0,
+        "hook_modes": [],
+        "strongest_hook_archetype": None,
+        "selected_highlight_event_types": [],
+        "selected_highlight_producer_families": [],
+        "selected_highlight_fusion_ids": [],
     }
 
 
@@ -297,6 +370,15 @@ def _record_summary(row: dict[str, Any]) -> str:
             f"- Proxy review: `{row.get('proxy_review_status') or 'unreviewed'}`",
             f"- Runtime review: `{row.get('runtime_review_status') or 'unreviewed'}`",
             f"- Fused review: `{row.get('fused_review_status') or 'unreviewed'}`",
+            f"- Candidate lifecycle states: `{','.join(row.get('candidate_lifecycle_states', [])) or 'n/a'}`",
+            f"- Candidate lifecycle count: `{row.get('candidate_lifecycle_count', 0)}`",
+            f"- Export-state context: `{_export_state_context(row.get('candidate_lifecycle_states', []))}`",
+            f"- Selected event types: `{','.join(row.get('selected_highlight_event_types', [])) or 'n/a'}`",
+            f"- Selected producer families: `{','.join(row.get('selected_highlight_producer_families', [])) or 'n/a'}`",
+            f"- Selected fusion ids: `{','.join(row.get('selected_highlight_fusion_ids', [])) or 'n/a'}`",
+            f"- Hook candidate count: `{row.get('hook_candidate_count', 0)}`",
+            f"- Hook modes: `{','.join(row.get('hook_modes', [])) or 'n/a'}`",
+            f"- Strongest hook archetype: `{row.get('strongest_hook_archetype') or 'n/a'}`",
             f"- Cross-layer review disagreement: `{'yes' if len(review_statuses) > 1 else 'no'}`",
         ]
     )
@@ -307,6 +389,27 @@ def _load_json(path: Path) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
+
+
+def _selected_highlight_details_from_lifecycle_row(row: dict[str, Any]) -> dict[str, Any]:
+    payload = row.get("selected_highlight_details_json")
+    if isinstance(payload, dict):
+        return payload
+    if payload in (None, "", "null"):
+        return {}
+    try:
+        parsed = json.loads(str(payload))
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _selected_highlight_producer_families_from_lifecycle_row(row: dict[str, Any]) -> list[str]:
+    details = _selected_highlight_details_from_lifecycle_row(row)
+    values = details.get("contributing_producer_families")
+    if not isinstance(values, list):
+        return []
+    return [str(value).strip() for value in values if str(value).strip()]
 
 
 def _resolve_path(path_like: str | Path) -> Path:
@@ -329,6 +432,12 @@ def _preferred_fixture_row(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return ranked[0] if ranked else {}
 
 
+def _export_state_context(states: list[str]) -> str:
+    normalized = {str(state).strip() for state in states if str(state).strip()}
+    relevant = [state for state in ("approved", "selected_for_export", "exported", "posted") if state in normalized]
+    return ",".join(relevant) or "n/a"
+
+
 def _render_fixture_viewer(
     row: dict[str, Any],
     *,
@@ -339,6 +448,7 @@ def _render_fixture_viewer(
     proxy_replay_report: str | Path | None,
     runtime_calibration_report: str | Path | None,
     runtime_replay_report: str | Path | None,
+    registry_path: str | Path | None,
     output_path: str | Path | None,
 ) -> str:
     proxy_sidecar = row.get(f"{side}_sidecar_path") if str(row.get("artifact_layer")) == "proxy" else None
@@ -360,6 +470,7 @@ def _render_fixture_viewer(
         proxy_replay_report=proxy_replay_report,
         runtime_calibration_report=runtime_calibration_report,
         runtime_replay_report=runtime_replay_report,
+        registry_path=registry_path,
         output_path=resolved_output_path,
     )
     return str(result.get("viewer_path", ""))
