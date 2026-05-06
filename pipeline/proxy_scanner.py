@@ -12,15 +12,28 @@ class ProxySignal:
     strength: float
     confidence: float
     reason: str
+    producer: str | None = None
+    source_ref: str | None = None
+    evidence: dict[str, Any] | None = None
+    start_timestamp: float | None = None
+    end_timestamp: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        evidence = dict(self.evidence or {})
+        if self.reason and "reason" not in evidence:
+            evidence["reason"] = self.reason
         return {
             "source": self.source,
             "source_family": self.source_family,
             "timestamp": round(self.timestamp, 3),
+            "start_timestamp": round(self.start_timestamp if self.start_timestamp is not None else self.timestamp, 3),
+            "end_timestamp": round(self.end_timestamp if self.end_timestamp is not None else self.timestamp, 3),
             "strength": round(self.strength, 4),
             "confidence": round(self.confidence, 4),
+            "producer": self.producer or self.source_family or self.source,
+            "source_ref": self.source_ref or "",
             "reason": self.reason,
+            "evidence": evidence,
         }
 
 

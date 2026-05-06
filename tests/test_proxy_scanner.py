@@ -35,6 +35,28 @@ def _proxy_config(min_proxy_score: float = 0.10) -> dict[str, object]:
 
 
 class ProxyScannerTests(unittest.TestCase):
+    def test_proxy_signal_to_dict_exposes_canonical_time_and_provenance_fields(self) -> None:
+        signal = ProxySignal(
+            "chat_spike",
+            "chat_velocity",
+            10.0,
+            0.5,
+            0.7,
+            "burst",
+            producer="chat_velocity",
+            source_ref="/tmp/chat.log",
+            evidence={"bucket_seconds": 5},
+        )
+
+        payload = signal.to_dict()
+
+        self.assertEqual(payload["producer"], "chat_velocity")
+        self.assertEqual(payload["source_ref"], "/tmp/chat.log")
+        self.assertEqual(payload["start_timestamp"], 10.0)
+        self.assertEqual(payload["end_timestamp"], 10.0)
+        self.assertEqual(payload["evidence"]["reason"], "burst")
+        self.assertEqual(payload["evidence"]["bucket_seconds"], 5)
+
     def test_same_source_signals_dedupe_and_merge(self) -> None:
         signals = [
             ProxySignal("chat_spike", "chat_velocity", 10.0, 0.5, 0.7, "a"),

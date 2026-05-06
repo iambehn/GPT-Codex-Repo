@@ -118,6 +118,9 @@ def map_matcher_result(
         metadata_by_asset,
         sample_fps=float(matcher_result.get("sample_fps", 0.0) or 0.0),
     )
+    for signal in signals:
+        signal["producer_family"] = "runtime"
+        signal["source_ref"] = source
     event_candidates = _build_event_candidates(game, signals)
     events, identity_competition_drop_count = _resolve_identity_competition(event_candidates)
     events.sort(key=lambda row: (float(row["start_timestamp"]), row["event_type"], row["asset_id"]))
@@ -375,6 +378,8 @@ def _build_event_candidates(game: str, signals: list[dict[str, Any]]) -> list[di
             "evidence": signal["evidence"],
             "source_detection_count": signal["source_detection_count"],
             "producer": signal["producer"],
+            "producer_family": signal.get("producer_family"),
+            "source_ref": signal.get("source_ref"),
         }
         for field in ("entity_id", "ability_id", "equipment_id", "event_row_id", "display_name", "_identity_competition"):
             if field in signal:

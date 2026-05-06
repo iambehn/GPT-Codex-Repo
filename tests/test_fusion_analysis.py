@@ -13,6 +13,7 @@ from pipeline.fusion_analysis import (
     FusionAnalysisError,
     fuse_analysis,
     load_fusion_rules,
+    normalize_fusion_signals,
     normalize_proxy_signals,
     normalize_runtime_signals,
 )
@@ -37,6 +38,7 @@ class FusionAnalysisTests(unittest.TestCase):
             encoding="utf-8",
         )
         (game_root / "entities.yaml").write_text("heroes: []\nabilities: []\nevents: []\n", encoding="utf-8")
+        (game_root / "medals.yaml").write_text("medals: []\n", encoding="utf-8")
         (game_root / "hud.yaml").write_text(
             "\n".join(
                 [
@@ -199,6 +201,8 @@ class FusionAnalysisTests(unittest.TestCase):
                         "evidence": {"peak_score": 0.92, "supporting_frames": 4},
                         "source_detection_count": 4,
                         "producer": "runtime_cv_template_matcher",
+                        "producer_family": "runtime",
+                        "source_ref": "/tmp/example.mp4",
                     },
                     {
                         "signal_id": "sig-ability",
@@ -215,6 +219,8 @@ class FusionAnalysisTests(unittest.TestCase):
                         "evidence": {"peak_score": 0.88, "supporting_frames": 3},
                         "source_detection_count": 3,
                         "producer": "runtime_cv_template_matcher",
+                        "producer_family": "runtime",
+                        "source_ref": "/tmp/example.mp4",
                     },
                 ],
             },
@@ -232,8 +238,11 @@ class FusionAnalysisTests(unittest.TestCase):
 
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0]["producer_family"], "proxy")
+        self.assertEqual(rows[0]["producer"], "audio_prepass")
         self.assertEqual(rows[0]["signal_type"], "audio_spike")
         self.assertEqual(rows[0]["start_timestamp"], rows[0]["timestamp"])
+        self.assertIn("source_ref", rows[0])
+        self.assertIsInstance(rows[0]["evidence"], dict)
         self.assertEqual(rows[0]["evidence"]["matching_windows"][0]["recommended_action"], "inspect")
 
     def test_runtime_signals_normalize_preserving_semantic_targets(self) -> None:
@@ -245,6 +254,34 @@ class FusionAnalysisTests(unittest.TestCase):
         self.assertEqual(medal_row["event_row_id"], "double_kill")
         self.assertEqual(ability_row["ability_id"], "punisher_ultimate")
         self.assertEqual(ability_row["producer_family"], "runtime")
+        self.assertEqual(ability_row["producer"], "runtime_cv_template_matcher")
+        self.assertEqual(ability_row["source_ref"], "/tmp/example.mp4")
+        self.assertEqual(ability_row["source_family"], "ability_icon")
+        self.assertTrue(float(ability_row["start_timestamp"]) <= float(ability_row["timestamp"]) <= float(ability_row["end_timestamp"]))
+
+    def test_normalize_fusion_signals_sorts_rows_using_shared_contract(self) -> None:
+        rows = normalize_fusion_signals(
+            proxy_sidecar=self._proxy_sidecar(),
+            runtime_sidecar=self._runtime_sidecar(),
+        )
+
+        self.assertEqual([row["signal_type"] for row in rows], ["ability_visibility", "medal_visibility", "audio_spike", "chat_spike"])
+        for row in rows:
+            self.assertIn("producer", row)
+            self.assertIn("source_ref", row)
+            self.assertIsInstance(row["evidence"], dict)
+            self.assertLessEqual(float(row["start_timestamp"]), float(row["end_timestamp"]))
+            self.assertLessEqual(float(row["start_timestamp"]), float(row["timestamp"]))
+            self.assertLessEqual(float(row["timestamp"]), float(row["end_timestamp"]))
+
+    def test_runtime_signals_reject_invalid_normalized_time_window(self) -> None:
+        runtime_sidecar = self._runtime_sidecar()
+        runtime_sidecar["matcher"]["signals"][0]["start_timestamp"] = 5.2
+        runtime_sidecar["matcher"]["signals"][0]["end_timestamp"] = 5.1
+
+        with self.assertRaises(FusionAnalysisError) as exc:
+            normalize_runtime_signals(runtime_sidecar)
+        self.assertEqual(exc.exception.status, "invalid_normalized_signal_contract")
 
     def test_load_fusion_rules_rejects_unknown_signal_type(self) -> None:
         rules_text = (
@@ -349,6 +386,16 @@ class FusionAnalysisTests(unittest.TestCase):
         self.assertIn("sig-ability", combo_row["contributing_signals"])
         self.assertIn("audio_prepass", combo_row["contributing_sources"])
         self.assertEqual(combo_row["gate_status"], "not_applicable")
+        self.assertEqual(combo_row["metadata"]["rule_id"], "ability_medal_combo")
+        self.assertEqual(combo_row["metadata"]["rule_parameters"]["window_seconds"], 0.5)
+        self.assertEqual(combo_row["metadata"]["rule_parameters"]["confidence_method"], "mean")
+        self.assertIn("matched_signal_types", combo_row["metadata"])
+        self.assertIsInstance(combo_row["metadata"]["matched_signal_types"], list)
+        self.assertLessEqual(combo_row["start_timestamp"], combo_row["anchor_timestamp"])
+        self.assertLessEqual(combo_row["anchor_timestamp"], combo_row["end_timestamp"])
+        self.assertLessEqual(combo_row["suggested_start_timestamp"], combo_row["suggested_end_timestamp"])
+        self.assertEqual(result["fusion_summary"]["rule_parameters_by_id"]["ability_medal_combo"]["window_seconds"], 0.5)
+        self.assertEqual(result["fusion_summary"]["rule_parameters_by_id"]["ability_medal_combo"]["confidence_method"], "mean")
 
     def test_penalty_logic_reduces_confidence_for_low_confidence_evidence(self) -> None:
         rules_text = "\n".join(
@@ -431,7 +478,18 @@ class FusionAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(row["multiplier_applied"], 1.2, places=5)
         self.assertAlmostEqual(row["suggested_start_timestamp"], 0.0, places=5)
         self.assertAlmostEqual(row["suggested_end_timestamp"], 6.8, places=5)
+        self.assertEqual(row["metadata"]["rule_parameters"]["lag_window_seconds"], 0.4)
+        self.assertEqual(row["metadata"]["rule_parameters"]["clip_start_lead_seconds"], 6.0)
+        self.assertEqual(row["metadata"]["rule_parameters"]["clip_end_lag_seconds"], 1.5)
+        self.assertEqual(row["metadata"]["rule_parameters"]["confirm_multiplier"], 1.2)
+        self.assertEqual(row["metadata"]["rule_parameters"]["ambiguous_confidence_multiplier"], 0.8)
+        rule_match = result["rule_matches"][0]
+        self.assertEqual(rule_match["rule_parameters"]["lag_window_seconds"], 0.4)
+        self.assertEqual(rule_match["rule_parameters"]["clip_start_lead_seconds"], 6.0)
+        self.assertEqual(rule_match["rule_parameters"]["clip_end_lag_seconds"], 1.5)
         self.assertEqual(result["fusion_summary"]["gate_status_counts"]["confirmed"], 1)
+        self.assertEqual(result["fusion_summary"]["rule_parameters_by_id"]["medal_reaction_gate"]["confirm_multiplier"], 1.2)
+        self.assertEqual(result["fusion_summary"]["rule_parameters_by_id"]["medal_reaction_gate"]["ambiguous_confidence_multiplier"], 0.8)
 
     def test_gated_rule_becomes_ambiguous_without_dependent_signal(self) -> None:
         rules_text = "\n".join(
@@ -474,6 +532,114 @@ class FusionAnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(row["confidence"], 0.46, places=5)
         self.assertAlmostEqual(row["suggested_start_timestamp"], 2.95, places=5)
         self.assertAlmostEqual(row["suggested_end_timestamp"], 8.95, places=5)
+
+    def test_fuse_analysis_rejects_invalid_fused_event_contract(self) -> None:
+        rules_text = "\n".join(
+            [
+                "rules:",
+                "  - rule_id: medal_atomic",
+                "    event_type: medal_seen",
+                '    signal_types: ["medal_visibility"]',
+                '    required_signal_types: ["medal_visibility"]',
+                "    window_seconds: 0.5",
+                "    min_signal_count: 1",
+                "    confidence_method: max",
+                '    group_by: ["event_row_id"]',
+            ]
+        ) + "\n"
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            self._write_published_pack(root, rules_text=rules_text)
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ), patch("pipeline.fusion_analysis._build_fused_event") as build_event:
+                valid_event = {
+                    "event_id": "event-1",
+                    "event_type": "medal_seen",
+                    "start_timestamp": 5.2,
+                    "end_timestamp": 5.1,
+                    "timestamp": 5.15,
+                    "base_confidence": 0.92,
+                    "post_gate_confidence": 0.92,
+                    "confidence": 0.92,
+                    "final_score": 0.92,
+                    "entropy": 0.0,
+                    "gate_status": "not_applicable",
+                    "anchor_timestamp": 5.15,
+                    "lag_window_seconds": None,
+                    "multiplier_applied": 1.0,
+                    "dependent_signal_ids": [],
+                    "dependent_signal_types": [],
+                    "synergy_applied": False,
+                    "synergy_score": 0.0,
+                    "synergy_multiplier": 1.0,
+                    "synergy_matches": [],
+                    "minimum_required_signals_met": True,
+                    "suggested_start_timestamp": 5.0,
+                    "suggested_end_timestamp": 5.3,
+                    "contributing_signals": ["sig-medal"],
+                    "contributing_sources": ["medal_icon"],
+                    "penalties": [],
+                    "bonuses": [],
+                    "metadata": {
+                        "rule_id": "medal_atomic",
+                        "group_key": ["double_kill"],
+                        "matched_signal_types": ["medal_visibility"],
+                    },
+                }
+                build_event.return_value = valid_event
+                with self.assertRaises(FusionAnalysisError) as exc:
+                    fuse_analysis(
+                        "/tmp/example.mp4",
+                        "marvel_rivals",
+                        proxy_sidecar=self._proxy_sidecar(),
+                        runtime_sidecar=self._runtime_sidecar(),
+                    )
+        self.assertEqual(exc.exception.status, "invalid_fused_event_contract")
+
+    def test_fuse_analysis_rejects_invalid_fusion_summary_contract(self) -> None:
+        rules_text = "\n".join(
+            [
+                "rules:",
+                "  - rule_id: medal_atomic",
+                "    event_type: medal_seen",
+                '    signal_types: ["medal_visibility"]',
+                '    required_signal_types: ["medal_visibility"]',
+                "    window_seconds: 0.5",
+                "    min_signal_count: 1",
+                "    confidence_method: max",
+                '    group_by: ["event_row_id"]',
+            ]
+        ) + "\n"
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            self._write_published_pack(root, rules_text=rules_text)
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ), patch("pipeline.fusion_analysis._fusion_summary") as build_summary:
+                build_summary.return_value = {
+                    "normalized_signal_count": 3,
+                    "fused_event_count": 1,
+                    "signals_by_producer_family": {},
+                    "signals_by_type": {},
+                    "events_by_type": {},
+                    "gate_status_counts": {},
+                    "synergy_applied_count": 0,
+                    "synergy_rule_counts": {},
+                    "average_synergy_multiplier": 1.0,
+                    "contract_summary": {},
+                    "rule_count": 1,
+                    "rule_ids": ["medal_atomic"],
+                    "rule_parameters_by_id": {},
+                }
+                with self.assertRaises(FusionAnalysisError) as exc:
+                    fuse_analysis(
+                        "/tmp/example.mp4",
+                        "marvel_rivals",
+                        proxy_sidecar=self._proxy_sidecar(),
+                        runtime_sidecar=self._runtime_sidecar(),
+                    )
+        self.assertEqual(exc.exception.status, "invalid_fusion_summary_contract")
 
     def test_load_fusion_rules_rejects_malformed_gate_config(self) -> None:
         rules_text = (

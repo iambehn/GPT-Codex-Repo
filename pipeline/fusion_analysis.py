@@ -22,6 +22,48 @@ RUNTIME_ANALYSIS_SCHEMA_VERSION = "runtime_analysis_v1"
 
 SUPPORTED_CONFIDENCE_METHODS = {"max", "mean"}
 MAX_SYNERGY_MULTIPLIER = 1.5
+REQUIRED_NORMALIZED_SIGNAL_FIELDS = (
+    "signal_id",
+    "producer_family",
+    "producer",
+    "signal_type",
+    "timestamp",
+    "start_timestamp",
+    "end_timestamp",
+    "confidence",
+    "strength",
+    "source_ref",
+    "evidence",
+)
+REQUIRED_FUSED_EVENT_FIELDS = (
+    "event_id",
+    "event_type",
+    "start_timestamp",
+    "end_timestamp",
+    "timestamp",
+    "confidence",
+    "final_score",
+    "gate_status",
+    "anchor_timestamp",
+    "contributing_signals",
+    "contributing_sources",
+    "metadata",
+)
+REQUIRED_FUSION_SUMMARY_FIELDS = (
+    "normalized_signal_count",
+    "fused_event_count",
+    "signals_by_producer_family",
+    "signals_by_type",
+    "events_by_type",
+    "gate_status_counts",
+    "synergy_applied_count",
+    "synergy_rule_counts",
+    "average_synergy_multiplier",
+    "contract_summary",
+    "rule_count",
+    "rule_ids",
+    "rule_parameters_by_id",
+)
 
 
 class FusionAnalysisError(RuntimeError):
@@ -96,6 +138,8 @@ def fuse_analysis(
     rules = load_fusion_rules(game, rules_path=rules_path)
     normalized_signals = normalize_fusion_signals(proxy_sidecar=proxy_sidecar, runtime_sidecar=runtime_sidecar)
     fused_events, rule_matches = _fuse_normalized_signals(normalized_signals, rules, game=game)
+    fusion_summary = _fusion_summary(normalized_signals, fused_events, rules, game=game)
+    _validate_fusion_summary_contract(fusion_summary, normalized_signals=normalized_signals, fused_events=fused_events, rules=rules)
 
     sidecar_path = _fused_analysis_path(source, game, output_path)
     payload = {
@@ -125,7 +169,7 @@ def fuse_analysis(
         },
         "normalized_signals": normalized_signals,
         "fused_events": fused_events,
-        "fusion_summary": _fusion_summary(normalized_signals, fused_events, rules, game=game),
+        "fusion_summary": fusion_summary,
         "rule_matches": rule_matches,
     }
     try:
@@ -431,6 +475,8 @@ def normalize_proxy_signals(proxy_sidecar: dict[str, Any]) -> list[dict[str, Any
         if not isinstance(row, dict):
             raise FusionAnalysisError("invalid_proxy_sidecar", "proxy sidecar signals must be objects")
         timestamp = float(row.get("timestamp", 0.0) or 0.0)
+        start_timestamp = float(row.get("start_timestamp", timestamp) or timestamp)
+        end_timestamp = float(row.get("end_timestamp", timestamp) or timestamp)
         source = str(row.get("source", "")).strip()
         if not source:
             continue
@@ -449,20 +495,23 @@ def normalize_proxy_signals(proxy_sidecar: dict[str, Any]) -> list[dict[str, Any
             {
                 "signal_id": signal_id,
                 "producer_family": "proxy",
+                "producer": str(row.get("producer", "")).strip() or str(row.get("source_family", "")).strip() or str(source),
                 "signal_type": source,
                 "timestamp": round(timestamp, 5),
-                "start_timestamp": round(timestamp, 5),
-                "end_timestamp": round(timestamp, 5),
+                "start_timestamp": round(start_timestamp, 5),
+                "end_timestamp": round(end_timestamp, 5),
                 "confidence": round(float(row.get("confidence", 0.0) or 0.0), 5),
                 "strength": round(float(row.get("strength", 0.0) or 0.0), 5),
-                "source_ref": str(proxy_sidecar.get("sidecar_path") or proxy_sidecar.get("scan_id") or ""),
+                "source_ref": str(row.get("source_ref") or proxy_sidecar.get("sidecar_path") or proxy_sidecar.get("scan_id") or ""),
                 "source_family": str(row.get("source_family", "")).strip() or None,
                 "evidence": {
+                    **(row.get("evidence", {}) if isinstance(row.get("evidence"), dict) else {}),
                     "reason": row.get("reason"),
                     "matching_windows": matching_windows,
                 },
             }
         )
+    _validate_normalized_signal_contract(result, sidecar_kind="proxy")
     return result
 
 
@@ -482,14 +531,15 @@ def normalize_runtime_signals(runtime_sidecar: dict[str, Any]) -> list[dict[str,
         normalized = {
             "signal_id": signal_id,
             "producer_family": "runtime",
+            "producer": str(row.get("producer", "")).strip() or "runtime_cv_template_matcher",
             "signal_type": signal_type,
             "timestamp": round(float(row.get("timestamp", 0.0) or 0.0), 5),
             "start_timestamp": round(float(row.get("start_timestamp", 0.0) or 0.0), 5),
             "end_timestamp": round(float(row.get("end_timestamp", 0.0) or 0.0), 5),
             "confidence": round(float(row.get("confidence", 0.0) or 0.0), 5),
             "strength": round(float(row.get("confidence", 0.0) or 0.0), 5),
-            "source_ref": str(runtime_sidecar.get("sidecar_path") or runtime_sidecar.get("analysis_id") or ""),
-            "source_family": row.get("asset_family"),
+            "source_ref": str(row.get("source_ref") or runtime_sidecar.get("sidecar_path") or runtime_sidecar.get("analysis_id") or ""),
+            "source_family": row.get("source_family") or row.get("asset_family"),
             "asset_id": row.get("asset_id"),
             "asset_family": row.get("asset_family"),
             "roi_ref": row.get("roi_ref"),
@@ -499,7 +549,141 @@ def normalize_runtime_signals(runtime_sidecar: dict[str, Any]) -> list[dict[str,
             if field in row:
                 normalized[field] = row[field]
         result.append(normalized)
+    _validate_normalized_signal_contract(result, sidecar_kind="runtime")
     return result
+
+
+def _validate_normalized_signal_contract(signals: list[dict[str, Any]], *, sidecar_kind: str) -> None:
+    for index, row in enumerate(signals):
+        missing_fields = [
+            field
+            for field in REQUIRED_NORMALIZED_SIGNAL_FIELDS
+            if field not in row or row.get(field) is None or (isinstance(row.get(field), str) and not str(row.get(field)).strip())
+        ]
+        if missing_fields:
+            raise FusionAnalysisError(
+                "invalid_normalized_signal_contract",
+                f"{sidecar_kind} normalized signal {index} is missing required fields: {missing_fields}",
+            )
+        if not isinstance(row.get("evidence"), dict):
+            raise FusionAnalysisError(
+                "invalid_normalized_signal_contract",
+                f"{sidecar_kind} normalized signal {index} must use an object for evidence",
+            )
+        start_timestamp = float(row.get("start_timestamp", 0.0) or 0.0)
+        end_timestamp = float(row.get("end_timestamp", 0.0) or 0.0)
+        timestamp = float(row.get("timestamp", 0.0) or 0.0)
+        if start_timestamp > end_timestamp:
+            raise FusionAnalysisError(
+                "invalid_normalized_signal_contract",
+                f"{sidecar_kind} normalized signal {index} has start_timestamp after end_timestamp",
+            )
+        if timestamp < start_timestamp or timestamp > end_timestamp:
+            raise FusionAnalysisError(
+                "invalid_normalized_signal_contract",
+                f"{sidecar_kind} normalized signal {index} must anchor timestamp inside its time window",
+            )
+
+
+def _validate_fused_event_contract(event: dict[str, Any], *, rule: FusionRule) -> None:
+    missing_fields = [
+        field
+        for field in REQUIRED_FUSED_EVENT_FIELDS
+        if field not in event or event.get(field) is None or (isinstance(event.get(field), str) and not str(event.get(field)).strip())
+    ]
+    if missing_fields:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' is missing required fields: {missing_fields}",
+        )
+    if not isinstance(event.get("metadata"), dict):
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' must use an object for metadata",
+        )
+    contributing_signals = event.get("contributing_signals")
+    contributing_sources = event.get("contributing_sources")
+    if not isinstance(contributing_signals, list) or not contributing_signals:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' must include at least one contributing signal",
+        )
+    if not isinstance(contributing_sources, list) or not contributing_sources:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' must include at least one contributing source",
+        )
+    metadata = event["metadata"]
+    if str(metadata.get("rule_id", "")).strip() != rule.rule_id:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' must preserve metadata.rule_id",
+        )
+    matched_signal_types = metadata.get("matched_signal_types")
+    if not isinstance(matched_signal_types, list) or not matched_signal_types:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' must include metadata.matched_signal_types",
+        )
+    start_timestamp = float(event.get("start_timestamp", 0.0) or 0.0)
+    end_timestamp = float(event.get("end_timestamp", 0.0) or 0.0)
+    timestamp = float(event.get("timestamp", 0.0) or 0.0)
+    anchor_timestamp = float(event.get("anchor_timestamp", 0.0) or 0.0)
+    suggested_start_timestamp = float(event.get("suggested_start_timestamp", 0.0) or 0.0)
+    suggested_end_timestamp = float(event.get("suggested_end_timestamp", 0.0) or 0.0)
+    if start_timestamp > end_timestamp:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' has start_timestamp after end_timestamp",
+        )
+    if timestamp < start_timestamp or timestamp > end_timestamp:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' must anchor timestamp inside its event window",
+        )
+    if anchor_timestamp < start_timestamp or anchor_timestamp > end_timestamp:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' must anchor anchor_timestamp inside its event window",
+        )
+    if suggested_start_timestamp > suggested_end_timestamp:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' has suggested_start_timestamp after suggested_end_timestamp",
+        )
+    rule_parameters = metadata.get("rule_parameters")
+    if not isinstance(rule_parameters, dict):
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' must include metadata.rule_parameters",
+        )
+    if str(rule_parameters.get("rule_id", "")).strip() != rule.rule_id:
+        raise FusionAnalysisError(
+            "invalid_fused_event_contract",
+            f"fused event for rule '{rule.rule_id}' must preserve metadata.rule_parameters.rule_id",
+        )
+
+
+def _rule_parameter_summary(rule: FusionRule) -> dict[str, Any]:
+    return {
+        "rule_id": rule.rule_id,
+        "window_seconds": round(rule.window_seconds, 5),
+        "min_signal_count": int(rule.min_signal_count),
+        "confidence_method": rule.confidence_method,
+        "required_signal_types": list(rule.required_signal_types),
+        "anchor_signal_types": list(rule.anchor_signal_types),
+        "dependent_signal_types": list(rule.dependent_signal_types),
+        "lag_window_seconds": round(rule.lag_window_seconds, 5) if rule.lag_window_seconds is not None else None,
+        "require_for_confirm": bool(rule.require_for_confirm),
+        "confirm_multiplier": round(rule.confirm_multiplier, 5),
+        "ambiguous_confidence_multiplier": round(rule.ambiguous_confidence_multiplier, 5),
+        "clip_start_lead_seconds": round(rule.clip_start_lead_seconds, 5),
+        "clip_end_lag_seconds": round(rule.clip_end_lag_seconds, 5),
+        "low_confidence_threshold": round(rule.low_confidence_threshold, 5),
+        "low_confidence_penalty": round(rule.low_confidence_penalty, 5),
+        "synergy_enabled": bool(rule.synergy_enabled),
+        "synergy_minimum_required_signals": int(rule.synergy_minimum_required_signals),
+    }
 
 
 def _fuse_normalized_signals(
@@ -521,12 +705,14 @@ def _fuse_normalized_signals(
                 if any(signal_type not in signal_types for signal_type in rule.required_signal_types):
                     continue
                 event = _build_fused_event(game, rule, cluster, group_key, normalized_signals=normalized_signals)
+                _validate_fused_event_contract(event, rule=rule)
                 events.append(event)
                 rule_matches.append(
                     {
                         "rule_id": rule.rule_id,
                         "event_id": event["event_id"],
                         "group_key": list(group_key),
+                        "rule_parameters": _rule_parameter_summary(rule),
                         "signal_count": len(cluster),
                         "signal_ids": [row["signal_id"] for row in cluster],
                         "gate_status": event["gate_status"],
@@ -625,6 +811,7 @@ def _build_fused_event(
     metadata = dict(rule.metadata)
     metadata.update(_shared_signal_metadata(ordered_cluster))
     metadata["rule_id"] = rule.rule_id
+    metadata["rule_parameters"] = _rule_parameter_summary(rule)
     metadata["group_key"] = list(group_key)
     metadata["matched_signal_types"] = synergy_state["matched_signal_types"]
     if gate_state["dependent_signal_types"]:
@@ -836,7 +1023,81 @@ def _fusion_summary(
         "contract_summary": _fusion_contract_summary(game=game),
         "rule_count": len(rules),
         "rule_ids": [rule.rule_id for rule in rules],
+        "rule_parameters_by_id": {rule.rule_id: _rule_parameter_summary(rule) for rule in rules},
     }
+
+
+def _validate_fusion_summary_contract(
+    summary: dict[str, Any],
+    *,
+    normalized_signals: list[dict[str, Any]],
+    fused_events: list[dict[str, Any]],
+    rules: list[FusionRule],
+) -> None:
+    missing_fields = [
+        field
+        for field in REQUIRED_FUSION_SUMMARY_FIELDS
+        if field not in summary or summary.get(field) is None
+    ]
+    if missing_fields:
+        raise FusionAnalysisError(
+            "invalid_fusion_summary_contract",
+            f"fusion summary is missing required fields: {missing_fields}",
+        )
+    mapping_fields = (
+        "signals_by_producer_family",
+        "signals_by_type",
+        "events_by_type",
+        "gate_status_counts",
+        "synergy_rule_counts",
+        "contract_summary",
+        "rule_parameters_by_id",
+    )
+    for field in mapping_fields:
+        if not isinstance(summary.get(field), dict):
+            raise FusionAnalysisError(
+                "invalid_fusion_summary_contract",
+                f"fusion summary field '{field}' must be an object",
+            )
+    if not isinstance(summary.get("rule_ids"), list):
+        raise FusionAnalysisError(
+            "invalid_fusion_summary_contract",
+            "fusion summary field 'rule_ids' must be a list",
+        )
+    if int(summary.get("normalized_signal_count", -1)) != len(normalized_signals):
+        raise FusionAnalysisError(
+            "invalid_fusion_summary_contract",
+            "fusion summary normalized_signal_count does not match normalized signals",
+        )
+    if int(summary.get("fused_event_count", -1)) != len(fused_events):
+        raise FusionAnalysisError(
+            "invalid_fusion_summary_contract",
+            "fusion summary fused_event_count does not match fused events",
+        )
+    if int(summary.get("rule_count", -1)) != len(rules):
+        raise FusionAnalysisError(
+            "invalid_fusion_summary_contract",
+            "fusion summary rule_count does not match loaded rules",
+        )
+    rule_ids = [rule.rule_id for rule in rules]
+    if summary.get("rule_ids") != rule_ids:
+        raise FusionAnalysisError(
+            "invalid_fusion_summary_contract",
+            "fusion summary rule_ids do not match loaded rules",
+        )
+    rule_parameters_by_id = summary.get("rule_parameters_by_id", {})
+    if sorted(rule_parameters_by_id.keys()) != sorted(rule_ids):
+        raise FusionAnalysisError(
+            "invalid_fusion_summary_contract",
+            "fusion summary rule_parameters_by_id does not cover the loaded rules",
+        )
+    for rule in rules:
+        params = rule_parameters_by_id.get(rule.rule_id)
+        if not isinstance(params, dict) or str(params.get("rule_id", "")).strip() != rule.rule_id:
+            raise FusionAnalysisError(
+                "invalid_fusion_summary_contract",
+                f"fusion summary rule_parameters_by_id is invalid for rule '{rule.rule_id}'",
+            )
 
 
 def _fusion_contract_summary(game: str) -> dict[str, Any]:

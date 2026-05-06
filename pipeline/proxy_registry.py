@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
@@ -67,20 +67,56 @@ def run_proxy_sources(
             }
         else:
             if isinstance(emitted, ProxySourceEmission):
-                signals.extend(emitted.signals)
+                enriched_signals = _enrich_proxy_signals(
+                    emitted.signals,
+                    producer=definition.name,
+                    source_ref=_source_ref_for_definition(context, definition.name),
+                )
+                signals.extend(enriched_signals)
                 source_results[definition.name] = {
                     "status": "ok",
-                    "signal_count": len(emitted.signals),
+                    "signal_count": len(enriched_signals),
                     **({"metadata": emitted.metadata} if emitted.metadata else {}),
                 }
             else:
-                signals.extend(emitted)
+                enriched_signals = _enrich_proxy_signals(
+                    emitted,
+                    producer=definition.name,
+                    source_ref=_source_ref_for_definition(context, definition.name),
+                )
+                signals.extend(enriched_signals)
                 source_results[definition.name] = {
                     "status": "ok",
-                    "signal_count": len(emitted),
+                    "signal_count": len(enriched_signals),
                 }
 
     return signals, source_results
+
+
+def _enrich_proxy_signals(
+    signals: list[ProxySignal],
+    *,
+    producer: str,
+    source_ref: str,
+) -> list[ProxySignal]:
+    enriched: list[ProxySignal] = []
+    for signal in signals:
+        enriched.append(
+            replace(
+                signal,
+                producer=signal.producer or producer,
+                source_ref=signal.source_ref or source_ref,
+                start_timestamp=signal.start_timestamp if signal.start_timestamp is not None else signal.timestamp,
+                end_timestamp=signal.end_timestamp if signal.end_timestamp is not None else signal.timestamp,
+            )
+        )
+    return enriched
+
+
+def _source_ref_for_definition(context: ProxyScanContext, definition_name: str) -> str:
+    if definition_name == "chat_velocity" and context.chat_log is not None:
+        return str(context.chat_log)
+    return str(context.source)
 
 
 def _scan_playlist_hls(context: ProxyScanContext, config: dict[str, Any]) -> list[ProxySignal]:

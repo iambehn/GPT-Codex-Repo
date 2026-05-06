@@ -53,6 +53,19 @@ class EventMapperTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
+        (game_root / "medals.yaml").write_text(
+            "\n".join(
+                [
+                    "medals:",
+                    "  - medal_id: triple-kill",
+                    '    display_name: "Triple Kill"',
+                    "    medal_class: unknown",
+                    "    category: unknown",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         (game_root / "hud.yaml").write_text(
             "\n".join(
                 [
@@ -327,12 +340,16 @@ class EventMapperTests(unittest.TestCase):
         self.assertEqual(event_types, {"pov_character_identified", "medal_seen", "ability_seen"})
         signal_types = {row["signal_type"] for row in result["signals"]}
         self.assertEqual(signal_types, {"character_identity", "medal_visibility", "ability_visibility"})
+        self.assertTrue(all(row["producer_family"] == "runtime" for row in result["signals"]))
+        self.assertTrue(all(row["source_ref"] == "/tmp/example.mp4" for row in result["signals"]))
         identity_event = next(row for row in result["events"] if row["event_type"] == "pov_character_identified")
         medal_event = next(row for row in result["events"] if row["event_type"] == "medal_seen")
         ability_event = next(row for row in result["events"] if row["event_type"] == "ability_seen")
         self.assertEqual(identity_event["entity_id"], "punisher")
         self.assertEqual(medal_event["event_row_id"], "triple-kill")
         self.assertEqual(ability_event["ability_id"], "frag-grenade")
+        self.assertEqual(identity_event["producer_family"], "runtime")
+        self.assertEqual(identity_event["source_ref"], "/tmp/example.mp4")
 
     def test_map_matcher_result_collapses_adjacent_confirmed_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
