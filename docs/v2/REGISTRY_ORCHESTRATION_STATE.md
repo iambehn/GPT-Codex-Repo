@@ -43,6 +43,38 @@ Registry-first expectations:
 - preserve provenance back to source sidecars
 - avoid hidden or implicit workflow state
 
+## Current Artifact Chain
+
+The current operational chain should be treated as explicit and queryable:
+
+- fused candidate lifecycle
+- workflow run manifest
+- highlight-selection manifest
+- hook candidate manifest
+- highlight export batch
+- posted highlight ledger
+- posted metrics snapshot
+
+The registry is responsible for indexing and joining that chain. The artifacts remain the detailed evidence source of truth.
+
+## Query Semantics
+
+Current registry query behavior is intentionally split into two shapes:
+
+- row-oriented modes return concrete artifact or lineage rows
+- aggregate modes return summarized analytics payloads
+
+The main examples are:
+
+- `candidate-lifecycles`, `workflow-runs`, `highlight-exports`, `post-ledger-records`, and `posted-metrics` are row-oriented
+- `posted-performance-rollups` is aggregate
+
+Operators should treat workflow queues as lifecycle-first views:
+
+- current lifecycle state decides what needs action next
+- older workflow manifests provide batch provenance, not queue ownership
+- repeated refresh should preserve idempotent state rather than re-derive action from historical runs
+
 ## What Belongs Elsewhere
 
 - Review semantics belong in [REVIEW_CALIBRATION_REPLAY.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/REVIEW_CALIBRATION_REPLAY.md).
