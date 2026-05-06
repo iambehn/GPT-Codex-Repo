@@ -6,7 +6,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from pipeline.clip_registry import query_clip_registry, refresh_clip_registry
+from pipeline.clip_registry import (
+    _candidate_id,
+    load_candidate_lifecycle_details,
+    load_workflow_run_details,
+    query_clip_registry,
+    refresh_clip_registry,
+    transition_candidate_lifecycle,
+)
+from pipeline.workflow_run_state import create_workflow_run, query_workflow_queue
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -308,6 +316,142 @@ def _fixture_trial_batch_manifest(path: Path, *, comparison_report_path: Path) -
     )
 
 
+def _highlight_selection_manifest(
+    path: Path,
+    *,
+    game: str,
+    source: Path,
+    proxy_sidecar_path: Path | None = None,
+    fused_sidecar_path: Path | None = None,
+    candidate_id: str | None = None,
+    event_id: str | None = None,
+) -> None:
+    selection_basis = "fused" if fused_sidecar_path is not None else "proxy"
+    _write_json(
+        path,
+        {
+            "ok": True,
+            "schema_version": "highlight_selection_v1",
+            "game": game,
+            "source": str(source.resolve()),
+            "selection_basis": selection_basis,
+            "proxy_sidecar_path": str(proxy_sidecar_path.resolve()) if proxy_sidecar_path is not None else None,
+            "fused_sidecar_path": str(fused_sidecar_path.resolve()) if fused_sidecar_path is not None else None,
+            "selected_highlight_count": 1,
+            "selected_highlights": [
+                (
+                    {
+                        "highlight_id": "highlight-0",
+                        "candidate_id": candidate_id,
+                        "event_id": event_id or "fused-event-1",
+                        "start_seconds": 0.5,
+                        "end_seconds": 3.2,
+                        "final_score": 0.92,
+                        "recommended_action": "highlight_candidate",
+                        "gate_status": "confirmed",
+                    }
+                    if selection_basis == "fused"
+                    else {
+                        "highlight_id": "highlight-0",
+                        "start_seconds": 0.5,
+                        "end_seconds": 3.2,
+                        "proxy_score": 0.83,
+                        "recommended_action": "download_candidate",
+                    }
+                )
+            ],
+        },
+    )
+
+
+def _highlight_export_batch_manifest(
+    path: Path,
+    *,
+    game: str,
+    source: Path,
+    fused_sidecar_path: Path,
+    selection_manifest_path: Path,
+    candidate_id: str,
+    event_id: str,
+) -> None:
+    _write_json(
+        path,
+        {
+            "schema_version": "highlight_export_batch_v1",
+            "export_batch_id": "export-batch-1",
+            "game": game,
+            "workflow_run_id": "workflow-export-1",
+            "selection_manifest_path": str(selection_manifest_path.resolve()),
+            "linked_inputs": {
+                "fused_sidecar_paths": [str(fused_sidecar_path.resolve())],
+                "selection_manifest_paths": [str(selection_manifest_path.resolve())],
+                "hook_manifest_paths": [],
+            },
+            "export_count": 1,
+            "created_at": "2026-05-06T00:00:00+00:00",
+            "exports": [
+                {
+                    "export_id": "export-1",
+                    "candidate_id": candidate_id,
+                    "event_id": event_id,
+                    "hook_id": "hook-1",
+                    "fixture_id": "fixture-a",
+                    "source": str(source.resolve()),
+                    "fused_sidecar_path": str(fused_sidecar_path.resolve()),
+                    "highlight_selection_manifest_path": str(selection_manifest_path.resolve()),
+                    "start_seconds": 0.5,
+                    "end_seconds": 3.2,
+                    "final_score": 0.92,
+                    "hook_archetype": "character",
+                    "hook_mode": "natural",
+                    "packaging_strategy": "single_clip",
+                    "export_status": "exported",
+                    "export_artifact_path": str((path.parent / "rendered" / "export-1.mp4").resolve()),
+                    "otio_path": str((path.parent / "rendered" / "export-1.otio.json").resolve()),
+                }
+            ],
+        },
+    )
+
+
+def _posted_highlight_ledger(
+    path: Path,
+    *,
+    export_batch_manifest_path: Path,
+    candidate_id: str,
+    event_id: str,
+) -> None:
+    _write_json(
+        path,
+        {
+            "schema_version": "posted_highlight_ledger_v1",
+            "ledger_id": "ledger-1",
+            "platform": "tiktok",
+            "account_id": "acct-1",
+            "workflow_run_id": "workflow-post-1",
+            "posted_count": 1,
+            "created_at": "2026-05-06T00:00:00+00:00",
+            "posted_records": [
+                {
+                    "post_record_id": "post-1",
+                    "export_id": "export-1",
+                    "candidate_id": candidate_id,
+                    "event_id": event_id,
+                    "hook_id": "hook-1",
+                    "export_batch_manifest_path": str(export_batch_manifest_path.resolve()),
+                    "posted_at": "2026-05-06T01:00:00+00:00",
+                    "post_status": "posted",
+                    "external_post_id": "ext-1",
+                    "external_url": "https://example.com/post/1",
+                    "caption_text": "caption",
+                    "duration_seconds": 2.7,
+                    "media_asset_path": str((path.parent / "posted" / "export-1.mp4").resolve()),
+                }
+            ],
+        },
+    )
+
+
 class ClipRegistryTests(unittest.TestCase):
     def test_refresh_ingests_sidecars_and_review_manifests(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -601,6 +745,490 @@ class ClipRegistryTests(unittest.TestCase):
 
             self.assertTrue(result["ok"])
             self.assertGreaterEqual(result["warning_count"], 1)
+
+    def test_refresh_creates_candidate_lifecycles_and_preserves_derived_transitions(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            candidate_id = _candidate_id(
+                game="marvel_rivals",
+                source=str(media.resolve()),
+                fused_sidecar_path=str(fused_path.resolve()),
+                event_id="fused-event-1",
+            )
+            _highlight_selection_manifest(
+                root / "exports" / "alpha.highlight_selection.json",
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+
+            first = refresh_clip_registry(root, registry_path=registry_path)
+            second = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(first["ok"])
+            self.assertTrue(second["ok"])
+            query = query_clip_registry(
+                mode="candidate-lifecycles",
+                lifecycle_state="selected_for_export",
+                registry_path=registry_path,
+            )
+            self.assertEqual(query["row_count"], 1)
+            row = query["rows"][0]
+            self.assertEqual(row["latest_review_status"], "approved")
+            self.assertEqual(row["selection_basis"], "fused")
+            selected_details = json.loads(row["selected_highlight_details_json"])
+            self.assertEqual(selected_details["candidate_id"], candidate_id)
+            self.assertEqual(selected_details["event_id"], "fused-event-1")
+            transitions = json.loads(row["transitions_json"])
+            self.assertEqual(len(transitions), 1)
+            self.assertEqual(transitions[0]["to_state"], "selected_for_export")
+            self.assertEqual(first["candidate_lifecycle_row_count"], 1)
+
+    def test_refresh_preserves_selected_highlight_details_in_export_and_post_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            candidate_id = _candidate_id(
+                game="marvel_rivals",
+                source=str(media.resolve()),
+                fused_sidecar_path=str(fused_path.resolve()),
+                event_id="fused-event-1",
+            )
+            selection_manifest_path = root / "exports" / "alpha.highlight_selection.json"
+            _highlight_selection_manifest(
+                selection_manifest_path,
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            export_batch_path = root / "exports" / "alpha.highlight_export_batch.json"
+            _highlight_export_batch_manifest(
+                export_batch_path,
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                selection_manifest_path=selection_manifest_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            _posted_highlight_ledger(
+                root / "posted" / "alpha.posted_highlight_ledger.json",
+                export_batch_manifest_path=export_batch_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            export_rows = query_clip_registry(
+                mode="highlight-exports",
+                candidate_id=candidate_id,
+                registry_path=registry_path,
+            )
+            self.assertEqual(export_rows["row_count"], 1)
+            export_selected = json.loads(export_rows["rows"][0]["selected_highlight_details_json"])
+            self.assertEqual(export_selected["candidate_id"], candidate_id)
+            self.assertEqual(export_selected["event_id"], "fused-event-1")
+
+            posted_rows = query_clip_registry(
+                mode="post-ledger-records",
+                candidate_id=candidate_id,
+                registry_path=registry_path,
+            )
+            self.assertEqual(posted_rows["row_count"], 1)
+            posted_selected = json.loads(posted_rows["rows"][0]["selected_highlight_details_json"])
+            self.assertEqual(posted_selected["candidate_id"], candidate_id)
+            self.assertEqual(posted_selected["event_id"], "fused-event-1")
+
+    def test_transition_candidate_lifecycle_updates_state_and_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            lifecycle_rows = query_clip_registry(mode="candidate-lifecycles", registry_path=registry_path)
+            candidate_id = lifecycle_rows["rows"][0]["candidate_id"]
+            result = transition_candidate_lifecycle(
+                candidate_id,
+                "selected_for_export",
+                reason="Operator selected the event for export.",
+                actor="tester",
+                registry_path=registry_path,
+            )
+
+            self.assertTrue(result["ok"])
+            updated = query_clip_registry(
+                mode="candidate-lifecycles",
+                candidate_id=candidate_id,
+                registry_path=registry_path,
+            )
+            self.assertEqual(updated["rows"][0]["lifecycle_state"], "selected_for_export")
+            transitions = json.loads(updated["rows"][0]["transitions_json"])
+            self.assertEqual(transitions[-1]["to_state"], "selected_for_export")
+            self.assertEqual(transitions[-1]["actor"], "tester")
+
+    def test_invalid_candidate_lifecycle_transition_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            lifecycle_rows = query_clip_registry(mode="candidate-lifecycles", registry_path=registry_path)
+            candidate_id = lifecycle_rows["rows"][0]["candidate_id"]
+            result = transition_candidate_lifecycle(
+                candidate_id,
+                "posted",
+                registry_path=registry_path,
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["error"], "invalid lifecycle transition")
+
+    def test_load_candidate_lifecycle_details_filters_by_fused_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            rows = load_candidate_lifecycle_details(
+                game="marvel_rivals",
+                source=str(media.resolve()),
+                fused_sidecar_path=fused_path,
+                registry_path=registry_path,
+            )
+
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["event_id"], "fused-event-1")
+
+    def test_create_workflow_run_writes_deterministic_selection_queue_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            first = create_workflow_run("selection_queue", registry_path=registry_path, output_path=root / "workflow" / "selection.workflow_run.json")
+            second = create_workflow_run("selection_queue", registry_path=registry_path, output_path=root / "workflow" / "selection.workflow_run.json")
+
+            self.assertTrue(first["ok"])
+            self.assertEqual(first["workflow_run_id"], second["workflow_run_id"])
+            manifest = json.loads(Path(first["manifest_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(manifest["schema_version"], "workflow_run_v1")
+            self.assertEqual(manifest["workflow_type"], "selection_queue")
+            self.assertEqual(manifest["stage"], "approved")
+            self.assertEqual(manifest["item_counts"]["total"], 1)
+            self.assertEqual(manifest["items"][0]["candidate_id"][:10], "candidate-")
+
+    def test_refresh_ingests_workflow_runs_without_duplicates(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+            create_workflow_run("selection_queue", registry_path=registry_path, output_path=root / "workflow" / "selection.workflow_run.json")
+
+            first = refresh_clip_registry(root, registry_path=registry_path)
+            second = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(first["ok"])
+            self.assertTrue(second["ok"])
+            self.assertEqual(first["workflow_run_manifest_count"], 1)
+            query = query_clip_registry(mode="workflow-runs", registry_path=registry_path)
+            self.assertEqual(query["row_count"], 1)
+            self.assertEqual(query["rows"][0]["workflow_type"], "selection_queue")
+            details = load_workflow_run_details(registry_path=registry_path)
+            self.assertEqual(len(details), 1)
+
+    def test_query_workflow_queue_maps_all_phase_one_queue_classes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+
+            payload = json.loads(fused_path.read_text(encoding="utf-8"))
+            payload["fused_review"] = {"session_id": "fused-session-1", "reviewed_event_count": 0, "events": {}}
+            fused_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            review_queue = query_workflow_queue("review_queue", registry_path=registry_path)
+            self.assertEqual(review_queue["row_count"], 1)
+            self.assertEqual(review_queue["rows"][0]["lifecycle_state"], "pending_review")
+
+            payload["fused_review"] = {
+                "session_id": "fused-session-1",
+                "reviewed_event_count": 1,
+                "events": {"fused-event-1": {"review_status": "approved"}},
+            }
+            fused_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            refresh_clip_registry(root, registry_path=registry_path)
+            selection_queue = query_workflow_queue("selection_queue", registry_path=registry_path)
+            self.assertEqual(selection_queue["row_count"], 1)
+            self.assertEqual(selection_queue["rows"][0]["lifecycle_state"], "approved")
+
+            lifecycle_rows = query_clip_registry(mode="candidate-lifecycles", registry_path=registry_path)
+            candidate_id = lifecycle_rows["rows"][0]["candidate_id"]
+            _highlight_selection_manifest(
+                root / "exports" / "alpha.highlight_selection.json",
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            export_queue = query_workflow_queue("export_queue", registry_path=registry_path)
+            self.assertEqual(export_queue["row_count"], 1)
+            self.assertEqual(export_queue["rows"][0]["lifecycle_state"], "selected_for_export")
+
+            transition_candidate_lifecycle(candidate_id, "exported", registry_path=registry_path)
+            post_queue = query_workflow_queue("post_queue", registry_path=registry_path)
+            self.assertEqual(post_queue["row_count"], 1)
+            self.assertEqual(post_queue["rows"][0]["lifecycle_state"], "exported")
+
+    def test_workflow_run_query_preserves_candidate_and_artifact_linkage(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+            lifecycle_rows = query_clip_registry(mode="candidate-lifecycles", registry_path=registry_path)
+            candidate_id = lifecycle_rows["rows"][0]["candidate_id"]
+            _highlight_selection_manifest(
+                root / "exports" / "alpha.highlight_selection.json",
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            create_workflow_run("export_queue", registry_path=registry_path, output_path=root / "workflow" / "export.workflow_run.json")
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            result = query_clip_registry(
+                mode="workflow-runs",
+                workflow_type="export_queue",
+                candidate_id=candidate_id,
+                registry_path=registry_path,
+            )
+
+            self.assertEqual(result["row_count"], 1)
+            row = result["rows"][0]
+            self.assertEqual(row["candidate_id"], candidate_id)
+            self.assertEqual(row["lifecycle_state"], "selected_for_export")
+            self.assertTrue(row["highlight_selection_manifest_path"].endswith(".highlight_selection.json"))
+
+    def test_query_workflow_queue_prefers_current_lifecycle_over_stale_workflow_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+            create_workflow_run("selection_queue", registry_path=registry_path, output_path=root / "workflow" / "selection.workflow_run.json")
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            lifecycle_rows = query_clip_registry(mode="candidate-lifecycles", registry_path=registry_path)
+            candidate_id = lifecycle_rows["rows"][0]["candidate_id"]
+            _highlight_selection_manifest(
+                root / "exports" / "alpha.highlight_selection.json",
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            selection_queue = query_workflow_queue("selection_queue", registry_path=registry_path)
+            export_queue = query_workflow_queue("export_queue", registry_path=registry_path)
+
+            self.assertEqual(selection_queue["row_count"], 0)
+            self.assertEqual(export_queue["row_count"], 1)
+            self.assertEqual(export_queue["rows"][0]["latest_workflow_run_id"][:9], "workflow-")
+
+    def test_malformed_downstream_artifacts_emit_warnings_without_corrupting_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            _write_json(
+                root / "workflow" / "broken.workflow_run.json",
+                {
+                    "schema_version": "workflow_run_v1",
+                    "workflow_run_id": "broken-run",
+                    "items": [{"item_status": "ready"}],
+                },
+            )
+            _write_json(
+                root / "posted" / "broken.posted_highlight_ledger.json",
+                {
+                    "schema_version": "posted_highlight_ledger_v1",
+                    "ledger_id": "broken-ledger",
+                    "posted_count": 1,
+                    "posted_records": [
+                        {
+                            "post_record_id": "post-broken",
+                            "export_id": "missing-export",
+                            "candidate_id": "candidate-broken",
+                            "export_batch_manifest_path": str(root / "exports" / "missing.highlight_export_batch.json"),
+                        }
+                    ],
+                },
+            )
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+            clips = query_clip_registry(mode="clips", registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertGreaterEqual(result["warning_count"], 2)
+            self.assertEqual(clips["row_count"], 1)
+
+    def test_refresh_and_query_real_artifact_intake_dashboards(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            registry_path = root / "registry.sqlite"
+            reports = root / "reports"
+            _write_json(
+                reports / "older.real_artifact_intake.dashboard.json",
+                {
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "real_artifact_intake_dashboard_v1",
+                    "generated_at": "2026-05-05T09:00:00+00:00",
+                    "intake_root": str((root / "intake").resolve()),
+                    "filters": {"game": "marvel_rivals", "platform": "youtube"},
+                    "headline_status": "warning",
+                    "current_intake": {
+                        "intake_status": "warning",
+                        "bundle_count": 2,
+                        "warning_count": 1,
+                        "bundle_readiness_rollups": {"readiness_status_counts": {"benchmark_ready": 1}},
+                        "coverage_inventory": {"eligible_real_post_performance_label_count": 1},
+                    },
+                    "preflight_trends": {"trend_status": "stable", "entry_count": 1},
+                    "refresh_outcome_trends": {"trend_status": "stable", "entry_count": 1},
+                    "history_comparison": {
+                        "history_alignment": {
+                            "preflight_to_refresh_status": "aligned",
+                            "real_vs_synthetic_status": "diverged",
+                            "next_focus": "expand_real_evidence",
+                        }
+                    },
+                },
+            )
+            _write_json(
+                reports / "latest.real_artifact_intake.dashboard.json",
+                {
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "real_artifact_intake_dashboard_v1",
+                    "generated_at": "2026-05-05T10:00:00+00:00",
+                    "intake_root": str((root / "intake").resolve()),
+                    "filters": {"game": "marvel_rivals", "platform": "youtube"},
+                    "headline_status": "ready",
+                    "current_intake": {
+                        "intake_status": "ready",
+                        "bundle_count": 3,
+                        "warning_count": 0,
+                        "bundle_readiness_rollups": {"readiness_status_counts": {"benchmark_ready": 2}},
+                        "coverage_inventory": {"eligible_real_post_performance_label_count": 4},
+                    },
+                    "preflight_trends": {"trend_status": "improving", "entry_count": 3},
+                    "refresh_outcome_trends": {"trend_status": "improving", "entry_count": 2},
+                    "history_comparison": {
+                        "history_alignment": {
+                            "preflight_to_refresh_status": "aligned",
+                            "real_vs_synthetic_status": "narrowing",
+                            "next_focus": "run_real_only_refresh",
+                        }
+                    },
+                },
+            )
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["real_artifact_intake_dashboard_manifest_count"], 2)
+
+            dashboards = query_clip_registry(
+                mode="real-artifact-intake-dashboards",
+                registry_path=registry_path,
+                game="marvel_rivals",
+                platform="youtube",
+            )
+            self.assertEqual(dashboards["row_count"], 2)
+            self.assertEqual(dashboards["rows"][0]["headline_status"], "ready")
+            self.assertEqual(dashboards["rows"][0]["preflight_trend_status"], "improving")
+            self.assertEqual(dashboards["rows"][0]["benchmark_ready_bundle_count"], 2)
+            self.assertEqual(dashboards["rows"][0]["eligible_real_post_performance_label_count"], 4)
+
+            ready_only = query_clip_registry(
+                mode="real-artifact-intake-dashboards",
+                registry_path=registry_path,
+                game="marvel_rivals",
+                platform="youtube",
+                status="ready",
+                limit=1,
+            )
+            self.assertEqual(ready_only["row_count"], 1)
+            self.assertEqual(ready_only["rows"][0]["headline_status"], "ready")
+            self.assertEqual(ready_only["rows"][0]["next_focus"], "run_real_only_refresh")
 
 
 if __name__ == "__main__":
