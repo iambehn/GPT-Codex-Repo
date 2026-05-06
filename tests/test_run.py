@@ -1106,6 +1106,99 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_run_shadow_operator_compacts_output_by_default(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--run-shadow-operator",
+                "--mode",
+                "full",
+                "--dataset-manifest",
+                "/tmp/dataset.manifest.json",
+                "--policy-path",
+                "/tmp/policy.json",
+                "--output-root",
+                "/tmp/shadow-operator",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_run_shadow_operator",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "shadow_operator_run_v1",
+                    "operator_run_id": "shadow-operator-123",
+                    "mode": "full",
+                    "manifest_path": "/tmp/shadow-operator/out.shadow_operator_run.json",
+                    "final_summary": {"executed_step_count": 5},
+                    "final_recommendation": {"decision": "prefer_shadow"},
+                    "produced_artifacts": {"experiment_manifest_path": "/tmp/experiment.json"},
+                    "step_results": [{"step_name": f"step-{index}"} for index in range(12)],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                mode="full",
+                dataset_manifest="/tmp/dataset.manifest.json",
+                model_path=None,
+                model_family=None,
+                model_version=None,
+                experiment_manifest=None,
+                training_target=None,
+                target=None,
+                policy_path="/tmp/policy.json",
+                game=None,
+                platform=None,
+                output_root="/tmp/shadow-operator",
+                output_path=None,
+                split_key=None,
+                train_fraction=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["schema_version"], "shadow_operator_run_v1")
+            self.assertIn("step_results_sample", payload)
+            self.assertNotIn("step_results", payload)
+            self.assertTrue(payload["truncated"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_run_shadow_operator_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--run-shadow-operator",
+                "--mode",
+                "govern",
+                "--experiment-manifest",
+                "/tmp/experiment.shadow_ranking_experiment.json",
+                "--full-json",
+            ]
+            stdout = io.StringIO()
+            step_results = [{"step_name": "evaluate_governance_policy"}]
+            with patch(
+                "run.run_run_shadow_operator",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "shadow_operator_run_v1",
+                    "operator_run_id": "shadow-operator-456",
+                    "mode": "govern",
+                    "step_results": step_results,
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["step_results"], step_results)
+            self.assertNotIn("step_results_sample", payload)
+        finally:
+            sys.argv = original_argv
+
     def test_cli_routes_to_compare_shadow_benchmark_evidence_modes(self) -> None:
         original_argv = sys.argv
         try:

@@ -93,6 +93,7 @@ from pipeline.shadow_evaluation_policy import (
     evaluate_shadow_experiment_policy,
     summarize_shadow_experiment_ledger,
 )
+from pipeline.shadow_operator_workflow import run_shadow_operator_workflow
 from pipeline.shadow_benchmark_matrix import (
     run_shadow_benchmark_matrix,
     summarize_shadow_benchmark_matrix,
@@ -643,6 +644,43 @@ def run_summarize_shadow_experiment_ledger(
         training_target=training_target,
     )
     return summarize_shadow_experiment_ledger(rows, target=target)
+
+
+def run_run_shadow_operator(
+    *,
+    mode: str,
+    dataset_manifest: str | Path | None = None,
+    model_path: str | Path | None = None,
+    model_family: str | None = None,
+    model_version: str | None = None,
+    experiment_manifest: str | Path | None = None,
+    training_target: str | None = None,
+    target: str | None = None,
+    policy_path: str | Path | None = None,
+    game: str | None = None,
+    platform: str | None = None,
+    output_root: str | Path | None = None,
+    output_path: str | Path | None = None,
+    split_key: str | None = None,
+    train_fraction: float | None = None,
+) -> dict[str, Any]:
+    return run_shadow_operator_workflow(
+        mode=mode,
+        dataset_manifest=dataset_manifest,
+        model_path=model_path,
+        model_family=model_family,
+        model_version=model_version,
+        experiment_manifest=experiment_manifest,
+        training_target=training_target,
+        target=target,
+        policy_path=policy_path,
+        game=game,
+        platform=platform,
+        output_root=output_root,
+        output_path=output_path,
+        split_key=split_key,
+        train_fraction=train_fraction,
+    )
 
 
 def run_run_shadow_benchmark_matrix(
@@ -2500,6 +2538,7 @@ _COMPACT_OUTPUT_COMMANDS = {
     "summarize_shadow_target_readiness",
     "evaluate_shadow_experiment_policy",
     "summarize_shadow_experiment_ledger",
+    "run_shadow_operator",
     "materialize_synthetic_post_coverage",
     "report_unresolved_derived_rows",
     "summarize_derived_row_review",
@@ -2921,6 +2960,25 @@ def _compact_cli_payload(command_name: str, result: dict[str, Any]) -> dict[str,
         }
         if findings_omitted:
             compact["findings_omitted_count"] = findings_omitted
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "run_shadow_operator":
+        step_results, step_results_omitted = _sample_list(result.get("step_results"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "operator_run_id": result.get("operator_run_id"),
+            "mode": result.get("mode"),
+            "manifest_path": result.get("manifest_path"),
+            "final_summary": result.get("final_summary"),
+            "final_recommendation": result.get("final_recommendation"),
+            "produced_artifacts": result.get("produced_artifacts"),
+            "step_results_sample": step_results,
+        }
+        if step_results_omitted:
+            compact["step_results_omitted_count"] = step_results_omitted
             compact["truncated"] = True
         return compact
 
@@ -4046,6 +4104,11 @@ def main() -> int:
         help="Summarize governed shadow experiment ledgers from the local registry.",
     )
     parser.add_argument(
+        "--run-shadow-operator",
+        action="store_true",
+        help="Run the standardized shadow operator workflow across train, benchmark, govern, or full modes.",
+    )
+    parser.add_argument(
         "--export-runtime-analysis",
         metavar="SIDECAR_ROOT",
         help="Export runtime-analysis sidecars into scored clip, event, and detection datasets.",
@@ -5104,6 +5167,39 @@ def main() -> int:
                 platform=args.platform,
             ),
             command_name="evaluate_shadow_experiment_policy",
+            full_json=args.full_json,
+        )
+        return 0
+
+    if args.run_shadow_operator:
+        if not args.mode:
+            parser.error("--run-shadow-operator requires --mode")
+        normalized_mode = str(args.mode).strip().lower()
+        if normalized_mode not in {"train", "benchmark", "govern", "full"}:
+            parser.error("--run-shadow-operator requires --mode train|benchmark|govern|full")
+        if normalized_mode in {"train", "benchmark", "full"} and not args.dataset_manifest:
+            parser.error(f"--run-shadow-operator with --mode {normalized_mode} requires --dataset-manifest")
+        if normalized_mode == "govern" and not args.experiment_manifest:
+            parser.error("--run-shadow-operator with --mode govern requires --experiment-manifest")
+        _print_cli_result(
+            run_run_shadow_operator(
+                mode=normalized_mode,
+                dataset_manifest=args.dataset_manifest,
+                model_path=args.model_path,
+                model_family=args.model_family,
+                model_version=args.model_version,
+                experiment_manifest=args.experiment_manifest,
+                training_target=args.training_target,
+                target=args.target,
+                policy_path=args.policy_path,
+                game=args.game,
+                platform=args.platform,
+                output_root=args.output_root,
+                output_path=args.output_path,
+                split_key=args.split_key,
+                train_fraction=args.train_fraction,
+            ),
+            command_name="run_shadow_operator",
             full_json=args.full_json,
         )
         return 0
