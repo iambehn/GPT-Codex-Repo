@@ -317,3 +317,17 @@ class ShadowModelTrainingTests(unittest.TestCase):
                 model["feature_fields"],
                 model["feature_fields_by_head"]["post_performance"],
             )
+
+    def test_train_shadow_model_approved_target_omits_irrelevant_post_sparsity_warnings(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            dataset, _registry_path = _prepare_dataset(root)
+
+            model = train_shadow_ranking_model(
+                dataset["manifest_path"],
+                training_target="approved_or_selected_probability",
+                split_key="candidate_id",
+                train_fraction=0.75,
+            )
+            self.assertTrue(model["ok"])
+            self.assertFalse(any(warning["code"] == "sparse_post_performance_target" for warning in model["warnings"]))

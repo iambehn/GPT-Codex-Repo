@@ -498,7 +498,7 @@ def _training_rows(
                 TARGET_POST: float(post_target if post_target is not None else 0.0),
             }
         )
-        if post_target is None:
+        if training_target == "post_performance_score" and post_target is None:
             warnings.append({"code": "sparse_post_performance_target", "candidate_id": current_candidate_id})
     return {
         "rows": rows,

@@ -337,6 +337,26 @@ class ShadowOperatorWorkflowTests(unittest.TestCase):
             )
             self.assertNotIn("governed_ledger_manifest_path", result["produced_artifacts"])
 
+    def test_full_mode_approved_target_omits_irrelevant_post_sparsity_warnings(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            dataset, _registry_path = _prepare_dataset(root)
+            policy = write_shadow_evaluation_policy(root / "policy" / "default.shadow_evaluation_policy.json")
+            result = run_shadow_operator_workflow(
+                mode="full",
+                dataset_manifest=dataset["manifest_path"],
+                policy_path=policy["manifest_path"],
+                split_key="candidate_id",
+                train_fraction=0.75,
+                output_root=root / "shadow-operator",
+                training_target="approved_or_selected_probability",
+                target="candidate_approval_probability",
+            )
+            self.assertTrue(result["ok"])
+            step_map = {step["step_name"]: step for step in result["step_results"]}
+            self.assertEqual(step_map["train_model"]["warning_count"], 0)
+            self.assertEqual(step_map["run_benchmark_matrix"]["warning_count"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

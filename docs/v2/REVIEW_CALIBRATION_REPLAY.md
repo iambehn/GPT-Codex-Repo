@@ -51,6 +51,19 @@ That means:
 - reviewer approvals and rejections should remain reusable evidence for later tuning
 - compact operator reporting should still expose enough state to debug a blocked release
 
+## Shadow Target-Specific Promotion
+
+Shadow promotion decisions are target-specific.
+
+- `approved_or_selected_probability` can be promoted from a focused real-only `full` operator run when:
+  - model training and evaluation succeed
+  - benchmark review marks the target ready for next iteration
+  - governance coverage is sufficient and policy recommends `prefer_shadow`
+- sparse post-performance coverage does not block this target by itself
+- `post_performance_score` remains a separate target and should stay blocked until usable post-performance labels exist
+
+Warnings should stay target-relevant. Approved-target and export-target runs should not inherit `sparse_post_performance_target` warnings from inactive heads.
+
 ## Hook Comparison Integration
 
 Hook evaluation now sits inside the same review-backed comparison loop as other fixture and trial work.
