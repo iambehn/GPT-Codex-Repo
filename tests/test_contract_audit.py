@@ -27,6 +27,7 @@ class ContractAuditTests(unittest.TestCase):
             encoding="utf-8",
         )
         (game_root / "entities.yaml").write_text("heroes: []\nabilities: []\nevents: []\n", encoding="utf-8")
+        (game_root / "medals.yaml").write_text("medals: []\n", encoding="utf-8")
         (game_root / "hud.yaml").write_text(
             "\n".join(
                 [

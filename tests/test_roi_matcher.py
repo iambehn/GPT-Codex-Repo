@@ -96,6 +96,7 @@ class RoiMatcherTests(unittest.TestCase):
             encoding="utf-8",
         )
         (game_root / "entities.yaml").write_text("heroes: []\nabilities: []\nevents: []\n", encoding="utf-8")
+        (game_root / "medals.yaml").write_text("medals: []\n", encoding="utf-8")
         (game_root / "weights.yaml").write_text("weights: {}\nthresholds: {}\ngates: {}\n", encoding="utf-8")
         (game_root / "hud.yaml").write_text(
             "\n".join(
@@ -378,6 +379,9 @@ class RoiMatcherTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(result["contract_status"], "canonical")
             self.assertFalse(result["active_legacy_modes"])
+            self.assertIn("canonical_media_contract", result)
+            self.assertEqual(result["canonical_media_contract"]["status"], "partial")
+            self.assertTrue(result["canonical_media_contract"]["layer_status"]["medals_events"])
 
     def test_list_pack_templates_groups_rows_by_roi(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

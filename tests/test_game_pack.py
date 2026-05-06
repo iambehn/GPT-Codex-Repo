@@ -13,10 +13,12 @@ class GamePackTests(unittest.TestCase):
         result = validate_game_pack("marvel_rivals")
         self.assertTrue(result["ok"])
         self.assertEqual(result["source"], "starter_assets")
+        self.assertIn("canonical_media_contract", result)
+        self.assertEqual(result["canonical_media_contract"]["status"], "starter_seed_only")
 
     def test_load_game_pack_returns_summary(self) -> None:
         pack = load_game_pack("marvel_rivals")
         summary = pack.summary()
         self.assertEqual(summary["game_id"], "marvel_rivals")
         self.assertGreaterEqual(summary["character_count"], 1)
-
+        self.assertIn("canonical_media_contract", summary)

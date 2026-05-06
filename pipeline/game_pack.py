@@ -24,6 +24,7 @@ STARTER_REQUIRED_FILES = (
 PUBLISHED_REQUIRED_FILES = (
     "game.yaml",
     "entities.yaml",
+    "medals.yaml",
     "hud.yaml",
     "weights.yaml",
     "manifests/assets_manifest.json",
@@ -45,6 +46,7 @@ class GamePack:
     def summary(self) -> dict[str, Any]:
         if self.pack_format == "published":
             entities = self.files.get("entities.yaml", {})
+            medals = self.files.get("medals.yaml", {})
             templates = self.files.get("manifests/cv_templates.yaml", {}).get("templates", [])
             detection_manifest = self.files.get("manifests/detection_manifest.yaml", {})
             runtime_rules = self.files.get("manifests/runtime_cv_rules.yaml", {}).get("event_mappings", {})
@@ -57,11 +59,13 @@ class GamePack:
                 "character_count": len(entities.get("heroes", [])),
                 "ability_count": len(entities.get("abilities", [])),
                 "event_count": len(entities.get("events", [])),
+                "medal_count": len(medals.get("medals", [])) if isinstance(medals, dict) else 0,
                 "template_count": len(templates),
                 "detection_row_count": int(detection_manifest.get("row_count", len(detection_manifest.get("rows", [])) if isinstance(detection_manifest, dict) else 0) or 0),
                 "runtime_rule_count": len(runtime_rules) if isinstance(runtime_rules, dict) else 0,
                 "fusion_rule_count": len(fusion_rules) if isinstance(fusion_rules, list) else 0,
                 "required_files": list(PUBLISHED_REQUIRED_FILES),
+                "canonical_media_contract": canonical_media_contract_summary(self.files, pack_format=self.pack_format),
             }
 
         characters = self.files.get("characters.yaml", {}).get("characters", [])
@@ -76,6 +80,7 @@ class GamePack:
             "ability_count": len(abilities),
             "moment_count": len(moments),
             "required_files": list(STARTER_REQUIRED_FILES),
+            "canonical_media_contract": canonical_media_contract_summary(self.files, pack_format=self.pack_format),
         }
 
 
@@ -131,6 +136,10 @@ def validate_game_pack(game_id: str) -> dict[str, Any]:
         "pack_format": pack_format,
         "existing_files": existing,
         "missing_files": missing,
+        "canonical_media_contract": canonical_media_contract_summary(
+            {filename: _load_pack_file(root / filename) for filename in required_files if (root / filename).exists()},
+            pack_format=pack_format,
+        ),
     }
     if not missing:
         result["summary"] = load_game_pack(game_id).summary()
@@ -180,3 +189,58 @@ def _load_pack_file(path: Path) -> Any:
     if path.suffix == ".json":
         return json.loads(path.read_text(encoding="utf-8"))
     return load_yaml_file(path)
+
+
+def canonical_media_contract_summary(files: dict[str, Any], *, pack_format: str) -> dict[str, Any]:
+    if pack_format != "published":
+        return {
+            "status": "starter_seed_only",
+            "layer_status": {
+                "game_metadata": bool(files.get("game.yaml")),
+                "entities": bool(files.get("characters.yaml")),
+                "abilities": bool(files.get("abilities.yaml")),
+                "medals_events": bool(files.get("action_moments.yaml")),
+                "hud_roi_maps": bool(files.get("roi_profiles.yaml")),
+                "cv_assets": bool(files.get("labels.yaml")),
+            },
+            "provenance_status": "not_applicable",
+        }
+
+    game_payload = files.get("game.yaml", {}) if isinstance(files.get("game.yaml"), dict) else {}
+    entities = files.get("entities.yaml", {}) if isinstance(files.get("entities.yaml"), dict) else {}
+    hud = files.get("hud.yaml", {}) if isinstance(files.get("hud.yaml"), dict) else {}
+    cv_templates = files.get("manifests/cv_templates.yaml", {}) if isinstance(files.get("manifests/cv_templates.yaml"), dict) else {}
+    assets_manifest = files.get("manifests/assets_manifest.json", {}) if isinstance(files.get("manifests/assets_manifest.json"), dict) else {}
+    published_assets = list(assets_manifest.get("published_assets", [])) if isinstance(assets_manifest.get("published_assets", []), list) else []
+    template_rows = list(cv_templates.get("templates", [])) if isinstance(cv_templates.get("templates", []), list) else []
+    medals_rows = []
+    if isinstance(files.get("medals.yaml"), dict):
+        medals_rows = list(files["medals.yaml"].get("medals", [])) if isinstance(files["medals.yaml"].get("medals", []), list) else []
+    event_rows = list(entities.get("events", [])) if isinstance(entities.get("events", []), list) else []
+    layer_status = {
+        "game_metadata": bool(game_payload.get("game_id")),
+        "entities": bool(entities.get("heroes")),
+        "abilities": bool(entities.get("abilities")),
+        "medals_events": isinstance(files.get("medals.yaml"), dict),
+        "hud_roi_maps": bool(hud.get("rois")),
+        "cv_assets": bool(template_rows and published_assets),
+    }
+    provenance_required_fields = ("source_url", "patch_tag", "file_hash", "qa_status", "source_license_note")
+    provenance_complete_count = 0
+    for row in published_assets:
+        if not isinstance(row, dict):
+            continue
+        if all(str(row.get(field) or "").strip() for field in provenance_required_fields):
+            provenance_complete_count += 1
+    provenance_status = "complete" if published_assets and provenance_complete_count == len(published_assets) else "partial" if published_assets else "missing"
+    return {
+        "status": "canonical" if all(layer_status.values()) and provenance_status == "complete" else "partial",
+        "layer_status": layer_status,
+        "provenance_status": provenance_status,
+        "published_asset_count": len(published_assets),
+        "template_count": len(template_rows),
+        "medal_count": len(medals_rows),
+        "compatibility_event_count": len(event_rows),
+        "provenance_complete_asset_count": provenance_complete_count,
+        "patch_tag": str(game_payload.get("patch_tag") or game_payload.get("ui_version") or "").strip() or None,
+    }

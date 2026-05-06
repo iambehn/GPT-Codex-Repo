@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from pipeline.game_pack import load_game_pack
+from pipeline.game_pack import canonical_media_contract_summary, load_game_pack
 from pipeline.runtime_ontology import load_runtime_signal_event_ontology, validate_runtime_rule_terms
 from pipeline.simple_yaml import load_yaml_file
 
@@ -673,6 +673,7 @@ def validate_published_pack(game: str) -> dict[str, Any]:
         "contract_status": "drifted" if failures else ("legacy_assisted" if legacy_target_id_rules else "canonical"),
         "ontology_version": ontology.schema_version,
         "ontology_status": "invalid" if ontology_findings else "ok",
+        "canonical_media_contract": canonical_media_contract_summary(load_game_pack(game).files, pack_format="published"),
     }
     legacy_findings = []
     for row in legacy_target_id_rules:
@@ -728,6 +729,7 @@ def validate_published_pack(game: str) -> dict[str, Any]:
         "ontology_findings": ontology_findings,
         "contract_summary": contract_summary,
         "canonical_contracts": contract_summary["canonical_contracts"],
+        "canonical_media_contract": contract_summary["canonical_media_contract"],
         "active_legacy_modes": contract_summary["active_legacy_modes"],
         "contract_status": contract_summary["contract_status"],
         "warnings": warnings,

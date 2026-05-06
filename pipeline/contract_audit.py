@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pipeline.game_pack import list_games, load_game_pack
+from pipeline.game_pack import canonical_media_contract_summary, list_games, load_game_pack
 from pipeline.game_onboarding import _build_fusion_rules_manifest, _build_runtime_cv_rules_manifest, _load_runtime_detection_schema
 from pipeline.roi_matcher import RoiMatcherError, validate_published_pack
 from pipeline.simple_yaml import load_yaml_file
@@ -255,7 +255,7 @@ def audit_published_manifest_consistency(published_root: str | Path, *, repo_roo
 def _canonical_contract_summary(files: dict[str, Any]) -> dict[str, Any]:
     detection_manifest = files.get("manifests/detection_manifest.yaml", {})
     fusion_rules = files.get("manifests/fusion_rules.yaml", {})
-    return {
+    summary = {
         "detection_manifest": detection_manifest.get("schema_version"),
         "cv_templates_present": "manifests/cv_templates.yaml" in files,
         "runtime_cv_rules_present": "manifests/runtime_cv_rules.yaml" in files,
@@ -264,6 +264,8 @@ def _canonical_contract_summary(files: dict[str, Any]) -> dict[str, Any]:
         "fused_analysis": CANONICAL_CONTRACTS["fused_analysis"],
         "fusion_gold_manifest": CANONICAL_CONTRACTS["fusion_gold_manifest"],
     }
+    summary["canonical_media_contract"] = canonical_media_contract_summary(files, pack_format="published")
+    return summary
 
 
 def _published_contract_status(*, validation: dict[str, Any], consistency: dict[str, Any]) -> str:
