@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from pipeline.shadow_model_training import evaluate_shadow_ranking_model, train_shadow_ranking_model
 from pipeline.shadow_operator_workflow import run_shadow_operator_workflow
 from pipeline.shadow_evaluation_policy import write_shadow_evaluation_policy
 from tests.test_shadow_model_training import _prepare_dataset
@@ -41,6 +42,17 @@ class ShadowOperatorWorkflowTests(unittest.TestCase):
             self.assertIn("missing required input for mode benchmark: dataset_manifest", result["errors"])
             manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
             self.assertEqual(manifest["errors"], result["errors"])
+
+    def test_govern_requires_experiment_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            result = run_shadow_operator_workflow(
+                mode="govern",
+                output_path=root / "shadow" / "missing-govern.shadow_operator_run.json",
+            )
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "failed")
+            self.assertIn("missing required input for mode govern: experiment_manifest", result["errors"])
 
     def test_final_status_ok_when_all_steps_succeed(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -246,6 +258,84 @@ class ShadowOperatorWorkflowTests(unittest.TestCase):
             self.assertEqual(result["status"], "partial")
             self.assertEqual(result["step_results"][0]["status"], "ok")
             self.assertEqual(result["step_results"][1]["status"], "failed")
+
+    def test_govern_mode_runs_policy_evaluation(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            dataset, _registry_path = _prepare_dataset(root)
+            policy = write_shadow_evaluation_policy(root / "policy" / "default.shadow_evaluation_policy.json")
+            model = train_shadow_ranking_model(
+                dataset["manifest_path"],
+                model_output_path=root / "models" / "ranker.shadow_ranking_model.json",
+                split_key="candidate_id",
+                train_fraction=0.75,
+            )
+            experiment = evaluate_shadow_ranking_model(
+                model_path=model["manifest_path"],
+                dataset_manifest=dataset["manifest_path"],
+                output_path=root / "experiments" / "eval.shadow_ranking_experiment.json",
+            )
+            result = run_shadow_operator_workflow(
+                mode="govern",
+                experiment_manifest=experiment["manifest_path"],
+                policy_path=policy["manifest_path"],
+                target="candidate_approval_probability",
+                output_root=root / "shadow-operator",
+            )
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["status"], "ok")
+            self.assertEqual([step["step_name"] for step in result["step_results"]], ["evaluate_governance_policy"])
+            self.assertEqual(result["step_results"][0]["status"], "ok")
+            self.assertIn("governed_ledger_manifest_path", result["produced_artifacts"])
+            self.assertIn(result["final_recommendation"]["decision"], {"prefer_shadow", "blocked_by_policy", "keep_current", "inconclusive"})
+
+    def test_full_mode_runs_train_benchmark_and_govern(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            dataset, _registry_path = _prepare_dataset(root)
+            policy = write_shadow_evaluation_policy(root / "policy" / "default.shadow_evaluation_policy.json")
+            result = run_shadow_operator_workflow(
+                mode="full",
+                dataset_manifest=dataset["manifest_path"],
+                policy_path=policy["manifest_path"],
+                split_key="candidate_id",
+                train_fraction=0.75,
+                output_root=root / "shadow-operator",
+            )
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["status"], "ok")
+            self.assertEqual(
+                [step["step_name"] for step in result["step_results"]],
+                ["train_model", "evaluate_model", "run_benchmark_matrix", "review_benchmark_results", "evaluate_governance_policy"],
+            )
+            self.assertIn("governed_ledger_manifest_path", result["produced_artifacts"])
+            self.assertEqual(
+                result["final_recommendation"]["supporting_artifacts"],
+                [result["produced_artifacts"]["governed_ledger_manifest_path"]],
+            )
+
+    def test_full_mode_stops_before_govern_after_benchmark_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            dataset, _registry_path = _prepare_dataset(root)
+            with patch(
+                "pipeline.shadow_operator_workflow.review_shadow_benchmark_results",
+                return_value={"ok": False, "status": "review_failed", "error": "forced failure"},
+            ):
+                result = run_shadow_operator_workflow(
+                    mode="full",
+                    dataset_manifest=dataset["manifest_path"],
+                    split_key="candidate_id",
+                    train_fraction=0.75,
+                    output_root=root / "shadow-operator",
+                )
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "partial")
+            self.assertEqual(
+                [step["step_name"] for step in result["step_results"]],
+                ["train_model", "evaluate_model", "run_benchmark_matrix", "review_benchmark_results"],
+            )
+            self.assertNotIn("governed_ledger_manifest_path", result["produced_artifacts"])
 
 
 if __name__ == "__main__":

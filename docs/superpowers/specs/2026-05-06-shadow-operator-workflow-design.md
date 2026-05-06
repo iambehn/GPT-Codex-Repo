@@ -48,6 +48,7 @@ Required selector:
 The wrapper should reuse existing CLI arguments where possible:
 
 - `--dataset-manifest`
+- `--experiment-manifest`
 - `--model-path`
 - `--model-family`
 - `--model-version`
@@ -100,6 +101,8 @@ Runs:
 
 1. `evaluate_shadow_experiment_policy(...)`
 2. `summarize_shadow_experiment_ledger(...)` when registry-backed summary context is available
+
+Standalone `govern` requires an explicit experiment manifest. It does not re-run model evaluation implicitly.
 
 Expected primary output:
 

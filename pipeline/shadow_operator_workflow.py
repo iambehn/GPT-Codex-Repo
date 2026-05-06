@@ -8,6 +8,7 @@ from typing import Any
 
 from pipeline.shadow_benchmark_matrix import run_shadow_benchmark_matrix
 from pipeline.shadow_benchmark_review import review_shadow_benchmark_results
+from pipeline.shadow_evaluation_policy import evaluate_shadow_experiment_policy
 from pipeline.shadow_model_training import evaluate_shadow_ranking_model, train_shadow_ranking_model
 
 
@@ -24,6 +25,7 @@ def run_shadow_operator_workflow(
     model_path: str | Path | None = None,
     model_family: str | None = None,
     model_version: str | None = None,
+    experiment_manifest: str | Path | None = None,
     training_target: str | None = None,
     target: str | None = None,
     policy_path: str | Path | None = None,
@@ -41,6 +43,7 @@ def run_shadow_operator_workflow(
         model_path=model_path,
         model_family=model_family,
         model_version=model_version,
+        experiment_manifest=experiment_manifest,
         training_target=training_target,
         target=target,
         policy_path=policy_path,
@@ -142,7 +145,7 @@ def _required_inputs_for_mode(mode: str) -> tuple[str, ...]:
     required = {
         "train": ("dataset_manifest",),
         "benchmark": ("dataset_manifest",),
-        "govern": (),
+        "govern": ("experiment_manifest",),
         "full": ("dataset_manifest",),
     }
     return required.get(mode, ())
@@ -154,6 +157,7 @@ def _normalized_inputs(
     model_path: str | Path | None,
     model_family: str | None,
     model_version: str | None,
+    experiment_manifest: str | Path | None,
     training_target: str | None,
     target: str | None,
     policy_path: str | Path | None,
@@ -165,6 +169,7 @@ def _normalized_inputs(
         "model_path": _normalized_path(model_path),
         "model_family": _normalized_optional(model_family),
         "model_version": _normalized_optional(model_version),
+        "experiment_manifest": _normalized_path(experiment_manifest),
         "training_target": _normalized_optional(training_target),
         "target": _normalized_optional(target),
         "policy_path": _normalized_path(policy_path),
@@ -241,6 +246,10 @@ def _execute_mode(
         return _run_train_mode(inputs=inputs, filters=filters, step_output_root=step_output_root)
     if mode == "benchmark":
         return _run_benchmark_mode(inputs=inputs, filters=filters, step_output_root=step_output_root)
+    if mode == "govern":
+        return _run_govern_mode(inputs=inputs, filters=filters, step_output_root=step_output_root)
+    if mode == "full":
+        return _run_full_mode(inputs=inputs, filters=filters, step_output_root=step_output_root)
     return []
 
 
@@ -384,6 +393,63 @@ def _run_benchmark_mode(
     return steps
 
 
+def _run_govern_mode(
+    *,
+    inputs: dict[str, Any],
+    filters: dict[str, Any],
+    step_output_root: Path,
+) -> list[dict[str, Any]]:
+    govern_result = evaluate_shadow_experiment_policy(
+        inputs["experiment_manifest"],
+        policy_path=inputs.get("policy_path"),
+        target=inputs.get("target"),
+        output_path=step_output_root / "govern" / "ledger.shadow_experiment_ledger.json",
+        game=filters.get("game"),
+        platform=filters.get("platform"),
+    )
+    return [
+        _step_result(
+            step_name="evaluate_governance_policy",
+            status="ok" if govern_result.get("ok") else "failed",
+            error=govern_result.get("error"),
+            artifact_path=govern_result.get("manifest_path"),
+            summary={
+                "evaluation_target": govern_result.get("evaluation_target"),
+                "coverage_status": govern_result.get("coverage_status"),
+                "primary_metric_name": (govern_result.get("global_metrics") or {}).get("primary_metric_name"),
+                "primary_metric_delta": (govern_result.get("global_metrics") or {}).get("primary_metric_delta"),
+            },
+            recommendation=_govern_recommendation(govern_result),
+            produced_artifacts={
+                "governed_ledger_manifest_path": govern_result.get("manifest_path"),
+                "governed_ledger_csv_path": govern_result.get("csv_path"),
+            },
+        )
+    ]
+
+
+def _run_full_mode(
+    *,
+    inputs: dict[str, Any],
+    filters: dict[str, Any],
+    step_output_root: Path,
+) -> list[dict[str, Any]]:
+    train_steps = _run_train_mode(inputs=inputs, filters=filters, step_output_root=step_output_root)
+    if _has_failed_step(train_steps):
+        return train_steps
+
+    benchmark_steps = _run_benchmark_mode(inputs=inputs, filters=filters, step_output_root=step_output_root)
+    combined_steps = [*train_steps, *benchmark_steps]
+    if _has_failed_step(benchmark_steps):
+        return combined_steps
+
+    experiment_manifest = _artifact_from_steps(train_steps, "experiment_manifest_path")
+    govern_inputs = dict(inputs)
+    govern_inputs["experiment_manifest"] = experiment_manifest
+    govern_steps = _run_govern_mode(inputs=govern_inputs, filters=filters, step_output_root=step_output_root)
+    return [*combined_steps, *govern_steps]
+
+
 def _train_recommendation(experiment_result: dict[str, Any]) -> dict[str, Any]:
     recommendation = dict(experiment_result.get("comparison_recommendation") or {})
     if not recommendation:
@@ -431,6 +497,34 @@ def _benchmark_recommendation(review_result: dict[str, Any]) -> dict[str, Any]:
         "supporting_artifacts": [review_result.get("manifest_path")] if review_result.get("manifest_path") else [],
         "follow_up": [row.get("recommended_next_action") for row in list(review_result.get("recommended_follow_up_actions", [])) if row.get("recommended_next_action")],
     }
+
+
+def _govern_recommendation(govern_result: dict[str, Any]) -> dict[str, Any]:
+    recommendation = dict(govern_result.get("recommendation") or {})
+    if not recommendation:
+        return {}
+    blocking_reasons = list(recommendation.get("blocking_reasons", []))
+    follow_up = []
+    if blocking_reasons:
+        follow_up.append("resolve the policy blocking reasons before promotion")
+    return {
+        "decision": recommendation.get("decision"),
+        "reason": recommendation.get("reason"),
+        "supporting_artifacts": [govern_result.get("manifest_path")] if govern_result.get("manifest_path") else [],
+        "follow_up": follow_up,
+    }
+
+
+def _has_failed_step(step_results: list[dict[str, Any]]) -> bool:
+    return any(step.get("status") == "failed" for step in step_results)
+
+
+def _artifact_from_steps(step_results: list[dict[str, Any]], artifact_key: str) -> str | None:
+    for step in reversed(step_results):
+        value = (step.get("produced_artifacts") or {}).get(artifact_key)
+        if value:
+            return str(value)
+    return None
 
 
 def _final_status(

@@ -122,6 +122,8 @@ Implement:
 1. `evaluate_shadow_experiment_policy(...)`
 2. optional `summarize_shadow_experiment_ledger(...)`
 
+Standalone `govern` requires an explicit experiment manifest. `full` derives that manifest from its `train` stage output.
+
 `full` step flow:
 
 1. `train`
@@ -156,6 +158,7 @@ Add/validate args:
 
 - `--mode`
 - `--dataset-manifest`
+- `--experiment-manifest`
 - `--model-path`
 - `--model-family`
 - `--model-version`
