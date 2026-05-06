@@ -1,0 +1,12 @@
+.DS_Store
+
+__pycache__/
+*.py[cod]
+
+outputs/
+
+# Operational onboarding draft runs
+assets/games/*/drafts/onboarding/*
+
+# Local Codex workspace state
+.claude/
