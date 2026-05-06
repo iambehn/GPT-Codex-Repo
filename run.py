@@ -3443,27 +3443,63 @@ def _fixture_trial_batch_artifact_layer(*, emit_runtime: bool, emit_fused: bool)
     return "proxy"
 
 
+def _normalize_batch_recommendation_payload(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+    normalized: dict[str, Any] = {}
+    decision = str(payload.get("decision", "")).strip()
+    if decision:
+        normalized["decision"] = decision
+    reason = str(payload.get("reason", "")).strip()
+    if reason:
+        normalized["reason"] = reason
+    if isinstance(payload.get("supporting_metrics"), dict):
+        normalized["supporting_metrics"] = dict(payload["supporting_metrics"])
+    if isinstance(payload.get("data_quality_notes"), list):
+        normalized["data_quality_notes"] = [str(item) for item in payload["data_quality_notes"] if str(item).strip()]
+    follow_up = str(payload.get("follow_up", "")).strip()
+    if follow_up:
+        normalized["follow_up"] = follow_up
+    return normalized
+
+
 def _fixture_trial_batch_recommendation(trial_comparisons: list[dict[str, Any]]) -> dict[str, Any]:
     successful = [row for row in trial_comparisons if str(row.get("comparison_status")) == "ok"]
-    prefer = [row for row in successful if str(row.get("recommendation", {}).get("decision", "")) == "prefer_trial"]
-    keep = [row for row in successful if str(row.get("recommendation", {}).get("decision", "")) == "keep_current"]
+    normalized_rows = [
+        {
+            **row,
+            "recommendation": _normalize_batch_recommendation_payload(row.get("recommendation", {})),
+        }
+        for row in successful
+    ]
+    prefer = [row for row in normalized_rows if str(row.get("recommendation", {}).get("decision", "")) == "prefer_trial"]
+    keep = [row for row in normalized_rows if str(row.get("recommendation", {}).get("decision", "")) == "keep_current"]
     if len(prefer) == 1 and not keep:
         row = prefer[0]
         return {
             "decision": "adopt_trial",
             "trial_name": row.get("trial_name"),
             "reason": "one trial clearly outperformed baseline on reviewed fixture coverage",
+            "supporting_metrics": row.get("recommendation", {}).get("supporting_metrics", {}),
+            "data_quality_notes": row.get("recommendation", {}).get("data_quality_notes", []),
+            "follow_up": row.get("recommendation", {}).get("follow_up", ""),
         }
     if keep and not prefer:
         return {
             "decision": "keep_baseline",
             "trial_name": None,
             "reason": "baseline retained better reviewed fixture behavior than the tested trials",
+            "supporting_metrics": {},
+            "data_quality_notes": [],
+            "follow_up": "",
         }
     return {
         "decision": "inconclusive",
         "trial_name": None,
         "reason": "trial outcomes are sparse, mixed, or incomplete",
+        "supporting_metrics": {},
+        "data_quality_notes": [],
+        "follow_up": "",
     }
 
 
@@ -3499,7 +3535,7 @@ def _write_fixture_trial_batch_csv(
                     "trial_name": trial_name,
                     "run_status": run.get("status"),
                     "comparison_status": comparison.get("comparison_status"),
-                    "recommendation_decision": comparison.get("recommendation", {}).get("decision"),
+                    "recommendation_decision": _normalize_batch_recommendation_payload(comparison.get("recommendation", {})).get("decision"),
                     "completed_fixture_count": run.get("completed_fixture_count", 0),
                     "failed_fixture_count": run.get("failed_fixture_count", 0),
                     "reviewed_row_count": comparison.get("reviewed_row_count", 0),

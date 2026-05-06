@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from pipeline.clip_registry import load_candidate_lifecycle_details, load_hook_candidate_details
 from pipeline import proxy_replay_viewer, replay_viewer
 
 
@@ -27,6 +28,7 @@ def render_unified_replay_viewer(
     proxy_replay_report: str | Path | None = None,
     runtime_calibration_report: str | Path | None = None,
     runtime_replay_report: str | Path | None = None,
+    registry_path: str | Path | None = None,
     output_path: str | Path | None = None,
 ) -> dict[str, Any]:
     if proxy_sidecar is None and runtime_sidecar is None and fused_sidecar is None:
@@ -117,6 +119,7 @@ def render_unified_replay_viewer(
         game=game,
         source=source,
         reports=reports,
+        registry_path=registry_path,
     )
     html_text = _render_html(derived)
 
@@ -288,6 +291,7 @@ def _build_unified_payload(
     game: str,
     source: str,
     reports: dict[str, Any],
+    registry_path: str | Path | None,
 ) -> dict[str, Any]:
     proxy_section = _build_proxy_section(proxy_payload, proxy_path, media_path, media_exists)
     runtime_section = _build_runtime_section(runtime_payload)
@@ -302,6 +306,20 @@ def _build_unified_payload(
         runtime_path=runtime_path,
         fused_path=fused_path,
         reports=reports,
+    )
+    lifecycle = _build_lifecycle_overlay(
+        game=game,
+        source=source,
+        fused_sidecar_path=fused_path,
+        fused_section=fused_section,
+        registry_path=registry_path,
+    )
+    hooks = _build_hook_overlay(
+        game=game,
+        source=source,
+        fused_sidecar_path=fused_path,
+        fused_section=fused_section,
+        registry_path=registry_path,
     )
     provenance = _build_provenance(
         proxy_section,
@@ -337,6 +355,8 @@ def _build_unified_payload(
             + int(bool(evaluation.get("fixture_trial_batch")))
         ),
         "disagreement_count": sum(1 for value in disagreements.values() if value.get("has_any")),
+        "lifecycle_count": len(lifecycle.get("by_item_id", {})),
+        "hook_candidate_count": len(hooks.get("by_item_id", {})),
     }
     return {
         "clip": {
@@ -356,6 +376,8 @@ def _build_unified_payload(
         "cross_links": cross_links,
         "provenance": provenance,
         "disagreements": disagreements,
+        "lifecycle": lifecycle,
+        "hooks": hooks,
         "review": review,
         "evaluation": evaluation,
         "timeline": timeline,
@@ -367,6 +389,76 @@ def _build_unified_payload(
             "fused_sidecar_json": fused_payload or {},
             "reports_json": reports,
         },
+    }
+
+
+def _build_lifecycle_overlay(
+    *,
+    game: str,
+    source: str,
+    fused_sidecar_path: Path | None,
+    fused_section: dict[str, Any],
+    registry_path: str | Path | None,
+) -> dict[str, Any]:
+    if fused_sidecar_path is None or not fused_section.get("available"):
+        return {"available": False, "by_item_id": {}, "summary": {}}
+    rows = load_candidate_lifecycle_details(
+        game=game,
+        source=source,
+        fused_sidecar_path=fused_sidecar_path,
+        registry_path=registry_path,
+    )
+    by_event_id = {str(row.get("event_id") or ""): row for row in rows if str(row.get("event_id") or "").strip()}
+    by_item_id: dict[str, dict[str, Any]] = {}
+    states: dict[str, int] = {}
+    for event in fused_section.get("events", []):
+        event_id = str(event.get("event_id") or "").strip()
+        row = by_event_id.get(event_id)
+        if not row:
+            continue
+        by_item_id[str(event["row_id"])] = row
+        state = str(row.get("lifecycle_state") or "").strip()
+        if state:
+            states[state] = states.get(state, 0) + 1
+    return {
+        "available": bool(by_item_id),
+        "by_item_id": by_item_id,
+        "summary": {"states": states, "candidate_count": len(by_item_id)},
+    }
+
+
+def _build_hook_overlay(
+    *,
+    game: str,
+    source: str,
+    fused_sidecar_path: Path | None,
+    fused_section: dict[str, Any],
+    registry_path: str | Path | None,
+) -> dict[str, Any]:
+    if fused_sidecar_path is None or not fused_section.get("available"):
+        return {"available": False, "by_item_id": {}, "summary": {}}
+    rows = load_hook_candidate_details(
+        game=game,
+        source=source,
+        fused_sidecar_path=fused_sidecar_path,
+        registry_path=registry_path,
+    )
+    by_event_id = {str(row.get("event_id") or ""): row for row in rows if str(row.get("event_id") or "").strip()}
+    by_item_id: dict[str, dict[str, Any]] = {}
+    mode_counts: dict[str, int] = {}
+    for event in fused_section.get("events", []):
+        event_id = str(event.get("event_id") or "").strip()
+        row = by_event_id.get(event_id)
+        if not row:
+            continue
+        by_item_id[str(event["row_id"])] = row
+        mode = str(row.get("hook_mode") or "").strip()
+        if mode:
+            mode_counts[mode] = mode_counts.get(mode, 0) + 1
+    return {
+        "available": bool(by_item_id),
+        "by_item_id": by_item_id,
+        "summary": {"modes": mode_counts, "hook_candidate_count": len(by_item_id)},
     }
 
 
@@ -721,11 +813,17 @@ def _build_disagreements(
 
     comparison_payload = evaluation.get("fixture_comparison", {}) if isinstance(evaluation, dict) else {}
     comparison_row = comparison_payload.get("row", {}) if isinstance(comparison_payload, dict) else {}
-    comparison_recommendation = comparison_payload.get("recommendation", {}) if isinstance(comparison_payload, dict) else {}
+    comparison_recommendation = _normalize_recommendation_payload(
+        comparison_payload.get("recommendation", {}) if isinstance(comparison_payload, dict) else {}
+    )
     proxy_replay = evaluation.get("proxy", {}).get("replay", {}) if isinstance(evaluation.get("proxy"), dict) else {}
-    proxy_recommendation = evaluation.get("proxy", {}).get("replay_recommendation", {}) if isinstance(evaluation.get("proxy"), dict) else {}
+    proxy_recommendation = _normalize_recommendation_payload(
+        evaluation.get("proxy", {}).get("replay_recommendation", {}) if isinstance(evaluation.get("proxy"), dict) else {}
+    )
     runtime_replay = evaluation.get("runtime", {}).get("replay", {}) if isinstance(evaluation.get("runtime"), dict) else {}
-    runtime_recommendation = evaluation.get("runtime", {}).get("replay_recommendation", {}) if isinstance(evaluation.get("runtime"), dict) else {}
+    runtime_recommendation = _normalize_recommendation_payload(
+        evaluation.get("runtime", {}).get("replay_recommendation", {}) if isinstance(evaluation.get("runtime"), dict) else {}
+    )
 
     for row_id in cross_links:
         linked_statuses = {
@@ -754,13 +852,13 @@ def _build_disagreements(
 
         trial_disagreement = False
         trial_reason = ""
-        if row_id.startswith("window-") and proxy_recommendation:
+        if row_id.startswith("window-") and proxy_recommendation.get("decision"):
             score_delta = float(proxy_replay.get("score_delta") or 0.0)
             decision = str(proxy_recommendation.get("decision", "")).strip()
             trial_disagreement = decision in {"prefer_trial", "keep_current"} or abs(score_delta) > 1e-9
             if trial_disagreement:
                 trial_reason = str(proxy_recommendation.get("reason") or f"Proxy trial delta {score_delta:+.3f}").strip()
-        elif row_id.startswith("runtime-event-") and runtime_recommendation:
+        elif row_id.startswith("runtime-event-") and runtime_recommendation.get("decision"):
             score_delta = float(runtime_replay.get("score_delta") or 0.0)
             decision = str(runtime_recommendation.get("decision", "")).strip()
             trial_disagreement = decision in {"prefer_trial", "keep_current"} or abs(score_delta) > 1e-9
@@ -847,7 +945,7 @@ def _build_evaluation_overlay(
                 (reports.get("proxy_calibration") or {}).get("recommendations", {}).get("threshold_observations", [])
             )
             + list((reports.get("proxy_calibration") or {}).get("recommendations", {}).get("weight_observations", [])),
-            "replay_recommendation": (reports.get("proxy_replay") or {}).get("recommendation", {}),
+            "replay_recommendation": _normalize_recommendation_payload((reports.get("proxy_replay") or {}).get("recommendation", {})),
             "current_scoring": (reports.get("proxy_calibration") or {}).get("current_scoring")
             or (reports.get("proxy_replay") or {}).get("current_proxy_scoring", {}),
             "trial_scoring": (reports.get("proxy_replay") or {}).get("trial_proxy_scoring", {}),
@@ -862,7 +960,7 @@ def _build_evaluation_overlay(
                 (reports.get("runtime_calibration") or {}).get("recommendations", {}).get("threshold_observations", [])
             )
             + list((reports.get("runtime_calibration") or {}).get("recommendations", {}).get("weight_observations", [])),
-            "replay_recommendation": (reports.get("runtime_replay") or {}).get("recommendation", {}),
+            "replay_recommendation": _normalize_recommendation_payload((reports.get("runtime_replay") or {}).get("recommendation", {})),
             "current_scoring": (reports.get("runtime_calibration") or {}).get("current_scoring")
             or (reports.get("runtime_replay") or {}).get("current_scoring", {}),
             "trial_scoring": (reports.get("runtime_replay") or {}).get("trial_scoring", {}),
@@ -883,6 +981,26 @@ def _proxy_calibration_clip(report: dict[str, Any] | None, scan_id: str) -> dict
         if isinstance(row, dict) and str(row.get("scan_id", "")).strip() == scan_id:
             return row
     return {}
+
+
+def _normalize_recommendation_payload(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+    normalized: dict[str, Any] = {}
+    decision = str(payload.get("decision", "")).strip()
+    if decision:
+        normalized["decision"] = decision
+    reason = str(payload.get("reason", "")).strip()
+    if reason:
+        normalized["reason"] = reason
+    if isinstance(payload.get("supporting_metrics"), dict):
+        normalized["supporting_metrics"] = dict(payload["supporting_metrics"])
+    if isinstance(payload.get("data_quality_notes"), list):
+        normalized["data_quality_notes"] = [str(item) for item in payload["data_quality_notes"] if str(item).strip()]
+    follow_up = str(payload.get("follow_up", "")).strip()
+    if follow_up:
+        normalized["follow_up"] = follow_up
+    return normalized
 
 
 def _proxy_replay_clip(report: dict[str, Any] | None, scan_id: str) -> dict[str, Any]:
@@ -1268,6 +1386,14 @@ def _render_html(derived: dict[str, Any]) -> str:
       return VIEWER_DATA.disagreements[itemKey(item)] || {{}};
     }}
 
+    function currentLifecycle(item) {{
+      return (VIEWER_DATA.lifecycle && VIEWER_DATA.lifecycle.by_item_id && VIEWER_DATA.lifecycle.by_item_id[itemKey(item)]) || {{}};
+    }}
+
+    function currentHook(item) {{
+      return (VIEWER_DATA.hooks && VIEWER_DATA.hooks.by_item_id && VIEWER_DATA.hooks.by_item_id[itemKey(item)]) || {{}};
+    }}
+
     function renderTagList(values, className = "") {{
       if (!Array.isArray(values) || !values.length) return "n/a";
       return values.map((value) => `<span class="tag ${{className}}">${{escapeHtml(value)}}</span>`).join("");
@@ -1328,6 +1454,75 @@ def _render_html(derived: dict[str, Any]) -> str:
       return rows.join("");
     }}
 
+    function renderLifecycleBlock(item) {{
+      const payload = currentLifecycle(item);
+      if (!Object.keys(payload).length) {{
+        return `<div class="kv"><div class="key">Lifecycle</div><div>No lifecycle row indexed for this item.</div></div>`;
+      }}
+      let transitions = [];
+      try {{
+        transitions = JSON.parse(payload.transitions_json || "[]") || [];
+      }} catch (_error) {{
+        transitions = [];
+      }}
+      const transitionRows = transitions.map((row) => `
+        <tr>
+          <td>${{escapeHtml(row.from_state || "none")}}</td>
+          <td>${{escapeHtml(row.to_state || "n/a")}}</td>
+          <td>${{escapeHtml(row.transition_source || "n/a")}}</td>
+          <td>${{escapeHtml(row.created_at || "n/a")}}</td>
+        </tr>
+      `).join("");
+      return `
+        <div class="kv"><div class="key">Lifecycle state</div><div>${{escapeHtml(payload.lifecycle_state || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Candidate id</div><div>${{escapeHtml(payload.candidate_id || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Latest review</div><div>${{escapeHtml(payload.latest_review_status || "unreviewed")}}</div></div>
+        <div class="kv"><div class="key">Selection basis</div><div>${{escapeHtml(payload.selection_basis || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Eligible for export/post</div><div>${{payload.lifecycle_state === "approved" || payload.lifecycle_state === "selected_for_export" || payload.lifecycle_state === "exported" ? "yes" : "no"}}</div></div>
+        <div class="kv"><div class="key">Selection manifest</div><div>${{escapeHtml(payload.highlight_selection_manifest_path || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Export artifact</div><div>${{escapeHtml(payload.export_artifact_path || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Post ledger</div><div>${{escapeHtml(payload.post_ledger_path || "n/a")}}</div></div>
+        <table>
+          <thead><tr><th>From</th><th>To</th><th>Source</th><th>Created</th></tr></thead>
+          <tbody>${{transitionRows || '<tr><td colspan="4">No transition history.</td></tr>'}}</tbody>
+        </table>
+      `;
+    }}
+
+    function renderHookBlock(item) {{
+      const hook = currentHook(item);
+      const lifecycle = currentLifecycle(item);
+      if (!Object.keys(hook).length) {{
+        if (!Object.keys(lifecycle).length) {{
+          return `<div class="kv"><div class="key">Hook context</div><div>No hook candidate available because lifecycle context is not loaded for this fused event.</div></div>`;
+        }}
+        if (!["approved", "selected_for_export"].includes(lifecycle.lifecycle_state || "")) {{
+          return `<div class="kv"><div class="key">Hook context</div><div>No hook candidate available because lifecycle state ${{escapeHtml(lifecycle.lifecycle_state || "unknown")}} is not eligible.</div></div>`;
+        }}
+        return `<div class="kv"><div class="key">Hook context</div><div>No hook candidate derived yet for this fused event.</div></div>`;
+      }}
+      return `
+        <div class="kv"><div class="key">Hook archetype</div><div>${{escapeHtml(hook.hook_archetype || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Hook mode</div><div>${{escapeHtml(hook.hook_mode || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Hook strength</div><div>${{formatNumber(hook.hook_strength)}}</div></div>
+        <div class="kv"><div class="key">Packaging strategy</div><div>${{escapeHtml(hook.packaging_strategy || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Rejection reason</div><div>${{escapeHtml(hook.rejection_reason || "n/a")}}</div></div>
+        <table>
+          <thead><tr><th>Dimension</th><th>Score</th></tr></thead>
+          <tbody>
+            <tr><td>Intensity</td><td>${{formatNumber(hook.intensity_score)}}</td></tr>
+            <tr><td>Clarity</td><td>${{formatNumber(hook.clarity_score)}}</td></tr>
+            <tr><td>Novelty</td><td>${{formatNumber(hook.novelty_score)}}</td></tr>
+            <tr><td>Context sufficiency</td><td>${{formatNumber(hook.context_sufficiency_score)}}</td></tr>
+            <tr><td>Payoff readability</td><td>${{formatNumber(hook.payoff_readability_score)}}</td></tr>
+            <tr><td>Title/thumbnail potential</td><td>${{formatNumber(hook.title_thumbnail_potential_score)}}</td></tr>
+            <tr><td>Authenticity risk</td><td>${{formatNumber(hook.authenticity_risk_score)}}</td></tr>
+            <tr><td>Sound-off legibility</td><td>${{formatNumber(hook.sound_off_legibility_score)}}</td></tr>
+          </tbody>
+        </table>
+      `;
+    }}
+
     function renderRecommendationSummary(item) {{
       const fixtureEval = VIEWER_DATA.evaluation.fixture_comparison || {{}};
       const batchEval = VIEWER_DATA.evaluation.fixture_trial_batch || {{}};
@@ -1343,6 +1538,8 @@ def _render_html(derived: dict[str, Any]) -> str:
           trialAction: proxyEval.replay?.trial_action,
           decision: proxyEval.replay_recommendation?.decision,
           reason: proxyEval.replay_recommendation?.reason,
+          dataQualityNotes: proxyEval.replay_recommendation?.data_quality_notes,
+          followUp: proxyEval.replay_recommendation?.follow_up,
         }};
       }} else if (item.kind === "runtime_event" && Object.keys(runtimeEval).length) {{
         summary = {{
@@ -1353,6 +1550,8 @@ def _render_html(derived: dict[str, Any]) -> str:
           trialAction: runtimeEval.replay?.trial_action,
           decision: runtimeEval.replay_recommendation?.decision,
           reason: runtimeEval.replay_recommendation?.reason,
+          dataQualityNotes: runtimeEval.replay_recommendation?.data_quality_notes,
+          followUp: runtimeEval.replay_recommendation?.follow_up,
         }};
       }} else if (Object.keys(fixtureEval).length) {{
         summary = {{
@@ -1363,9 +1562,17 @@ def _render_html(derived: dict[str, Any]) -> str:
           trialAction: fixtureEval.row?.trial_action,
           decision: fixtureEval.recommendation?.decision || fixtureEval.row?.recommendation_signal,
           reason: fixtureEval.recommendation?.reason || fixtureEval.row?.recommendation_signal,
+          dataQualityNotes: fixtureEval.recommendation?.data_quality_notes,
+          followUp: fixtureEval.recommendation?.follow_up,
         }};
       }}
       const batchContext = Object.keys(batchEval).length ? `<div class="kv"><div class="key">Batch coverage</div><div>${{escapeHtml((batchEval.covered_trials || []).join(", ") || "n/a")}}</div></div>` : "";
+      const noteBlock = Array.isArray(summary.dataQualityNotes) && summary.dataQualityNotes.length
+        ? `<div class="kv"><div class="key">Data quality notes</div><div>${{escapeHtml(summary.dataQualityNotes.join(" | "))}}</div></div>`
+        : "";
+      const followUpBlock = summary.followUp
+        ? `<div class="kv"><div class="key">Follow-up</div><div>${{escapeHtml(summary.followUp)}}</div></div>`
+        : "";
       if (!Object.keys(summary).length) {{
         return `<div class="kv"><div class="key">Recommendation summary</div><div>No comparison or replay overlay loaded.</div></div>${{batchContext}}`;
       }}
@@ -1375,6 +1582,8 @@ def _render_html(derived: dict[str, Any]) -> str:
         <div class="kv"><div class="key">Current -> trial action</div><div>${{escapeHtml(summary.currentAction || "n/a")}} -> ${{escapeHtml(summary.trialAction || "n/a")}}</div></div>
         <div class="kv"><div class="key">Recommendation decision</div><div>${{escapeHtml(summary.decision || "n/a")}}</div></div>
         <div class="kv"><div class="key">Recommendation reason</div><div>${{escapeHtml(summary.reason || "n/a")}}</div></div>
+        ${{noteBlock}}
+        ${{followUpBlock}}
         ${{batchContext}}
       `;
     }}
@@ -1476,6 +1685,8 @@ def _render_html(derived: dict[str, Any]) -> str:
       const contributingRows = (currentProvenance(item).contributing_signals || []).map((signal) => `
         <tr><td>${{escapeHtml(signal.signal_id || "n/a")}}</td><td>${{escapeHtml(signal.producer_family || "")}}</td><td>${{escapeHtml(signal.label || "")}}</td><td>${{formatNumber(signal.score)}}</td></tr>
       `).join("");
+      const lifecycleBlock = renderLifecycleBlock(item);
+      const hookBlock = renderHookBlock(item);
       return `
         <div class="kv"><div class="key">Kind</div><div>Fused event</div></div>
         <div class="kv"><div class="key">Event type</div><div>${{escapeHtml(row.label || "")}}</div></div>
@@ -1483,6 +1694,10 @@ def _render_html(derived: dict[str, Any]) -> str:
         <div class="kv"><div class="key">Gate</div><div>${{escapeHtml(row.gate_status || "n/a")}}</div></div>
         <div class="kv"><div class="key">Review</div><div>${{escapeHtml(row.review?.review_status || "unreviewed")}}</div></div>
         <div class="button-row"><button type="button" data-jump-item="${{escapeHtml(row.row_id)}}">Jump To Event</button></div>
+        <h3>Lifecycle</h3>
+        ${{lifecycleBlock}}
+        <h3>Hook Context</h3>
+        ${{hookBlock}}
         <h3>Provenance</h3>
         ${{provenanceBlock}}
         <h3>Disagreements</h3>
@@ -1544,6 +1759,7 @@ def _render_html(derived: dict[str, Any]) -> str:
       const row = payload.row || {{}};
       const recommendation = payload.recommendation || {{}};
       const latencyDeltas = row.stage_latency_deltas || {{}};
+      const dataQualityNotes = Array.isArray(recommendation.data_quality_notes) ? recommendation.data_quality_notes : [];
       return `
         <div class="kv"><div class="key">Fixture</div><div>${{escapeHtml(row.fixture_id || "n/a")}}</div></div>
         <div class="kv"><div class="key">Role</div><div>${{escapeHtml(payload.role || "n/a")}}</div></div>
@@ -1553,6 +1769,8 @@ def _render_html(derived: dict[str, Any]) -> str:
         <div class="kv"><div class="key">Score delta</div><div>${{formatNumber(row.score_delta)}}</div></div>
         <div class="kv"><div class="key">Shortlist / rerank</div><div>${{row.shortlist_changed ? "shortlist changed" : "shortlist stable"}}; ${{row.rerank_changed ? "rerank changed" : "rerank stable"}}</div></div>
         <div class="kv"><div class="key">Recommendation</div><div>${{escapeHtml(recommendation.decision || row.recommendation_signal || "n/a")}}${{recommendation.reason ? `: ${{escapeHtml(recommendation.reason)}}` : ""}}</div></div>
+        <div class="kv"><div class="key">Follow-up</div><div>${{escapeHtml(recommendation.follow_up || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Data quality notes</div><div>${{escapeHtml(dataQualityNotes.join(" | ") || "n/a")}}</div></div>
         <div class="kv"><div class="key">Stage latency deltas</div><div><pre>${{escapeHtml(JSON.stringify(latencyDeltas, null, 2))}}</pre></div></div>
       `;
     }}
@@ -1582,6 +1800,7 @@ def _render_html(derived: dict[str, Any]) -> str:
       const calibration = payload.calibration || {{}};
       const replay = payload.replay || {{}};
       const recommendation = payload.replay_recommendation || {{}};
+      const dataQualityNotes = Array.isArray(recommendation.data_quality_notes) ? recommendation.data_quality_notes : [];
       const currentScoring = payload.current_scoring || {{}};
       const trialScoring = payload.trial_scoring || {{}};
       return `
@@ -1589,6 +1808,8 @@ def _render_html(derived: dict[str, Any]) -> str:
         <div class="kv"><div class="key">Proxy replay delta</div><div>${{formatNumber(replay.score_delta)}}</div></div>
         <div class="kv"><div class="key">Current -> trial action</div><div>${{escapeHtml(replay.current_action || "n/a")}} -> ${{escapeHtml(replay.trial_action || "n/a")}}</div></div>
         <div class="kv"><div class="key">Recommendation</div><div>${{escapeHtml(recommendation.decision || "n/a")}}${{recommendation.reason ? `: ${{escapeHtml(recommendation.reason)}}` : ""}}</div></div>
+        <div class="kv"><div class="key">Follow-up</div><div>${{escapeHtml(recommendation.follow_up || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Data quality notes</div><div>${{escapeHtml(dataQualityNotes.join(" | ") || "n/a")}}</div></div>
         <div class="kv"><div class="key">Stage weights</div><div><pre>${{escapeHtml(JSON.stringify(currentScoring.hf_multimodal?.stage_weights || currentScoring.stage_weights || {{}}, null, 2))}}</pre></div></div>
         <div class="kv"><div class="key">Signal thresholds</div><div><pre>${{escapeHtml(JSON.stringify(currentScoring.hf_multimodal?.signal_thresholds || currentScoring.signal_thresholds || {{}}, null, 2))}}</pre></div></div>
         <div class="kv"><div class="key">Contribution deltas</div><div><pre>${{escapeHtml(JSON.stringify(replay, null, 2))}}</pre></div></div>
@@ -1601,11 +1822,14 @@ def _render_html(derived: dict[str, Any]) -> str:
       const calibration = payload.calibration || {{}};
       const replay = payload.replay || {{}};
       const recommendation = payload.replay_recommendation || {{}};
+      const dataQualityNotes = Array.isArray(recommendation.data_quality_notes) ? recommendation.data_quality_notes : [];
       return `
         <div class="kv"><div class="key">Runtime calibration score</div><div>${{formatNumber(calibration.highlight_score)}}</div></div>
         <div class="kv"><div class="key">Runtime replay delta</div><div>${{formatNumber(replay.score_delta)}}</div></div>
         <div class="kv"><div class="key">Current -> trial action</div><div>${{escapeHtml(replay.current_action || "n/a")}} -> ${{escapeHtml(replay.trial_action || "n/a")}}</div></div>
         <div class="kv"><div class="key">Recommendation</div><div>${{escapeHtml(recommendation.decision || "n/a")}}${{recommendation.reason ? `: ${{escapeHtml(recommendation.reason)}}` : ""}}</div></div>
+        <div class="kv"><div class="key">Follow-up</div><div>${{escapeHtml(recommendation.follow_up || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Data quality notes</div><div>${{escapeHtml(dataQualityNotes.join(" | ") || "n/a")}}</div></div>
         <div class="kv"><div class="key">Current scoring</div><div><pre>${{escapeHtml(JSON.stringify(payload.current_scoring || {{}}, null, 2))}}</pre></div></div>
         <div class="kv"><div class="key">Trial scoring</div><div><pre>${{escapeHtml(JSON.stringify(payload.trial_scoring || {{}}, null, 2))}}</pre></div></div>
         <div class="kv"><div class="key">Replay row</div><div><pre>${{escapeHtml(JSON.stringify(replay, null, 2))}}</pre></div></div>

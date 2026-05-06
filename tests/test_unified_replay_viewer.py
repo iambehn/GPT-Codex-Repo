@@ -8,6 +8,9 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+from pipeline.clip_registry import refresh_clip_registry
+from pipeline.highlight_selection_export import export_highlight_selection
+from pipeline.hook_candidate_export import derive_hook_candidates
 from pipeline import unified_replay_viewer
 from run import main as run_main
 from run import run_render_unified_replay_viewer
@@ -236,6 +239,8 @@ def _proxy_replay_report() -> dict[str, object]:
         "recommendation": {
             "decision": "prefer_trial",
             "reason": "Trial routing improves approved-clip handling without worsening rejected routing.",
+            "data_quality_notes": ["balanced reviewed proxy set"],
+            "follow_up": "Inspect one narrower semantic-threshold trial next.",
         },
         "current_proxy_scoring": {
             "hf_multimodal": {
@@ -291,6 +296,8 @@ def _runtime_replay_report() -> dict[str, object]:
         "recommendation": {
             "decision": "prefer_trial",
             "reason": "Trial scoring improves approved clip routing without increasing rejected clips.",
+            "data_quality_notes": ["approved and rejected runtime clips both present"],
+            "follow_up": "Tighten inspect threshold only if more reviewed clips confirm the move.",
         },
         "current_scoring": {"action_thresholds": {"inspect": 0.25, "highlight_candidate": 0.60}},
         "trial_scoring": {"action_thresholds": {"inspect": 0.22, "highlight_candidate": 0.58}},
@@ -490,6 +497,8 @@ class UnifiedReplayViewerTests(unittest.TestCase):
             self.assertIn("distil-whisper", html_text)
             self.assertIn("Artifact role", html_text)
             self.assertIn("Recommendation reason", html_text)
+            self.assertIn("Data quality notes", html_text)
+            self.assertIn("Follow-up", html_text)
 
     def test_render_unified_replay_viewer_fused_only(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -511,6 +520,34 @@ class UnifiedReplayViewerTests(unittest.TestCase):
             self.assertIn("ability_plus_medal_combo", html_text)
             self.assertIn("Structured evidence is partial or missing", html_text)
             self.assertIn("Raw JSON Inspector", html_text)
+
+    def test_render_unified_replay_viewer_includes_candidate_lifecycle(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "alpha.fused_analysis.json"
+            fused_path.write_text(json.dumps(_fused_sidecar(source=media), indent=2), encoding="utf-8")
+            registry_path = root / "registry.sqlite"
+            export_highlight_selection(fused_sidecar=fused_path, output_path=root / "exports" / "alpha.highlight_selection.json")
+            refresh_clip_registry(root, registry_path=registry_path)
+            derive_hook_candidates(fused_path, registry_path=registry_path, output_path=root / "exports" / "alpha.hook_candidates.json")
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            with patch.object(unified_replay_viewer, "DEFAULT_OUTPUT_ROOT", root / "viewer"):
+                result = run_render_unified_replay_viewer(fused_sidecar=fused_path, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            html_text = Path(result["viewer_path"]).read_text(encoding="utf-8")
+            self.assertIn("Lifecycle state", html_text)
+            self.assertIn("selected_for_export", html_text)
+            self.assertIn("Candidate id", html_text)
+            self.assertIn("Selection basis", html_text)
+            self.assertIn("fused", html_text)
+            self.assertIn("Selection manifest", html_text)
+            self.assertIn("Hook Context", html_text)
+            self.assertIn("Hook archetype", html_text)
 
     def test_render_unified_replay_viewer_flags_downstream_weak_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

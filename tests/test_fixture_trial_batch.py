@@ -142,7 +142,13 @@ class FixtureTrialBatchTests(unittest.TestCase):
                 output_path = Path(kwargs["output_path"])
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 if trial_root.endswith("distil-whisper"):
-                    recommendation = {"decision": "prefer_trial"}
+                    recommendation = {
+                        "decision": "prefer_trial",
+                        "reason": "trial improved reviewed fixtures",
+                        "supporting_metrics": {"prefer_trial_count": 2},
+                        "data_quality_notes": ["balanced fixture coverage"],
+                        "follow_up": "promote the winning trial into the next comparison batch",
+                    }
                     rows = [
                         {"review_status": "approved", "coverage_status": "both", "recommendation_signal": "trial_better"},
                         {"review_status": "approved", "coverage_status": "both", "recommendation_signal": "trial_better"},
@@ -179,6 +185,9 @@ class FixtureTrialBatchTests(unittest.TestCase):
             self.assertEqual(adopted["recommendation"]["decision"], "prefer_trial")
             self.assertEqual(result["overall_recommendation"]["decision"], "adopt_trial")
             self.assertEqual(result["overall_recommendation"]["trial_name"], "distil-whisper")
+            self.assertEqual(result["overall_recommendation"]["supporting_metrics"]["prefer_trial_count"], 2)
+            self.assertIn("balanced fixture coverage", result["overall_recommendation"]["data_quality_notes"])
+            self.assertIn("promote the winning trial", result["overall_recommendation"]["follow_up"])
 
     def test_batch_runner_reports_invalid_trial_selection(self) -> None:
         result = run_fixture_trial_batch(
