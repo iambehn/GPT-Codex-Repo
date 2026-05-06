@@ -6,6 +6,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pipeline.shadow_benchmark_matrix import run_shadow_benchmark_matrix
+from pipeline.shadow_benchmark_review import review_shadow_benchmark_results
+from pipeline.shadow_model_training import evaluate_shadow_ranking_model, train_shadow_ranking_model
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SHADOW_OPERATOR_RUN_SCHEMA_VERSION = "shadow_operator_run_v1"
@@ -63,13 +67,26 @@ def run_shadow_operator_workflow(
             if inputs.get(field_name) is None:
                 validation_errors.append(f"missing required input for mode {normalized_mode}: {field_name}")
 
-    normalized_steps = [_step_result(**step) for step in (step_results or [])]
     operator_run_id = _operator_run_id(
         mode=mode_for_artifact,
         inputs=inputs,
         filters=filters,
         created_at=created_at,
     )
+    artifact_target = _operator_artifact_target(
+        output_root=output_root,
+        output_path=output_path,
+        operator_run_id=operator_run_id,
+    )
+    step_output_root = artifact_target.parent / operator_run_id
+    normalized_steps = [_step_result(**step) for step in (step_results or [])]
+    if not validation_errors and not normalized_steps:
+        normalized_steps = _execute_mode(
+            mode=normalized_mode,
+            inputs=inputs,
+            filters=filters,
+            step_output_root=step_output_root,
+        )
     produced_artifacts = _produced_artifacts(normalized_steps)
     final_status = _final_status(
         normalized_steps,
@@ -108,9 +125,7 @@ def run_shadow_operator_workflow(
 
     target_path = _write_operator_artifact(
         artifact,
-        output_root=output_root,
-        output_path=output_path,
-        operator_run_id=operator_run_id,
+        target_path=artifact_target,
     )
     artifact["manifest_path"] = str(target_path)
     return artifact
@@ -215,6 +230,209 @@ def _step_result(
     }
 
 
+def _execute_mode(
+    *,
+    mode: str | None,
+    inputs: dict[str, Any],
+    filters: dict[str, Any],
+    step_output_root: Path,
+) -> list[dict[str, Any]]:
+    if mode == "train":
+        return _run_train_mode(inputs=inputs, filters=filters, step_output_root=step_output_root)
+    if mode == "benchmark":
+        return _run_benchmark_mode(inputs=inputs, filters=filters, step_output_root=step_output_root)
+    return []
+
+
+def _run_train_mode(
+    *,
+    inputs: dict[str, Any],
+    filters: dict[str, Any],
+    step_output_root: Path,
+) -> list[dict[str, Any]]:
+    model_result = train_shadow_ranking_model(
+        inputs["dataset_manifest"],
+        model_output_path=step_output_root / "train" / "model.shadow_ranking_model.json",
+        model_family=inputs.get("model_family") or "linear_shadow_ranker",
+        training_target=inputs.get("training_target") or "approved_or_selected_probability",
+        split_key=inputs.get("split_key") or "fixture_id",
+        train_fraction=inputs.get("train_fraction") or 0.8,
+        game=filters.get("game"),
+        platform=filters.get("platform"),
+    )
+    steps = [
+        _step_result(
+            step_name="train_model",
+            status="ok" if model_result.get("ok") else "failed",
+            error=model_result.get("error"),
+            artifact_path=model_result.get("manifest_path"),
+            summary={
+                "row_count": model_result.get("row_count"),
+                "train_row_count": model_result.get("train_row_count"),
+                "eval_row_count": model_result.get("eval_row_count"),
+                "model_family": model_result.get("model_family"),
+                "training_target": model_result.get("training_target"),
+            },
+            warning_count=len(list(model_result.get("warnings", []))) if model_result.get("ok") else 0,
+            produced_artifacts={
+                "model_manifest_path": model_result.get("manifest_path"),
+            },
+        )
+    ]
+    if not model_result.get("ok"):
+        return steps
+
+    experiment_result = evaluate_shadow_ranking_model(
+        model_path=model_result["manifest_path"],
+        dataset_manifest=inputs["dataset_manifest"],
+        output_path=step_output_root / "train" / "experiment.shadow_ranking_experiment.json",
+        game=filters.get("game"),
+        platform=filters.get("platform"),
+    )
+    steps.append(
+        _step_result(
+            step_name="evaluate_model",
+            status="ok" if experiment_result.get("ok") else "failed",
+            error=experiment_result.get("error"),
+            artifact_path=experiment_result.get("manifest_path"),
+            summary={
+                "model_family": experiment_result.get("model_family"),
+                "training_target": experiment_result.get("training_target"),
+                "replay_row_count": experiment_result.get("replay_row_count"),
+                "comparison_row_count": experiment_result.get("comparison_row_count"),
+                "comparison_decision": (experiment_result.get("comparison_recommendation") or {}).get("decision"),
+            },
+            recommendation=_train_recommendation(experiment_result),
+            produced_artifacts={
+                "experiment_manifest_path": experiment_result.get("manifest_path"),
+                "replay_manifest_path": experiment_result.get("replay_manifest_path"),
+                "comparison_report_path": experiment_result.get("comparison_report_path"),
+            },
+        )
+    )
+    return steps
+
+
+def _run_benchmark_mode(
+    *,
+    inputs: dict[str, Any],
+    filters: dict[str, Any],
+    step_output_root: Path,
+) -> list[dict[str, Any]]:
+    benchmark_result = run_shadow_benchmark_matrix(
+        inputs["dataset_manifest"],
+        policy_path=inputs.get("policy_path"),
+        model_families=[inputs["model_family"]] if inputs.get("model_family") else None,
+        training_targets=[inputs["training_target"]] if inputs.get("training_target") else None,
+        split_key=inputs.get("split_key") or "fixture_id",
+        train_fraction=inputs.get("train_fraction") or 0.8,
+        game=filters.get("game"),
+        platform=filters.get("platform"),
+        output_path=step_output_root / "benchmark" / "matrix.shadow_benchmark_matrix.json",
+    )
+    steps = [
+        _step_result(
+            step_name="run_benchmark_matrix",
+            status="ok" if benchmark_result.get("ok") else "failed",
+            error=benchmark_result.get("error"),
+            artifact_path=benchmark_result.get("manifest_path"),
+            summary={
+                "run_count": benchmark_result.get("run_count"),
+                "blocked_run_count": (benchmark_result.get("summary") or {}).get("blocked_run_count"),
+                "inconclusive_run_count": (benchmark_result.get("summary") or {}).get("inconclusive_run_count"),
+                "failed_run_count": (benchmark_result.get("summary") or {}).get("failed_run_count"),
+            },
+            warning_count=len(list(benchmark_result.get("warnings", []))) if benchmark_result.get("ok") else 0,
+            produced_artifacts={
+                "benchmark_manifest_path": benchmark_result.get("manifest_path"),
+                "benchmark_csv_path": benchmark_result.get("csv_path"),
+            },
+        )
+    ]
+    if not benchmark_result.get("ok"):
+        return steps
+
+    review_result = review_shadow_benchmark_results(
+        [benchmark_result["manifest_path"]],
+        output_path=step_output_root / "benchmark" / "review.shadow_benchmark_review.json",
+        training_target=inputs.get("training_target"),
+        model_family=inputs.get("model_family"),
+        game=filters.get("game"),
+        platform=filters.get("platform"),
+    )
+    steps.append(
+        _step_result(
+            step_name="review_benchmark_results",
+            status="ok" if review_result.get("ok") else "failed",
+            error=review_result.get("error"),
+            artifact_path=review_result.get("manifest_path"),
+            summary={
+                "target_count": len(list(review_result.get("target_reviews", []))) if review_result.get("ok") else None,
+                "ready_target_count": (review_result.get("aggregate_conclusions") or {}).get("ready_target_count"),
+                "label_calibration_target_count": (review_result.get("aggregate_conclusions") or {}).get("label_calibration_target_count"),
+                "feature_cleanup_target_count": (review_result.get("aggregate_conclusions") or {}).get("feature_cleanup_target_count"),
+                "coverage_blocked_target_count": (review_result.get("aggregate_conclusions") or {}).get("coverage_blocked_target_count"),
+            },
+            warning_count=int(review_result.get("warning_count") or 0) if review_result.get("ok") else 0,
+            recommendation=_benchmark_recommendation(review_result),
+            produced_artifacts={
+                "benchmark_review_manifest_path": review_result.get("manifest_path"),
+                "benchmark_review_csv_path": review_result.get("csv_path"),
+            },
+        )
+    )
+    return steps
+
+
+def _train_recommendation(experiment_result: dict[str, Any]) -> dict[str, Any]:
+    recommendation = dict(experiment_result.get("comparison_recommendation") or {})
+    if not recommendation:
+        return {}
+    return {
+        "decision": recommendation.get("decision"),
+        "reason": recommendation.get("reason"),
+        "supporting_artifacts": [
+            path
+            for path in [
+                experiment_result.get("comparison_report_path"),
+                experiment_result.get("manifest_path"),
+                experiment_result.get("replay_manifest_path"),
+            ]
+            if path
+        ],
+        "follow_up": [],
+    }
+
+
+def _benchmark_recommendation(review_result: dict[str, Any]) -> dict[str, Any]:
+    if not review_result.get("ok"):
+        return {}
+    conclusions = dict(review_result.get("aggregate_conclusions") or {})
+    target_count = int(conclusions.get("target_count") or 0)
+    ready_count = int(conclusions.get("ready_target_count") or 0)
+    coverage_blocked = int(conclusions.get("coverage_blocked_target_count") or 0)
+    label_calibration = int(conclusions.get("label_calibration_target_count") or 0)
+    feature_cleanup = int(conclusions.get("feature_cleanup_target_count") or 0)
+    if target_count > 0 and ready_count == target_count:
+        decision = "prefer_shadow"
+        reason = "all reviewed benchmark targets are ready for the next iteration"
+    elif coverage_blocked > 0:
+        decision = "inconclusive"
+        reason = "benchmark review is blocked by target coverage gaps"
+    elif label_calibration > 0 or feature_cleanup > 0:
+        decision = "keep_current"
+        reason = "benchmark review recommends more calibration or feature cleanup before promotion"
+    else:
+        decision = "inconclusive"
+        reason = "benchmark review did not produce a decisive readiness signal"
+    return {
+        "decision": decision,
+        "reason": reason,
+        "supporting_artifacts": [review_result.get("manifest_path")] if review_result.get("manifest_path") else [],
+        "follow_up": [row.get("recommended_next_action") for row in list(review_result.get("recommended_follow_up_actions", [])) if row.get("recommended_next_action")],
+    }
+
+
 def _final_status(
     step_results: list[dict[str, Any]],
     *,
@@ -289,17 +507,21 @@ def _produced_artifacts(step_results: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _write_operator_artifact(
-    artifact: dict[str, Any],
+    artifact: dict[str, Any], *, target_path: Path
+) -> Path:
+    target = target_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
+    return target
+
+
+def _operator_artifact_target(
     *,
     output_root: str | Path | None,
     output_path: str | Path | None,
     operator_run_id: str,
 ) -> Path:
     if output_path is not None:
-        target = Path(output_path).expanduser()
-    else:
-        root = Path(output_root).expanduser() if output_root is not None else DEFAULT_OUTPUT_ROOT
-        target = root / f"{operator_run_id}.shadow_operator_run.json"
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
-    return target
+        return Path(output_path).expanduser()
+    root = Path(output_root).expanduser() if output_root is not None else DEFAULT_OUTPUT_ROOT
+    return root / f"{operator_run_id}.shadow_operator_run.json"
