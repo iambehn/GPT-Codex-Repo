@@ -28,6 +28,7 @@ Stable policies:
 - hook packaging decides whether the opening makes the event legible, compelling, and truthful
 - clips without a natural or defensible synthetic hook should be rejected rather than over-salvaged
 - hook-related review and comparison data should stay connected to the same artifact lineage as upstream evidence
+- hook artifacts remain advisory in V1; they do not change lifecycle gates by themselves
 
 The intended artifact direction is:
 
@@ -35,6 +36,40 @@ The intended artifact direction is:
 - hook archetype classification
 - packaging strategy fields
 - sound-off legibility and authenticity-risk style measurements
+
+## Hook Evaluation V1
+
+The repo now exposes a unified hook evaluation artifact:
+
+- `hook_evaluation_report_v1`
+
+It combines:
+
+- fixture/trial hook comparisons
+- approved or export-selected candidate rollups from the registry
+- fused-vs-hook disagreement counts
+- explicit advisory policy and future gate readiness status
+
+Primary operator entrypoint:
+
+```bash
+python3 run.py \
+  --report-hook-evaluation /path/to/fixtures.json \
+  --baseline-sidecar-root /path/to/baseline \
+  --trial-sidecar-root /path/to/trial \
+  --registry-path /path/to/registry.sqlite \
+  --game <game>
+```
+
+Registry-backed query surfaces:
+
+- `hook-evaluation-reports`
+- `hook-quality-rollups`
+
+These exist to answer two separate questions:
+
+- did the trial hook strategy improve the reviewed fixtures
+- what editorial hook patterns are being approved and exported right now
 
 ## What Belongs Elsewhere
 
