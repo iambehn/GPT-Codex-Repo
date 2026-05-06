@@ -1041,6 +1041,31 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_summarize_shadow_benchmark_matrix_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--summarize-shadow-benchmark-matrix",
+                "/tmp/benchmark.json",
+                "--full-json",
+            ]
+            stdout = io.StringIO()
+            rows = [{"run_id": f"run-{index}"} for index in range(12)]
+            with patch(
+                "run.run_summarize_shadow_benchmark_matrix",
+                return_value={"ok": True, "status": "ok", "row_count": 12, "rows": rows},
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["rows"], rows)
+            self.assertNotIn("rows_sample", payload)
+            self.assertNotIn("truncated", payload)
+        finally:
+            sys.argv = original_argv
+
     def test_cli_routes_to_review_shadow_benchmark_results(self) -> None:
         original_argv = sys.argv
         try:
@@ -1320,6 +1345,57 @@ class RunTests(unittest.TestCase):
             )
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_report_hook_evaluation_compacts_output_by_default(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--report-hook-evaluation",
+                "/tmp/fixtures.json",
+                "--baseline-sidecar-root",
+                "/tmp/baseline",
+                "--trial-sidecar-root",
+                "/tmp/trial",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+            ]
+            stdout = io.StringIO()
+            fixture_rows = [{"fixture_id": f"fixture-{index}"} for index in range(12)]
+            with patch(
+                "run.run_report_hook_evaluation",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "hook_evaluation_report_v1",
+                    "fixture_manifest_path": "/tmp/fixtures.json",
+                    "baseline_sidecar_root": "/tmp/baseline",
+                    "trial_sidecar_root": "/tmp/trial",
+                    "registry_path": "/tmp/registry.sqlite",
+                    "trial_comparison": {
+                        "comparison_row_count": 12,
+                        "summary": {"matched": 10},
+                        "recommendation": {"decision": "prefer_trial"},
+                        "warning_count": 0,
+                        "fixture_rows": fixture_rows,
+                    },
+                    "candidate_rollups": {"selected_or_approved": {"candidate_count": 3}},
+                    "fused_hook_disagreement": {"row_count": 12},
+                    "policy": {"future_gate_readiness": "insufficient_evidence"},
+                    "warnings": [],
+                    "report_path": "/tmp/hook-report.json",
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(len(payload["fixture_rows_sample"]), 8)
+            self.assertEqual(payload["fixture_rows_omitted_count"], 4)
+            self.assertTrue(payload["truncated"])
+            self.assertNotIn("fixture_rows", payload)
         finally:
             sys.argv = original_argv
 

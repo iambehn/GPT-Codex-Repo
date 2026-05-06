@@ -2489,6 +2489,18 @@ _COMPACT_OUTPUT_COMMANDS = {
     "query_clip_registry",
     "query_workflow_queue",
     "report_posted_performance",
+    "compare_hook_candidates",
+    "report_hook_evaluation",
+    "run_shadow_ranking_replay",
+    "compare_shadow_ranking_replay",
+    "run_shadow_benchmark_matrix",
+    "summarize_shadow_benchmark_matrix",
+    "review_shadow_benchmark_results",
+    "compare_shadow_benchmark_evidence_modes",
+    "summarize_shadow_target_readiness",
+    "evaluate_shadow_experiment_policy",
+    "summarize_shadow_experiment_ledger",
+    "materialize_synthetic_post_coverage",
     "report_unresolved_derived_rows",
     "summarize_derived_row_review",
     "apply_derived_row_review",
@@ -2571,6 +2583,262 @@ def _compact_cli_payload(command_name: str, result: dict[str, Any]) -> dict[str,
         }
         if omitted:
             compact["rows_omitted_count"] = omitted
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "compare_hook_candidates":
+        comparison = result.get("comparison", {}) if isinstance(result.get("comparison"), dict) else {}
+        rows, rows_omitted = _sample_list(comparison.get("fixture_rows"))
+        warnings, warnings_omitted = _sample_list(result.get("warnings"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "fixture_manifest_path": result.get("fixture_manifest_path"),
+            "baseline_sidecar_root": result.get("baseline_sidecar_root"),
+            "trial_sidecar_root": result.get("trial_sidecar_root"),
+            "comparison_row_count": result.get("comparison_row_count", 0),
+            "summary": comparison.get("summary"),
+            "recommendation": result.get("recommendation"),
+            "report_path": result.get("report_path"),
+            "csv_path": result.get("csv_path"),
+            "warnings_path": result.get("warnings_path"),
+            "fixture_rows_sample": rows,
+            "warnings_sample": warnings,
+        }
+        omitted_total = rows_omitted + warnings_omitted
+        if rows_omitted:
+            compact["fixture_rows_omitted_count"] = rows_omitted
+        if warnings_omitted:
+            compact["warnings_omitted_count"] = warnings_omitted
+        if omitted_total:
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "report_hook_evaluation":
+        trial_comparison = result.get("trial_comparison", {}) if isinstance(result.get("trial_comparison"), dict) else {}
+        rows, rows_omitted = _sample_list(trial_comparison.get("fixture_rows"))
+        warnings, warnings_omitted = _sample_list(result.get("warnings"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "fixture_manifest_path": result.get("fixture_manifest_path"),
+            "baseline_sidecar_root": result.get("baseline_sidecar_root"),
+            "trial_sidecar_root": result.get("trial_sidecar_root"),
+            "registry_path": result.get("registry_path"),
+            "game_filter": result.get("game_filter"),
+            "trial_comparison": {
+                "comparison_row_count": trial_comparison.get("comparison_row_count", 0),
+                "summary": trial_comparison.get("summary"),
+                "recommendation": trial_comparison.get("recommendation"),
+                "warning_count": trial_comparison.get("warning_count", 0),
+            },
+            "candidate_rollups": result.get("candidate_rollups"),
+            "fused_hook_disagreement": result.get("fused_hook_disagreement"),
+            "policy": result.get("policy"),
+            "report_path": result.get("report_path"),
+            "fixture_rows_sample": rows,
+            "warnings_sample": warnings,
+        }
+        omitted_total = rows_omitted + warnings_omitted
+        if rows_omitted:
+            compact["fixture_rows_omitted_count"] = rows_omitted
+        if warnings_omitted:
+            compact["warnings_omitted_count"] = warnings_omitted
+        if omitted_total:
+            compact["truncated"] = True
+        return compact
+
+    if command_name in {"run_shadow_ranking_replay", "summarize_shadow_benchmark_matrix", "summarize_shadow_target_readiness", "compare_shadow_benchmark_evidence_modes"}:
+        rows, rows_omitted = _sample_list(result.get("rows"))
+        warnings, warnings_omitted = _sample_list(result.get("warnings"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "manifest_path": result.get("manifest_path"),
+            "report_path": result.get("report_path"),
+            "csv_path": result.get("csv_path"),
+            "dataset_manifest_path": result.get("dataset_manifest_path"),
+            "replay_manifest_path": result.get("replay_manifest_path"),
+            "comparison_id": result.get("comparison_id"),
+            "replay_id": result.get("replay_id"),
+            "benchmark_id": result.get("benchmark_id"),
+            "review_manifest_path": result.get("review_manifest_path"),
+            "row_count": result.get("row_count", 0),
+            "summary": result.get("summary"),
+            "recommendation": result.get("recommendation"),
+            "rows_sample": rows,
+            "warnings_sample": warnings,
+        }
+        omitted_total = rows_omitted + warnings_omitted
+        if rows_omitted:
+            compact["rows_omitted_count"] = rows_omitted
+        if warnings_omitted:
+            compact["warnings_omitted_count"] = warnings_omitted
+        if omitted_total:
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "compare_shadow_ranking_replay":
+        comparison = result.get("comparison", {}) if isinstance(result.get("comparison"), dict) else {}
+        rows, rows_omitted = _sample_list(comparison.get("rows"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "comparison_id": result.get("comparison_id"),
+            "replay_manifest_path": result.get("replay_manifest_path"),
+            "replay_id": result.get("replay_id"),
+            "dataset_manifest_path": result.get("dataset_manifest_path"),
+            "model_family": result.get("model_family"),
+            "model_version": result.get("model_version"),
+            "row_count": result.get("row_count", 0),
+            "summary": comparison.get("summary"),
+            "recommendation": result.get("recommendation"),
+            "report_path": result.get("report_path"),
+            "csv_path": result.get("csv_path"),
+            "rows_sample": rows,
+        }
+        if rows_omitted:
+            compact["rows_omitted_count"] = rows_omitted
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "run_shadow_benchmark_matrix":
+        runs, runs_omitted = _sample_list(result.get("runs"))
+        warnings, warnings_omitted = _sample_list(result.get("warnings"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "benchmark_id": result.get("benchmark_id"),
+            "dataset_manifest_path": result.get("dataset_manifest_path"),
+            "policy_path": result.get("policy_path"),
+            "benchmark_config": result.get("benchmark_config"),
+            "run_count": result.get("run_count", 0),
+            "summary": result.get("summary"),
+            "manifest_path": result.get("manifest_path"),
+            "csv_path": result.get("csv_path"),
+            "runs_sample": runs,
+            "warnings_sample": warnings,
+        }
+        omitted_total = runs_omitted + warnings_omitted
+        if runs_omitted:
+            compact["runs_omitted_count"] = runs_omitted
+        if warnings_omitted:
+            compact["warnings_omitted_count"] = warnings_omitted
+        if omitted_total:
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "review_shadow_benchmark_results":
+        reviews, reviews_omitted = _sample_list(result.get("target_reviews"))
+        warnings, warnings_omitted = _sample_list(result.get("warnings"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "review_id": result.get("review_id"),
+            "source_benchmark_manifest_paths": result.get("source_benchmark_manifest_paths"),
+            "reviewed_targets": result.get("reviewed_targets"),
+            "reviewed_families": result.get("reviewed_families"),
+            "filters": result.get("filters"),
+            "aggregate_conclusions": result.get("aggregate_conclusions"),
+            "recommended_follow_up_actions": result.get("recommended_follow_up_actions"),
+            "warning_count": result.get("warning_count", 0),
+            "manifest_path": result.get("manifest_path"),
+            "csv_path": result.get("csv_path"),
+            "target_reviews_sample": reviews,
+            "warnings_sample": warnings,
+        }
+        omitted_total = reviews_omitted + warnings_omitted
+        if reviews_omitted:
+            compact["target_reviews_omitted_count"] = reviews_omitted
+        if warnings_omitted:
+            compact["warnings_omitted_count"] = warnings_omitted
+        if omitted_total:
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "evaluate_shadow_experiment_policy":
+        slice_rows, rows_omitted = _sample_list(result.get("slice_rows"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "ledger_id": result.get("ledger_id"),
+            "policy_manifest_path": result.get("policy_manifest_path"),
+            "experiment_manifest_path": result.get("experiment_manifest_path"),
+            "model_family": result.get("model_family"),
+            "model_version": result.get("model_version"),
+            "training_target": result.get("training_target"),
+            "evaluation_target": result.get("evaluation_target"),
+            "filters": result.get("filters"),
+            "coverage_status": result.get("coverage_status"),
+            "global_metrics": result.get("global_metrics"),
+            "slice_count": result.get("slice_count", 0),
+            "recommendation": result.get("recommendation"),
+            "manifest_path": result.get("manifest_path"),
+            "csv_path": result.get("csv_path"),
+            "slice_rows_sample": slice_rows,
+        }
+        if rows_omitted:
+            compact["slice_rows_omitted_count"] = rows_omitted
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "summarize_shadow_experiment_ledger":
+        targets, targets_omitted = _sample_list(result.get("targets"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "row_count": result.get("row_count", 0),
+            "target_count": result.get("target_count", 0),
+            "targets_sample": targets,
+        }
+        if targets_omitted:
+            compact["targets_omitted_count"] = targets_omitted
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "materialize_synthetic_post_coverage":
+        warnings, warnings_omitted = _sample_list(result.get("warnings"))
+        skipped_candidate_ids, skipped_omitted = _sample_list(result.get("skipped_candidate_ids"))
+        created_selection_paths, created_omitted = _sample_list(result.get("created_selection_paths"))
+        reused_selection_paths, reused_omitted = _sample_list(result.get("reused_selection_paths"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "registry_path": result.get("registry_path"),
+            "synthetic_profile": result.get("synthetic_profile"),
+            "include_rejected": result.get("include_rejected", False),
+            "candidate_count": result.get("candidate_count", 0),
+            "skipped_candidate_count": result.get("skipped_candidate_count", 0),
+            "created_selection_count": result.get("created_selection_count", 0),
+            "reused_selection_count": result.get("reused_selection_count", 0),
+            "export_manifest_path": result.get("export_manifest_path"),
+            "post_ledger_manifest_path": result.get("post_ledger_manifest_path"),
+            "metrics_snapshot_manifest_path": result.get("metrics_snapshot_manifest_path"),
+            "posted_candidate_count_after_refresh": result.get("posted_candidate_count_after_refresh", 0),
+            "registry_refresh": result.get("registry_refresh"),
+            "warning_count": result.get("warning_count", 0),
+            "skipped_candidate_ids_sample": skipped_candidate_ids,
+            "created_selection_paths_sample": created_selection_paths,
+            "reused_selection_paths_sample": reused_selection_paths,
+            "warnings_sample": warnings,
+        }
+        omitted_total = warnings_omitted + skipped_omitted + created_omitted + reused_omitted
+        if warnings_omitted:
+            compact["warnings_omitted_count"] = warnings_omitted
+        if skipped_omitted:
+            compact["skipped_candidate_ids_omitted_count"] = skipped_omitted
+        if created_omitted:
+            compact["created_selection_paths_omitted_count"] = created_omitted
+        if reused_omitted:
+            compact["reused_selection_paths_omitted_count"] = reused_omitted
+        if omitted_total:
             compact["truncated"] = True
         return compact
 
@@ -4641,56 +4909,52 @@ def main() -> int:
         return 0
 
     if args.export_v2_training_datasets:
-        print(
-            json.dumps(
-                run_export_v2_training_datasets(
-                    registry_path=args.registry_path,
-                    output_root=args.output_root,
-                    game=args.game,
-                    fixture_id=args.fixture_id,
-                    candidate_id=args.candidate_id,
-                    lifecycle_state=args.lifecycle_state,
-                    hook_archetype=args.hook_archetype,
-                    hook_mode=args.hook_mode,
-                    platform=args.platform,
-                    account_id=args.account_id,
-                    evidence_mode=args.evidence_mode,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_export_v2_training_datasets(
+                registry_path=args.registry_path,
+                output_root=args.output_root,
+                game=args.game,
+                fixture_id=args.fixture_id,
+                candidate_id=args.candidate_id,
+                lifecycle_state=args.lifecycle_state,
+                hook_archetype=args.hook_archetype,
+                hook_mode=args.hook_mode,
+                platform=args.platform,
+                account_id=args.account_id,
+                evidence_mode=args.evidence_mode,
+            ),
+            full_json=args.full_json,
         )
         return 0
 
     if args.run_shadow_ranking_replay:
         if not args.dataset_manifest:
             parser.error("--run-shadow-ranking-replay requires --dataset-manifest")
-        print(
-            json.dumps(
-                run_run_shadow_ranking_replay(
-                    args.dataset_manifest,
-                    model_path=args.model_path,
-                    model_family=args.model_family,
-                    model_version=args.model_version,
-                    output_path=args.output_path,
-                    game=args.game,
-                    fixture_id=args.fixture_id,
-                    candidate_id=args.candidate_id,
-                    platform=args.platform,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_run_shadow_ranking_replay(
+                args.dataset_manifest,
+                model_path=args.model_path,
+                model_family=args.model_family,
+                model_version=args.model_version,
+                output_path=args.output_path,
+                game=args.game,
+                fixture_id=args.fixture_id,
+                candidate_id=args.candidate_id,
+                platform=args.platform,
+            ),
+            command_name="run_shadow_ranking_replay",
+            full_json=args.full_json,
         )
         return 0
 
     if args.compare_shadow_ranking_replay:
-        print(
-            json.dumps(
-                run_compare_shadow_ranking_replay(
-                    args.compare_shadow_ranking_replay,
-                    output_path=args.output_path,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_compare_shadow_ranking_replay(
+                args.compare_shadow_ranking_replay,
+                output_path=args.output_path,
+            ),
+            command_name="compare_shadow_ranking_replay",
+            full_json=args.full_json,
         )
         return 0
 
@@ -4717,156 +4981,145 @@ def main() -> int:
         return 0
 
     if args.compare_shadow_model_families:
-        print(
-            json.dumps(
-                run_compare_shadow_model_families(
-                    args.compare_shadow_model_families,
-                    output_path=args.output_path,
-                    training_target=args.training_target,
-                    game=args.game,
-                    platform=args.platform,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_compare_shadow_model_families(
+                args.compare_shadow_model_families,
+                output_path=args.output_path,
+                training_target=args.training_target,
+                game=args.game,
+                platform=args.platform,
+            ),
+            full_json=args.full_json,
         )
         return 0
 
     if args.run_shadow_benchmark_matrix:
         if not args.dataset_manifest:
             parser.error("--run-shadow-benchmark-matrix requires --dataset-manifest")
-        print(
-            json.dumps(
-                run_run_shadow_benchmark_matrix(
-                    args.dataset_manifest,
-                    policy_path=args.policy_path,
-                    model_family=args.model_family,
-                    training_target=args.training_target,
-                    split_key=args.split_key or "fixture_id",
-                    train_fraction=args.train_fraction if args.train_fraction is not None else 0.8,
-                    game=args.game,
-                    platform=args.platform,
-                    output_path=args.output_path,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_run_shadow_benchmark_matrix(
+                args.dataset_manifest,
+                policy_path=args.policy_path,
+                model_family=args.model_family,
+                training_target=args.training_target,
+                split_key=args.split_key or "fixture_id",
+                train_fraction=args.train_fraction if args.train_fraction is not None else 0.8,
+                game=args.game,
+                platform=args.platform,
+                output_path=args.output_path,
+            ),
+            command_name="run_shadow_benchmark_matrix",
+            full_json=args.full_json,
         )
         return 0
 
     if args.summarize_shadow_benchmark_matrix is not None:
-        print(
-            json.dumps(
-                run_summarize_shadow_benchmark_matrix(
-                    None if args.summarize_shadow_benchmark_matrix == "" else args.summarize_shadow_benchmark_matrix,
-                    registry_path=args.registry_path,
-                    training_target=args.training_target,
-                    game=args.game,
-                    platform=args.platform,
-                    recommendation_decision=args.recommendation_decision,
-                    model_family=args.model_family,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_summarize_shadow_benchmark_matrix(
+                None if args.summarize_shadow_benchmark_matrix == "" else args.summarize_shadow_benchmark_matrix,
+                registry_path=args.registry_path,
+                training_target=args.training_target,
+                game=args.game,
+                platform=args.platform,
+                recommendation_decision=args.recommendation_decision,
+                model_family=args.model_family,
+            ),
+            command_name="summarize_shadow_benchmark_matrix",
+            full_json=args.full_json,
         )
         return 0
 
     if args.review_shadow_benchmark_results:
-        print(
-            json.dumps(
-                run_review_shadow_benchmark_results(
-                    args.review_shadow_benchmark_results,
-                    output_path=args.output_path,
-                    training_target=args.training_target,
-                    model_family=args.model_family,
-                    game=args.game,
-                    platform=args.platform,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_review_shadow_benchmark_results(
+                args.review_shadow_benchmark_results,
+                output_path=args.output_path,
+                training_target=args.training_target,
+                model_family=args.model_family,
+                game=args.game,
+                platform=args.platform,
+            ),
+            command_name="review_shadow_benchmark_results",
+            full_json=args.full_json,
         )
         return 0
 
     if args.compare_shadow_benchmark_evidence_modes:
-        print(
-            json.dumps(
-                run_compare_shadow_benchmark_evidence_modes(
-                    args.compare_shadow_benchmark_evidence_modes[0],
-                    args.compare_shadow_benchmark_evidence_modes[1],
-                    output_path=args.output_path,
-                    training_target=args.training_target,
-                    game=args.game,
-                    platform=args.platform,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_compare_shadow_benchmark_evidence_modes(
+                args.compare_shadow_benchmark_evidence_modes[0],
+                args.compare_shadow_benchmark_evidence_modes[1],
+                output_path=args.output_path,
+                training_target=args.training_target,
+                game=args.game,
+                platform=args.platform,
+            ),
+            command_name="compare_shadow_benchmark_evidence_modes",
+            full_json=args.full_json,
         )
         return 0
 
     if args.summarize_shadow_target_readiness is not None:
-        print(
-            json.dumps(
-                run_summarize_shadow_target_readiness(
-                    None if args.summarize_shadow_target_readiness == "" else args.summarize_shadow_target_readiness,
-                    registry_path=args.registry_path,
-                    training_target=args.training_target,
-                    game=args.game,
-                    platform=args.platform,
-                    model_family=args.model_family,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_summarize_shadow_target_readiness(
+                None if args.summarize_shadow_target_readiness == "" else args.summarize_shadow_target_readiness,
+                registry_path=args.registry_path,
+                training_target=args.training_target,
+                game=args.game,
+                platform=args.platform,
+                model_family=args.model_family,
+            ),
+            command_name="summarize_shadow_target_readiness",
+            full_json=args.full_json,
         )
         return 0
 
     if args.evaluate_shadow_ranking_model:
         if not args.model_path:
             parser.error("--evaluate-shadow-ranking-model requires --model-path")
-        print(
-            json.dumps(
-                run_evaluate_shadow_ranking_model(
-                    model_path=args.model_path,
-                    dataset_manifest=args.dataset_manifest,
-                    output_path=args.output_path,
-                    game=args.game,
-                    fixture_id=args.fixture_id,
-                    candidate_id=args.candidate_id,
-                    platform=args.platform,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_evaluate_shadow_ranking_model(
+                model_path=args.model_path,
+                dataset_manifest=args.dataset_manifest,
+                output_path=args.output_path,
+                game=args.game,
+                fixture_id=args.fixture_id,
+                candidate_id=args.candidate_id,
+                platform=args.platform,
+            ),
+            full_json=args.full_json,
         )
         return 0
 
     if args.evaluate_shadow_experiment_policy:
         if not args.experiment_manifest:
             parser.error("--evaluate-shadow-experiment-policy requires --experiment-manifest")
-        print(
-            json.dumps(
-                run_evaluate_shadow_experiment_policy(
-                    args.experiment_manifest,
-                    policy_path=args.policy_path,
-                    target=args.target,
-                    output_path=args.output_path,
-                    game=args.game,
-                    platform=args.platform,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_evaluate_shadow_experiment_policy(
+                args.experiment_manifest,
+                policy_path=args.policy_path,
+                target=args.target,
+                output_path=args.output_path,
+                game=args.game,
+                platform=args.platform,
+            ),
+            command_name="evaluate_shadow_experiment_policy",
+            full_json=args.full_json,
         )
         return 0
 
     if args.summarize_shadow_experiment_ledger:
-        print(
-            json.dumps(
-                run_summarize_shadow_experiment_ledger(
-                    registry_path=args.registry_path,
-                    target=args.target,
-                    game=args.game,
-                    platform=args.platform,
-                    recommendation_decision=args.recommendation_decision,
-                    training_target=args.training_target,
-                ),
-                indent=2,
-            )
+        _print_cli_result(
+            run_summarize_shadow_experiment_ledger(
+                registry_path=args.registry_path,
+                target=args.target,
+                game=args.game,
+                platform=args.platform,
+                recommendation_decision=args.recommendation_decision,
+                training_target=args.training_target,
+            ),
+            command_name="summarize_shadow_experiment_ledger",
+            full_json=args.full_json,
         )
         return 0
 
@@ -4953,7 +5206,7 @@ def main() -> int:
             fused_sidecar=args.fused_sidecar,
             output_path=args.output_path,
         )
-        print(json.dumps(result, indent=2))
+        _print_cli_result(result, full_json=args.full_json)
         return 0 if result.get("ok") else 1
 
     if args.derive_hook_candidates:
@@ -4962,7 +5215,7 @@ def main() -> int:
             registry_path=args.registry_path,
             output_path=args.output_path,
         )
-        print(json.dumps(result, indent=2))
+        _print_cli_result(result, full_json=args.full_json)
         return 0 if result.get("ok") else 1
 
     if args.compare_hook_candidates:
@@ -4975,7 +5228,7 @@ def main() -> int:
             game=args.game,
             output_path=args.output_path,
         )
-        print(json.dumps(result, indent=2))
+        _print_cli_result(result, command_name="compare_hook_candidates", full_json=args.full_json)
         return 0 if result.get("ok") else 1
 
     if args.report_hook_evaluation:
@@ -4991,7 +5244,7 @@ def main() -> int:
             game=args.game,
             output_path=args.output_path,
         )
-        print(json.dumps(result, indent=2))
+        _print_cli_result(result, command_name="report_hook_evaluation", full_json=args.full_json)
         return 0 if result.get("ok") else 1
 
     if args.create_workflow_run:
@@ -5004,7 +5257,7 @@ def main() -> int:
             game=args.game,
             fixture_id=args.fixture_id,
         )
-        print(json.dumps(result, indent=2))
+        _print_cli_result(result, full_json=args.full_json)
         return 0 if result.get("ok") else 1
 
     if args.create_highlight_export_batch:
@@ -5016,7 +5269,7 @@ def main() -> int:
             fixture_id=args.fixture_id,
             output_path=args.output_path,
         )
-        print(json.dumps(result, indent=2))
+        _print_cli_result(result, full_json=args.full_json)
         return 0 if result.get("ok") else 1
 
     if args.record_post_ledger:
@@ -5029,7 +5282,7 @@ def main() -> int:
             account_id=args.account_id,
             output_path=args.output_path,
         )
-        print(json.dumps(result, indent=2))
+        _print_cli_result(result, full_json=args.full_json)
         return 0 if result.get("ok") else 1
 
     if args.record_posted_metrics_snapshot:
@@ -5051,7 +5304,7 @@ def main() -> int:
             completion_rate=args.completion_rate,
             engagement_rate=args.engagement_rate,
         )
-        print(json.dumps(result, indent=2))
+        _print_cli_result(result, full_json=args.full_json)
         return 0 if result.get("ok") else 1
 
     if args.materialize_synthetic_post_coverage:
@@ -5068,7 +5321,7 @@ def main() -> int:
             synthetic_profile=args.synthetic_profile or "balanced",
             include_rejected=bool(args.include_rejected),
         )
-        print(json.dumps(result, indent=2))
+        _print_cli_result(result, command_name="materialize_synthetic_post_coverage", full_json=args.full_json)
         return 0 if result.get("ok") else 1
 
     if args.import_real_posted_lineage:
