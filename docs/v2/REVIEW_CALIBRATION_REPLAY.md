@@ -97,6 +97,12 @@ Promotion-ready result for this target means all of the following hold in the re
 
 This runbook is intentionally narrow. It does not imply that `post_performance_score` is ready, and it should not be used as a proxy for broader multi-target promotion.
 
+Interpretation note:
+
+- the `outputs/real_only_refresh/2026-05-05/no_platform_dataset/...` `prefer_shadow` result should be treated as exploratory-only evidence
+- it remains useful for hypothesis generation, but not for promotion on its own
+- the stronger promotion read is the corrected fixture-slice run, which currently lands at `keep_current` with `primary_metric_delta: 0.0`
+
 ## Hook Comparison Integration
 
 Hook evaluation now sits inside the same review-backed comparison loop as other fixture and trial work.
