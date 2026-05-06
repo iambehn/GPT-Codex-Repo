@@ -12,6 +12,19 @@ from pipeline.simple_yaml import dump_yaml_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_HISTORY_ROOT = REPO_ROOT / "outputs" / "runtime_scoring_history"
+REQUIRED_PROMOTION_RESULT_FIELDS = (
+    "ok",
+    "status",
+    "trial_name",
+    "config_path",
+    "config_changed",
+    "force_used",
+    "applied_scoring",
+    "previous_scoring",
+    "replay_recommendation",
+    "snapshot_paths",
+    "warnings",
+)
 
 
 def promote_runtime_scoring(
@@ -44,6 +57,14 @@ def promote_runtime_scoring(
         min_reviewed=min_reviewed,
         trial_name=trial_name,
     )
+    replay_validation_error = _validate_runtime_replay_result(replay_result)
+    if replay_validation_error is not None:
+        return {
+            "ok": False,
+            "status": "invalid_replay_result",
+            "error": replay_validation_error,
+            "replay_result": replay_result,
+        }
     if not replay_result.get("ok", False):
         if str(replay_result.get("status")) == "insufficient_review_data":
             if not force:
@@ -129,6 +150,7 @@ def promote_runtime_scoring(
     if debug_output_dir is not None:
         _write_debug_bundle(_resolve_path(debug_output_dir), result, replay_result)
 
+    _validate_promotion_result_contract(result)
     return result
 
 
@@ -197,6 +219,40 @@ def _write_debug_bundle(debug_root: Path, result: dict[str, Any], replay_result:
     (debug_root / "runtime_promotion_result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     (debug_root / "replay_report.json").write_text(json.dumps(replay_result, indent=2), encoding="utf-8")
     (debug_root / "warnings.json").write_text(json.dumps(result.get("warnings", []), indent=2), encoding="utf-8")
+
+
+def _validate_runtime_replay_result(replay_result: dict[str, Any]) -> str | None:
+    if not isinstance(replay_result, dict):
+        return "runtime replay result must be a dict"
+    if "recommendation" not in replay_result or not isinstance(replay_result.get("recommendation"), dict):
+        return "runtime replay result is missing recommendation"
+    recommendation = replay_result["recommendation"]
+    for field in ("decision", "reason", "supporting_metrics", "data_quality_notes", "follow_up"):
+        if field not in recommendation:
+            return f"runtime replay recommendation missing field: {field}"
+    if str(recommendation.get("decision")) not in {"prefer_trial", "keep_current", "inconclusive"}:
+        return "runtime replay recommendation.decision is invalid"
+    if "trial_scoring" not in replay_result or not isinstance(replay_result.get("trial_scoring"), dict):
+        return "runtime replay result is missing trial_scoring"
+    if "warnings" in replay_result and not isinstance(replay_result.get("warnings"), list):
+        return "runtime replay warnings must be a list"
+    return None
+
+
+def _validate_promotion_result_contract(result: dict[str, Any]) -> None:
+    missing_fields = [field for field in REQUIRED_PROMOTION_RESULT_FIELDS if field not in result]
+    if missing_fields:
+        raise ValueError(f"invalid_runtime_promotion_result_contract: missing fields: {', '.join(missing_fields)}")
+    if not isinstance(result.get("applied_scoring"), dict):
+        raise ValueError("invalid_runtime_promotion_result_contract: applied_scoring must be a dict")
+    if not isinstance(result.get("previous_scoring"), dict):
+        raise ValueError("invalid_runtime_promotion_result_contract: previous_scoring must be a dict")
+    if not isinstance(result.get("replay_recommendation"), dict):
+        raise ValueError("invalid_runtime_promotion_result_contract: replay_recommendation must be a dict")
+    if not isinstance(result.get("snapshot_paths"), dict):
+        raise ValueError("invalid_runtime_promotion_result_contract: snapshot_paths must be a dict")
+    if not isinstance(result.get("warnings"), list):
+        raise ValueError("invalid_runtime_promotion_result_contract: warnings must be a list")
 
 
 def _resolve_path(path_like: str | Path) -> Path:

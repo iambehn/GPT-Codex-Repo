@@ -17,6 +17,48 @@ DEFAULT_TIMESTAMP_TOLERANCE_SECONDS = 0.5
 DEFAULT_BOUNDARY_TOLERANCE_SECONDS = 1.0
 DEFAULT_OUTPUT_NAME = "fusion_goldset_validation_report.json"
 SUPPORTED_GOLDSET_SCHEMA_VERSION = "fusion_goldset_clip_v1"
+REQUIRED_VALIDATION_REPORT_FIELDS = (
+    "ok",
+    "status",
+    "goldset_root",
+    "scanned_clip_count",
+    "validated_clip_count",
+    "skipped_clip_count",
+    "detection_metrics",
+    "runtime_event_metrics",
+    "fusion_metrics",
+    "boundary_metrics",
+    "detection_diagnostics",
+    "runtime_diagnostics",
+    "fusion_diagnostics",
+    "boundary_diagnostics",
+    "clip_summaries",
+    "coverage_summary",
+    "per_clip_results",
+    "failure_buckets",
+    "warnings",
+    "release_gate_summary",
+)
+REQUIRED_RELEASE_GATE_SUMMARY_FIELDS = (
+    "status",
+    "validated_clip_count",
+    "blocking_reasons",
+    "failed_clip_count",
+    "failing_layers",
+    "coverage_gaps",
+)
+REQUIRED_REPLAY_REPORT_FIELDS = (
+    "ok",
+    "status",
+    "goldset_root",
+    "trial_name",
+    "comparison",
+    "recommendation",
+    "warnings",
+)
+REQUIRED_REPLAY_COMPARISON_FIELDS = ("current", "trial", "delta", "per_clip_comparisons")
+REQUIRED_RECOMMENDATION_FIELDS = ("decision", "reason", "supporting_metrics", "data_quality_notes", "follow_up")
+VALID_REPLAY_DECISIONS = {"prefer_trial", "keep_current", "inconclusive"}
 
 
 ClipRunner = Callable[..., dict[str, Any]]
@@ -59,6 +101,7 @@ def validate_fusion_goldset(
         runtime_sidecar_root=runtime_sidecar_root,
         fused_sidecar_root=fused_sidecar_root,
     )
+    _validate_validation_report_contract(report)
     if output_path is not None:
         target = _resolve_path(output_path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -142,6 +185,7 @@ def replay_fusion_rules(
     )
 
     result = _build_replay_report(root, current_report, trial_report, effective_trial_name)
+    _validate_replay_report_contract(result)
     if output_path is not None:
         target = _resolve_path(output_path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -221,6 +265,7 @@ def replay_template_thresholds(
         trial_template_overrides_path=trial_path,
     )
     result = _build_template_replay_report(root, current_report, trial_report, effective_trial_name, trial_path)
+    _validate_replay_report_contract(result)
     if output_path is not None:
         target = _resolve_path(output_path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -300,6 +345,7 @@ def replay_runtime_event_rules(
         trial_runtime_rule_overrides_path=trial_path,
     )
     result = _build_runtime_rule_replay_report(root, current_report, trial_report, effective_trial_name, trial_path)
+    _validate_replay_report_contract(result)
     if output_path is not None:
         target = _resolve_path(output_path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -376,6 +422,7 @@ def _build_validation_report(
         "failure_buckets": _failure_buckets(per_clip_results),
         "warnings": warnings,
     }
+    report["release_gate_summary"] = _build_release_gate_summary(report)
     if game is not None:
         report["game_filter"] = game
     if media_root is not None:
@@ -1572,6 +1619,134 @@ def _build_coverage_summary(validated_rows: list[dict[str, Any]]) -> dict[str, A
         "fused_event_types_covered": fused_event_types_covered,
         "required_signal_types_covered": required_signal_types_covered,
     }
+
+
+def _build_release_gate_summary(report: dict[str, Any]) -> dict[str, Any]:
+    blocking_reasons: list[str] = []
+    failing_layers: dict[str, list[str]] = {}
+
+    if int(report.get("validated_clip_count", 0)) == 0:
+        blocking_reasons.append("no_validated_clips")
+    if int(report.get("skipped_clip_count", 0)) > 0:
+        blocking_reasons.append("skipped_clips_present")
+
+    layer_checks = {
+        "detection": {
+            "recall": float(report.get("detection_metrics", {}).get("recall", 1.0)),
+            "precision": float(report.get("detection_metrics", {}).get("precision", 1.0)),
+        },
+        "runtime": {
+            "recall": float(report.get("runtime_event_metrics", {}).get("recall", 1.0)),
+            "precision": float(report.get("runtime_event_metrics", {}).get("precision", 1.0)),
+        },
+        "fusion": {
+            "recall": float(report.get("fusion_metrics", {}).get("recall", 1.0)),
+            "precision": float(report.get("fusion_metrics", {}).get("precision", 1.0)),
+            "gate_status_accuracy": float(report.get("fusion_metrics", {}).get("gate_status_accuracy", 1.0)),
+            "synergy_applied_accuracy": float(report.get("fusion_metrics", {}).get("synergy_applied_accuracy", 1.0)),
+            "minimum_required_signals_accuracy": float(
+                report.get("fusion_metrics", {}).get("minimum_required_signals_accuracy", 1.0)
+            ),
+        },
+        "boundary": {
+            "within_tolerance_rate": float(report.get("boundary_metrics", {}).get("within_tolerance_rate", 1.0)),
+        },
+    }
+    for layer_name, metrics in layer_checks.items():
+        failing_metric_names = [metric_name for metric_name, value in metrics.items() if value < 1.0]
+        if failing_metric_names:
+            failing_layers[layer_name] = failing_metric_names
+            blocking_reasons.append(f"{layer_name}_metrics_below_gate")
+
+    coverage_gaps = list(report.get("coverage_summary", {}).get("missing_behavior_tags", []))
+    status = "pass" if not blocking_reasons else "fail"
+    return {
+        "status": status,
+        "validated_clip_count": int(report.get("validated_clip_count", 0)),
+        "blocking_reasons": blocking_reasons,
+        "failed_clip_count": sum(1 for row in report.get("clip_summaries", []) if str(row.get("failed_first", "none")) != "none"),
+        "failing_layers": failing_layers,
+        "coverage_gaps": coverage_gaps,
+    }
+
+
+def _validate_validation_report_contract(report: dict[str, Any]) -> None:
+    missing_fields = [field for field in REQUIRED_VALIDATION_REPORT_FIELDS if field not in report]
+    if missing_fields:
+        raise ValueError(f"invalid_validation_report_contract: missing fields: {', '.join(missing_fields)}")
+
+    if not isinstance(report.get("clip_summaries"), list):
+        raise ValueError("invalid_validation_report_contract: clip_summaries must be a list")
+    if not isinstance(report.get("per_clip_results"), list):
+        raise ValueError("invalid_validation_report_contract: per_clip_results must be a list")
+    if not isinstance(report.get("warnings"), list):
+        raise ValueError("invalid_validation_report_contract: warnings must be a list")
+
+    release_gate_summary = report.get("release_gate_summary")
+    if not isinstance(release_gate_summary, dict):
+        raise ValueError("invalid_validation_report_contract: release_gate_summary must be a dict")
+    missing_release_fields = [field for field in REQUIRED_RELEASE_GATE_SUMMARY_FIELDS if field not in release_gate_summary]
+    if missing_release_fields:
+        raise ValueError(
+            f"invalid_validation_report_contract: release_gate_summary missing fields: {', '.join(missing_release_fields)}"
+        )
+    if str(release_gate_summary.get("status")) not in {"pass", "fail"}:
+        raise ValueError("invalid_validation_report_contract: release_gate_summary.status must be pass or fail")
+    if not isinstance(release_gate_summary.get("blocking_reasons"), list):
+        raise ValueError("invalid_validation_report_contract: release_gate_summary.blocking_reasons must be a list")
+    if not isinstance(release_gate_summary.get("failing_layers"), dict):
+        raise ValueError("invalid_validation_report_contract: release_gate_summary.failing_layers must be a dict")
+    if not isinstance(release_gate_summary.get("coverage_gaps"), list):
+        raise ValueError("invalid_validation_report_contract: release_gate_summary.coverage_gaps must be a list")
+
+    if int(report.get("scanned_clip_count", 0)) < int(report.get("validated_clip_count", 0)):
+        raise ValueError("invalid_validation_report_contract: validated_clip_count exceeds scanned_clip_count")
+    if int(report.get("validated_clip_count", 0)) + int(report.get("skipped_clip_count", 0)) != int(
+        report.get("scanned_clip_count", 0)
+    ):
+        raise ValueError("invalid_validation_report_contract: validated + skipped clip counts must equal scanned clip count")
+    if int(release_gate_summary.get("validated_clip_count", 0)) != int(report.get("validated_clip_count", 0)):
+        raise ValueError("invalid_validation_report_contract: release gate validated clip count does not match report")
+
+
+def _validate_replay_report_contract(report: dict[str, Any]) -> None:
+    missing_fields = [field for field in REQUIRED_REPLAY_REPORT_FIELDS if field not in report]
+    if missing_fields:
+        raise ValueError(f"invalid_replay_report_contract: missing fields: {', '.join(missing_fields)}")
+
+    comparison = report.get("comparison")
+    if not isinstance(comparison, dict):
+        raise ValueError("invalid_replay_report_contract: comparison must be a dict")
+    missing_comparison_fields = [field for field in REQUIRED_REPLAY_COMPARISON_FIELDS if field not in comparison]
+    if missing_comparison_fields:
+        raise ValueError(
+            f"invalid_replay_report_contract: comparison missing fields: {', '.join(missing_comparison_fields)}"
+        )
+    if not isinstance(comparison.get("current"), dict):
+        raise ValueError("invalid_replay_report_contract: comparison.current must be a dict")
+    if not isinstance(comparison.get("trial"), dict):
+        raise ValueError("invalid_replay_report_contract: comparison.trial must be a dict")
+    if not isinstance(comparison.get("delta"), dict):
+        raise ValueError("invalid_replay_report_contract: comparison.delta must be a dict")
+    if not isinstance(comparison.get("per_clip_comparisons"), list):
+        raise ValueError("invalid_replay_report_contract: comparison.per_clip_comparisons must be a list")
+
+    recommendation = report.get("recommendation")
+    if not isinstance(recommendation, dict):
+        raise ValueError("invalid_replay_report_contract: recommendation must be a dict")
+    missing_recommendation_fields = [field for field in REQUIRED_RECOMMENDATION_FIELDS if field not in recommendation]
+    if missing_recommendation_fields:
+        raise ValueError(
+            f"invalid_replay_report_contract: recommendation missing fields: {', '.join(missing_recommendation_fields)}"
+        )
+    if str(recommendation.get("decision")) not in VALID_REPLAY_DECISIONS:
+        raise ValueError("invalid_replay_report_contract: recommendation.decision must be prefer_trial, keep_current, or inconclusive")
+    if recommendation.get("supporting_metrics") is not comparison.get("delta"):
+        raise ValueError("invalid_replay_report_contract: recommendation.supporting_metrics must reference comparison.delta")
+    if not isinstance(recommendation.get("data_quality_notes"), list):
+        raise ValueError("invalid_replay_report_contract: recommendation.data_quality_notes must be a list")
+    if not isinstance(report.get("warnings"), list):
+        raise ValueError("invalid_replay_report_contract: warnings must be a list")
 
 
 def _semantic_target_field_name(row: dict[str, Any]) -> str:

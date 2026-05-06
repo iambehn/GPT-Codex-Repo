@@ -9,7 +9,14 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-from pipeline.fusion_validation import replay_fusion_rules, replay_runtime_event_rules, replay_template_thresholds, validate_fusion_goldset
+from pipeline.fusion_validation import (
+    _validate_validation_report_contract,
+    _validate_replay_report_contract,
+    replay_fusion_rules,
+    replay_runtime_event_rules,
+    replay_template_thresholds,
+    validate_fusion_goldset,
+)
 from run import main as run_main
 from run import run_replay_fusion_rules, run_replay_runtime_event_rules, run_replay_template_thresholds, run_validate_fusion_goldset
 
@@ -188,6 +195,8 @@ class FusionValidationTests(unittest.TestCase):
         self.assertEqual(result["runtime_diagnostics"]["misses_by_asset_family"], {})
         self.assertEqual(result["clip_summaries"][0]["failed_first"], "none")
         self.assertIn("medal_heavy", result["coverage_summary"]["clips_by_behavior"])
+        self.assertEqual(result["release_gate_summary"]["status"], "pass")
+        self.assertEqual(result["release_gate_summary"]["blocking_reasons"], [])
 
     def test_validate_fusion_goldset_resolves_relative_sources_through_media_root(self) -> None:
         captured: dict[str, object] = {}
@@ -273,6 +282,58 @@ class FusionValidationTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["warnings"][0]["reason"], "invalid_gold_manifest_fused_event_type")
 
+    def test_validate_fusion_goldset_release_gate_fails_on_fusion_regression(self) -> None:
+        def clip_runner(*args, **kwargs):  # type: ignore[no-untyped-def]
+            return {
+                "ok": True,
+                "runtime": _runtime_sidecar(),
+                "fused": _fused_sidecar(gate_status="ambiguous", synergy_applied=False, minimum_required_signals_met=False),
+            }
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "clip-1.fusion_goldset.json").write_text(json.dumps(_gold_manifest(), indent=2), encoding="utf-8")
+            result = validate_fusion_goldset(root, clip_runner=clip_runner, game="marvel_rivals")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["release_gate_summary"]["status"], "fail")
+        self.assertIn("fusion_metrics_below_gate", result["release_gate_summary"]["blocking_reasons"])
+        self.assertIn("fusion", result["release_gate_summary"]["failing_layers"])
+
+    def test_validate_validation_report_contract_rejects_inconsistent_counts(self) -> None:
+        report = {
+            "ok": True,
+            "status": "ok",
+            "goldset_root": "/tmp/goldset",
+            "scanned_clip_count": 1,
+            "validated_clip_count": 2,
+            "skipped_clip_count": 0,
+            "detection_metrics": {},
+            "runtime_event_metrics": {},
+            "fusion_metrics": {},
+            "boundary_metrics": {},
+            "detection_diagnostics": {},
+            "runtime_diagnostics": {},
+            "fusion_diagnostics": {},
+            "boundary_diagnostics": {},
+            "clip_summaries": [],
+            "coverage_summary": {},
+            "per_clip_results": [],
+            "failure_buckets": {},
+            "warnings": [],
+            "release_gate_summary": {
+                "status": "fail",
+                "validated_clip_count": 2,
+                "blocking_reasons": ["no_validated_clips"],
+                "failed_clip_count": 0,
+                "failing_layers": {},
+                "coverage_gaps": [],
+            },
+        }
+
+        with self.assertRaisesRegex(ValueError, "validated_clip_count exceeds scanned_clip_count"):
+            _validate_validation_report_contract(report)
+
     def test_replay_fusion_rules_prefers_trial_when_boundary_and_gate_quality_improve(self) -> None:
         def clip_runner(source, game, trial_rules_path=None, **kwargs):  # type: ignore[no-untyped-def]
             del source, game, kwargs
@@ -300,6 +361,7 @@ class FusionValidationTests(unittest.TestCase):
         self.assertGreater(result["comparison"]["delta"]["gate_status_accuracy_delta"], 0.0)
         self.assertGreater(result["comparison"]["delta"]["synergy_applied_accuracy_delta"], 0.0)
         self.assertGreater(result["comparison"]["delta"]["boundary_within_tolerance_rate_delta"], 0.0)
+        self.assertIs(result["recommendation"]["supporting_metrics"], result["comparison"]["delta"])
 
     def test_replay_template_thresholds_prefers_trial_when_matcher_improves_without_regression(self) -> None:
         def clip_runner(source, game, trial_template_overrides_path=None, **kwargs):  # type: ignore[no-untyped-def]
@@ -525,6 +587,30 @@ class FusionValidationTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["status"], "invalid_trial_runtime_rules")
+
+    def test_validate_replay_report_contract_rejects_missing_recommendation_field(self) -> None:
+        report = {
+            "ok": True,
+            "status": "ok",
+            "goldset_root": "/tmp/goldset",
+            "trial_name": "trial-a",
+            "comparison": {
+                "current": {},
+                "trial": {},
+                "delta": {},
+                "per_clip_comparisons": [],
+            },
+            "recommendation": {
+                "decision": "prefer_trial",
+                "reason": "improved",
+                "supporting_metrics": {},
+                "data_quality_notes": [],
+            },
+            "warnings": [],
+        }
+
+        with self.assertRaisesRegex(ValueError, "recommendation missing fields: follow_up"):
+            _validate_replay_report_contract(report)
 
     def test_validate_fusion_goldset_writes_output_and_debug_bundle(self) -> None:
         def clip_runner(*args, **kwargs):  # type: ignore[no-untyped-def]

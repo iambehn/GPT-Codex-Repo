@@ -144,6 +144,8 @@ class RuntimeTuningTests(unittest.TestCase):
             moved = result["comparison"]["clip_movements"]["moved_rows"]
             self.assertEqual(len(moved), 1)
             self.assertEqual(moved[0]["movement"], "inspect -> highlight_candidate")
+            self.assertIn("supporting_metrics", result["recommendation"])
+            self.assertIn("follow_up", result["recommendation"])
 
     def test_replay_runtime_scoring_writes_output_and_debug_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as sidecar_root, tempfile.TemporaryDirectory() as tempdir:
@@ -302,4 +304,3 @@ class RuntimeTuningTests(unittest.TestCase):
     def _write_sidecar(self, path: Path, payload: dict[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-

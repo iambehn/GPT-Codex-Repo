@@ -185,6 +185,38 @@ class RuntimePromotionTests(unittest.TestCase):
             self.assertTrue(result["force_used"])
             self.assertEqual(result["replay_recommendation"]["decision"], "inconclusive")
 
+    def test_promotion_rejects_invalid_replay_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            repo_root = root / "repo"
+            repo_root.mkdir(parents=True, exist_ok=True)
+            trial_config = root / "trial.yaml"
+            trial_config.write_text("action_thresholds:\n  highlight_candidate: 0.45\n", encoding="utf-8")
+
+            bad_replay = {
+                "ok": True,
+                "status": "ok",
+                "trial_name": "trial",
+                "trial_scoring": {},
+                "recommendation": {
+                    "decision": "prefer_trial",
+                    "reason": "missing structured fields",
+                },
+                "warnings": [],
+            }
+
+            with patch("run.REPO_ROOT", repo_root), patch.object(runtime_promotion, "replay_runtime_scoring", return_value=bad_replay):
+                result = run_promote_runtime_scoring(
+                    trial_config,
+                    sidecar_root=root / "sidecars",
+                    game="marvel_rivals",
+                    min_reviewed=1,
+                )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_replay_result")
+            self.assertIn("missing field", result["error"])
+
     def test_missing_sidecar_root_and_invalid_trial_config_return_clean_errors(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
@@ -304,4 +336,3 @@ class RuntimePromotionTests(unittest.TestCase):
     def _write_sidecar(self, path: Path, payload: dict[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-

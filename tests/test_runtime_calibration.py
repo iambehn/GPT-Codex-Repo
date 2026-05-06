@@ -136,6 +136,7 @@ class RuntimeCalibrationTests(unittest.TestCase):
             self.assertIn("medal_seen", result["diagnostics"]["event_type_incidence"]["approved"])
             self.assertIn("threshold_observations", result["recommendations"])
             self.assertIn("weight_observations", result["recommendations"])
+            self.assertEqual(result["release_gate_summary"]["status"], "pass")
 
     def test_calibrate_runtime_review_skips_invalid_sidecars_with_warnings(self) -> None:
         with tempfile.TemporaryDirectory() as sidecar_root:
@@ -205,6 +206,7 @@ class RuntimeCalibrationTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "insufficient_review_data")
             self.assertIn("data_quality_notes", result["recommendations"])
+            self.assertEqual(result["release_gate_summary"]["status"], "fail")
 
     def test_calibrate_runtime_review_writes_output_and_debug_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as sidecar_root, tempfile.TemporaryDirectory() as output_root:
@@ -284,4 +286,3 @@ class RuntimeCalibrationTests(unittest.TestCase):
     def _write_sidecar(self, path: Path, payload: dict[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-

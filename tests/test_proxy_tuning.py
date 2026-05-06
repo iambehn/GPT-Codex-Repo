@@ -163,6 +163,8 @@ class ProxyTuningTests(unittest.TestCase):
             self.assertEqual(result["recommendation"]["decision"], "prefer_trial")
             self.assertEqual(result["comparison"]["action_quality"]["current"]["skip"]["approved"], 1)
             self.assertEqual(result["comparison"]["action_quality"]["trial"]["inspect"]["approved"], 1)
+            self.assertIn("supporting_metrics", result["recommendation"])
+            self.assertIn("follow_up", result["recommendation"])
 
     def test_replay_proxy_scoring_rejects_unsupported_trial_keys(self) -> None:
         with tempfile.TemporaryDirectory() as sidecar_root, tempfile.TemporaryDirectory() as config_root:

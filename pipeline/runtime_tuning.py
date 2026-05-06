@@ -12,6 +12,24 @@ from pipeline.simple_yaml import load_yaml_file
 
 SUPPORTED_RUNTIME_ANALYSIS_SCHEMA_VERSION = "runtime_analysis_v1"
 DEFAULT_MIN_REVIEWED = 3
+REQUIRED_REPLAY_REPORT_FIELDS = (
+    "ok",
+    "status",
+    "sidecar_root",
+    "trial_name",
+    "scanned_sidecar_count",
+    "reviewed_sidecar_count",
+    "approved_count",
+    "rejected_count",
+    "skipped_sidecar_count",
+    "current_scoring",
+    "trial_scoring",
+    "comparison",
+    "recommendation",
+    "warnings",
+)
+REQUIRED_RECOMMENDATION_FIELDS = ("decision", "reason", "supporting_metrics", "data_quality_notes", "follow_up")
+VALID_REPLAY_DECISIONS = {"prefer_trial", "keep_current", "inconclusive"}
 
 
 def replay_runtime_scoring(
@@ -72,6 +90,7 @@ def replay_runtime_scoring(
         min_reviewed=min_reviewed,
         include_unreviewed=include_unreviewed,
     )
+    _validate_replay_report_contract(report)
 
     if output_path is not None:
         target = _resolve_path(output_path)
@@ -351,6 +370,30 @@ def _recommendation(
         "data_quality_notes": data_quality_notes,
         "follow_up": follow_up,
     }
+
+
+def _validate_replay_report_contract(report: dict[str, Any]) -> None:
+    missing_fields = [field for field in REQUIRED_REPLAY_REPORT_FIELDS if field not in report]
+    if missing_fields:
+        raise ValueError(f"invalid_runtime_replay_report_contract: missing fields: {', '.join(missing_fields)}")
+    if not isinstance(report.get("comparison"), dict):
+        raise ValueError("invalid_runtime_replay_report_contract: comparison must be a dict")
+    if not isinstance(report.get("warnings"), list):
+        raise ValueError("invalid_runtime_replay_report_contract: warnings must be a list")
+    recommendation = report.get("recommendation")
+    if not isinstance(recommendation, dict):
+        raise ValueError("invalid_runtime_replay_report_contract: recommendation must be a dict")
+    missing_recommendation_fields = [field for field in REQUIRED_RECOMMENDATION_FIELDS if field not in recommendation]
+    if missing_recommendation_fields:
+        raise ValueError(
+            f"invalid_runtime_replay_report_contract: recommendation missing fields: {', '.join(missing_recommendation_fields)}"
+        )
+    if str(recommendation.get("decision")) not in VALID_REPLAY_DECISIONS:
+        raise ValueError("invalid_runtime_replay_report_contract: recommendation.decision must be prefer_trial, keep_current, or inconclusive")
+    if not isinstance(recommendation.get("supporting_metrics"), dict):
+        raise ValueError("invalid_runtime_replay_report_contract: recommendation.supporting_metrics must be a dict")
+    if not isinstance(recommendation.get("data_quality_notes"), list):
+        raise ValueError("invalid_runtime_replay_report_contract: recommendation.data_quality_notes must be a list")
 
 
 def _action_outcomes(rows: list[dict[str, Any]], action_key: str) -> dict[str, dict[str, int]]:

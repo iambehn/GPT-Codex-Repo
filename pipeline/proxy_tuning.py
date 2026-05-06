@@ -14,6 +14,24 @@ from pipeline.simple_yaml import load_yaml_file
 SUPPORTED_PROXY_SCAN_SCHEMA_VERSION = "proxy_scan_v1"
 DEFAULT_MIN_REVIEWED = 3
 ALLOWED_TRIAL_KEYS = {"shortlist_count", "stage_weights", "signal_thresholds"}
+REQUIRED_REPLAY_REPORT_FIELDS = (
+    "ok",
+    "status",
+    "sidecar_root",
+    "trial_name",
+    "scanned_sidecar_count",
+    "reviewed_sidecar_count",
+    "approved_count",
+    "rejected_count",
+    "skipped_sidecar_count",
+    "current_proxy_scoring",
+    "trial_proxy_scoring",
+    "comparison",
+    "recommendation",
+    "warnings",
+)
+REQUIRED_RECOMMENDATION_FIELDS = ("decision", "reason", "supporting_metrics", "data_quality_notes", "follow_up")
+VALID_REPLAY_DECISIONS = {"prefer_trial", "keep_current", "inconclusive"}
 
 
 def replay_proxy_scoring(
@@ -74,6 +92,7 @@ def replay_proxy_scoring(
         min_reviewed=min_reviewed,
         include_unreviewed=include_unreviewed,
     )
+    _validate_replay_report_contract(report)
 
     if output_path is not None:
         target = _resolve_path(output_path)
@@ -314,6 +333,9 @@ def _recommendation(reviewed_rows: list[dict[str, Any]], comparison: dict[str, A
         return {
             "decision": "inconclusive",
             "reason": "Not enough reviewed proxy sidecars to evaluate a trial config confidently.",
+            "supporting_metrics": {"reviewed_sidecar_count": len(reviewed_rows), "min_reviewed": min_reviewed},
+            "data_quality_notes": [f"Only {len(reviewed_rows)} reviewed proxy sidecars available."],
+            "follow_up": "Gather more reviewed HF proxy sidecars before changing proxy scoring.",
         }
     action_current = comparison["action_quality"]["current"]
     action_trial = comparison["action_quality"]["trial"]
@@ -330,12 +352,68 @@ def _recommendation(reviewed_rows: list[dict[str, Any]], comparison: dict[str, A
     worsened_rejected = trial_rejected_non_skip > current_rejected_non_skip
 
     if improved_approved and not worsened_rejected:
-        return {"decision": "prefer_trial", "reason": "Trial routing improves approved-clip handling without worsening rejected routing."}
-    if improved_rejected and not worsened_approved:
-        return {"decision": "prefer_trial", "reason": "Trial routing reduces rejected false positives without harming approved clips."}
-    if worsened_approved or worsened_rejected:
-        return {"decision": "keep_current", "reason": "Trial routing regresses reviewed clip outcomes."}
-    return {"decision": "inconclusive", "reason": "Reviewed proxy outcomes do not clearly favor the current or trial config."}
+        decision = "prefer_trial"
+        reason = "Trial routing improves approved-clip handling without worsening rejected routing."
+    elif improved_rejected and not worsened_approved:
+        decision = "prefer_trial"
+        reason = "Trial routing reduces rejected false positives without harming approved clips."
+    elif worsened_approved or worsened_rejected:
+        decision = "keep_current"
+        reason = "Trial routing regresses reviewed clip outcomes."
+    else:
+        decision = "inconclusive"
+        reason = "Reviewed proxy outcomes do not clearly favor the current or trial config."
+
+    approved_count = sum(1 for row in reviewed_rows if row["review_status"] == "approved")
+    rejected_count = sum(1 for row in reviewed_rows if row["review_status"] == "rejected")
+    data_quality_notes: list[str] = []
+    if not approved_count or not rejected_count:
+        data_quality_notes.append("Reviewed proxy sidecars are missing one review class.")
+    if abs(approved_count - rejected_count) > max(1, len(reviewed_rows) // 2):
+        data_quality_notes.append("Reviewed proxy sidecars are materially imbalanced between approved and rejected.")
+    follow_up = "Inspect moved clips and adjust one proxy threshold or stage weight in the next trial."
+    if decision == "keep_current":
+        follow_up = "Tighten the trial threshold or weight change before replaying."
+    elif decision == "inconclusive":
+        follow_up = "Try a narrower proxy scoring change or gather more reviewed clips."
+    return {
+        "decision": decision,
+        "reason": reason,
+        "supporting_metrics": {
+            "current_approved_non_skip": current_approved_non_skip,
+            "trial_approved_non_skip": trial_approved_non_skip,
+            "current_approved_download": current_approved_download,
+            "trial_approved_download": trial_approved_download,
+            "current_rejected_non_skip": current_rejected_non_skip,
+            "trial_rejected_non_skip": trial_rejected_non_skip,
+        },
+        "data_quality_notes": data_quality_notes,
+        "follow_up": follow_up,
+    }
+
+
+def _validate_replay_report_contract(report: dict[str, Any]) -> None:
+    missing_fields = [field for field in REQUIRED_REPLAY_REPORT_FIELDS if field not in report]
+    if missing_fields:
+        raise ValueError(f"invalid_proxy_replay_report_contract: missing fields: {', '.join(missing_fields)}")
+    if not isinstance(report.get("comparison"), dict):
+        raise ValueError("invalid_proxy_replay_report_contract: comparison must be a dict")
+    if not isinstance(report.get("warnings"), list):
+        raise ValueError("invalid_proxy_replay_report_contract: warnings must be a list")
+    recommendation = report.get("recommendation")
+    if not isinstance(recommendation, dict):
+        raise ValueError("invalid_proxy_replay_report_contract: recommendation must be a dict")
+    missing_recommendation_fields = [field for field in REQUIRED_RECOMMENDATION_FIELDS if field not in recommendation]
+    if missing_recommendation_fields:
+        raise ValueError(
+            f"invalid_proxy_replay_report_contract: recommendation missing fields: {', '.join(missing_recommendation_fields)}"
+        )
+    if str(recommendation.get("decision")) not in VALID_REPLAY_DECISIONS:
+        raise ValueError("invalid_proxy_replay_report_contract: recommendation.decision must be prefer_trial, keep_current, or inconclusive")
+    if not isinstance(recommendation.get("supporting_metrics"), dict):
+        raise ValueError("invalid_proxy_replay_report_contract: recommendation.supporting_metrics must be a dict")
+    if not isinstance(recommendation.get("data_quality_notes"), list):
+        raise ValueError("invalid_proxy_replay_report_contract: recommendation.data_quality_notes must be a list")
 
 
 def _action_outcomes(rows: list[dict[str, Any]], action_key: str) -> dict[str, dict[str, int]]:

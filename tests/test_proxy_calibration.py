@@ -144,6 +144,7 @@ class ProxyCalibrationTests(unittest.TestCase):
             self.assertIn("stage_latency_ms", result["diagnostics"]["stage_coverage"])
             self.assertIn("proposal", result["diagnostics"]["threshold_diagnostics"])
             self.assertIn("stage_weight_observations", result["recommendations"])
+            self.assertEqual(result["release_gate_summary"]["status"], "pass")
 
     def test_calibrate_proxy_review_skips_invalid_and_non_hf_sidecars(self) -> None:
         with tempfile.TemporaryDirectory() as sidecar_root:
@@ -198,6 +199,7 @@ class ProxyCalibrationTests(unittest.TestCase):
             self.assertIn("non_hf_source", reasons)
             self.assertIn("unsupported_schema_version", reasons)
             self.assertIn("malformed_json", reasons)
+            self.assertEqual(result["release_gate_summary"]["status"], "fail")
 
     def test_cli_routes_to_proxy_calibration(self) -> None:
         original_argv = sys.argv

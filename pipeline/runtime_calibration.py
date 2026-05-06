@@ -12,6 +12,29 @@ from pipeline.runtime_export import merged_scoring_config, score_runtime_clip
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SUPPORTED_RUNTIME_ANALYSIS_SCHEMA_VERSION = "runtime_analysis_v1"
 DEFAULT_MIN_REVIEWED = 3
+REQUIRED_CALIBRATION_REPORT_FIELDS = (
+    "ok",
+    "status",
+    "sidecar_root",
+    "scanned_sidecar_count",
+    "reviewed_sidecar_count",
+    "approved_count",
+    "rejected_count",
+    "skipped_sidecar_count",
+    "current_scoring",
+    "diagnostics",
+    "recommendations",
+    "warnings",
+    "release_gate_summary",
+)
+REQUIRED_CALIBRATION_GATE_FIELDS = (
+    "status",
+    "reviewed_sidecar_count",
+    "approved_count",
+    "rejected_count",
+    "blocking_reasons",
+    "data_quality_notes",
+)
 
 
 def calibrate_runtime_review(
@@ -40,6 +63,7 @@ def calibrate_runtime_review(
         min_reviewed=min_reviewed,
         include_unreviewed=include_unreviewed,
     )
+    _validate_calibration_report_contract(report)
 
     if output_path is not None:
         target = _resolve_output_path(output_path)
@@ -115,9 +139,53 @@ def _build_calibration_report(
         "recommendations": recommendations,
         "warnings": warnings,
     }
+    report["release_gate_summary"] = _build_release_gate_summary(report, min_reviewed)
     if game is not None:
         report["game_filter"] = game
     return report
+
+
+def _build_release_gate_summary(report: dict[str, Any], min_reviewed: int) -> dict[str, Any]:
+    reviewed = int(report.get("reviewed_sidecar_count", 0))
+    approved = int(report.get("approved_count", 0))
+    rejected = int(report.get("rejected_count", 0))
+    blocking_reasons: list[str] = []
+    if reviewed < min_reviewed:
+        blocking_reasons.append("insufficient_review_data")
+    if approved == 0 or rejected == 0:
+        blocking_reasons.append("missing_review_class")
+    if abs(approved - rejected) > max(1, reviewed // 2):
+        blocking_reasons.append("review_class_imbalance")
+    return {
+        "status": "pass" if not blocking_reasons else "fail",
+        "reviewed_sidecar_count": reviewed,
+        "approved_count": approved,
+        "rejected_count": rejected,
+        "blocking_reasons": blocking_reasons,
+        "data_quality_notes": list(report.get("recommendations", {}).get("data_quality_notes", [])),
+    }
+
+
+def _validate_calibration_report_contract(report: dict[str, Any]) -> None:
+    missing_fields = [field for field in REQUIRED_CALIBRATION_REPORT_FIELDS if field not in report]
+    if missing_fields:
+        raise ValueError(f"invalid_runtime_calibration_report_contract: missing fields: {', '.join(missing_fields)}")
+    if not isinstance(report.get("diagnostics"), dict):
+        raise ValueError("invalid_runtime_calibration_report_contract: diagnostics must be a dict")
+    if not isinstance(report.get("recommendations"), dict):
+        raise ValueError("invalid_runtime_calibration_report_contract: recommendations must be a dict")
+    if not isinstance(report.get("warnings"), list):
+        raise ValueError("invalid_runtime_calibration_report_contract: warnings must be a list")
+    gate = report.get("release_gate_summary")
+    if not isinstance(gate, dict):
+        raise ValueError("invalid_runtime_calibration_report_contract: release_gate_summary must be a dict")
+    missing_gate_fields = [field for field in REQUIRED_CALIBRATION_GATE_FIELDS if field not in gate]
+    if missing_gate_fields:
+        raise ValueError(
+            f"invalid_runtime_calibration_report_contract: release_gate_summary missing fields: {', '.join(missing_gate_fields)}"
+        )
+    if str(gate.get("status")) not in {"pass", "fail"}:
+        raise ValueError("invalid_runtime_calibration_report_contract: release_gate_summary.status must be pass or fail")
 
 
 def _review_row_from_sidecar(
