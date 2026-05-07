@@ -97,6 +97,7 @@ from pipeline.approval_target_dataset import build_approval_target_dataset
 from pipeline.approval_target_dataset_adapter import adapt_approval_target_dataset
 from pipeline.accepted_clip_inventory import build_accepted_clip_inventory
 from pipeline.accepted_clip_intake_manifest import build_accepted_clip_intake_manifest
+from pipeline.accepted_clip_source_manifest_adapter import adapt_accepted_clip_intake_to_source_manifest
 from pipeline.shadow_operator_workflow import run_shadow_operator_workflow
 from pipeline.shadow_benchmark_matrix import (
     run_shadow_benchmark_matrix,
@@ -742,6 +743,19 @@ def run_build_accepted_clip_intake_manifest(
 ) -> dict[str, Any]:
     return build_accepted_clip_intake_manifest(
         accepted_inventory_manifest,
+        output_root=output_root,
+        output_path=output_path,
+    )
+
+
+def run_adapt_accepted_clip_intake_to_source_manifest(
+    accepted_clip_intake_manifest: str | Path,
+    *,
+    output_root: str | Path | None = None,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    return adapt_accepted_clip_intake_to_source_manifest(
+        accepted_clip_intake_manifest,
         output_root=output_root,
         output_path=output_path,
     )
@@ -2607,6 +2621,7 @@ _COMPACT_OUTPUT_COMMANDS = {
     "adapt_approval_target_dataset",
     "build_accepted_clip_inventory",
     "build_accepted_clip_intake_manifest",
+    "adapt_accepted_clip_intake_to_source_manifest",
     "materialize_synthetic_post_coverage",
     "report_unresolved_derived_rows",
     "summarize_derived_row_review",
@@ -3101,6 +3116,17 @@ def _compact_cli_payload(command_name: str, result: dict[str, Any]) -> dict[str,
             "manifest_path": result.get("manifest_path"),
             "csv_path": result.get("csv_path"),
             "source_inventory_id": result.get("source_inventory_id"),
+        }
+
+    if command_name == "adapt_accepted_clip_intake_to_source_manifest":
+        return {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "adapted_manifest_id": result.get("adapted_manifest_id"),
+            "row_count": result.get("row_count"),
+            "manifest_path": result.get("manifest_path"),
+            "source_accepted_clip_intake_manifest_id": result.get("source_accepted_clip_intake_manifest_id"),
         }
 
     if command_name == "report_onboarding_batch":
@@ -4253,6 +4279,16 @@ def main() -> int:
         "--accepted-inventory-manifest",
         metavar="PATH",
         help="Optional accepted inventory manifest path used by --build-accepted-clip-intake-manifest.",
+    )
+    parser.add_argument(
+        "--adapt-accepted-clip-intake-to-source-manifest",
+        action="store_true",
+        help="Adapt one accepted clip intake manifest into the existing fixture source-manifest shape.",
+    )
+    parser.add_argument(
+        "--accepted-clip-intake-manifest",
+        metavar="PATH",
+        help="Optional accepted clip intake manifest path used by --adapt-accepted-clip-intake-to-source-manifest.",
     )
     parser.add_argument(
         "--export-runtime-analysis",
@@ -5410,6 +5446,20 @@ def main() -> int:
                 output_path=args.output_path,
             ),
             command_name="build_accepted_clip_intake_manifest",
+            full_json=args.full_json,
+        )
+        return 0
+
+    if args.adapt_accepted_clip_intake_to_source_manifest:
+        if not args.accepted_clip_intake_manifest:
+            parser.error("--adapt-accepted-clip-intake-to-source-manifest requires --accepted-clip-intake-manifest")
+        _print_cli_result(
+            run_adapt_accepted_clip_intake_to_source_manifest(
+                args.accepted_clip_intake_manifest,
+                output_root=args.output_root,
+                output_path=args.output_path,
+            ),
+            command_name="adapt_accepted_clip_intake_to_source_manifest",
             full_json=args.full_json,
         )
         return 0

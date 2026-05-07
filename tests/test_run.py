@@ -1502,6 +1502,76 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_adapt_accepted_clip_intake_to_source_manifest_compacts_output_by_default(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--adapt-accepted-clip-intake-to-source-manifest",
+                "--accepted-clip-intake-manifest",
+                "/tmp/accepted-clip-intake.manifest.json",
+                "--output-root",
+                "/tmp/accepted-source-manifests",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_adapt_accepted_clip_intake_to_source_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "fixture_source_manifest_v1",
+                    "adapted_manifest_id": "adapted-123",
+                    "row_count": 18,
+                    "manifest_path": "/tmp/accepted-source-manifests/out.json",
+                    "source_accepted_clip_intake_manifest_id": "intake-123",
+                    "fixtures": [{"fixture_id": "accepted_absolute_cinema_1234"}],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/accepted-clip-intake.manifest.json",
+                output_root="/tmp/accepted-source-manifests",
+                output_path=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["schema_version"], "fixture_source_manifest_v1")
+            self.assertEqual(payload["row_count"], 18)
+            self.assertNotIn("fixtures", payload)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_adapt_accepted_clip_intake_to_source_manifest_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--adapt-accepted-clip-intake-to-source-manifest",
+                "--accepted-clip-intake-manifest",
+                "/tmp/accepted-clip-intake.manifest.json",
+                "--full-json",
+            ]
+            stdout = io.StringIO()
+            fixtures = [{"fixture_id": "accepted_absolute_cinema_1234", "source_path": "/tmp/clip.mp4"}]
+            with patch(
+                "run.run_adapt_accepted_clip_intake_to_source_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "fixture_source_manifest_v1",
+                    "adapted_manifest_id": "adapted-456",
+                    "fixtures": fixtures,
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["fixtures"], fixtures)
+        finally:
+            sys.argv = original_argv
+
     def test_cli_routes_to_compare_shadow_benchmark_evidence_modes(self) -> None:
         original_argv = sys.argv
         try:
