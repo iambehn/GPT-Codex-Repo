@@ -1430,6 +1430,78 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_build_accepted_clip_intake_manifest_compacts_output_by_default(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--build-accepted-clip-intake-manifest",
+                "--accepted-inventory-manifest",
+                "/tmp/accepted-clip-inventory.manifest.json",
+                "--output-root",
+                "/tmp/accepted-intake",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_build_accepted_clip_intake_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "accepted_clip_intake_manifest_v1",
+                    "intake_manifest_id": "intake-123",
+                    "row_count": 18,
+                    "ingestion_ready_count": 18,
+                    "manifest_path": "/tmp/accepted-intake/out.manifest.json",
+                    "csv_path": "/tmp/accepted-intake/out.csv",
+                    "source_inventory_id": "inventory-123",
+                    "rows": [{"clip_id": "ABSOLUTE CINEMA_3522796292"}],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/accepted-clip-inventory.manifest.json",
+                output_root="/tmp/accepted-intake",
+                output_path=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["schema_version"], "accepted_clip_intake_manifest_v1")
+            self.assertEqual(payload["ingestion_ready_count"], 18)
+            self.assertNotIn("rows", payload)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_build_accepted_clip_intake_manifest_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--build-accepted-clip-intake-manifest",
+                "--accepted-inventory-manifest",
+                "/tmp/accepted-clip-inventory.manifest.json",
+                "--full-json",
+            ]
+            stdout = io.StringIO()
+            rows = [{"clip_id": "ABSOLUTE CINEMA_3522796292", "canonical_clip_path": "/tmp/clip.mp4"}]
+            with patch(
+                "run.run_build_accepted_clip_intake_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "accepted_clip_intake_manifest_v1",
+                    "intake_manifest_id": "intake-456",
+                    "rows": rows,
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["rows"], rows)
+        finally:
+            sys.argv = original_argv
+
     def test_cli_routes_to_compare_shadow_benchmark_evidence_modes(self) -> None:
         original_argv = sys.argv
         try:

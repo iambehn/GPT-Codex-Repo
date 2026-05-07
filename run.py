@@ -96,6 +96,7 @@ from pipeline.shadow_evaluation_policy import (
 from pipeline.approval_target_dataset import build_approval_target_dataset
 from pipeline.approval_target_dataset_adapter import adapt_approval_target_dataset
 from pipeline.accepted_clip_inventory import build_accepted_clip_inventory
+from pipeline.accepted_clip_intake_manifest import build_accepted_clip_intake_manifest
 from pipeline.shadow_operator_workflow import run_shadow_operator_workflow
 from pipeline.shadow_benchmark_matrix import (
     run_shadow_benchmark_matrix,
@@ -728,6 +729,19 @@ def run_build_accepted_clip_inventory(
     return build_accepted_clip_inventory(
         source_root=source_root,
         game=game,
+        output_root=output_root,
+        output_path=output_path,
+    )
+
+
+def run_build_accepted_clip_intake_manifest(
+    accepted_inventory_manifest: str | Path,
+    *,
+    output_root: str | Path | None = None,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    return build_accepted_clip_intake_manifest(
+        accepted_inventory_manifest,
         output_root=output_root,
         output_path=output_path,
     )
@@ -2592,6 +2606,7 @@ _COMPACT_OUTPUT_COMMANDS = {
     "build_approval_target_dataset",
     "adapt_approval_target_dataset",
     "build_accepted_clip_inventory",
+    "build_accepted_clip_intake_manifest",
     "materialize_synthetic_post_coverage",
     "report_unresolved_derived_rows",
     "summarize_derived_row_review",
@@ -3073,6 +3088,19 @@ def _compact_cli_payload(command_name: str, result: dict[str, Any]) -> dict[str,
             "duplicate_group_count": result.get("duplicate_group_count"),
             "manifest_path": result.get("manifest_path"),
             "csv_path": result.get("csv_path"),
+        }
+
+    if command_name == "build_accepted_clip_intake_manifest":
+        return {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "intake_manifest_id": result.get("intake_manifest_id"),
+            "row_count": result.get("row_count"),
+            "ingestion_ready_count": result.get("ingestion_ready_count"),
+            "manifest_path": result.get("manifest_path"),
+            "csv_path": result.get("csv_path"),
+            "source_inventory_id": result.get("source_inventory_id"),
         }
 
     if command_name == "report_onboarding_batch":
@@ -4217,6 +4245,16 @@ def main() -> int:
         help="Build a canonical accepted-clip inventory from one local accepted clip root.",
     )
     parser.add_argument(
+        "--build-accepted-clip-intake-manifest",
+        action="store_true",
+        help="Build a frozen accepted clip intake manifest from one accepted inventory manifest.",
+    )
+    parser.add_argument(
+        "--accepted-inventory-manifest",
+        metavar="PATH",
+        help="Optional accepted inventory manifest path used by --build-accepted-clip-intake-manifest.",
+    )
+    parser.add_argument(
         "--export-runtime-analysis",
         metavar="SIDECAR_ROOT",
         help="Export runtime-analysis sidecars into scored clip, event, and detection datasets.",
@@ -5358,6 +5396,20 @@ def main() -> int:
                 output_path=args.output_path,
             ),
             command_name="build_accepted_clip_inventory",
+            full_json=args.full_json,
+        )
+        return 0
+
+    if args.build_accepted_clip_intake_manifest:
+        if not args.accepted_inventory_manifest:
+            parser.error("--build-accepted-clip-intake-manifest requires --accepted-inventory-manifest")
+        _print_cli_result(
+            run_build_accepted_clip_intake_manifest(
+                args.accepted_inventory_manifest,
+                output_root=args.output_root,
+                output_path=args.output_path,
+            ),
+            command_name="build_accepted_clip_intake_manifest",
             full_json=args.full_json,
         )
         return 0
