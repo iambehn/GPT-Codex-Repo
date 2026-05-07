@@ -98,6 +98,7 @@ from pipeline.approval_target_dataset_adapter import adapt_approval_target_datas
 from pipeline.accepted_clip_inventory import build_accepted_clip_inventory
 from pipeline.accepted_clip_intake_manifest import build_accepted_clip_intake_manifest
 from pipeline.accepted_clip_source_manifest_adapter import adapt_accepted_clip_intake_to_source_manifest
+from pipeline.accepted_fixture_trial_batch import run_accepted_fixture_trial_batch as run_accepted_fixture_trial_batch_pipeline
 from pipeline.shadow_operator_workflow import run_shadow_operator_workflow
 from pipeline.shadow_benchmark_matrix import (
     run_shadow_benchmark_matrix,
@@ -758,6 +759,30 @@ def run_adapt_accepted_clip_intake_to_source_manifest(
         accepted_clip_intake_manifest,
         output_root=output_root,
         output_path=output_path,
+    )
+
+
+def run_accepted_fixture_trial_batch(
+    fixture_source_manifest: str | Path,
+    *,
+    output_root: str | Path | None = None,
+    output_path: str | Path | None = None,
+    game: str | None = None,
+    pattern: str | None = None,
+    limit: int | None = None,
+    emit_runtime: bool = False,
+    emit_fused: bool = False,
+) -> dict[str, Any]:
+    return run_accepted_fixture_trial_batch_pipeline(
+        fixture_source_manifest,
+        trial_runner=run_fixture_trial,
+        output_root=output_root,
+        output_path=output_path,
+        game=game,
+        pattern=pattern,
+        limit=limit,
+        emit_runtime=emit_runtime,
+        emit_fused=emit_fused,
     )
 
 
@@ -2622,6 +2647,7 @@ _COMPACT_OUTPUT_COMMANDS = {
     "build_accepted_clip_inventory",
     "build_accepted_clip_intake_manifest",
     "adapt_accepted_clip_intake_to_source_manifest",
+    "run_accepted_fixture_trial_batch",
     "materialize_synthetic_post_coverage",
     "report_unresolved_derived_rows",
     "summarize_derived_row_review",
@@ -3128,6 +3154,25 @@ def _compact_cli_payload(command_name: str, result: dict[str, Any]) -> dict[str,
             "manifest_path": result.get("manifest_path"),
             "source_accepted_clip_intake_manifest_id": result.get("source_accepted_clip_intake_manifest_id"),
         }
+
+    if command_name == "run_accepted_fixture_trial_batch":
+        results, results_omitted = _sample_list(result.get("results"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "batch_id": result.get("batch_id"),
+            "fixture_count": result.get("fixture_count", 0),
+            "success_count": result.get("success_count", 0),
+            "failed_count": result.get("failed_count", 0),
+            "manifest_path": result.get("manifest_path"),
+            "source_manifest_id": result.get("source_manifest_id"),
+            "results_sample": results,
+        }
+        if results_omitted:
+            compact["results_omitted_count"] = results_omitted
+            compact["truncated"] = True
+        return compact
 
     if command_name == "report_onboarding_batch":
         drafts, drafts_omitted = _sample_list(result.get("drafts"))
@@ -4289,6 +4334,11 @@ def main() -> int:
         "--accepted-clip-intake-manifest",
         metavar="PATH",
         help="Optional accepted clip intake manifest path used by --adapt-accepted-clip-intake-to-source-manifest.",
+    )
+    parser.add_argument(
+        "--run-accepted-fixture-trial-batch",
+        action="store_true",
+        help="Run existing fixture-trial execution across an adapted accepted source manifest and write one batch report.",
     )
     parser.add_argument(
         "--export-runtime-analysis",
@@ -5460,6 +5510,25 @@ def main() -> int:
                 output_path=args.output_path,
             ),
             command_name="adapt_accepted_clip_intake_to_source_manifest",
+            full_json=args.full_json,
+        )
+        return 0
+
+    if args.run_accepted_fixture_trial_batch:
+        if not args.fixture_source_manifest:
+            parser.error("--run-accepted-fixture-trial-batch requires --fixture-source-manifest")
+        _print_cli_result(
+            run_accepted_fixture_trial_batch(
+                args.fixture_source_manifest,
+                output_root=args.output_root,
+                output_path=args.output_path,
+                game=args.game,
+                pattern=args.pattern,
+                limit=args.limit,
+                emit_runtime=args.emit_runtime,
+                emit_fused=args.emit_fused,
+            ),
+            command_name="run_accepted_fixture_trial_batch",
             full_json=args.full_json,
         )
         return 0

@@ -1572,6 +1572,82 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_run_accepted_fixture_trial_batch_compacts_output_by_default(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--run-accepted-fixture-trial-batch",
+                "--fixture-source-manifest",
+                "/tmp/accepted-source-manifest.json",
+                "--emit-runtime",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_accepted_fixture_trial_batch",
+                return_value={
+                    "ok": True,
+                    "status": "partial",
+                    "schema_version": "accepted_fixture_trial_batch_v1",
+                    "batch_id": "batch-123",
+                    "fixture_count": 18,
+                    "success_count": 17,
+                    "failed_count": 1,
+                    "manifest_path": "/tmp/accepted-fixture-trial-batch.json",
+                    "source_manifest_id": "adapted-123",
+                    "results": [{"fixture_id": "fixture-a"}],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/accepted-source-manifest.json",
+                output_root=None,
+                output_path=None,
+                game=None,
+                pattern="*.mp4",
+                limit=None,
+                emit_runtime=True,
+                emit_fused=False,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["schema_version"], "accepted_fixture_trial_batch_v1")
+            self.assertEqual(payload["failed_count"], 1)
+            self.assertNotIn("results", payload)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_run_accepted_fixture_trial_batch_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--run-accepted-fixture-trial-batch",
+                "--fixture-source-manifest",
+                "/tmp/accepted-source-manifest.json",
+                "--full-json",
+            ]
+            stdout = io.StringIO()
+            results = [{"fixture_id": "fixture-a", "status": "ok"}]
+            with patch(
+                "run.run_accepted_fixture_trial_batch",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "accepted_fixture_trial_batch_v1",
+                    "batch_id": "batch-456",
+                    "results": results,
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["results"], results)
+        finally:
+            sys.argv = original_argv
+
     def test_cli_routes_to_compare_shadow_benchmark_evidence_modes(self) -> None:
         original_argv = sys.argv
         try:
