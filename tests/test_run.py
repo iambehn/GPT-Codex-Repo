@@ -1648,6 +1648,79 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_prepare_accepted_proxy_review_compacts_output_by_default(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--prepare-accepted-proxy-review",
+                "--accepted-fixture-trial-batch-manifest",
+                "/tmp/accepted-fixture-trial-batch.json",
+                "--gpt-repo",
+                "/tmp/gpt",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_prepare_accepted_proxy_review",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "accepted_proxy_review_prep_v1",
+                    "review_prep_id": "review-123",
+                    "fixture_count": 18,
+                    "prepared_count": 18,
+                    "skipped_count": 0,
+                    "proxy_review_session_manifest_path": "/tmp/proxy-session.json",
+                    "manifest_path": "/tmp/accepted-proxy-review.json",
+                    "results": [{"fixture_id": "fixture-a", "status": "ok"}],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/accepted-fixture-trial-batch.json",
+                output_root=None,
+                output_path=None,
+                gpt_repo="/tmp/gpt",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["schema_version"], "accepted_proxy_review_prep_v1")
+            self.assertEqual(payload["prepared_count"], 18)
+            self.assertNotIn("results", payload)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_prepare_accepted_proxy_review_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--prepare-accepted-proxy-review",
+                "--accepted-fixture-trial-batch-manifest",
+                "/tmp/accepted-fixture-trial-batch.json",
+                "--full-json",
+            ]
+            stdout = io.StringIO()
+            results = [{"fixture_id": "fixture-a", "status": "ok"}]
+            with patch(
+                "run.run_prepare_accepted_proxy_review",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "accepted_proxy_review_prep_v1",
+                    "review_prep_id": "review-456",
+                    "results": results,
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["results"], results)
+        finally:
+            sys.argv = original_argv
+
     def test_cli_routes_to_compare_shadow_benchmark_evidence_modes(self) -> None:
         original_argv = sys.argv
         try:
@@ -3896,6 +3969,62 @@ class RunTests(unittest.TestCase):
             self.assertEqual(result["selection_source"], str(batch_report.resolve()))
             self.assertEqual(result["item_count"], 1)
             self.assertEqual(Path(result["items"][0]["source"]).name, "alpha.mp4")
+
+    def test_prepare_proxy_review_can_use_explicit_batch_report_candidates_without_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            gpt_repo = root / "gpt"
+            media_root = root / "media"
+            _write_gpt_review_repo(gpt_repo)
+
+            media_root.mkdir(parents=True, exist_ok=True)
+            alpha_source = media_root / "alpha.mp4"
+            alpha_source.write_bytes(b"alpha")
+
+            sidecar_path = root / "alpha.proxy_scan.json"
+            sidecar_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "proxy_scan_v1",
+                        "game": "marvel_rivals",
+                        "source": str(alpha_source),
+                        "window_count": 0,
+                        "signal_count": 0,
+                        "windows": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            batch_report = root / "batch.json"
+            batch_report.write_text(
+                json.dumps(
+                    {
+                        "results": [
+                            {
+                                "sidecar_path": str(sidecar_path),
+                                "source": str(alpha_source),
+                                "top_recommended_action": "download_candidate",
+                                "top_proxy_score": 0.42,
+                                "sources": ["accepted_clip"],
+                                "source_families": ["accepted_ingest"],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.object(proxy_review_bridge, "REPO_ROOT", root):
+                result = run_prepare_proxy_review(
+                    "marvel_rivals",
+                    batch_report=batch_report,
+                    gpt_repo=gpt_repo,
+                )
+
+            self.assertEqual(result["item_count"], 1)
+            self.assertEqual(Path(result["items"][0]["source"]).name, "alpha.mp4")
+            self.assertEqual(result["items"][0]["top_proxy_score"], 0.42)
 
     def test_apply_proxy_review_updates_sidecars_and_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

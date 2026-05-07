@@ -99,6 +99,7 @@ from pipeline.accepted_clip_inventory import build_accepted_clip_inventory
 from pipeline.accepted_clip_intake_manifest import build_accepted_clip_intake_manifest
 from pipeline.accepted_clip_source_manifest_adapter import adapt_accepted_clip_intake_to_source_manifest
 from pipeline.accepted_fixture_trial_batch import run_accepted_fixture_trial_batch as run_accepted_fixture_trial_batch_pipeline
+from pipeline.accepted_proxy_review_prep import prepare_accepted_proxy_review as prepare_accepted_proxy_review_pipeline
 from pipeline.shadow_operator_workflow import run_shadow_operator_workflow
 from pipeline.shadow_benchmark_matrix import (
     run_shadow_benchmark_matrix,
@@ -783,6 +784,21 @@ def run_accepted_fixture_trial_batch(
         limit=limit,
         emit_runtime=emit_runtime,
         emit_fused=emit_fused,
+    )
+
+
+def run_prepare_accepted_proxy_review(
+    accepted_fixture_trial_batch_manifest: str | Path,
+    *,
+    output_root: str | Path | None = None,
+    output_path: str | Path | None = None,
+    gpt_repo: str | Path | None = None,
+) -> dict[str, Any]:
+    return prepare_accepted_proxy_review_pipeline(
+        accepted_fixture_trial_batch_manifest,
+        output_root=output_root,
+        output_path=output_path,
+        gpt_repo=gpt_repo,
     )
 
 
@@ -2648,6 +2664,7 @@ _COMPACT_OUTPUT_COMMANDS = {
     "build_accepted_clip_intake_manifest",
     "adapt_accepted_clip_intake_to_source_manifest",
     "run_accepted_fixture_trial_batch",
+    "prepare_accepted_proxy_review",
     "materialize_synthetic_post_coverage",
     "report_unresolved_derived_rows",
     "summarize_derived_row_review",
@@ -3167,6 +3184,25 @@ def _compact_cli_payload(command_name: str, result: dict[str, Any]) -> dict[str,
             "failed_count": result.get("failed_count", 0),
             "manifest_path": result.get("manifest_path"),
             "source_manifest_id": result.get("source_manifest_id"),
+            "results_sample": results,
+        }
+        if results_omitted:
+            compact["results_omitted_count"] = results_omitted
+            compact["truncated"] = True
+        return compact
+
+    if command_name == "prepare_accepted_proxy_review":
+        results, results_omitted = _sample_list(result.get("results"))
+        compact = {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "review_prep_id": result.get("review_prep_id"),
+            "fixture_count": result.get("fixture_count", 0),
+            "prepared_count": result.get("prepared_count", 0),
+            "skipped_count": result.get("skipped_count", 0),
+            "proxy_review_session_manifest_path": result.get("proxy_review_session_manifest_path"),
+            "manifest_path": result.get("manifest_path"),
             "results_sample": results,
         }
         if results_omitted:
@@ -4341,6 +4377,11 @@ def main() -> int:
         help="Run existing fixture-trial execution across an adapted accepted source manifest and write one batch report.",
     )
     parser.add_argument(
+        "--prepare-accepted-proxy-review",
+        action="store_true",
+        help="Prepare proxy review from one accepted fixture-trial batch using the existing proxy review bridge.",
+    )
+    parser.add_argument(
         "--export-runtime-analysis",
         metavar="SIDECAR_ROOT",
         help="Export runtime-analysis sidecars into scored clip, event, and detection datasets.",
@@ -4968,6 +5009,11 @@ def main() -> int:
         help="Optional fixture trial batch manifest used by --render-unified-replay-viewer and --launch-highlight-review-app.",
     )
     parser.add_argument(
+        "--accepted-fixture-trial-batch-manifest",
+        metavar="PATH",
+        help="Optional accepted fixture-trial batch manifest used by --prepare-accepted-proxy-review.",
+    )
+    parser.add_argument(
         "--baseline-sidecar-root",
         metavar="PATH",
         help="Baseline sidecar root used by --compare-fixture-sidecars.",
@@ -5529,6 +5575,21 @@ def main() -> int:
                 emit_fused=args.emit_fused,
             ),
             command_name="run_accepted_fixture_trial_batch",
+            full_json=args.full_json,
+        )
+        return 0
+
+    if args.prepare_accepted_proxy_review:
+        if not args.accepted_fixture_trial_batch_manifest:
+            parser.error("--prepare-accepted-proxy-review requires --accepted-fixture-trial-batch-manifest")
+        _print_cli_result(
+            run_prepare_accepted_proxy_review(
+                args.accepted_fixture_trial_batch_manifest,
+                output_root=args.output_root,
+                output_path=args.output_path,
+                gpt_repo=args.gpt_repo,
+            ),
+            command_name="prepare_accepted_proxy_review",
             full_json=args.full_json,
         )
         return 0

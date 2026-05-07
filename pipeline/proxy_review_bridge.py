@@ -185,20 +185,18 @@ def _select_candidates(
     if batch_report is not None:
         report_path = _resolve_path(batch_report)
         report = _load_json(report_path)
-        sidecar_paths = [
-            Path(str(result["sidecar_path"])).resolve()
-            for result in report.get("results", [])
-            if str(result.get("top_recommended_action", "")) == action and result.get("sidecar_path")
-        ]
+        report_rows = report.get("results", [])
         selection_source = str(report_path)
     else:
         root = _default_sidecar_root(game, sidecar_root)
-        sidecar_paths = sorted(root.rglob("*.proxy_scan.json"))
+        report_rows = [{"sidecar_path": str(path.resolve())} for path in sorted(root.rglob("*.proxy_scan.json"))]
         selection_source = str(root)
 
     candidates: list[dict[str, Any]] = []
-    for sidecar_path in sidecar_paths:
-        candidate = _candidate_from_sidecar(sidecar_path, game=game)
+    for row in report_rows:
+        if not isinstance(row, dict):
+            continue
+        candidate = _candidate_from_report_row(row, game=game)
         if candidate is None:
             continue
         if candidate["top_recommended_action"] != action:
@@ -209,6 +207,39 @@ def _select_candidates(
     if limit is not None:
         candidates = candidates[:limit]
     return candidates, selection_source
+
+
+def _candidate_from_report_row(row: dict[str, Any], *, game: str) -> dict[str, Any] | None:
+    explicit_candidate = _candidate_from_explicit_report_row(row, game=game)
+    if explicit_candidate is not None:
+        return explicit_candidate
+    sidecar_path_value = row.get("sidecar_path")
+    if not sidecar_path_value:
+        return None
+    return _candidate_from_sidecar(Path(str(sidecar_path_value)).resolve(), game=game)
+
+
+def _candidate_from_explicit_report_row(row: dict[str, Any], *, game: str) -> dict[str, Any] | None:
+    source_value = str(row.get("source", "")).strip()
+    sidecar_value = str(row.get("sidecar_path", "")).strip()
+    if not source_value or not sidecar_value:
+        return None
+    source_path = Path(source_value).expanduser()
+    if not source_path.is_absolute():
+        source_path = source_path.resolve()
+    if not source_path.exists() or not source_path.is_file():
+        return None
+    recommended_action = str(row.get("top_recommended_action", "")).strip() or "none"
+    return {
+        "sidecar_path": str(Path(sidecar_value).expanduser().resolve()),
+        "source": str(source_path.resolve()),
+        "top_proxy_score": float(row.get("top_proxy_score", 0.0) or 0.0),
+        "top_recommended_action": recommended_action,
+        "sources": list(row.get("sources", [])) if isinstance(row.get("sources"), list) else [],
+        "source_families": list(row.get("source_families", [])) if isinstance(row.get("source_families"), list) else [],
+        "window_count": int(row.get("window_count", 0) or 0),
+        "signal_count": int(row.get("signal_count", 0) or 0),
+    }
 
 
 def _candidate_from_sidecar(sidecar_path: Path, *, game: str) -> dict[str, Any] | None:
