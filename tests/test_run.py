@@ -1352,6 +1352,83 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_build_accepted_clip_inventory_compacts_output_by_default(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--build-accepted-clip-inventory",
+                "--source-root",
+                "/tmp/accepted/marvel_rivals",
+                "--game",
+                "marvel_rivals",
+                "--output-root",
+                "/tmp/accepted-inventory",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_build_accepted_clip_inventory",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "accepted_clip_inventory_v1",
+                    "inventory_id": "inventory-123",
+                    "row_count": 34,
+                    "canonical_clip_count": 29,
+                    "meta_linked_count": 5,
+                    "duplicate_group_count": 5,
+                    "manifest_path": "/tmp/accepted-inventory/out.manifest.json",
+                    "csv_path": "/tmp/accepted-inventory/out.csv",
+                    "rows": [{"clip_id": "ABSOLUTE CINEMA_3522796292"}],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                source_root="/tmp/accepted/marvel_rivals",
+                game="marvel_rivals",
+                output_root="/tmp/accepted-inventory",
+                output_path=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["schema_version"], "accepted_clip_inventory_v1")
+            self.assertEqual(payload["duplicate_group_count"], 5)
+            self.assertNotIn("rows", payload)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_build_accepted_clip_inventory_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--build-accepted-clip-inventory",
+                "--source-root",
+                "/tmp/accepted/marvel_rivals",
+                "--game",
+                "marvel_rivals",
+                "--full-json",
+            ]
+            stdout = io.StringIO()
+            rows = [{"clip_id": "ABSOLUTE CINEMA_3522796292", "variant_count": 2}]
+            with patch(
+                "run.run_build_accepted_clip_inventory",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "accepted_clip_inventory_v1",
+                    "inventory_id": "inventory-456",
+                    "rows": rows,
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["rows"], rows)
+        finally:
+            sys.argv = original_argv
 
     def test_cli_routes_to_compare_shadow_benchmark_evidence_modes(self) -> None:
         original_argv = sys.argv

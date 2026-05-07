@@ -95,6 +95,7 @@ from pipeline.shadow_evaluation_policy import (
 )
 from pipeline.approval_target_dataset import build_approval_target_dataset
 from pipeline.approval_target_dataset_adapter import adapt_approval_target_dataset
+from pipeline.accepted_clip_inventory import build_accepted_clip_inventory
 from pipeline.shadow_operator_workflow import run_shadow_operator_workflow
 from pipeline.shadow_benchmark_matrix import (
     run_shadow_benchmark_matrix,
@@ -716,6 +717,20 @@ def run_adapt_approval_target_dataset(
         output_path=output_path,
     )
 
+
+def run_build_accepted_clip_inventory(
+    *,
+    source_root: str | Path,
+    game: str,
+    output_root: str | Path | None = None,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    return build_accepted_clip_inventory(
+        source_root=source_root,
+        game=game,
+        output_root=output_root,
+        output_path=output_path,
+    )
 
 
 def run_run_shadow_benchmark_matrix(
@@ -2576,6 +2591,7 @@ _COMPACT_OUTPUT_COMMANDS = {
     "run_shadow_operator",
     "build_approval_target_dataset",
     "adapt_approval_target_dataset",
+    "build_accepted_clip_inventory",
     "materialize_synthetic_post_coverage",
     "report_unresolved_derived_rows",
     "summarize_derived_row_review",
@@ -3045,6 +3061,19 @@ def _compact_cli_payload(command_name: str, result: dict[str, Any]) -> dict[str,
             "source_approval_target_manifest_path": result.get("source_approval_target_manifest_path"),
         }
 
+    if command_name == "build_accepted_clip_inventory":
+        return {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "inventory_id": result.get("inventory_id"),
+            "row_count": result.get("row_count"),
+            "canonical_clip_count": result.get("canonical_clip_count"),
+            "meta_linked_count": result.get("meta_linked_count"),
+            "duplicate_group_count": result.get("duplicate_group_count"),
+            "manifest_path": result.get("manifest_path"),
+            "csv_path": result.get("csv_path"),
+        }
 
     if command_name == "report_onboarding_batch":
         drafts, drafts_omitted = _sample_list(result.get("drafts"))
@@ -4183,6 +4212,11 @@ def main() -> int:
         help="Adapt an approval_target_dataset_v1 manifest into a minimal V2 training export for the current shadow stack.",
     )
     parser.add_argument(
+        "--build-accepted-clip-inventory",
+        action="store_true",
+        help="Build a canonical accepted-clip inventory from one local accepted clip root.",
+    )
+    parser.add_argument(
         "--export-runtime-analysis",
         metavar="SIDECAR_ROOT",
         help="Export runtime-analysis sidecars into scored clip, event, and detection datasets.",
@@ -5309,6 +5343,24 @@ def main() -> int:
         )
         return 0
 
+    if args.build_accepted_clip_inventory:
+        if not args.source_root:
+            parser.error("--build-accepted-clip-inventory requires --source-root")
+        if len(args.source_root) != 1:
+            parser.error("--build-accepted-clip-inventory accepts exactly one --source-root")
+        if not args.game:
+            parser.error("--build-accepted-clip-inventory requires --game")
+        _print_cli_result(
+            run_build_accepted_clip_inventory(
+                source_root=args.source_root[0],
+                game=args.game,
+                output_root=args.output_root,
+                output_path=args.output_path,
+            ),
+            command_name="build_accepted_clip_inventory",
+            full_json=args.full_json,
+        )
+        return 0
 
     if args.summarize_shadow_experiment_ledger:
         _print_cli_result(
