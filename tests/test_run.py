@@ -3686,6 +3686,8 @@ class RunTests(unittest.TestCase):
                 "/tmp/sidecars",
                 "--fixture-manifest",
                 "/tmp/fixtures.json",
+                "--proxy-review-session-manifest",
+                "/tmp/proxy-review-session.json",
             ]
             stdout = io.StringIO()
             with patch(
@@ -3700,6 +3702,7 @@ class RunTests(unittest.TestCase):
                 fixture_manifest="/tmp/fixtures.json",
                 fixture_comparison_report=None,
                 fixture_trial_batch_manifest=None,
+                proxy_review_session_manifest="/tmp/proxy-review-session.json",
                 proxy_calibration_report=None,
                 proxy_replay_report=None,
                 runtime_calibration_report=None,

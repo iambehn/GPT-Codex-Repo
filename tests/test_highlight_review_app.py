@@ -9,7 +9,11 @@ from unittest.mock import patch
 from pipeline.clip_registry import refresh_clip_registry
 from pipeline.highlight_selection_export import export_highlight_selection
 from pipeline.hook_candidate_export import derive_hook_candidates
-from pipeline.highlight_review_app import launch_highlight_review_app, load_highlight_review_records
+from pipeline.highlight_review_app import (
+    _write_proxy_review_session_decision,
+    launch_highlight_review_app,
+    load_highlight_review_records,
+)
 
 
 def _proxy_sidecar(source: Path) -> dict[str, object]:
@@ -125,6 +129,63 @@ class _FakeComponent:
     def change(self, *args, **kwargs) -> None:
         return None
 
+    def click(self, *args, **kwargs) -> None:
+        return None
+
+
+def _proxy_review_session(root: Path, source: Path, sidecar: Path, *, review_status: str | None = None) -> dict[str, object]:
+    processing_root = root / "gpt" / "processing" / "marvel_rivals"
+    inbox_root = root / "gpt" / "inbox" / "marvel_rivals"
+    processing_root.mkdir(parents=True, exist_ok=True)
+    inbox_root.mkdir(parents=True, exist_ok=True)
+    processed_path = processing_root / "proxy-review-001.mp4"
+    processed_path.write_bytes(b"video")
+    meta_path = inbox_root / "proxy-review-001.meta.json"
+    meta_payload = {
+        "clip_id": "proxy-review-001",
+        "game": "marvel_rivals",
+        "clip_path": str(processed_path),
+        "processed_path": str(processed_path),
+        "meta_path": str(meta_path),
+        "status": "queue",
+        "selected_template_id": "proxy_review_bridge",
+    }
+    if review_status is not None:
+        meta_payload["review_status"] = review_status
+    meta_path.write_text(json.dumps(meta_payload, indent=2), encoding="utf-8")
+    (inbox_root / f"{source.stem}.srt").write_text("1\n00:00:00,000 --> 00:00:01,000\nhello\n", encoding="utf-8")
+    (inbox_root / f"{source.stem}.whisper.json").write_text(json.dumps({"segments": []}), encoding="utf-8")
+    return {
+        "schema_version": "proxy_review_session_v1",
+        "session_id": "proxy-session-123",
+        "game": "marvel_rivals",
+        "gpt_repo": str((root / "gpt").resolve()),
+        "selection_source": str(root / "batch.json"),
+        "selection_action_filter": "download_candidate",
+        "limit": None,
+        "created_at": "2026-05-08T00:00:00+00:00",
+        "materialization_mode": "copy",
+        "item_count": 1,
+        "items": [
+            {
+                "clip_id": "proxy-review-001",
+                "sidecar_path": str(sidecar.resolve()),
+                "source": str(source.resolve()),
+                "gpt_processed_path": str(processed_path.resolve()),
+                "gpt_meta_path": str(meta_path.resolve()),
+                "top_proxy_score": 0.81,
+                "top_recommended_action": "download_candidate",
+                "sources": ["audio_spike", "visual_flash_spike"],
+                "source_families": ["audio_prepass", "visual_prepass"],
+                "materialization_mode": "copy",
+                "bridge_owned": True,
+                "apply_status": "pending",
+                "review_status": review_status or "unreviewed",
+            }
+        ],
+        "manifest_path": str((root / "proxy_review_session.json").resolve()),
+    }
+
 
 class HighlightReviewAppTests(unittest.TestCase):
     def test_load_highlight_review_records_reads_fixture_and_sidecar_entries(self) -> None:
@@ -175,6 +236,7 @@ class HighlightReviewAppTests(unittest.TestCase):
                     "Dropdown": _FakeComponent,
                     "Textbox": _FakeComponent,
                     "Code": _FakeComponent,
+                    "Button": _FakeComponent,
                 },
             )()
             with patch("pipeline.highlight_review_app.importlib.import_module", return_value=fake_gradio):
@@ -215,6 +277,52 @@ class HighlightReviewAppTests(unittest.TestCase):
             self.assertEqual(sidecar_record["selected_highlight_fusion_ids"], ["fused-123abc"])
             self.assertEqual(sidecar_record["hook_candidate_count"], 1)
             self.assertTrue(sidecar_record["strongest_hook_archetype"])
+
+    def test_load_highlight_review_records_includes_proxy_review_session_items(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            source = root / "alpha.mp4"
+            source.write_bytes(b"source")
+            sidecar = root / "alpha.proxy_scan.json"
+            sidecar.write_text(json.dumps(_proxy_sidecar(source), indent=2), encoding="utf-8")
+            session_path = root / "proxy_review_session.json"
+            session_path.write_text(
+                json.dumps(_proxy_review_session(root, source, sidecar, review_status="approved"), indent=2),
+                encoding="utf-8",
+            )
+
+            records = load_highlight_review_records(proxy_review_session_manifest=session_path)
+
+            self.assertEqual(len(records), 1)
+            row = records[0]
+            self.assertEqual(row["kind"], "proxy_review_session_item")
+            self.assertEqual(row["review_status"], "approved")
+            self.assertEqual(row["bridge_sources"], ["audio_spike", "visual_flash_spike"])
+            self.assertTrue(row["transcript_available"])
+            self.assertTrue(str(row["transcript_srt_path"]).endswith(".srt"))
+            self.assertTrue(str(row["transcript_whisper_json_path"]).endswith(".whisper.json"))
+
+    def test_write_proxy_review_session_decision_updates_meta_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            source = root / "alpha.mp4"
+            source.write_bytes(b"source")
+            sidecar = root / "alpha.proxy_scan.json"
+            sidecar.write_text(json.dumps(_proxy_sidecar(source), indent=2), encoding="utf-8")
+            session = _proxy_review_session(root, source, sidecar)
+            meta_path = Path(str(session["items"][0]["gpt_meta_path"]))
+
+            approved = _write_proxy_review_session_decision(meta_path, "approved")
+            self.assertTrue(approved["ok"])
+            approved_payload = json.loads(meta_path.read_text(encoding="utf-8"))
+            self.assertEqual(approved_payload["review_status"], "approved")
+            self.assertIn("reviewed_at", approved_payload)
+
+            unreviewed = _write_proxy_review_session_decision(meta_path, "unreviewed")
+            self.assertTrue(unreviewed["ok"])
+            unreviewed_payload = json.loads(meta_path.read_text(encoding="utf-8"))
+            self.assertEqual(unreviewed_payload["review_status"], "unreviewed")
+            self.assertNotIn("reviewed_at", unreviewed_payload)
 
 
 if __name__ == "__main__":

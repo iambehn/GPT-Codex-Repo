@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import importlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from pipeline.clip_registry import load_candidate_lifecycle_details, load_hook_candidate_details
 from pipeline.evaluation_fixtures import load_evaluation_fixture_manifest
+from pipeline.proxy_review_bridge import PROXY_REVIEW_SESSION_SCHEMA_VERSION
 from pipeline.unified_replay_viewer import render_unified_replay_viewer
 
 
@@ -16,6 +18,7 @@ def load_highlight_review_records(
     fixture_manifest_path: str | Path | None = None,
     fixture_comparison_report: str | Path | None = None,
     fixture_trial_batch_manifest: str | Path | None = None,
+    proxy_review_session_manifest: str | Path | None = None,
     registry_path: str | Path | None = None,
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
@@ -73,6 +76,9 @@ def load_highlight_review_records(
                     "fixture_trial_batch_rows": batch_summary_by_fixture.get(str(row["fixture_id"]), []),
                 }
             )
+
+    if proxy_review_session_manifest is not None:
+        records.extend(_load_proxy_review_session_records(proxy_review_session_manifest))
 
     if sidecar_root is not None:
         root = _resolve_path(sidecar_root)
@@ -183,6 +189,7 @@ def launch_highlight_review_app(
     fixture_manifest_path: str | Path | None = None,
     fixture_comparison_report: str | Path | None = None,
     fixture_trial_batch_manifest: str | Path | None = None,
+    proxy_review_session_manifest: str | Path | None = None,
     proxy_calibration_report: str | Path | None = None,
     proxy_replay_report: str | Path | None = None,
     runtime_calibration_report: str | Path | None = None,
@@ -196,6 +203,7 @@ def launch_highlight_review_app(
         fixture_manifest_path=fixture_manifest_path,
         fixture_comparison_report=fixture_comparison_report,
         fixture_trial_batch_manifest=fixture_trial_batch_manifest,
+        proxy_review_session_manifest=proxy_review_session_manifest,
         registry_path=registry_path,
     )
     if not records:
@@ -220,6 +228,13 @@ def launch_highlight_review_app(
     def _render_record(record_id: str) -> tuple[str, str, str, str]:
         row = records_by_id[str(record_id)]
         summary = _record_summary(row)
+        if row.get("kind") == "proxy_review_session_item":
+            return (
+                summary,
+                str(row.get("processed_clip_path") or ""),
+                str(row.get("source_clip_path") or ""),
+                json.dumps(_proxy_review_session_payload(row), indent=2),
+            )
         if row.get("kind") == "fixture":
             comparison_rows = list(row.get("fixture_comparison_rows", []))
             batch_rows = list(row.get("fixture_trial_batch_rows", []))
@@ -271,6 +286,22 @@ def launch_highlight_review_app(
         )
         return summary, str(result.get("viewer_path", "")), "", json.dumps(result, indent=2)
 
+    def _apply_decision(record_id: str, decision: str) -> tuple[str, str, str, str, str]:
+        row = records_by_id[str(record_id)]
+        if row.get("kind") != "proxy_review_session_item":
+            summary, primary_path, secondary_path, payload = _render_record(record_id)
+            return summary, primary_path, secondary_path, payload, "Selected record is not a proxy review session item."
+        write_result = _write_proxy_review_session_decision(row["gpt_meta_path"], decision)
+        if write_result.get("ok"):
+            row["review_status"] = write_result.get("review_status")
+            payload = _load_json(_resolve_path(row["gpt_meta_path"]))
+            row["reviewed_at"] = payload.get("reviewed_at")
+            status_message = f"Updated review status to {row['review_status']}."
+        else:
+            status_message = str(write_result.get("error") or "Failed to update review status.")
+        summary, primary_path, secondary_path, payload = _render_record(record_id)
+        return summary, primary_path, secondary_path, payload, status_message
+
     with gradio.Blocks(title="Highlight Review App") as app:
         gradio.Markdown("# Highlight Review App")
         selector = gradio.Dropdown(choices=choices, value=choices[0][1], label="Fixture or reviewed clip")
@@ -278,15 +309,34 @@ def launch_highlight_review_app(
         baseline_viewer_path_box = gradio.Textbox(label="Baseline viewer path")
         trial_viewer_path_box = gradio.Textbox(label="Trial viewer path")
         payload_box = gradio.Code(label="Viewer render payload", language="json")
+        decision_status_box = gradio.Textbox(label="Review decision status")
+        approve_button = gradio.Button("Approve")
+        reject_button = gradio.Button("Reject")
+        unreviewed_button = gradio.Button("Leave unreviewed")
         selector.change(
             _render_record,
             inputs=selector,
             outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box],
         )
+        approve_button.click(
+            lambda record_id: _apply_decision(record_id, "approved"),
+            inputs=selector,
+            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+        )
+        reject_button.click(
+            lambda record_id: _apply_decision(record_id, "rejected"),
+            inputs=selector,
+            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+        )
+        unreviewed_button.click(
+            lambda record_id: _apply_decision(record_id, "unreviewed"),
+            inputs=selector,
+            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+        )
         app.load(
-            lambda: _render_record(choices[0][1]),
+            lambda: (*_render_record(choices[0][1]), ""),
             inputs=None,
-            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box],
+            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
         )
 
     if launch:
@@ -327,6 +377,21 @@ def _base_sidecar_record(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _record_summary(row: dict[str, Any]) -> str:
+    if row.get("kind") == "proxy_review_session_item":
+        transcript_status = "available" if row.get("transcript_available") else "missing"
+        return "\n".join(
+            [
+                f"## {row['label']}",
+                f"- Game: `{row.get('game') or 'unknown'}`",
+                f"- Review status: `{row.get('review_status') or 'unreviewed'}`",
+                f"- Session: `{row.get('session_id') or 'n/a'}`",
+                f"- Bridge score: `{row.get('bridge_score') if row.get('bridge_score') is not None else 'n/a'}`",
+                f"- Bridge sources: `{','.join(row.get('bridge_sources', [])) or 'n/a'}`",
+                f"- Bridge source families: `{','.join(row.get('bridge_source_families', [])) or 'n/a'}`",
+                f"- Transcript: `{transcript_status}`",
+                f"- Meta path: `{row.get('gpt_meta_path') or 'n/a'}`",
+            ]
+        )
     if row.get("kind") == "fixture":
         comparison_rows = list(row.get("fixture_comparison_rows", []))
         batch_rows = list(row.get("fixture_trial_batch_rows", []))
@@ -389,6 +454,129 @@ def _load_json(path: Path) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
+
+
+def _load_proxy_review_session_records(session_manifest_path: str | Path) -> list[dict[str, Any]]:
+    manifest_path = _resolve_path(session_manifest_path)
+    payload = _load_json(manifest_path)
+    if payload.get("schema_version") != PROXY_REVIEW_SESSION_SCHEMA_VERSION:
+        return []
+    game = str(payload.get("game", "")).strip() or None
+    session_id = str(payload.get("session_id", "")).strip() or None
+    records: list[dict[str, Any]] = []
+    for index, item in enumerate(list(payload.get("items", []))):
+        if not isinstance(item, dict):
+            continue
+        gpt_meta_path_value = str(item.get("gpt_meta_path", "")).strip()
+        processed_clip_value = str(item.get("gpt_processed_path", "")).strip()
+        source_value = str(item.get("source", "")).strip()
+        if not gpt_meta_path_value or not processed_clip_value:
+            continue
+        gpt_meta_path = _resolve_path(gpt_meta_path_value)
+        meta_payload = _load_json(gpt_meta_path)
+        transcript_paths = _discover_proxy_review_transcript_paths(
+            source_clip_path=source_value or None,
+            gpt_meta_path=gpt_meta_path,
+        )
+        label = Path(source_value).name if source_value else Path(processed_clip_value).name
+        records.append(
+            {
+                "record_id": f"proxy-session::{session_id or 'unknown'}::{index:03d}",
+                "label": label,
+                "kind": "proxy_review_session_item",
+                "game": game,
+                "source": source_value or None,
+                "processed_clip_path": processed_clip_value,
+                "source_clip_path": source_value or None,
+                "proxy_sidecar_path": str(item.get("sidecar_path", "")).strip() or None,
+                "gpt_meta_path": str(gpt_meta_path),
+                "gpt_processed_path": processed_clip_value,
+                "review_status": _normalized_review_status(meta_payload.get("review_status")),
+                "reviewed_at": meta_payload.get("reviewed_at"),
+                "bridge_score": item.get("top_proxy_score"),
+                "bridge_sources": list(item.get("sources", [])) if isinstance(item.get("sources"), list) else [],
+                "bridge_source_families": list(item.get("source_families", [])) if isinstance(item.get("source_families"), list) else [],
+                "transcript_srt_path": transcript_paths.get("srt"),
+                "transcript_whisper_json_path": transcript_paths.get("whisper_json"),
+                "transcript_available": bool(transcript_paths.get("srt") or transcript_paths.get("whisper_json")),
+                "session_id": session_id,
+                "gpt_meta_payload": meta_payload,
+            }
+        )
+    return records
+
+
+def _discover_proxy_review_transcript_paths(
+    *,
+    source_clip_path: str | None,
+    gpt_meta_path: Path,
+) -> dict[str, str | None]:
+    results: dict[str, str | None] = {"srt": None, "whisper_json": None}
+    if not source_clip_path:
+        return results
+    source_stem = Path(source_clip_path).stem
+    inbox_dir = gpt_meta_path.parent
+    srt_path = inbox_dir / f"{source_stem}.srt"
+    whisper_path = inbox_dir / f"{source_stem}.whisper.json"
+    if srt_path.exists():
+        results["srt"] = str(srt_path.resolve())
+    if whisper_path.exists():
+        results["whisper_json"] = str(whisper_path.resolve())
+    return results
+
+
+def _normalized_review_status(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    if text in {"approved", "rejected", "unreviewed"}:
+        return text
+    return "unreviewed"
+
+
+def _write_proxy_review_session_decision(gpt_meta_path: str | Path, decision: str) -> dict[str, Any]:
+    meta_path = _resolve_path(gpt_meta_path)
+    payload = _load_json(meta_path)
+    if not payload:
+        return {
+            "ok": False,
+            "error": "gpt meta payload is unreadable or invalid",
+        }
+    normalized = _normalized_review_status(decision)
+    payload["review_status"] = normalized
+    if normalized == "unreviewed":
+        payload.pop("reviewed_at", None)
+    else:
+        payload["reviewed_at"] = datetime.now(UTC).isoformat()
+    try:
+        meta_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    except OSError as exc:
+        return {
+            "ok": False,
+            "error": str(exc),
+        }
+    return {
+        "ok": True,
+        "review_status": normalized,
+        "gpt_meta_path": str(meta_path),
+    }
+
+
+def _proxy_review_session_payload(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kind": row.get("kind"),
+        "session_id": row.get("session_id"),
+        "processed_clip_path": row.get("processed_clip_path"),
+        "source_clip_path": row.get("source_clip_path"),
+        "proxy_sidecar_path": row.get("proxy_sidecar_path"),
+        "gpt_meta_path": row.get("gpt_meta_path"),
+        "review_status": row.get("review_status"),
+        "reviewed_at": row.get("reviewed_at"),
+        "bridge_score": row.get("bridge_score"),
+        "bridge_sources": row.get("bridge_sources", []),
+        "bridge_source_families": row.get("bridge_source_families", []),
+        "transcript_srt_path": row.get("transcript_srt_path"),
+        "transcript_whisper_json_path": row.get("transcript_whisper_json_path"),
+        "gpt_meta_payload": row.get("gpt_meta_payload", {}),
+    }
 
 
 def _selected_highlight_details_from_lifecycle_row(row: dict[str, Any]) -> dict[str, Any]:

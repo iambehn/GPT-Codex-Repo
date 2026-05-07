@@ -1692,6 +1692,7 @@ def run_launch_highlight_review_app(
     fixture_manifest: str | Path | None = None,
     fixture_comparison_report: str | Path | None = None,
     fixture_trial_batch_manifest: str | Path | None = None,
+    proxy_review_session_manifest: str | Path | None = None,
     proxy_calibration_report: str | Path | None = None,
     proxy_replay_report: str | Path | None = None,
     runtime_calibration_report: str | Path | None = None,
@@ -1705,6 +1706,7 @@ def run_launch_highlight_review_app(
         fixture_manifest_path=fixture_manifest,
         fixture_comparison_report=fixture_comparison_report,
         fixture_trial_batch_manifest=fixture_trial_batch_manifest,
+        proxy_review_session_manifest=proxy_review_session_manifest,
         proxy_calibration_report=proxy_calibration_report,
         proxy_replay_report=proxy_replay_report,
         runtime_calibration_report=runtime_calibration_report,
@@ -5009,6 +5011,11 @@ def main() -> int:
         help="Optional fixture trial batch manifest used by --render-unified-replay-viewer and --launch-highlight-review-app.",
     )
     parser.add_argument(
+        "--proxy-review-session-manifest",
+        metavar="PATH",
+        help="Optional proxy review session manifest used by --launch-highlight-review-app.",
+    )
+    parser.add_argument(
         "--accepted-fixture-trial-batch-manifest",
         metavar="PATH",
         help="Optional accepted fixture-trial batch manifest used by --prepare-accepted-proxy-review.",
@@ -6438,6 +6445,7 @@ def main() -> int:
             fixture_manifest=args.fixture_manifest,
             fixture_comparison_report=args.fixture_comparison_report,
             fixture_trial_batch_manifest=args.fixture_trial_batch_manifest,
+            proxy_review_session_manifest=args.proxy_review_session_manifest,
             proxy_calibration_report=args.proxy_calibration_report,
             proxy_replay_report=args.proxy_replay_report,
             runtime_calibration_report=args.runtime_calibration_report,
