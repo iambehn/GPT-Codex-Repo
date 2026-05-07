@@ -1199,6 +1199,160 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_build_approval_target_dataset_compacts_output_by_default(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--build-approval-target-dataset",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--platform",
+                "youtube",
+                "--evidence-mode",
+                "real_only",
+                "--output-root",
+                "/tmp/approval-datasets",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_build_approval_target_dataset",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "approval_target_dataset_v1",
+                    "dataset_id": "approval-123",
+                    "row_count": 12,
+                    "positive_count": 7,
+                    "negative_count": 5,
+                    "training_ready": True,
+                    "readiness_reason": "ready",
+                    "manifest_path": "/tmp/approval-datasets/out.manifest.json",
+                    "csv_path": "/tmp/approval-datasets/out.csv",
+                    "rows": [{"candidate_id": "candidate-1"}],
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                registry_path="/tmp/registry.sqlite",
+                game="marvel_rivals",
+                platform="youtube",
+                evidence_mode="real_only",
+                output_root="/tmp/approval-datasets",
+                output_path=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["schema_version"], "approval_target_dataset_v1")
+            self.assertEqual(payload["positive_count"], 7)
+            self.assertNotIn("rows", payload)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_build_approval_target_dataset_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--build-approval-target-dataset",
+                "--registry-path",
+                "/tmp/registry.sqlite",
+                "--game",
+                "marvel_rivals",
+                "--full-json",
+            ]
+            stdout = io.StringIO()
+            rows = [{"candidate_id": "candidate-1", "approval_label": 1.0}]
+            with patch(
+                "run.run_build_approval_target_dataset",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "approval_target_dataset_v1",
+                    "dataset_id": "approval-456",
+                    "rows": rows,
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["rows"], rows)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_adapt_approval_target_dataset_compacts_output_by_default(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--adapt-approval-target-dataset",
+                "/tmp/approval.manifest.json",
+                "--output-root",
+                "/tmp/adapted-datasets",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_adapt_approval_target_dataset",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "v2_training_dataset_export_v1",
+                    "dataset_export_id": "adapted-123",
+                    "row_count": 4,
+                    "manifest_path": "/tmp/adapted-datasets/v2-training-adapted-123.manifest.json",
+                    "source_approval_target_manifest_path": "/tmp/approval.manifest.json",
+                    "dataset_views": {"candidates": {"row_count": 4}},
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/approval.manifest.json",
+                output_root="/tmp/adapted-datasets",
+                output_path=None,
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["schema_version"], "v2_training_dataset_export_v1")
+            self.assertEqual(payload["row_count"], 4)
+            self.assertNotIn("dataset_views", payload)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_adapt_approval_target_dataset_with_full_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--adapt-approval-target-dataset",
+                "/tmp/approval.manifest.json",
+                "--full-json",
+            ]
+            stdout = io.StringIO()
+            views = {"candidates": {"row_count": 4}}
+            with patch(
+                "run.run_adapt_approval_target_dataset",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "schema_version": "v2_training_dataset_export_v1",
+                    "dataset_export_id": "adapted-456",
+                    "dataset_views": views,
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["dataset_views"], views)
+        finally:
+            sys.argv = original_argv
+
+
     def test_cli_routes_to_compare_shadow_benchmark_evidence_modes(self) -> None:
         original_argv = sys.argv
         try:

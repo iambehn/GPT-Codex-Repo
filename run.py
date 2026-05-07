@@ -93,6 +93,8 @@ from pipeline.shadow_evaluation_policy import (
     evaluate_shadow_experiment_policy,
     summarize_shadow_experiment_ledger,
 )
+from pipeline.approval_target_dataset import build_approval_target_dataset
+from pipeline.approval_target_dataset_adapter import adapt_approval_target_dataset
 from pipeline.shadow_operator_workflow import run_shadow_operator_workflow
 from pipeline.shadow_benchmark_matrix import (
     run_shadow_benchmark_matrix,
@@ -681,6 +683,39 @@ def run_run_shadow_operator(
         split_key=split_key,
         train_fraction=train_fraction,
     )
+
+
+def run_build_approval_target_dataset(
+    *,
+    registry_path: str | Path | None,
+    game: str,
+    platform: str | None = None,
+    evidence_mode: str | None = None,
+    output_root: str | Path | None = None,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    return build_approval_target_dataset(
+        registry_path=registry_path,
+        game=game,
+        platform=platform,
+        evidence_mode=evidence_mode,
+        output_root=output_root,
+        output_path=output_path,
+    )
+
+
+def run_adapt_approval_target_dataset(
+    approval_target_manifest: str | Path,
+    *,
+    output_root: str | Path | None = None,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    return adapt_approval_target_dataset(
+        approval_target_manifest,
+        output_root=output_root,
+        output_path=output_path,
+    )
+
 
 
 def run_run_shadow_benchmark_matrix(
@@ -2539,6 +2574,8 @@ _COMPACT_OUTPUT_COMMANDS = {
     "evaluate_shadow_experiment_policy",
     "summarize_shadow_experiment_ledger",
     "run_shadow_operator",
+    "build_approval_target_dataset",
+    "adapt_approval_target_dataset",
     "materialize_synthetic_post_coverage",
     "report_unresolved_derived_rows",
     "summarize_derived_row_review",
@@ -2981,6 +3018,33 @@ def _compact_cli_payload(command_name: str, result: dict[str, Any]) -> dict[str,
             compact["step_results_omitted_count"] = step_results_omitted
             compact["truncated"] = True
         return compact
+
+    if command_name == "build_approval_target_dataset":
+        return {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "dataset_id": result.get("dataset_id"),
+            "row_count": result.get("row_count"),
+            "positive_count": result.get("positive_count"),
+            "negative_count": result.get("negative_count"),
+            "training_ready": result.get("training_ready"),
+            "readiness_reason": result.get("readiness_reason"),
+            "manifest_path": result.get("manifest_path"),
+            "csv_path": result.get("csv_path"),
+        }
+
+    if command_name == "adapt_approval_target_dataset":
+        return {
+            "ok": result.get("ok"),
+            "status": result.get("status"),
+            "schema_version": result.get("schema_version"),
+            "dataset_export_id": result.get("dataset_export_id"),
+            "row_count": result.get("row_count"),
+            "manifest_path": result.get("manifest_path"),
+            "source_approval_target_manifest_path": result.get("source_approval_target_manifest_path"),
+        }
+
 
     if command_name == "report_onboarding_batch":
         drafts, drafts_omitted = _sample_list(result.get("drafts"))
@@ -4109,6 +4173,16 @@ def main() -> int:
         help="Run the standardized shadow operator workflow across train, benchmark, govern, or full modes.",
     )
     parser.add_argument(
+        "--build-approval-target-dataset",
+        action="store_true",
+        help="Build a dedicated approval-target dataset for candidate_approval_probability from clip registry rows.",
+    )
+    parser.add_argument(
+        "--adapt-approval-target-dataset",
+        metavar="APPROVAL_TARGET_MANIFEST",
+        help="Adapt an approval_target_dataset_v1 manifest into a minimal V2 training export for the current shadow stack.",
+    )
+    parser.add_argument(
         "--export-runtime-analysis",
         metavar="SIDECAR_ROOT",
         help="Export runtime-analysis sidecars into scored clip, event, and detection datasets.",
@@ -5203,6 +5277,38 @@ def main() -> int:
             full_json=args.full_json,
         )
         return 0
+
+    if args.build_approval_target_dataset:
+        if not args.registry_path:
+            parser.error("--build-approval-target-dataset requires --registry-path")
+        if not args.game:
+            parser.error("--build-approval-target-dataset requires --game")
+        _print_cli_result(
+            run_build_approval_target_dataset(
+                registry_path=args.registry_path,
+                game=args.game,
+                platform=args.platform,
+                evidence_mode=args.evidence_mode,
+                output_root=args.output_root,
+                output_path=args.output_path,
+            ),
+            command_name="build_approval_target_dataset",
+            full_json=args.full_json,
+        )
+        return 0
+
+    if args.adapt_approval_target_dataset:
+        _print_cli_result(
+            run_adapt_approval_target_dataset(
+                args.adapt_approval_target_dataset,
+                output_root=args.output_root,
+                output_path=args.output_path,
+            ),
+            command_name="adapt_approval_target_dataset",
+            full_json=args.full_json,
+        )
+        return 0
+
 
     if args.summarize_shadow_experiment_ledger:
         _print_cli_result(
