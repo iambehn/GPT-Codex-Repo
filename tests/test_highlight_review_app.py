@@ -201,6 +201,69 @@ def _proxy_review_session(root: Path, source: Path, sidecar: Path, *, review_sta
     }
 
 
+def _proxy_review_session_with_multiple_items(root: Path, sidecar: Path) -> dict[str, object]:
+    processing_root = root / "gpt" / "processing" / "marvel_rivals"
+    inbox_root = root / "gpt" / "inbox" / "marvel_rivals"
+    accepted_root = root / "gpt" / "accepted" / "marvel_rivals"
+    processing_root.mkdir(parents=True, exist_ok=True)
+    inbox_root.mkdir(parents=True, exist_ok=True)
+    accepted_root.mkdir(parents=True, exist_ok=True)
+    items: list[dict[str, object]] = []
+    for index, stem in enumerate(("alpha", "bravo")):
+        source_path = accepted_root / f"{stem}.mp4"
+        source_path.write_bytes(b"source")
+        processed_path = processing_root / f"proxy-review-{index:03d}.mp4"
+        processed_path.write_bytes(b"video")
+        meta_path = inbox_root / f"proxy-review-{index:03d}.meta.json"
+        meta_path.write_text(
+            json.dumps(
+                {
+                    "clip_id": f"proxy-review-{index:03d}",
+                    "game": "marvel_rivals",
+                    "clip_path": str(processed_path),
+                    "processed_path": str(processed_path),
+                    "meta_path": str(meta_path),
+                    "status": "queue",
+                    "selected_template_id": "proxy_review_bridge",
+                    "review_status": "unreviewed",
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        items.append(
+            {
+                "clip_id": f"proxy-review-{index:03d}",
+                "sidecar_path": str(sidecar.resolve()),
+                "source": str(source_path.resolve()),
+                "gpt_processed_path": str(processed_path.resolve()),
+                "gpt_meta_path": str(meta_path.resolve()),
+                "top_proxy_score": 0.81,
+                "top_recommended_action": "download_candidate",
+                "sources": ["audio_spike"],
+                "source_families": ["audio_prepass"],
+                "materialization_mode": "copy",
+                "bridge_owned": True,
+                "apply_status": "pending",
+                "review_status": "unreviewed",
+            }
+        )
+    return {
+        "schema_version": "proxy_review_session_v1",
+        "session_id": "proxy-session-123",
+        "game": "marvel_rivals",
+        "gpt_repo": str((root / "gpt").resolve()),
+        "selection_source": str(root / "batch.json"),
+        "selection_action_filter": "download_candidate",
+        "limit": None,
+        "created_at": "2026-05-08T00:00:00+00:00",
+        "materialization_mode": "copy",
+        "item_count": len(items),
+        "items": items,
+        "manifest_path": str((root / "proxy_review_session.json").resolve()),
+    }
+
+
 class HighlightReviewAppTests(unittest.TestCase):
     def test_load_highlight_review_records_reads_fixture_and_sidecar_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -386,6 +449,68 @@ class HighlightReviewAppTests(unittest.TestCase):
             self.assertIn(str((root / "gpt" / "processing" / "marvel_rivals").resolve()), allowed_paths)
             self.assertIn(str((root / "gpt" / "accepted" / "marvel_rivals").resolve()), allowed_paths)
             self.assertIn(str((root / "gpt" / "inbox" / "marvel_rivals").resolve()), allowed_paths)
+
+    def test_review_decision_advances_to_next_record_and_stops_at_last(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            sidecar = root / "alpha.proxy_scan.json"
+            accepted_source = root / "seed.mp4"
+            accepted_source.write_bytes(b"source")
+            sidecar.write_text(json.dumps(_proxy_sidecar(accepted_source), indent=2), encoding="utf-8")
+            session_path = root / "proxy_review_session.json"
+            session_path.write_text(
+                json.dumps(_proxy_review_session_with_multiple_items(root, sidecar), indent=2),
+                encoding="utf-8",
+            )
+
+            fake_components: list[_FakeComponent] = []
+
+            class _TrackingComponent(_FakeComponent):
+                def __init__(self, *args, **kwargs) -> None:
+                    super().__init__(*args, **kwargs)
+                    self.click_fn = None
+                    fake_components.append(self)
+
+                def click(self, fn=None, *args, **kwargs) -> None:
+                    self.click_fn = fn
+                    return None
+
+            fake_gradio = type(
+                "FakeGradio",
+                (),
+                {
+                    "Blocks": _FakeBlocks,
+                    "Row": _FakeLayout,
+                    "Column": _FakeLayout,
+                    "Accordion": _FakeLayout,
+                    "Markdown": _TrackingComponent,
+                    "Dropdown": _TrackingComponent,
+                    "Video": _TrackingComponent,
+                    "Textbox": _TrackingComponent,
+                    "Code": _TrackingComponent,
+                    "Button": _TrackingComponent,
+                },
+            )()
+            with patch("pipeline.highlight_review_app.importlib.import_module", return_value=fake_gradio):
+                result = launch_highlight_review_app(
+                    proxy_review_session_manifest=session_path,
+                    launch=False,
+                )
+
+            self.assertTrue(result["ok"])
+            buttons = [component for component in fake_components if component.args and component.args[0] in {"Approve", "Reject", "Leave unreviewed"}]
+            approve_button = next(component for component in buttons if component.args[0] == "Approve")
+            self.assertIsNotNone(approve_button.click_fn)
+
+            first_record = "proxy-session::proxy-session-123::000"
+            second_record = "proxy-session::proxy-session-123::001"
+            first_result = approve_button.click_fn(first_record)
+            self.assertEqual(first_result[0], second_record)
+            self.assertIn("Moved to next item", first_result[-1])
+
+            second_result = approve_button.click_fn(second_record)
+            self.assertEqual(second_result[0], second_record)
+            self.assertIn("Reached last item", second_result[-1])
 
 
 if __name__ == "__main__":

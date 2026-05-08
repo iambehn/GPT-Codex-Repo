@@ -224,6 +224,7 @@ def launch_highlight_review_app(
 
     records_by_id = {str(row["record_id"]): row for row in records}
     choices = [(str(row["label"]), str(row["record_id"])) for row in records]
+    record_order = [str(row["record_id"]) for row in records]
 
     def _render_record(record_id: str) -> tuple[str, str | None, str, str, str]:
         row = records_by_id[str(record_id)]
@@ -299,21 +300,35 @@ def launch_highlight_review_app(
             json.dumps(result, indent=2),
         )
 
-    def _apply_decision(record_id: str, decision: str) -> tuple[str, str | None, str, str, str, str]:
+    def _next_record_id(record_id: str) -> str:
+        try:
+            index = record_order.index(str(record_id))
+        except ValueError:
+            return str(record_id)
+        if index >= len(record_order) - 1:
+            return str(record_id)
+        return record_order[index + 1]
+
+    def _apply_decision(record_id: str, decision: str) -> tuple[str, str, str | None, str, str, str, str]:
         row = records_by_id[str(record_id)]
         if row.get("kind") != "proxy_review_session_item":
             summary, media_path, primary_path, secondary_path, payload = _render_record(record_id)
-            return summary, media_path, primary_path, secondary_path, payload, "Selected record is not a proxy review session item."
+            return str(record_id), summary, media_path, primary_path, secondary_path, payload, "Selected record is not a proxy review session item."
         write_result = _write_proxy_review_session_decision(row["gpt_meta_path"], decision)
         if write_result.get("ok"):
             row["review_status"] = write_result.get("review_status")
             payload = _load_json(_resolve_path(row["gpt_meta_path"]))
             row["reviewed_at"] = payload.get("reviewed_at")
-            status_message = f"Updated review status to {row['review_status']}."
+            next_record_id = _next_record_id(record_id)
+            if next_record_id == str(record_id):
+                status_message = f"Updated review status to {row['review_status']}. Reached last item."
+            else:
+                status_message = f"Updated review status to {row['review_status']}. Moved to next item."
         else:
+            next_record_id = str(record_id)
             status_message = str(write_result.get("error") or "Failed to update review status.")
-        summary, media_path, primary_path, secondary_path, payload = _render_record(record_id)
-        return summary, media_path, primary_path, secondary_path, payload, status_message
+        summary, media_path, primary_path, secondary_path, payload = _render_record(next_record_id)
+        return next_record_id, summary, media_path, primary_path, secondary_path, payload, status_message
 
     with gradio.Blocks(title="Highlight Review App") as app:
         gradio.Markdown("# Highlight Review App")
@@ -339,17 +354,17 @@ def launch_highlight_review_app(
         approve_button.click(
             lambda record_id: _apply_decision(record_id, "approved"),
             inputs=selector,
-            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            outputs=[selector, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
         )
         reject_button.click(
             lambda record_id: _apply_decision(record_id, "rejected"),
             inputs=selector,
-            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            outputs=[selector, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
         )
         unreviewed_button.click(
             lambda record_id: _apply_decision(record_id, "unreviewed"),
             inputs=selector,
-            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            outputs=[selector, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
         )
         app.load(
             lambda: (*_render_record(choices[0][1]), ""),
