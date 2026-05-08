@@ -107,6 +107,7 @@ def _fixture_trial_batch_manifest(report_path: Path) -> dict[str, object]:
 class _FakeBlocks:
     def __init__(self, *args, **kwargs) -> None:
         self.loaded = False
+        self.launch_kwargs: dict[str, object] | None = None
 
     def __enter__(self) -> "_FakeBlocks":
         return self
@@ -117,8 +118,21 @@ class _FakeBlocks:
     def load(self, *args, **kwargs) -> None:
         self.loaded = True
 
-    def launch(self) -> None:
+    def launch(self, **kwargs) -> None:
+        self.launch_kwargs = kwargs
         return None
+
+
+class _FakeLayout:
+    def __init__(self, *args, **kwargs) -> None:
+        self.args = args
+        self.kwargs = kwargs
+
+    def __enter__(self) -> "_FakeLayout":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
 
 
 class _FakeComponent:
@@ -232,8 +246,11 @@ class HighlightReviewAppTests(unittest.TestCase):
                 (),
                 {
                     "Blocks": _FakeBlocks,
+                    "Row": _FakeLayout,
+                    "Column": _FakeLayout,
                     "Markdown": _FakeComponent,
                     "Dropdown": _FakeComponent,
+                    "Video": _FakeComponent,
                     "Textbox": _FakeComponent,
                     "Code": _FakeComponent,
                     "Button": _FakeComponent,
@@ -323,6 +340,50 @@ class HighlightReviewAppTests(unittest.TestCase):
             unreviewed_payload = json.loads(meta_path.read_text(encoding="utf-8"))
             self.assertEqual(unreviewed_payload["review_status"], "unreviewed")
             self.assertNotIn("reviewed_at", unreviewed_payload)
+
+    def test_launch_highlight_review_app_allows_proxy_review_media_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            source = root / "gpt" / "accepted" / "marvel_rivals" / "alpha.mp4"
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_bytes(b"source")
+            sidecar = root / "alpha.proxy_scan.json"
+            sidecar.write_text(json.dumps(_proxy_sidecar(source), indent=2), encoding="utf-8")
+            session_path = root / "proxy_review_session.json"
+            session_path.write_text(
+                json.dumps(_proxy_review_session(root, source, sidecar, review_status="approved"), indent=2),
+                encoding="utf-8",
+            )
+
+            fake_blocks = _FakeBlocks()
+            fake_gradio = type(
+                "FakeGradio",
+                (),
+                {
+                    "Blocks": lambda *args, **kwargs: fake_blocks,
+                    "Row": _FakeLayout,
+                    "Column": _FakeLayout,
+                    "Markdown": _FakeComponent,
+                    "Dropdown": _FakeComponent,
+                    "Video": _FakeComponent,
+                    "Textbox": _FakeComponent,
+                    "Code": _FakeComponent,
+                    "Button": _FakeComponent,
+                },
+            )()
+            with patch("pipeline.highlight_review_app.importlib.import_module", return_value=fake_gradio):
+                result = launch_highlight_review_app(
+                    proxy_review_session_manifest=session_path,
+                    launch=True,
+                )
+
+            self.assertTrue(result["ok"])
+            self.assertIsNotNone(fake_blocks.launch_kwargs)
+            allowed_paths = fake_blocks.launch_kwargs.get("allowed_paths")
+            self.assertIsInstance(allowed_paths, list)
+            self.assertIn(str((root / "gpt" / "processing" / "marvel_rivals").resolve()), allowed_paths)
+            self.assertIn(str((root / "gpt" / "accepted" / "marvel_rivals").resolve()), allowed_paths)
+            self.assertIn(str((root / "gpt" / "inbox" / "marvel_rivals").resolve()), allowed_paths)
 
 
 if __name__ == "__main__":

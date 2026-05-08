@@ -225,14 +225,15 @@ def launch_highlight_review_app(
     records_by_id = {str(row["record_id"]): row for row in records}
     choices = [(str(row["label"]), str(row["record_id"])) for row in records]
 
-    def _render_record(record_id: str) -> tuple[str, str, str, str]:
+    def _render_record(record_id: str) -> tuple[str, str | None, str, str, str]:
         row = records_by_id[str(record_id)]
         summary = _record_summary(row)
         if row.get("kind") == "proxy_review_session_item":
             return (
                 summary,
-                str(row.get("processed_clip_path") or ""),
-                str(row.get("source_clip_path") or ""),
+                str(row.get("processed_clip_path") or "") or None,
+                _display_path("Source clip path", row.get("source_clip_path")),
+                _display_path("Proxy sidecar path", row.get("proxy_sidecar_path")),
                 json.dumps(_proxy_review_session_payload(row), indent=2),
             )
         if row.get("kind") == "fixture":
@@ -268,9 +269,15 @@ def launch_highlight_review_app(
                     output_path=output_path,
                 )
                 render_payload["preferred_comparison"] = preferred
-            if batch_rows:
-                render_payload["fixture_trial_batch_rows"] = batch_rows
-            return summary, baseline_path, trial_path, json.dumps(render_payload, indent=2)
+                if batch_rows:
+                    render_payload["fixture_trial_batch_rows"] = batch_rows
+            return (
+                summary,
+                None,
+                _display_path("Primary viewer path", baseline_path),
+                _display_path("Secondary viewer path", trial_path),
+                json.dumps(render_payload, indent=2),
+            )
         result = render_unified_replay_viewer(
             proxy_sidecar=row.get("proxy_sidecar_path"),
             runtime_sidecar=row.get("runtime_sidecar_path"),
@@ -284,13 +291,19 @@ def launch_highlight_review_app(
             registry_path=registry_path,
             output_path=output_path,
         )
-        return summary, str(result.get("viewer_path", "")), "", json.dumps(result, indent=2)
+        return (
+            summary,
+            None,
+            _display_path("Primary viewer path", result.get("viewer_path")),
+            _display_path("Secondary viewer path", None),
+            json.dumps(result, indent=2),
+        )
 
-    def _apply_decision(record_id: str, decision: str) -> tuple[str, str, str, str, str]:
+    def _apply_decision(record_id: str, decision: str) -> tuple[str, str | None, str, str, str, str]:
         row = records_by_id[str(record_id)]
         if row.get("kind") != "proxy_review_session_item":
-            summary, primary_path, secondary_path, payload = _render_record(record_id)
-            return summary, primary_path, secondary_path, payload, "Selected record is not a proxy review session item."
+            summary, media_path, primary_path, secondary_path, payload = _render_record(record_id)
+            return summary, media_path, primary_path, secondary_path, payload, "Selected record is not a proxy review session item."
         write_result = _write_proxy_review_session_decision(row["gpt_meta_path"], decision)
         if write_result.get("ok"):
             row["review_status"] = write_result.get("review_status")
@@ -299,48 +312,52 @@ def launch_highlight_review_app(
             status_message = f"Updated review status to {row['review_status']}."
         else:
             status_message = str(write_result.get("error") or "Failed to update review status.")
-        summary, primary_path, secondary_path, payload = _render_record(record_id)
-        return summary, primary_path, secondary_path, payload, status_message
+        summary, media_path, primary_path, secondary_path, payload = _render_record(record_id)
+        return summary, media_path, primary_path, secondary_path, payload, status_message
 
     with gradio.Blocks(title="Highlight Review App") as app:
         gradio.Markdown("# Highlight Review App")
         selector = gradio.Dropdown(choices=choices, value=choices[0][1], label="Fixture or reviewed clip")
-        summary_box = gradio.Markdown()
-        baseline_viewer_path_box = gradio.Textbox(label="Baseline viewer path")
-        trial_viewer_path_box = gradio.Textbox(label="Trial viewer path")
-        payload_box = gradio.Code(label="Viewer render payload", language="json")
-        decision_status_box = gradio.Textbox(label="Review decision status")
-        approve_button = gradio.Button("Approve")
-        reject_button = gradio.Button("Reject")
-        unreviewed_button = gradio.Button("Leave unreviewed")
+        with gradio.Row():
+            with gradio.Column(scale=3):
+                media_player = gradio.Video(label="Review media", height=360)
+            with gradio.Column(scale=2):
+                summary_box = gradio.Markdown()
+                decision_status_box = gradio.Textbox(label="Review decision status")
+                approve_button = gradio.Button("Approve")
+                reject_button = gradio.Button("Reject")
+                unreviewed_button = gradio.Button("Leave unreviewed")
+                baseline_viewer_path_box = gradio.Textbox(label="Primary path", lines=3)
+                trial_viewer_path_box = gradio.Textbox(label="Secondary path", lines=3)
+                payload_box = gradio.Code(label="Viewer render payload", language="json")
         selector.change(
             _render_record,
             inputs=selector,
-            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box],
+            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box],
         )
         approve_button.click(
             lambda record_id: _apply_decision(record_id, "approved"),
             inputs=selector,
-            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
         )
         reject_button.click(
             lambda record_id: _apply_decision(record_id, "rejected"),
             inputs=selector,
-            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
         )
         unreviewed_button.click(
             lambda record_id: _apply_decision(record_id, "unreviewed"),
             inputs=selector,
-            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
         )
         app.load(
             lambda: (*_render_record(choices[0][1]), ""),
             inputs=None,
-            outputs=[summary_box, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
         )
 
     if launch:
-        app.launch()
+        app.launch(allowed_paths=_allowed_launch_paths(records))
 
     return {
         "ok": True,
@@ -504,6 +521,40 @@ def _load_proxy_review_session_records(session_manifest_path: str | Path) -> lis
             }
         )
     return records
+
+
+def _allowed_launch_paths(records: list[dict[str, Any]]) -> list[str]:
+    allowed_dirs: set[str] = set()
+    for row in records:
+        if row.get("kind") != "proxy_review_session_item":
+            continue
+        for key in (
+            "processed_clip_path",
+            "source_clip_path",
+            "proxy_sidecar_path",
+            "gpt_meta_path",
+            "transcript_srt_path",
+            "transcript_whisper_json_path",
+        ):
+            value = row.get(key)
+            if not isinstance(value, str) or not value.strip():
+                continue
+            path = Path(value).expanduser()
+            try:
+                resolved = path.resolve()
+            except OSError:
+                continue
+            parent = resolved.parent
+            if parent.exists():
+                allowed_dirs.add(str(parent))
+    return sorted(allowed_dirs)
+
+
+def _display_path(label: str, value: Any) -> str:
+    text = str(value or "").strip()
+    if text:
+        return f"{label}:\n{text}"
+    return f"{label}:\nnot applicable"
 
 
 def _discover_proxy_review_transcript_paths(
