@@ -320,7 +320,7 @@ def launch_highlight_review_app(
         selector = gradio.Dropdown(choices=choices, value=choices[0][1], label="Fixture or reviewed clip")
         with gradio.Row():
             with gradio.Column(scale=3):
-                media_player = gradio.Video(label="Review media", height=360)
+                media_player = gradio.Video(label="Review media", height=396)
             with gradio.Column(scale=2):
                 summary_box = gradio.Markdown()
                 decision_status_box = gradio.Textbox(label="Review decision status")
@@ -329,7 +329,8 @@ def launch_highlight_review_app(
                 unreviewed_button = gradio.Button("Leave unreviewed")
                 baseline_viewer_path_box = gradio.Textbox(label="Primary path", lines=3)
                 trial_viewer_path_box = gradio.Textbox(label="Secondary path", lines=3)
-                payload_box = gradio.Code(label="Viewer render payload", language="json")
+                with gradio.Accordion("Debug details", open=False):
+                    payload_box = gradio.Code(label="Viewer render payload", language="json")
         selector.change(
             _render_record,
             inputs=selector,
