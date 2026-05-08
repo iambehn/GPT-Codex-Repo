@@ -112,7 +112,7 @@ Each session item record should carry:
 
 ## UI Shape
 
-Use a queue list plus detail view.
+Use a queue list plus shared two-column detail view for all record kinds.
 
 ### Queue List
 
@@ -124,20 +124,46 @@ The list should show at minimum:
 
 ### Detail View
 
-The selected item view should show:
+The selected item view should use one consistent layout for proxy session
+records, fixtures, and sidecar records.
 
-- processed clip path
-- source clip path
-- current review status
-- proxy bridge context:
-  - score
-  - source sidecar path
-  - bridge sources
-  - bridge source families
-- transcript availability:
-  - `.srt`
-  - `.whisper.json`
-- raw metadata payload for audit/debug
+#### Left Column
+
+The left column is the primary viewer area.
+
+- For `proxy_review_session_item`, render the processed clip in a real video
+  player.
+- Reduce the visible player size by about 25 percent relative to the current
+  full-width center treatment so the operator panel can coexist without crowding
+  the page.
+- For fixture and sidecar records, keep the existing underlying viewer behavior,
+  but render those outputs in the same left-column slot instead of scattering
+  details across the page.
+
+#### Right Column
+
+The right column is the operator panel.
+
+It should contain:
+
+- summary metadata currently shown at the top of the page
+- review decision buttons
+- review decision status message
+- primary and secondary path fields
+- transcript availability
+- raw metadata/debug payload
+
+The operator should not need to scan the main media area to find status,
+buttons, paths, or debug details.
+
+#### Empty-State Handling
+
+The layout should avoid broken-looking middle sections.
+
+- If a field does not apply to the selected record kind, hide it or render an
+  explicit compact placeholder.
+- Do not leave empty-looking error boxes for absent secondary viewers or
+  non-applicable paths.
 
 ## Review Actions
 
