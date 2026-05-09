@@ -10,6 +10,7 @@ from pipeline.clip_registry import refresh_clip_registry
 from pipeline.highlight_selection_export import export_highlight_selection
 from pipeline.hook_candidate_export import derive_hook_candidates
 from pipeline.highlight_review_app import (
+    _finalize_proxy_review_session_decision,
     _write_proxy_review_session_decision,
     launch_highlight_review_app,
     load_highlight_review_records,
@@ -368,7 +369,7 @@ class HighlightReviewAppTests(unittest.TestCase):
             sidecar.write_text(json.dumps(_proxy_sidecar(source), indent=2), encoding="utf-8")
             session_path = root / "proxy_review_session.json"
             session_path.write_text(
-                json.dumps(_proxy_review_session(root, source, sidecar, review_status="approved"), indent=2),
+                json.dumps(_proxy_review_session(root, source, sidecar), indent=2),
                 encoding="utf-8",
             )
 
@@ -377,11 +378,28 @@ class HighlightReviewAppTests(unittest.TestCase):
             self.assertEqual(len(records), 1)
             row = records[0]
             self.assertEqual(row["kind"], "proxy_review_session_item")
-            self.assertEqual(row["review_status"], "approved")
+            self.assertEqual(row["review_status"], "unreviewed")
             self.assertEqual(row["bridge_sources"], ["audio_spike", "visual_flash_spike"])
             self.assertTrue(row["transcript_available"])
             self.assertTrue(str(row["transcript_srt_path"]).endswith(".srt"))
             self.assertTrue(str(row["transcript_whisper_json_path"]).endswith(".whisper.json"))
+
+    def test_load_highlight_review_records_skips_reviewed_proxy_session_items(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            source = root / "alpha.mp4"
+            source.write_bytes(b"source")
+            sidecar = root / "alpha.proxy_scan.json"
+            sidecar.write_text(json.dumps(_proxy_sidecar(source), indent=2), encoding="utf-8")
+            session_path = root / "proxy_review_session.json"
+            session_path.write_text(
+                json.dumps(_proxy_review_session(root, source, sidecar, review_status="approved"), indent=2),
+                encoding="utf-8",
+            )
+
+            records = load_highlight_review_records(proxy_review_session_manifest=session_path)
+
+            self.assertEqual(records, [])
 
     def test_write_proxy_review_session_decision_updates_meta_status(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -415,7 +433,7 @@ class HighlightReviewAppTests(unittest.TestCase):
             sidecar.write_text(json.dumps(_proxy_sidecar(source), indent=2), encoding="utf-8")
             session_path = root / "proxy_review_session.json"
             session_path.write_text(
-                json.dumps(_proxy_review_session(root, source, sidecar, review_status="approved"), indent=2),
+                json.dumps(_proxy_review_session(root, source, sidecar), indent=2),
                 encoding="utf-8",
             )
 
@@ -449,6 +467,42 @@ class HighlightReviewAppTests(unittest.TestCase):
             self.assertIn(str((root / "gpt" / "processing" / "marvel_rivals").resolve()), allowed_paths)
             self.assertIn(str((root / "gpt" / "accepted" / "marvel_rivals").resolve()), allowed_paths)
             self.assertIn(str((root / "gpt" / "inbox" / "marvel_rivals").resolve()), allowed_paths)
+
+    def test_finalize_proxy_review_session_decision_moves_reviewed_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            source = root / "alpha.mp4"
+            source.write_bytes(b"source")
+            sidecar = root / "alpha.proxy_scan.json"
+            sidecar.write_text(json.dumps(_proxy_sidecar(source), indent=2), encoding="utf-8")
+            session = _proxy_review_session(root, source, sidecar)
+            session_path = root / "proxy_review_session.json"
+            session_path.write_text(json.dumps(session, indent=2), encoding="utf-8")
+
+            records = load_highlight_review_records(proxy_review_session_manifest=session_path)
+            self.assertEqual(len(records), 1)
+            row = records[0]
+
+            result = _finalize_proxy_review_session_decision(row, "approved")
+
+            self.assertTrue(result["ok"])
+            final_clip_path = Path(str(result["gpt_final_path"]))
+            final_meta_path = Path(str(result["gpt_meta_path"]))
+            self.assertTrue(final_clip_path.exists())
+            self.assertTrue(final_meta_path.exists())
+            self.assertFalse(Path(row["gpt_processed_path"]).exists())
+            self.assertFalse((root / "gpt" / "inbox" / "marvel_rivals" / "proxy-review-001.meta.json").exists())
+
+            final_meta_payload = json.loads(final_meta_path.read_text(encoding="utf-8"))
+            self.assertEqual(final_meta_payload["status"], "accepted")
+            self.assertEqual(final_meta_payload["final_path"], str(final_clip_path))
+
+            updated_session = json.loads(session_path.read_text(encoding="utf-8"))
+            updated_item = updated_session["items"][0]
+            self.assertEqual(updated_item["review_status"], "approved")
+            self.assertEqual(updated_item["apply_status"], "reviewed")
+            self.assertEqual(updated_item["gpt_meta_path"], str(final_meta_path))
+            self.assertEqual(updated_item["gpt_final_path"], str(final_clip_path))
 
     def test_review_decision_advances_to_next_record_and_stops_at_last(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

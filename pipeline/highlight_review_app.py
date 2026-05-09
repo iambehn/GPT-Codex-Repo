@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -305,20 +306,29 @@ def launch_highlight_review_app(
             index = record_order.index(str(record_id))
         except ValueError:
             return str(record_id)
-        if index >= len(record_order) - 1:
-            return str(record_id)
-        return record_order[index + 1]
+        for candidate_id in record_order[index + 1 :]:
+            candidate_row = records_by_id.get(candidate_id, {})
+            if candidate_row.get("kind") != "proxy_review_session_item":
+                return candidate_id
+            if str(candidate_row.get("review_status") or "unreviewed") == "unreviewed":
+                return candidate_id
+        return str(record_id)
 
     def _apply_decision(record_id: str, decision: str) -> tuple[str, str, str | None, str, str, str, str]:
         row = records_by_id[str(record_id)]
         if row.get("kind") != "proxy_review_session_item":
             summary, media_path, primary_path, secondary_path, payload = _render_record(record_id)
             return str(record_id), summary, media_path, primary_path, secondary_path, payload, "Selected record is not a proxy review session item."
-        write_result = _write_proxy_review_session_decision(row["gpt_meta_path"], decision)
+        write_result = _finalize_proxy_review_session_decision(row, decision)
         if write_result.get("ok"):
             row["review_status"] = write_result.get("review_status")
-            payload = _load_json(_resolve_path(row["gpt_meta_path"]))
-            row["reviewed_at"] = payload.get("reviewed_at")
+            row["reviewed_at"] = write_result.get("reviewed_at")
+            if write_result.get("gpt_meta_path"):
+                row["gpt_meta_path"] = str(write_result["gpt_meta_path"])
+            if write_result.get("gpt_final_path"):
+                row["gpt_final_path"] = str(write_result["gpt_final_path"])
+            if write_result.get("gpt_meta_payload"):
+                row["gpt_meta_payload"] = dict(write_result["gpt_meta_payload"])
             next_record_id = _next_record_id(record_id)
             if next_record_id == str(record_id):
                 status_message = f"Updated review status to {row['review_status']}. Reached last item."
@@ -496,6 +506,7 @@ def _load_proxy_review_session_records(session_manifest_path: str | Path) -> lis
         return []
     game = str(payload.get("game", "")).strip() or None
     session_id = str(payload.get("session_id", "")).strip() or None
+    gpt_repo_path = str(_resolve_path(str(payload.get("gpt_repo", "")).strip())) if str(payload.get("gpt_repo", "")).strip() else None
     records: list[dict[str, Any]] = []
     for index, item in enumerate(list(payload.get("items", []))):
         if not isinstance(item, dict):
@@ -507,6 +518,9 @@ def _load_proxy_review_session_records(session_manifest_path: str | Path) -> lis
             continue
         gpt_meta_path = _resolve_path(gpt_meta_path_value)
         meta_payload = _load_json(gpt_meta_path)
+        review_status = _normalized_review_status(meta_payload.get("review_status") or item.get("review_status"))
+        if review_status != "unreviewed":
+            continue
         transcript_paths = _discover_proxy_review_transcript_paths(
             source_clip_path=source_value or None,
             gpt_meta_path=gpt_meta_path,
@@ -522,9 +536,11 @@ def _load_proxy_review_session_records(session_manifest_path: str | Path) -> lis
                 "processed_clip_path": processed_clip_value,
                 "source_clip_path": source_value or None,
                 "proxy_sidecar_path": str(item.get("sidecar_path", "")).strip() or None,
+                "session_manifest_path": str(manifest_path),
+                "gpt_repo_path": gpt_repo_path,
                 "gpt_meta_path": str(gpt_meta_path),
                 "gpt_processed_path": processed_clip_value,
-                "review_status": _normalized_review_status(meta_payload.get("review_status")),
+                "review_status": review_status,
                 "reviewed_at": meta_payload.get("reviewed_at"),
                 "bridge_score": item.get("top_proxy_score"),
                 "bridge_sources": list(item.get("sources", [])) if isinstance(item.get("sources"), list) else [],
@@ -623,8 +639,109 @@ def _write_proxy_review_session_decision(gpt_meta_path: str | Path, decision: st
     return {
         "ok": True,
         "review_status": normalized,
+        "reviewed_at": payload.get("reviewed_at"),
+        "gpt_meta_payload": payload,
         "gpt_meta_path": str(meta_path),
     }
+
+
+def _finalize_proxy_review_session_decision(row: dict[str, Any], decision: str) -> dict[str, Any]:
+    write_result = _write_proxy_review_session_decision(row["gpt_meta_path"], decision)
+    if not write_result.get("ok"):
+        return write_result
+    normalized = str(write_result.get("review_status") or "unreviewed")
+    if normalized == "unreviewed":
+        _update_proxy_review_session_manifest_item(
+            row,
+            gpt_meta_path=str(row.get("gpt_meta_path") or ""),
+            review_status=normalized,
+            reviewed_at=write_result.get("reviewed_at"),
+            gpt_final_path=None,
+        )
+        return write_result
+
+    gpt_repo_path = str(row.get("gpt_repo_path") or "").strip()
+    game = str(row.get("game") or "").strip()
+    if not gpt_repo_path or not game:
+        return {
+            "ok": False,
+            "error": "proxy review session row is missing gpt repo or game context",
+        }
+
+    bucket = "accepted" if normalized == "approved" else "rejected"
+    meta_payload = dict(write_result.get("gpt_meta_payload", {}))
+    clip_id = str(meta_payload.get("clip_id") or Path(str(row.get("gpt_processed_path") or "")).stem).strip()
+    source_meta_path = _resolve_path(str(row.get("gpt_meta_path") or ""))
+    processed_path = _resolve_path(str(row.get("gpt_processed_path") or ""))
+    destination_dir = _resolve_path(gpt_repo_path) / bucket / game
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    clip_suffix = processed_path.suffix or ".mp4"
+    final_clip_path = destination_dir / f"{clip_id}{clip_suffix}"
+    final_meta_path = destination_dir / f"{clip_id}.meta.json"
+
+    if final_clip_path.exists():
+        final_clip_path.unlink()
+    if processed_path.exists():
+        shutil.move(str(processed_path), str(final_clip_path))
+
+    meta_payload["final_path"] = str(final_clip_path)
+    meta_payload["meta_path"] = str(final_meta_path)
+    meta_payload["status"] = bucket
+    final_meta_path.write_text(json.dumps(meta_payload, indent=2), encoding="utf-8")
+    if source_meta_path.exists() and source_meta_path != final_meta_path:
+        source_meta_path.unlink()
+
+    _update_proxy_review_session_manifest_item(
+        row,
+        gpt_meta_path=str(final_meta_path),
+        review_status=normalized,
+        reviewed_at=meta_payload.get("reviewed_at"),
+        gpt_final_path=str(final_clip_path),
+    )
+    return {
+        "ok": True,
+        "review_status": normalized,
+        "reviewed_at": meta_payload.get("reviewed_at"),
+        "gpt_meta_path": str(final_meta_path),
+        "gpt_final_path": str(final_clip_path),
+        "gpt_meta_payload": meta_payload,
+    }
+
+
+def _update_proxy_review_session_manifest_item(
+    row: dict[str, Any],
+    *,
+    gpt_meta_path: str,
+    review_status: str,
+    reviewed_at: Any,
+    gpt_final_path: str | None,
+) -> None:
+    session_manifest_value = str(row.get("session_manifest_path") or "").strip()
+    if not session_manifest_value:
+        return
+    session_manifest_path = _resolve_path(session_manifest_value)
+    payload = _load_json(session_manifest_path)
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return
+    source_clip_id = None
+    source_meta_payload = row.get("gpt_meta_payload")
+    if isinstance(source_meta_payload, dict):
+        source_clip_id = str(source_meta_payload.get("clip_id") or "").strip() or None
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        item_clip_id = str(item.get("clip_id") or "").strip() or None
+        item_meta_path = str(item.get("gpt_meta_path") or "").strip()
+        if (source_clip_id and item_clip_id == source_clip_id) or item_meta_path == str(row.get("gpt_meta_path") or ""):
+            item["gpt_meta_path"] = gpt_meta_path
+            item["review_status"] = review_status
+            item["reviewed_at"] = reviewed_at
+            item["apply_status"] = "reviewed"
+            if gpt_final_path:
+                item["gpt_final_path"] = gpt_final_path
+            break
+    session_manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 def _proxy_review_session_payload(row: dict[str, Any]) -> dict[str, Any]:
