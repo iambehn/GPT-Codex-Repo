@@ -439,7 +439,7 @@ def _score_reasoning(candidate: dict[str, Any]) -> str:
 
 def _normalized_review_status(value: Any) -> str:
     normalized = str(value or "").strip().lower()
-    if normalized == "accepted":
+    if normalized in {"accepted", "approved"}:
         return "approved"
     if normalized == "rejected":
         return "rejected"

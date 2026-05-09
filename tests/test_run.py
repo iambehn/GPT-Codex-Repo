@@ -4088,7 +4088,7 @@ class RunTests(unittest.TestCase):
                 alpha_final = gpt_repo / "accepted" / "marvel_rivals" / f"{alpha_meta['clip_id']}.mp4"
                 alpha_final.parent.mkdir(parents=True, exist_ok=True)
                 alpha_final.write_bytes(b"approved")
-                alpha_meta["review_status"] = "accepted"
+                alpha_meta["review_status"] = "approved"
                 alpha_meta["reviewed_at"] = "2026-04-29T12:00:00Z"
                 alpha_meta["final_path"] = str(alpha_final)
                 alpha_meta_path.write_text(json.dumps(alpha_meta, indent=2), encoding="utf-8")
