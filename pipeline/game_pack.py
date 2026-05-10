@@ -166,7 +166,6 @@ def get_yolo_detector_game_config(game: str, config: dict, game_pack: dict | Non
     return merged
 
 
-<<<<<<< HEAD
 def get_yolo_model_dir(game: str, config: dict, game_pack: dict | None = None) -> Path:
     """Return the per-game YOLO model registry directory."""
     if game_pack is None:
@@ -181,8 +180,7 @@ def get_yolo_model_dir(game: str, config: dict, game_pack: dict | None = None) -
     return resolved_weights.parent
 
 
-=======
->>>>>>> origin/main
+
 def validate_game_pack(game: str, config: dict) -> dict[str, Any]:
     """Validate that a game pack has the minimum required files and references."""
     pack_dir = get_game_pack_dir(game, config)
@@ -235,7 +233,6 @@ def validate_game_pack(game: str, config: dict) -> dict[str, Any]:
                 resolved_weights = resolve_asset_path(detector.get("weights_path"), pack_dir)
                 if not resolved_weights.exists():
                     warnings.append(f"yolo weights_path not found yet: {resolved_weights}")
-<<<<<<< HEAD
             if detector.get("labels"):
                 yolo_dir = get_yolo_model_dir(game, config, pack)
                 dataset_yaml = yolo_dir / "dataset.yaml"
@@ -244,8 +241,6 @@ def validate_game_pack(game: str, config: dict) -> dict[str, Any]:
                     warnings.append(f"yolo dataset.yaml not found yet: {dataset_yaml}")
                 if not labels_txt.exists():
                     warnings.append(f"yolo labels.txt not found yet: {labels_txt}")
-=======
->>>>>>> origin/main
 
     weights = pack.get("weights") or {}
     judge_cfg = weights.get("clip_judge") or {}
@@ -265,7 +260,6 @@ def scaffold_game_pack(game: str, config: dict, force: bool = False) -> dict[str
     """Create or refresh a draft game pack using legacy config and assets."""
     pack_dir = get_game_pack_dir(game, config)
     pack_dir.mkdir(parents=True, exist_ok=True)
-<<<<<<< HEAD
     model_dir = PROJECT_ROOT / "models" / "yolo" / game
     (pack_dir / "examples" / "positive_clips").mkdir(parents=True, exist_ok=True)
     (pack_dir / "examples" / "negative_clips").mkdir(parents=True, exist_ok=True)
@@ -307,16 +301,6 @@ def scaffold_game_pack(game: str, config: dict, force: bool = False) -> dict[str
             target = model_dir / subdir / name
             if not target.exists():
                 target.write_text("")
-=======
-    (pack_dir / "examples" / "positive_clips").mkdir(parents=True, exist_ok=True)
-    (pack_dir / "examples" / "negative_clips").mkdir(parents=True, exist_ok=True)
-    (pack_dir / "examples" / "reference_frames").mkdir(parents=True, exist_ok=True)
-    for name in (".gitkeep",):
-        for subdir in ("positive_clips", "negative_clips", "reference_frames"):
-            target = pack_dir / "examples" / subdir / name
-            if not target.exists():
-                target.write_text("")
->>>>>>> origin/main
 
     legacy_game = dict((config.get("games") or {}).get(game, {}))
     display_name = legacy_game.get("display_name") or game.replace("_", " ").title()
@@ -334,7 +318,6 @@ def scaffold_game_pack(game: str, config: dict, force: bool = False) -> dict[str
             "kill_feed": {"enabled": bool((config.get("kill_feed") or {}).get("enabled", False))},
             "weapon_detector": {"enabled": bool((config.get("weapon_detector") or {}).get("enabled", False))},
             "clip_judge_ai": {"enabled": True, "provider": "anthropic"},
-<<<<<<< HEAD
             "niceshot": {
                 "enabled": False,
                 "provider": "niceshot_ai",
@@ -346,9 +329,6 @@ def scaffold_game_pack(game: str, config: dict, force: bool = False) -> dict[str
                     "kind_aliases": {},
                 },
             },
-=======
-            "niceshot": {"enabled": False, "provider": "niceshot_ai"},
->>>>>>> origin/main
         },
     }
 
@@ -405,13 +385,10 @@ def scaffold_game_pack(game: str, config: dict, force: bool = False) -> dict[str
                 "context_score": 0.10,
             },
             "quarantine_reasons": _QUARANTINE_REASONS,
-<<<<<<< HEAD
-=======
             "feedback": {
                 "enabled": True,
                 "signals": ["scroll_stop_rate", "retention", "rewatch_rate", "shares", "follows"],
             },
->>>>>>> origin/main
         }
     }
 
@@ -502,17 +479,11 @@ def _legacy_detector_hud(game: str, config: dict, primary_kind: str) -> dict[str
 
     detectors["yolo"] = {
         "enabled": False,
-<<<<<<< HEAD
         "inference_mode": "video",
         "weights_path": f"models/yolo/{game}/weights/best.pt",
         "confidence_threshold": 0.60,
         "frame_sample": "middle",
         "max_samples": 24,
-=======
-        "weights_path": f"models/yolo/{game}/weights/best.pt",
-        "confidence_threshold": 0.60,
-        "frame_sample": "middle",
->>>>>>> origin/main
         "labels": {},
     }
 

@@ -122,12 +122,8 @@ def evaluate(clip_path: str | Path, game_pack: dict, config: dict, force: bool =
             **detector_outputs,
             "ai_clip_judge": ai_result,
             "composite_inputs": {
-<<<<<<< HEAD
                 key: (round(value, 3) if value is not None else None)
                 for key, value in composite_inputs.items()
-=======
-                key: round(value, 3) for key, value in composite_inputs.items()
->>>>>>> origin/main
             },
         },
         "decision": {
@@ -165,7 +161,6 @@ def _build_candidate_moments(meta: dict, hook_window_seconds: float) -> list[dic
     moments: list[dict[str, Any]] = []
 
     kill_feed = meta.get("kill_feed", {})
-<<<<<<< HEAD
     kill_feed_events = kill_feed.get("events") or []
     if kill_feed_events:
         for event in kill_feed_events:
@@ -242,37 +237,6 @@ def _build_candidate_moments(meta: dict, hook_window_seconds: float) -> list[dic
                 "hook_window_seconds": hook_window_seconds,
                 "detail": "spike",
             })
-=======
-    for ts in kill_feed.get("kill_timestamps", []):
-        moments.append({
-            "timestamp": round(float(ts), 3),
-            "source": "kill_feed",
-            "kind": "kill",
-            "confidence": 0.78,
-            "hook_candidate": True,
-            "hook_window_seconds": hook_window_seconds,
-        })
-    for ts in kill_feed.get("headshot_timestamps", []):
-        moments.append({
-            "timestamp": round(float(ts), 3),
-            "source": "kill_feed",
-            "kind": "headshot",
-            "confidence": 0.92,
-            "hook_candidate": True,
-            "hook_window_seconds": hook_window_seconds,
-        })
-
-    audio_events = meta.get("audio_events", {})
-    for ts in audio_events.get("spike_timestamps", []):
-        moments.append({
-            "timestamp": round(float(ts), 3),
-            "source": "audio_detector",
-            "kind": "audio_spike",
-            "confidence": 0.55,
-            "hook_candidate": False,
-            "hook_window_seconds": hook_window_seconds,
-        })
->>>>>>> origin/main
 
     niceshot = meta.get("niceshot_detection", {})
     if niceshot.get("status") == "ok":
@@ -284,14 +248,11 @@ def _build_candidate_moments(meta: dict, hook_window_seconds: float) -> list[dic
                 "confidence": _clamp_float(moment.get("confidence", niceshot.get("confidence", 0.0))),
                 "hook_candidate": bool(moment.get("hook_candidate", True)),
                 "hook_window_seconds": hook_window_seconds,
-<<<<<<< HEAD
                 "detail": "hook candidate" if moment.get("hook_candidate", True) else "",
                 "evidence": {
                     "profile": niceshot.get("profile"),
                     "normalized_composite": (niceshot.get("normalized_scores") or {}).get("composite"),
                 },
-=======
->>>>>>> origin/main
             })
 
     yolo = meta.get("yolo_detection", {})
@@ -304,7 +265,6 @@ def _build_candidate_moments(meta: dict, hook_window_seconds: float) -> list[dic
                 "confidence": _clamp_float(event.get("confidence", 0.0)),
                 "hook_candidate": True,
                 "hook_window_seconds": hook_window_seconds,
-<<<<<<< HEAD
                 "detail": str(event.get("label") or event.get("event_id") or "visual_event"),
                 "evidence": {
                     "box": event.get("box"),
@@ -316,13 +276,6 @@ def _build_candidate_moments(meta: dict, hook_window_seconds: float) -> list[dic
     deduped: dict[tuple[float, str, str], dict[str, Any]] = {}
     for moment in moments:
         key = (moment["timestamp"], moment["kind"], moment["source"])
-=======
-            })
-
-    deduped: dict[tuple[float, str], dict[str, Any]] = {}
-    for moment in moments:
-        key = (moment["timestamp"], moment["kind"])
->>>>>>> origin/main
         existing = deduped.get(key)
         if existing is None or moment["confidence"] > existing["confidence"]:
             deduped[key] = moment
@@ -624,7 +577,6 @@ def _normalize_audio(meta: dict) -> float:
     return round(score, 3)
 
 
-<<<<<<< HEAD
 def _normalize_niceshot(meta: dict) -> float | None:
     niceshot = meta.get("niceshot_detection", {})
     # Return None (not zero) when unavailable or in stub mode — keeps the weight slot out
@@ -634,31 +586,18 @@ def _normalize_niceshot(meta: dict) -> float | None:
     normalized = niceshot.get("normalized_scores") or {}
     if normalized.get("composite") is not None:
         return _clamp_float(normalized.get("composite", 0.0))
-=======
-def _normalize_niceshot(meta: dict) -> float:
-    niceshot = meta.get("niceshot_detection", {})
-    if niceshot.get("status") != "ok":
-        return 0.0
->>>>>>> origin/main
     action = _clamp_float(niceshot.get("action_score", 0.0))
     hook = _clamp_float(niceshot.get("hook_score", 0.0))
     confidence = _clamp_float(niceshot.get("confidence", 0.0))
     return round(((action + hook) / 2.0) * confidence, 3)
 
 
-<<<<<<< HEAD
 def _normalize_yolo(meta: dict) -> float | None:
     yolo = meta.get("yolo_detection", {})
     # Return None when model isn't configured or inference failed — excluded from denominator
     # rather than penalized as a zero score.
     if yolo.get("status") != "ok":
         return None
-=======
-def _normalize_yolo(meta: dict) -> float:
-    yolo = meta.get("yolo_detection", {})
-    if yolo.get("status") != "ok":
-        return 0.0
->>>>>>> origin/main
     candidates = yolo.get("event_candidates") or []
     if candidates:
         return round(max(_clamp_float(item.get("confidence", 0.0)) for item in candidates), 3)
@@ -683,7 +622,6 @@ def _context_confidence(weapon_detection: dict, yolo_detection: dict) -> float:
     return round(max(scores), 3)
 
 
-<<<<<<< HEAD
 def _weighted_score(values: dict[str, float | None], weights: dict[str, float]) -> float:
     if not weights:
         active = {k: v for k, v in values.items() if v is not None}
@@ -695,15 +633,6 @@ def _weighted_score(values: dict[str, float | None], weights: dict[str, float]) 
         if value is None:
             continue  # detector not active — excluded from denominator, not penalized as zero
         weighted += value * float(weight)
-=======
-def _weighted_score(values: dict[str, float], weights: dict[str, float]) -> float:
-    if not weights:
-        return sum(values.values()) / max(len(values), 1)
-    total_weight = 0.0
-    weighted = 0.0
-    for key, weight in weights.items():
-        weighted += values.get(key, 0.0) * float(weight)
->>>>>>> origin/main
         total_weight += float(weight)
     if total_weight <= 0:
         return 0.0
