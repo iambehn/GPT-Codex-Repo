@@ -1,26 +1,32 @@
 """
 Stage 7 — Manual Review UI
 
-<<<<<<< HEAD
 Flask web app for reviewing processed clips and debugging detector output.
-=======
-Flask web app for reviewing processed clips before distribution.
->>>>>>> origin/main
 Clips sit in processing/{game}/ after AI Scoring. The reviewer watches
 each clip, sees the virality score and Claude-generated metadata, then
 approves or rejects.
 
 Routes:
-  GET  /                              — queue view (all pending clips, sorted by score)
-  GET  /clip/<game>/<stem>            — single clip review page
-<<<<<<< HEAD
-  GET  /replay/<source>/<game>/<stem> — replay/debug viewer for queue or quarantine clips
-=======
->>>>>>> origin/main
-  POST /clip/<game>/<stem>/approve    — approve → accepted/{game}/, load next
-  POST /clip/<game>/<stem>/reject     — reject  → rejected/{game}/, load next
-  GET  /video/<game>/<filename>       — stream the processed video file
-  GET  /quarantine                    — asset-training queue for quarantined clips
+  GET  /                                    — queue view (all pending clips, sorted by score)
+  GET  /clip/<game>/<stem>                  — single clip review page
+  GET  /replay/<source>/<game>/<stem>       — replay/debug viewer for queue or quarantine clips
+  POST /clip/<game>/<stem>/approve          — approve → accepted/{game}/, load next
+  POST /clip/<game>/<stem>/reject           — reject  → rejected/{game}/, load next
+  GET  /video/<game>/<filename>             — stream the processed video file
+  GET  /quarantine                          — asset-training queue for quarantined clips
+
+Agent Mode JSON API:
+  GET  /api/queue                           — listQueue
+  GET  /api/stats                           — getPipelineStats
+  GET  /api/clip/<game>/<stem>/inspect      — inspectClip
+  GET  /api/clip/<game>/<stem>/signals      — getClipSignals
+  POST /api/clip/<game>/<stem>/approve      — approveClip
+  POST /api/clip/<game>/<stem>/reject       — rejectClip
+  POST /api/clip/<game>/<stem>/rescore      — rescoreClip
+  GET  /api/quarantine                      — listQuarantine
+  GET  /api/quarantine/roster/<game>        — listEntityRoster
+  POST /api/quarantine/rescan               — rescanQuarantineClip
+  POST /api/quarantine/save-icon            — (asset training)
 
 Launch:
   python -m pipeline.review.app
@@ -30,10 +36,7 @@ Launch:
 import base64
 import binascii
 import json
-<<<<<<< HEAD
-=======
 import os
->>>>>>> origin/main
 import shutil
 import struct
 import subprocess
@@ -55,10 +58,7 @@ from flask import (
 
 from pipeline.clip_judge import evaluate as evaluate_clip
 from pipeline.game_pack import (
-<<<<<<< HEAD
     get_kill_feed_game_config,
-=======
->>>>>>> origin/main
     get_primary_entities,
     get_weapon_detector_game_config,
     list_supported_games,
@@ -75,22 +75,15 @@ MAX_ICON_IMAGE_BYTES = 2 * 1024 * 1024
 MAX_ICON_IMAGE_BASE64_CHARS = int(MAX_ICON_IMAGE_BYTES * 1.4)
 MIN_ICON_CROP_SIDE = 8
 MAX_ICON_CROP_SIDE = 1024
-<<<<<<< HEAD
 REPLAY_BASE_WIDTH = 1920
 REPLAY_BASE_HEIGHT = 1080
-=======
->>>>>>> origin/main
 
 # ---------------------------------------------------------------------------
 # Config loading
 # ---------------------------------------------------------------------------
 
 def _load_config() -> dict:
-<<<<<<< HEAD
     config_path = PROJECT_ROOT / "config.yaml"
-=======
-    config_path = Path(__file__).parent.parent.parent / "config.yaml"
->>>>>>> origin/main
     with open(config_path) as f:
         return yaml.safe_load(f)
 
@@ -119,14 +112,8 @@ def _get_pending_clips() -> list[dict]:
     Returns list of clip info dicts sorted by highlight_score descending.
     """
     clips = []
-<<<<<<< HEAD
     inbox_root = (PROJECT_ROOT / CONFIG["paths"]["inbox"]).resolve()
     processing_root = (PROJECT_ROOT / CONFIG["paths"]["processing"]).resolve()
-=======
-    project_root = Path(__file__).parent.parent.parent
-    inbox_root = (project_root / CONFIG["paths"]["inbox"]).resolve()
-    processing_root = (project_root / CONFIG["paths"]["processing"]).resolve()
->>>>>>> origin/main
 
     for game in list_supported_games(CONFIG):
         inbox_dir = inbox_root / game
@@ -150,13 +137,9 @@ def _get_pending_clips() -> list[dict]:
             processed = Path(processed_path_str)
             # Resolve legacy relative paths written before absolute-path fix
             if not processed.is_absolute():
-<<<<<<< HEAD
                 processed = (PROJECT_ROOT / processed).resolve()
             else:
                 processed = processed.resolve()
-=======
-                processed = (project_root / processed).resolve()
->>>>>>> origin/main
             # Must still live inside the processing/ tree (not moved yet)
             if not processed.exists():
                 continue
@@ -258,7 +241,6 @@ def _get_quarantine_clips() -> list[dict]:
 
 
 def _find_quarantine_clip(game: str, clip_stem: str) -> dict | None:
-<<<<<<< HEAD
     fallback_matches: list[dict] = []
     for clip in _get_quarantine_clips():
         if clip["game"] != game:
@@ -269,11 +251,6 @@ def _find_quarantine_clip(game: str, clip_stem: str) -> dict | None:
             fallback_matches.append(clip)
     if len(fallback_matches) == 1:
         return fallback_matches[0]
-=======
-    for clip in _get_quarantine_clips():
-        if clip["game"] == game and clip["stem"] == clip_stem:
-            return clip
->>>>>>> origin/main
     return None
 
 
@@ -558,7 +535,6 @@ def _next_clip(game: str, stem: str) -> dict | None:
     return clips[0] if clips else None
 
 
-<<<<<<< HEAD
 def _resolve_replay_target(source_stage: str, game: str, clip_stem: str) -> dict:
     if source_stage == "queue":
         clip = _find_clip(game, clip_stem)
@@ -935,10 +911,18 @@ def _build_replay_state(source_stage: str, game: str, clip_stem: str) -> dict:
     }
 
 
-=======
->>>>>>> origin/main
+def _load_clip_meta(clip: dict) -> dict:
+    """Load the full .meta.json for a pending clip, trying inbox first."""
+    meta_path = _inbox_root(clip["game"]) / f"{clip['clip_id']}.meta.json"
+    meta = _load_json(meta_path)
+    if not meta:
+        meta_path = Path(clip["processed_path"]).with_suffix(".meta.json")
+        meta = _load_json(meta_path)
+    return meta
+
+
 # ---------------------------------------------------------------------------
-# Routes
+# Routes — HTML review UI
 # ---------------------------------------------------------------------------
 
 @app.route("/")
@@ -957,15 +941,12 @@ def review_clip(game: str, stem: str):
     return render_template("review.html", clip=clip, next_clip=next_c, video_url=video_url)
 
 
-<<<<<<< HEAD
 @app.route("/replay/<source_stage>/<game>/<path:clip_stem>")
 def replay_view(source_stage: str, game: str, clip_stem: str):
     replay = _build_replay_state(source_stage, game, clip_stem)
     return render_template("replay.html", replay=replay, replay_data=replay)
 
 
-=======
->>>>>>> origin/main
 @app.route("/clip/<game>/<stem>/approve", methods=["POST"])
 def approve_clip(game: str, stem: str):
     return _handle_decision(game, stem, "accepted")
@@ -1009,12 +990,7 @@ def _handle_decision(game: str, stem: str, decision: str):
 @app.route("/video/<game>/<filename>")
 def serve_video(game: str, filename: str):
     """Stream a processed video file safely."""
-<<<<<<< HEAD
     video_dir = (PROJECT_ROOT / CONFIG["paths"]["processing"] / game).resolve()
-=======
-    project_root = Path(__file__).parent.parent.parent
-    video_dir = (project_root / CONFIG["paths"]["processing"] / game).resolve()
->>>>>>> origin/main
     return send_from_directory(str(video_dir), filename, mimetype="video/mp4")
 
 
@@ -1026,12 +1002,7 @@ def serve_thumb(game: str, stem: str):
     caches it as a .thumb.jpg sidecar next to the video, and serves it.
     Returns a 1x1 transparent GIF if the clip doesn't exist or FFmpeg fails.
     """
-<<<<<<< HEAD
     processing_dir = (PROJECT_ROOT / CONFIG["paths"]["processing"] / game).resolve()
-=======
-    project_root = Path(__file__).parent.parent.parent
-    processing_dir = (project_root / CONFIG["paths"]["processing"] / game).resolve()
->>>>>>> origin/main
     clip_path = processing_dir / f"{stem}.mp4"
     thumb_path = processing_dir / f"{stem}.thumb.jpg"
 
@@ -1074,7 +1045,7 @@ def serve_thumb(game: str, stem: str):
 
 
 # ---------------------------------------------------------------------------
-# Quarantine / asset-training routes
+# Routes — quarantine / asset-training (HTML + existing JSON)
 # ---------------------------------------------------------------------------
 
 def _json_error(message: str, status: int = 400):
@@ -1208,10 +1179,153 @@ def api_quarantine_rescan():
     rescan = _rescan_quarantine_clip(game, clip_stem)
     return jsonify({"ok": True, "rescan": rescan})
 
-<<<<<<< HEAD
-=======
+
 # ---------------------------------------------------------------------------
-# Scout routes
+# Routes — Agent Mode JSON API
+# ---------------------------------------------------------------------------
+
+@app.route("/api/queue")
+def api_list_queue():
+    game_filter = request.args.get("game", "").strip() or None
+    min_score = request.args.get("min_score", type=int)
+
+    clips = _get_pending_clips()
+    if game_filter:
+        clips = [c for c in clips if c["game"] == game_filter]
+    if min_score is not None:
+        clips = [c for c in clips if c["score"] >= min_score]
+
+    safe_clips = [
+        {k: v for k, v in c.items() if k != "meta"}
+        for c in clips
+    ]
+    return jsonify({"ok": True, "total": len(safe_clips), "clips": safe_clips})
+
+
+@app.route("/api/stats")
+def api_pipeline_stats():
+    by_game: dict[str, dict] = {}
+    totals = {"pending": 0, "accepted": 0, "rejected": 0, "quarantined": 0}
+
+    for game in list_supported_games(CONFIG):
+        by_game[game] = {"pending": 0, "accepted": 0, "rejected": 0, "quarantined": 0}
+
+    for clip in _get_pending_clips():
+        g = clip["game"]
+        by_game.setdefault(g, {"pending": 0, "accepted": 0, "rejected": 0, "quarantined": 0})
+        by_game[g]["pending"] += 1
+        totals["pending"] += 1
+
+    for stage, key in (("accepted", "accepted"), ("rejected", "rejected"), ("quarantine", "quarantined")):
+        stage_root = (PROJECT_ROOT / CONFIG["paths"][stage]).resolve()
+        for game in list_supported_games(CONFIG):
+            game_dir = stage_root / game
+            if not game_dir.exists():
+                continue
+            count = sum(
+                1 for f in game_dir.rglob("*")
+                if f.is_file() and f.suffix.lower() in VIDEO_EXTENSIONS
+            )
+            by_game.setdefault(game, {"pending": 0, "accepted": 0, "rejected": 0, "quarantined": 0})
+            by_game[game][key] += count
+            totals[key] += count
+
+    return jsonify({"ok": True, "totals": totals, "by_game": by_game})
+
+
+@app.route("/api/clip/<game>/<stem>/inspect")
+def api_inspect_clip(game: str, stem: str):
+    clip = _find_clip(game, stem)
+    if clip is None:
+        return _json_error(f"Clip '{stem}' not found in queue for game '{game}'", 404)
+    meta = _load_clip_meta(clip)
+    return jsonify({"ok": True, "clip_id": clip["clip_id"], "game": game, "meta": meta})
+
+
+@app.route("/api/clip/<game>/<stem>/signals")
+def api_clip_signals(game: str, stem: str):
+    clip = _find_clip(game, stem)
+    if clip is None:
+        return _json_error(f"Clip '{stem}' not found in queue for game '{game}'", 404)
+    meta = _load_clip_meta(clip)
+    signals = _build_replay_signals(meta)
+    return jsonify({"ok": True, "clip_id": clip["clip_id"], "signals": signals})
+
+
+def _api_handle_decision(game: str, stem: str, decision: str, reason: str | None = None):
+    clip = _find_clip(game, stem)
+    if clip is None:
+        return _json_error(f"Clip '{stem}' not found in queue for game '{game}'", 404)
+
+    src = Path(clip["processed_path"])
+    dest_dir = (PROJECT_ROOT / CONFIG["paths"][decision] / game).resolve()
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / src.name
+    shutil.move(str(src), str(dest))
+
+    meta_path = _inbox_root(game) / f"{clip['clip_id']}.meta.json"
+    if meta_path.exists():
+        meta = json.loads(meta_path.read_text())
+        meta["review_status"] = decision
+        meta["reviewed_at"] = datetime.now().isoformat(timespec="seconds")
+        meta["final_path"] = str(dest)
+        if reason:
+            meta["review_reason"] = reason
+        meta_path.write_text(json.dumps(meta, indent=2))
+
+    return jsonify({
+        "ok": True,
+        "clip_id": clip["clip_id"],
+        "review_status": decision,
+        "final_path": str(dest),
+    })
+
+
+@app.route("/api/clip/<game>/<stem>/approve", methods=["POST"])
+def api_approve_clip(game: str, stem: str):
+    return _api_handle_decision(game, stem, "accepted")
+
+
+@app.route("/api/clip/<game>/<stem>/reject", methods=["POST"])
+def api_reject_clip(game: str, stem: str):
+    data = request.get_json(silent=True) or {}
+    reason = str(data.get("reason", "")).strip() or None
+    return _api_handle_decision(game, stem, "rejected", reason=reason)
+
+
+@app.route("/api/clip/<game>/<stem>/rescore", methods=["POST"])
+def api_rescore_clip(game: str, stem: str):
+    from pipeline.scoring import run_scoring
+
+    clip = _find_clip(game, stem)
+    if clip is None:
+        return _json_error(f"Clip '{stem}' not found in queue for game '{game}'", 404)
+
+    meta_path = _inbox_root(game) / f"{clip['clip_id']}.meta.json"
+    if not meta_path.exists():
+        meta_path = Path(clip["processed_path"]).with_suffix(".meta.json")
+
+    meta = _load_json(meta_path)
+    meta.pop("scoring", None)
+    if meta_path.exists():
+        _write_json(meta_path, meta)
+
+    scoring = run_scoring(clip["processed_path"], meta, CONFIG)
+    return jsonify({"ok": True, "clip_id": clip["clip_id"], "scoring": scoring})
+
+
+@app.route("/api/quarantine")
+def api_list_quarantine():
+    game_filter = request.args.get("game", "").strip() or None
+    clips = _get_quarantine_clips()
+    if game_filter:
+        clips = [c for c in clips if c["game"] == game_filter]
+    safe_clips = [{k: v for k, v in c.items() if k != "clip_path"} for c in clips]
+    return jsonify({"ok": True, "total": len(safe_clips), "clips": safe_clips})
+
+
+# ---------------------------------------------------------------------------
+# Routes — Scout dashboard
 # ---------------------------------------------------------------------------
 
 @app.route("/scout")
@@ -1273,7 +1387,6 @@ def scout_add_game():
     longevity = int(request.form.get("longevity_score", 5))
     if name:
         add_game(name, longevity)
-        # Poll immediately so the row has data on first load
         import threading as _t
         _t.Thread(target=poll_game, args=(name, CONFIG), daemon=True).start()
     return redirect(url_for("scout"))
@@ -1297,7 +1410,6 @@ def scout_set_longevity():
         set_longevity(name, score, CONFIG)
     return redirect(url_for("scout"))
 
->>>>>>> origin/main
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -1308,8 +1420,6 @@ if __name__ == "__main__":
     review_cfg = cfg.get("review", {})
     debug = review_cfg.get("debug", False)
 
-<<<<<<< HEAD
-=======
     # Start background scout polling.
     # In debug mode, Werkzeug runs the script twice (reloader parent + worker).
     # Only start the thread in the actual worker subprocess to avoid duplicates.
@@ -1317,7 +1427,6 @@ if __name__ == "__main__":
         from pipeline.scout.tracker import start_background_polling
         start_background_polling(cfg)
 
->>>>>>> origin/main
     app.run(
         host=review_cfg.get("host", "127.0.0.1"),
         port=review_cfg.get("port", 5000),
