@@ -1,0 +1,579 @@
+openapi: "3.1.0"
+
+info:
+  title: GPT-Codex Clip Pipeline API
+  description: >
+    Operator console for the gaming highlight clip pipeline.
+    Exposes queue inspection, per-clip signal/metadata reads,
+    approve/reject actions, quarantine management, and rescore
+    triggers. Attach this schema as a Custom GPT Action to use
+    ChatGPT Agent Mode as a control plane for the pipeline.
+  version: "1.0.0"
+
+servers:
+  - url: http://127.0.0.1:5000
+    description: Local review server (python -m pipeline.review.app)
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+
+paths:
+
+  # ── Queue ──────────────────────────────────────────────────────────────────
+
+  /api/queue:
+    get:
+      operationId: listQueue
+      summary: List all pending clips sorted by highlight score
+      description: >
+        Returns every clip that has been processed but not yet reviewed,
+        sorted by AI highlight_score descending. Use this to understand
+        what is waiting for human approval.
+      parameters:
+        - name: game
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [marvel_rivals, deadlock, arc_raiders]
+          description: Filter by game slug. Omit to return all games.
+        - name: min_score
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+          description: Only return clips with highlight_score >= this value.
+      responses:
+        "200":
+          description: Pending clip list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, clips, total]
+                properties:
+                  ok:
+                    type: boolean
+                  total:
+                    type: integer
+                  clips:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ClipSummary"
+
+  /api/stats:
+    get:
+      operationId: getPipelineStats
+      summary: Pipeline health snapshot
+      description: >
+        Returns aggregate counts across all pipeline stages — pending,
+        accepted, rejected, quarantined — per game and overall. Use this
+        to get a quick read on pipeline health before diving into clips.
+      responses:
+        "200":
+          description: Stats snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineStats"
+
+  # ── Clip inspection & actions ──────────────────────────────────────────────
+
+  /api/clip/{game}/{stem}/inspect:
+    get:
+      operationId: inspectClip
+      summary: Full metadata for a queued clip
+      description: >
+        Returns the complete .meta.json for a clip in the review queue,
+        including feature extraction results, scoring, decision, hook
+        enforcer output, and transcription path. Use this before deciding
+        to approve or reject.
+      parameters:
+        - $ref: "#/components/parameters/Game"
+        - $ref: "#/components/parameters/Stem"
+      responses:
+        "200":
+          description: Full clip metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClipMeta"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/clip/{game}/{stem}/signals:
+    get:
+      operationId: getClipSignals
+      summary: Detection signals for a clip (timeline view)
+      description: >
+        Returns all detector signals on a shared timeline — audio spikes,
+        kill-feed events, weapon matches, NiceShot moments, YOLO events,
+        and hook-enforcer anchors. Each signal has a timestamp, source,
+        kind, label, and optional confidence. Use this to understand
+        why a clip scored the way it did.
+      parameters:
+        - $ref: "#/components/parameters/Game"
+        - $ref: "#/components/parameters/Stem"
+      responses:
+        "200":
+          description: Signal timeline
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, clip_id, signals]
+                properties:
+                  ok:
+                    type: boolean
+                  clip_id:
+                    type: string
+                  signals:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Signal"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/clip/{game}/{stem}/approve:
+    post:
+      operationId: approveClip
+      summary: Approve a clip — move to accepted/
+      description: >
+        Moves the processed clip to accepted/{game}/ and stamps the
+        .meta.json with review_status=accepted. Use when the clip is
+        publish-ready.
+      parameters:
+        - $ref: "#/components/parameters/Game"
+        - $ref: "#/components/parameters/Stem"
+      responses:
+        "200":
+          description: Approval confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/clip/{game}/{stem}/reject:
+    post:
+      operationId: rejectClip
+      summary: Reject a clip — move to rejected/
+      description: >
+        Moves the processed clip to rejected/{game}/ and stamps the
+        .meta.json with review_status=rejected. Provide an optional
+        reason to record why.
+      parameters:
+        - $ref: "#/components/parameters/Game"
+        - $ref: "#/components/parameters/Stem"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Human-readable rejection reason stored in meta.
+      responses:
+        "200":
+          description: Rejection confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/clip/{game}/{stem}/rescore:
+    post:
+      operationId: rescoreClip
+      summary: Force a fresh AI rescore for a clip
+      description: >
+        Clears the existing 'scoring' key from .meta.json and re-runs the
+        Claude scoring pass. Use when you suspect the original score was
+        stale or used outdated transcript data. Returns the new scoring result.
+      parameters:
+        - $ref: "#/components/parameters/Game"
+        - $ref: "#/components/parameters/Stem"
+      responses:
+        "200":
+          description: New scoring result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, clip_id, scoring]
+                properties:
+                  ok:
+                    type: boolean
+                  clip_id:
+                    type: string
+                  scoring:
+                    $ref: "#/components/schemas/ScoringResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Quarantine ─────────────────────────────────────────────────────────────
+
+  /api/quarantine:
+    get:
+      operationId: listQuarantine
+      summary: List quarantined clips
+      description: >
+        Returns all clips currently sitting in quarantine/{game}/ grouped by
+        game and quarantine reason. Use this to survey the backlog of clips
+        that failed the automated decision gate.
+      parameters:
+        - name: game
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [marvel_rivals, deadlock, arc_raiders]
+      responses:
+        "200":
+          description: Quarantine list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, clips, total]
+                properties:
+                  ok:
+                    type: boolean
+                  total:
+                    type: integer
+                  clips:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/QuarantineClip"
+
+  /api/quarantine/roster/{game}:
+    get:
+      operationId: listEntityRoster
+      summary: List detectable entities for a game
+      description: >
+        Returns all entity IDs and display names the weapon/entity detector
+        can recognise for this game. Use this when deciding which entity_id
+        to attach to a new training icon.
+      parameters:
+        - $ref: "#/components/parameters/Game"
+      responses:
+        "200":
+          description: Entity roster
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, game, primary_kind, entities]
+                properties:
+                  ok:
+                    type: boolean
+                  game:
+                    type: string
+                  primary_kind:
+                    type: string
+                  entities:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Entity"
+
+  /api/quarantine/rescan:
+    post:
+      operationId: rescanQuarantineClip
+      summary: Re-run weapon detector and clip judge on a quarantined clip
+      description: >
+        Forces weapon detection and clip_judge re-evaluation on a quarantined
+        clip. If the clip now passes, it is automatically moved back to inbox/.
+        Use after saving a new training icon to see if the clip recovers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [game, clip_stem]
+              properties:
+                game:
+                  type: string
+                  enum: [marvel_rivals, deadlock, arc_raiders]
+                clip_stem:
+                  type: string
+                  description: >
+                    Relative stem of the quarantined clip (may include
+                    reason subfolder, e.g. "low_confidence/clip_abc").
+      responses:
+        "200":
+          description: Rescan result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, rescan]
+                properties:
+                  ok:
+                    type: boolean
+                  rescan:
+                    $ref: "#/components/schemas/RescanResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+# ---------------------------------------------------------------------------
+# Reusable components
+# ---------------------------------------------------------------------------
+
+components:
+
+  parameters:
+
+    Game:
+      name: game
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [marvel_rivals, deadlock, arc_raiders]
+      description: Game slug.
+
+    Stem:
+      name: stem
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Filename stem of the processed clip (no extension).
+
+  responses:
+
+    NotFound:
+      description: Clip or resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    BadRequest:
+      description: Missing or invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    ClipSummary:
+      type: object
+      required: [clip_id, game, stem, score, clip_type, duration]
+      properties:
+        clip_id:
+          type: string
+        game:
+          type: string
+        stem:
+          type: string
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: AI highlight_score (0–100).
+        clip_type:
+          type: string
+          enum:
+            - clutch_play
+            - kill_streak
+            - funny_moment
+            - highlight_reel
+            - commentary
+            - tutorial
+            - reaction
+            - other
+        suggested_title:
+          type: string
+        duration:
+          type: number
+          description: Clip duration in seconds.
+        motion_level:
+          type: string
+        audio_energy:
+          type: string
+        template:
+          type: string
+        quality_tag:
+          type: string
+
+    ClipMeta:
+      type: object
+      required: [ok, clip_id, game, meta]
+      properties:
+        ok:
+          type: boolean
+        clip_id:
+          type: string
+        game:
+          type: string
+        meta:
+          type: object
+          description: Full .meta.json contents — scoring, decision, hook_enforcer, kill_feed, etc.
+          additionalProperties: true
+
+    Signal:
+      type: object
+      required: [timestamp, source, kind, label]
+      properties:
+        timestamp:
+          type: number
+          description: Seconds from clip start.
+        source:
+          type: string
+          enum:
+            - audio_detector
+            - kill_feed
+            - weapon_detector
+            - niceshot
+            - yolo_detector
+            - hook_enforcer
+        kind:
+          type: string
+          description: Event sub-type (e.g. kill, headshot, audio_spike, icon_match).
+        label:
+          type: string
+        confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          nullable: true
+        detail:
+          type: string
+        role:
+          type: string
+          description: Rendering hint — signal | context | hook_anchor | trim_start.
+
+    ScoringResult:
+      type: object
+      required: [highlight_score, clip_type]
+      properties:
+        highlight_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        clip_type:
+          type: string
+        suggested_title:
+          type: string
+        suggested_caption:
+          type: string
+        score_reasoning:
+          type: string
+
+    DecisionResult:
+      type: object
+      required: [ok, clip_id, review_status]
+      properties:
+        ok:
+          type: boolean
+        clip_id:
+          type: string
+        review_status:
+          type: string
+          enum: [accepted, rejected]
+        final_path:
+          type: string
+
+    QuarantineClip:
+      type: object
+      required: [clip_id, game, stem, reason]
+      properties:
+        clip_id:
+          type: string
+        game:
+          type: string
+        stem:
+          type: string
+        reason:
+          type: string
+          description: Quarantine reason (e.g. low_confidence, no_weapon_match).
+        decision_status:
+          type: string
+        composite_score:
+          type: number
+          nullable: true
+        has_meta:
+          type: boolean
+
+    RescanResult:
+      type: object
+      properties:
+        weapon_detection:
+          type: object
+          additionalProperties: true
+        decision:
+          type: object
+          additionalProperties: true
+        quarantine:
+          type: object
+          additionalProperties: true
+        moved_to_inbox:
+          type: boolean
+        inbox_path:
+          type: string
+          nullable: true
+
+    Entity:
+      type: object
+      required: [entity_id, display_name, primary_kind]
+      properties:
+        entity_id:
+          type: string
+        display_name:
+          type: string
+        primary_kind:
+          type: string
+
+    PipelineStats:
+      type: object
+      required: [ok, totals, by_game]
+      properties:
+        ok:
+          type: boolean
+        totals:
+          type: object
+          required: [pending, accepted, rejected, quarantined]
+          properties:
+            pending:
+              type: integer
+            accepted:
+              type: integer
+            rejected:
+              type: integer
+            quarantined:
+              type: integer
+        by_game:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              pending:
+                type: integer
+              accepted:
+                type: integer
+              rejected:
+                type: integer
+              quarantined:
+                type: integer
+
+    ErrorResponse:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
