@@ -9,7 +9,6 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-<<<<<<< HEAD
 _DEFAULT_PROFILES = {
     "cod_like_default": {
         "score_multipliers": {"action": 1.0, "hook": 1.0, "confidence": 1.0},
@@ -42,8 +41,6 @@ _DEFAULT_PROFILES = {
     },
 }
 
-=======
->>>>>>> origin/main
 
 def run_niceshot_detector(
     clip_path: str | Path,
@@ -91,7 +88,6 @@ def run_niceshot_detector(
 def _merged_config(game: str, config: dict, game_pack: dict) -> dict:
     global_cfg = dict(config.get("niceshot_detector") or {})
     game_cfg = dict((((game_pack.get("game") or {}).get("detectors") or {}).get("niceshot")) or {})
-<<<<<<< HEAD
     profile_name = str(game_cfg.get("profile") or global_cfg.get("profile", "cod_like_default"))
     profiles = dict(_DEFAULT_PROFILES)
     profiles.update(global_cfg.get("profiles") or {})
@@ -102,17 +98,10 @@ def _merged_config(game: str, config: dict, game_pack: dict) -> dict:
         "enabled": bool(global_cfg.get("enabled", False)),
         "provider": global_cfg.get("provider", "niceshot_ai"),
         "profile": profile_name,
-=======
-    merged = {
-        "enabled": bool(global_cfg.get("enabled", False)),
-        "provider": global_cfg.get("provider", "niceshot_ai"),
-        "profile": global_cfg.get("profile", "cod_like_default"),
->>>>>>> origin/main
         "mode": global_cfg.get("mode", "stub"),
         "fixture_dir": global_cfg.get("fixture_dir"),
         "fixture_path": global_cfg.get("fixture_path"),
         "stub": dict(global_cfg.get("stub") or {}),
-<<<<<<< HEAD
         "score_multipliers": dict(profile_cfg.get("score_multipliers") or {}),
         "score_weights": dict(profile_cfg.get("score_weights") or {}),
         "moment_boosts": dict(profile_cfg.get("moment_boosts") or {}),
@@ -128,10 +117,6 @@ def _merged_config(game: str, config: dict, game_pack: dict) -> dict:
     merged["kind_aliases"] = _merge_mapping(profile_cfg.get("kind_aliases"), profile_overrides.get("kind_aliases"))
     merged["hook_kinds"] = _merge_list(profile_cfg.get("hook_kinds"), profile_overrides.get("hook_kinds"))
     merged["non_hook_kinds"] = _merge_list(profile_cfg.get("non_hook_kinds"), profile_overrides.get("non_hook_kinds"))
-=======
-    }
-    merged.update(game_cfg)
->>>>>>> origin/main
     merged["enabled"] = bool(global_cfg.get("enabled", False)) and bool(game_cfg.get("enabled", False))
     merged["game"] = game
     return merged
@@ -140,7 +125,6 @@ def _merged_config(game: str, config: dict, game_pack: dict) -> dict:
 def _stub_result(cfg: dict) -> dict:
     stub = cfg.get("stub") or {}
     result = _base_result(cfg, "ok")
-<<<<<<< HEAD
     raw_moments = stub.get("moments", [])
     normalized_moments = _normalize_moments(raw_moments, source="niceshot", cfg=cfg)
     raw_action = _clamp(stub.get("action_score", 0.0))
@@ -159,14 +143,6 @@ def _stub_result(cfg: dict) -> dict:
         "moments": normalized_moments,
         "moment_summary": _moment_summary(normalized_moments),
         "explanation": _build_explanation(cfg, normalized_scores, normalized_moments),
-=======
-    result.update({
-        "mode": "stub",
-        "action_score": _clamp(stub.get("action_score", 0.0)),
-        "hook_score": _clamp(stub.get("hook_score", 0.0)),
-        "confidence": _clamp(stub.get("confidence", 0.0)),
-        "moments": _normalize_moments(stub.get("moments", []), source="niceshot"),
->>>>>>> origin/main
     })
     return result
 
@@ -181,19 +157,15 @@ def _fixture_result(clip: Path, cfg: dict) -> dict:
     except json.JSONDecodeError as e:
         return _base_result(cfg, "error", f"fixture JSON is malformed: {e}")
 
-<<<<<<< HEAD
     normalized_moments = _normalize_moments(payload.get("moments", []), source="niceshot", cfg=cfg)
     raw_action = _clamp(payload.get("action_score", 0.0))
     raw_hook = _clamp(payload.get("hook_score", 0.0))
     raw_confidence = _clamp(payload.get("confidence", 0.0))
     normalized_scores = _normalize_scores(raw_action, raw_hook, raw_confidence, normalized_moments, cfg)
-=======
->>>>>>> origin/main
     result = _base_result(cfg, str(payload.get("status", "ok")))
     result.update({
         "mode": "fixture_json",
         "fixture_path": str(fixture_path),
-<<<<<<< HEAD
         "raw_action_score": raw_action,
         "raw_hook_score": raw_hook,
         "raw_confidence": raw_confidence,
@@ -204,12 +176,6 @@ def _fixture_result(clip: Path, cfg: dict) -> dict:
         "moments": normalized_moments,
         "moment_summary": _moment_summary(normalized_moments),
         "explanation": _build_explanation(cfg, normalized_scores, normalized_moments),
-=======
-        "action_score": _clamp(payload.get("action_score", 0.0)),
-        "hook_score": _clamp(payload.get("hook_score", 0.0)),
-        "confidence": _clamp(payload.get("confidence", 0.0)),
-        "moments": _normalize_moments(payload.get("moments", []), source="niceshot"),
->>>>>>> origin/main
     })
     return result
 
@@ -222,23 +188,16 @@ def _resolve_fixture_path(clip: Path, cfg: dict) -> Path | None:
     return None
 
 
-<<<<<<< HEAD
 def _normalize_moments(raw_moments: Any, source: str, cfg: dict) -> list[dict[str, Any]]:
-=======
-def _normalize_moments(raw_moments: Any, source: str) -> list[dict[str, Any]]:
->>>>>>> origin/main
     moments: list[dict[str, Any]] = []
     if not isinstance(raw_moments, list):
         return moments
 
-<<<<<<< HEAD
     hook_kinds = set(cfg.get("hook_kinds") or [])
     non_hook_kinds = set(cfg.get("non_hook_kinds") or [])
     kind_aliases = cfg.get("kind_aliases") or {}
     moment_boosts = cfg.get("moment_boosts") or {}
 
-=======
->>>>>>> origin/main
     for item in raw_moments:
         if not isinstance(item, dict):
             continue
@@ -246,7 +205,6 @@ def _normalize_moments(raw_moments: Any, source: str) -> list[dict[str, Any]]:
             timestamp = round(float(item.get("timestamp", item.get("time", 0.0))), 3)
         except (TypeError, ValueError):
             timestamp = 0.0
-<<<<<<< HEAD
         raw_kind = str(item.get("kind", item.get("label", "action_spike")))
         kind = str(kind_aliases.get(raw_kind, raw_kind))
         confidence = _clamp(item.get("confidence", item.get("score", 0.0)))
@@ -262,14 +220,6 @@ def _normalize_moments(raw_moments: Any, source: str) -> list[dict[str, Any]]:
             "kind": kind,
             "confidence": confidence,
             "hook_candidate": hook_candidate,
-=======
-        moments.append({
-            "timestamp": timestamp,
-            "source": str(item.get("source", source)),
-            "kind": str(item.get("kind", item.get("label", "action_spike"))),
-            "confidence": _clamp(item.get("confidence", item.get("score", 0.0))),
-            "hook_candidate": bool(item.get("hook_candidate", True)),
->>>>>>> origin/main
         })
     return moments
 
@@ -281,7 +231,6 @@ def _base_result(cfg: dict, status: str, reason: str | None = None) -> dict:
         "provider": cfg.get("provider", "niceshot_ai"),
         "profile": cfg.get("profile", "cod_like_default"),
         "mode": cfg.get("mode", "stub"),
-<<<<<<< HEAD
         "profile_overrides_applied": cfg.get("profile_overrides_applied", []),
         "raw_action_score": 0.0,
         "raw_hook_score": 0.0,
@@ -293,12 +242,6 @@ def _base_result(cfg: dict, status: str, reason: str | None = None) -> dict:
         "moments": [],
         "moment_summary": {"total": 0, "hook_candidates": 0, "top_kind": None, "earliest_hook_timestamp": None},
         "explanation": [],
-=======
-        "action_score": 0.0,
-        "hook_score": 0.0,
-        "confidence": 0.0,
-        "moments": [],
->>>>>>> origin/main
     }
     if reason:
         result["reason"] = reason
@@ -326,7 +269,6 @@ def _clamp(value: Any) -> float:
         return round(max(0.0, min(1.0, float(value))), 3)
     except (TypeError, ValueError):
         return 0.0
-<<<<<<< HEAD
 
 
 def _normalize_scores(
@@ -419,5 +361,3 @@ def _merge_list(base: Any, override: Any) -> list[Any]:
         if value not in items:
             items.append(value)
     return items
-=======
->>>>>>> origin/main

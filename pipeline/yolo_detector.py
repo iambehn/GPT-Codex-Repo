@@ -42,11 +42,7 @@ def run_yolo_detector(
         })
 
     try:
-<<<<<<< HEAD
         raw_detections = _run_model_inference(clip, Path(weights_path), cfg, game_pack)
-=======
-        raw_detections = _run_model_inference(clip, Path(weights_path), cfg)
->>>>>>> origin/main
     except ImportError as e:
         return _write_and_return(meta_path, {**base, "status": "missing_dependency", "reason": str(e)})
     except Exception as e:
@@ -56,12 +52,9 @@ def run_yolo_detector(
     detections = _map_detections(raw_detections, cfg, game_pack)
     top_entity = _top_entity(detections)
     event_candidates = _event_candidates(detections)
-<<<<<<< HEAD
     timing = _video_timing(clip)
     timing["vid_stride"] = int(cfg.get("vid_stride", 1))
     timing["timestamp_source"] = _dominant_timestamp_source(detections, timing)
-=======
->>>>>>> origin/main
     result = {
         **base,
         "status": "ok",
@@ -69,10 +62,7 @@ def run_yolo_detector(
         "top_entity": top_entity,
         "event_candidates": event_candidates,
         "context_confidence": _context_confidence(top_entity, event_candidates),
-<<<<<<< HEAD
         "timing": timing,
-=======
->>>>>>> origin/main
     }
     return _write_and_return(meta_path, result)
 
@@ -83,21 +73,15 @@ def _merged_config(config: dict, game_pack: dict) -> dict:
     detector_cfg = dict(((hud.get("detectors") or {}).get("yolo")) or {})
     merged = {
         "enabled": bool(global_cfg.get("enabled", False)),
-<<<<<<< HEAD
         "inference_mode": str(global_cfg.get("inference_mode", "video")),
-=======
->>>>>>> origin/main
         "confidence_threshold": float(global_cfg.get("confidence_threshold", 0.60)),
         "iou_threshold": float(global_cfg.get("iou_threshold", 0.45)),
         "imgsz": int(global_cfg.get("imgsz", 640)),
         "max_det": int(global_cfg.get("max_det", 100)),
-<<<<<<< HEAD
         "vid_stride": int(global_cfg.get("vid_stride", 1)),
         "frame_sample": str(global_cfg.get("frame_sample", "middle")),
         "max_samples": int(global_cfg.get("max_samples", 24)),
         "roi_ref": global_cfg.get("roi_ref"),
-=======
->>>>>>> origin/main
         "verbose": bool(global_cfg.get("verbose", False)),
     }
     merged.update(detector_cfg)
@@ -111,18 +95,14 @@ def _base_result(cfg: dict, game_pack: dict) -> dict:
     return {
         "enabled": bool(cfg.get("enabled", False)),
         "status": "disabled",
-<<<<<<< HEAD
         "inference_mode": str(cfg.get("inference_mode", "video")),
         "roi_ref": cfg.get("roi_ref"),
-=======
->>>>>>> origin/main
         "weights_path": str(weights_path) if weights_path else None,
         "confidence_threshold": float(cfg.get("confidence_threshold", 0.60)),
         "detections": [],
         "top_entity": None,
         "event_candidates": [],
         "context_confidence": 0.0,
-<<<<<<< HEAD
         "timing": {
             "fps": None,
             "duration_seconds": None,
@@ -140,12 +120,6 @@ def _run_model_inference(clip: Path, weights_path: Path, cfg: dict, game_pack: d
 
 
 def _run_video_inference(clip: Path, weights_path: Path, cfg: dict) -> list[dict[str, Any]]:
-=======
-    }
-
-
-def _run_model_inference(clip: Path, weights_path: Path, cfg: dict) -> list[dict[str, Any]]:
->>>>>>> origin/main
     try:
         from ultralytics import YOLO
     except ImportError as e:
@@ -158,7 +132,6 @@ def _run_model_inference(clip: Path, weights_path: Path, cfg: dict) -> list[dict
         iou=float(cfg.get("iou_threshold", 0.45)),
         imgsz=int(cfg.get("imgsz", 640)),
         max_det=int(cfg.get("max_det", 100)),
-<<<<<<< HEAD
         vid_stride=max(1, int(cfg.get("vid_stride", 1))),
         verbose=bool(cfg.get("verbose", False)),
     )
@@ -214,16 +187,6 @@ def _extract_result_detections(results: Any, timing: dict[str, Any] | None = Non
     timestamp_source = _timestamp_source(timing, len(frames))
 
     for frame_index, result in enumerate(frames):
-=======
-        verbose=bool(cfg.get("verbose", False)),
-    )
-    return _extract_result_detections(results)
-
-
-def _extract_result_detections(results: Any) -> list[dict[str, Any]]:
-    detections: list[dict[str, Any]] = []
-    for frame_index, result in enumerate(results or []):
->>>>>>> origin/main
         names = getattr(result, "names", {}) or {}
         boxes = getattr(result, "boxes", None)
         if boxes is None:
@@ -240,17 +203,12 @@ def _extract_result_detections(results: Any) -> list[dict[str, Any]]:
                 "confidence": round(float(confidence), 3),
                 "box": _xyxy(getattr(box, "xyxy", None)),
                 "frame_index": frame_index,
-<<<<<<< HEAD
                 "timestamp": _estimate_timestamp(frame_index, timing, len(frames)),
                 "timestamp_source": timestamp_source,
-=======
-                "timestamp": 0.0,
->>>>>>> origin/main
             })
     return detections
 
 
-<<<<<<< HEAD
 def _resolve_inference_roi(cfg: dict, game_pack: dict) -> dict[str, Any]:
     hud = game_pack.get("hud") or {}
     rois = hud.get("rois") or {}
@@ -374,8 +332,6 @@ def _map_roi_box_to_frame(box: Any, roi: dict[str, Any]) -> list[float]:
     ]
 
 
-=======
->>>>>>> origin/main
 def _map_detections(raw_detections: list[dict[str, Any]], cfg: dict, game_pack: dict) -> list[dict[str, Any]]:
     label_map = cfg.get("labels") or {}
     primary_kind, primary_entities = get_primary_entities(game_pack)
@@ -452,7 +408,6 @@ def _context_confidence(top_entity: dict | None, event_candidates: list[dict]) -
 
 def _write_and_return(meta_path: Path, result: dict) -> dict:
     meta = _load_meta(meta_path)
-<<<<<<< HEAD
     if not result.get("timing"):
         result["timing"] = {
             "fps": None,
@@ -461,8 +416,6 @@ def _write_and_return(meta_path: Path, result: dict) -> dict:
             "vid_stride": None,
             "timestamp_source": "unknown",
         }
-=======
->>>>>>> origin/main
     meta["yolo_detection"] = result
     meta_path.write_text(json.dumps(meta, indent=2))
     return result
@@ -497,7 +450,6 @@ def _xyxy(value: Any) -> list[float]:
         return [round(float(v), 3) for v in value[:4]]
     except (TypeError, ValueError, IndexError):
         return []
-<<<<<<< HEAD
 
 
 def _dominant_timestamp_source(detections: list[dict[str, Any]], timing: dict[str, Any]) -> str:
@@ -571,5 +523,3 @@ def _estimate_timestamp(frame_index: int, timing: dict[str, Any], frame_total: i
         return round((frame_index / max(frame_total - 1, 1)) * float(duration), 3)
 
     return 0.0
-=======
->>>>>>> origin/main
