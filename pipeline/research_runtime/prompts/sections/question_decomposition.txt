@@ -1,0 +1,11 @@
+Write the `question_decomposition` section for the pipeline design research dossier.
+
+Focus:
+- define one primary research question
+- break it into non-overlapping subquestions
+- keep the decomposition directly useful for next implementation or investigation work
+
+Required posture:
+- concise
+- non-redundant
+- explicit about assumptions and uncertainty

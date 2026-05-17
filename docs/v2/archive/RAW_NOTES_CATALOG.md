@@ -15,6 +15,8 @@ Raw notes remain preserved for depth and traceability. They are not equal-weight
 | `v2NarrativeHook` | Hook / Editorial Packaging | Distribution / Post Ledger / Analytics, Source Enrichment / Identity Resolution | partially absorbed | [HOOK_EDITORIAL_PACKAGING.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/HOOK_EDITORIAL_PACKAGING.md), [DISTRIBUTION_POST_LEDGER_ANALYTICS.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/DISTRIBUTION_POST_LEDGER_ANALYTICS.md) |
 | `FutureFeaturesRoadmap` | Architecture / Operating Model | Registry / Orchestration / State, Review / Calibration / Replay | canonicalized | [FUTURE_FEATURES_ROADMAP.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/FUTURE_FEATURES_ROADMAP.md) |
 | `InterdependencyNotes` | Detection / Runtime / Fusion | Hook / Editorial Packaging, Experiments / Trials / Decisions | partially absorbed | [DETECTION_RUNTIME_FUSION.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/DETECTION_RUNTIME_FUSION.md), [HOOK_EDITORIAL_PACKAGING.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/HOOK_EDITORIAL_PACKAGING.md) |
+| `CustomAgent` | Research Agent Framework | Architecture / Operating Model | partially absorbed | [RESEARCH_AGENT_FRAMEWORK.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_AGENT_FRAMEWORK.md) |
+| `ResearchAgent` | Research Agent Framework | Architecture / Operating Model | partially absorbed | [RESEARCH_AGENT_FRAMEWORK.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_AGENT_FRAMEWORK.md) |
 
 ## Use Rules
 

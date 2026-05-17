@@ -1,0 +1,11 @@
+The previous output failed validation.
+
+Retry with these constraints:
+- keep the same target_section
+- remove unsupported keys
+- satisfy every required schema field
+- do not introduce cross-section edits
+- keep claims bounded to the assigned section only
+- preserve explicit assumptions, uncertainties, and failure modes
+
+If the section still cannot be completed validly, fail clearly rather than widening scope.

@@ -1,0 +1,11 @@
+Write the `architecture_dataflow` section for the pipeline design research dossier.
+
+Focus:
+- summarize the current pipeline path relevant to the research topic
+- list the main stages in order
+- call out crossmodal dependencies and likely failure points
+
+Required posture:
+- architecture-first
+- bounded to current repo reality
+- explicit about assumptions and uncertainty

@@ -1,0 +1,5 @@
+# Optional local research-runtime dependencies.
+# Install this file only when using the LangGraph research runtime skeleton.
+
+langgraph>=0.2,<1
+pydantic>=2.8,<3

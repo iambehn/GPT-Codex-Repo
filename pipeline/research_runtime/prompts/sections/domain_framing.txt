@@ -1,0 +1,11 @@
+Write the `domain_framing` section for the pipeline design research dossier.
+
+Focus:
+- frame the bounded pipeline problem
+- state the research objective in repo-specific terms
+- avoid implementation detail outside framing
+
+Required posture:
+- concise
+- skeptical
+- explicit about assumptions and uncertainty

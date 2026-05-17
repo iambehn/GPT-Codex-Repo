@@ -18,6 +18,7 @@ This index is the categorization authority.
 | Category | Canonical Doc | Use For | Do Not Use For |
 | --- | --- | --- | --- |
 | Architecture / Operating Model | [ARCHITECTURE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/ARCHITECTURE.md) | Pipeline boundaries, staged compute policy, operating model | Detailed experiment results or one-off implementation notes |
+| Research Agent Framework | [RESEARCH_AGENT_FRAMEWORK.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_AGENT_FRAMEWORK.md) | Repo-specific research-agent operating model, runtime contract, tool-role split, output-control policy | Pipeline runtime mechanics, benchmark results, or generic AI-personality advice |
 | Manifest Contracts / Game Packs | [MANIFEST_CONTRACTS.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/MANIFEST_CONTRACTS.md) | Game-pack structure, canonical manifest fields, publish/validation rules | Detector tuning or platform-posting behavior |
 | Detection / Runtime / Fusion | [DETECTION_RUNTIME_FUSION.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/DETECTION_RUNTIME_FUSION.md) | Proposal generation, runtime signals, fusion, reranking policy | Editorial packaging or sourcing logic |
 | Hook / Editorial Packaging | [HOOK_EDITORIAL_PACKAGING.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/HOOK_EDITORIAL_PACKAGING.md) | Hook artifacts, packaging logic, truthful editorial rules | Raw detector semantics or post metrics |
@@ -41,6 +42,8 @@ This index is the categorization authority.
 ## Practical Placement Rules
 
 - If the content answers "how is the pipeline supposed to work?", put it in a subsystem doc.
+- If it answers "how should the repo shape research-agent outputs and tool roles?", put it in the research-agent framework doc.
+- If it answers "how should an operator run ChatGPT agent mode against the repo's research contract?", put it in [RESEARCH_AGENT_CHATGPT_OPERATOR_WORKFLOW.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_AGENT_CHATGPT_OPERATOR_WORKFLOW.md).
 - If it answers "why did we choose this?", put it in an ADR.
 - If it answers "what happened when we tried it?", put it in an experiment ledger.
 - If it is exploratory or historical, catalog it in the archive.
