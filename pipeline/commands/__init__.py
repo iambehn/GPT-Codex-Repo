@@ -1,3 +1,4 @@
+from .export_posting import dispatch_export_posting_commands
 from .maintenance import (
     dispatch_maintenance_commands,
     run_audit_pipeline_contracts,
@@ -11,6 +12,7 @@ from .maintenance import (
 from .review_calibration import dispatch_review_calibration_commands
 
 __all__ = [
+    "dispatch_export_posting_commands",
     "dispatch_maintenance_commands",
     "dispatch_review_calibration_commands",
     "run_audit_pipeline_contracts",

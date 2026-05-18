@@ -19,6 +19,7 @@ def _missing_optional_tool(tool_name: str, exc: ModuleNotFoundError):
 
 from pipeline.chat_scanner import scan_chat_log
 from pipeline.clip_registry import query_clip_registry, refresh_clip_registry, transition_candidate_lifecycle
+from pipeline.commands.export_posting import dispatch_export_posting_commands
 from pipeline.commands.maintenance import (
     dispatch_maintenance_commands,
     run_audit_pipeline_contracts as _maintenance_run_audit_pipeline_contracts,
@@ -5443,24 +5444,59 @@ def main() -> int:
         print(json.dumps(run_export_training_data(args.export_training_data, game=args.game), indent=2))
         return 0
 
-    if args.export_v2_training_datasets:
-        _print_cli_result(
-            run_export_v2_training_datasets(
-                registry_path=args.registry_path,
-                output_root=args.output_root,
-                game=args.game,
-                fixture_id=args.fixture_id,
-                candidate_id=args.candidate_id,
-                lifecycle_state=args.lifecycle_state,
-                hook_archetype=args.hook_archetype,
-                hook_mode=args.hook_mode,
-                platform=args.platform,
-                account_id=args.account_id,
-                evidence_mode=args.evidence_mode,
-            ),
-            full_json=args.full_json,
-        )
-        return 0
+    export_posting_pre_shadow_exit = dispatch_export_posting_commands(
+        args,
+        parser=parser,
+        phase="pre_shadow",
+        print_cli_result_fn=_print_cli_result,
+        run_export_v2_training_datasets_fn=run_export_v2_training_datasets,
+        run_build_approval_target_dataset_fn=run_build_approval_target_dataset,
+        run_adapt_approval_target_dataset_fn=run_adapt_approval_target_dataset,
+        run_build_accepted_clip_inventory_fn=run_build_accepted_clip_inventory,
+        run_build_accepted_clip_intake_manifest_fn=run_build_accepted_clip_intake_manifest,
+        run_adapt_accepted_clip_intake_to_source_manifest_fn=run_adapt_accepted_clip_intake_to_source_manifest,
+        run_accepted_fixture_trial_batch_fn=run_accepted_fixture_trial_batch,
+        run_prepare_accepted_proxy_review_fn=run_prepare_accepted_proxy_review,
+        run_export_runtime_analysis_fn=run_export_runtime_analysis,
+        run_export_fused_analysis_fn=run_export_fused_analysis,
+        run_export_highlight_selection_fn=run_export_highlight_selection,
+        run_derive_hook_candidates_fn=run_derive_hook_candidates,
+        run_compare_hook_candidates_fn=run_compare_hook_candidates,
+        run_report_hook_evaluation_fn=run_report_hook_evaluation,
+        run_create_workflow_run_fn=run_create_workflow_run,
+        run_create_highlight_export_batch_fn=run_create_highlight_export_batch,
+        run_record_post_ledger_fn=run_record_post_ledger,
+        run_record_posted_metrics_snapshot_fn=run_record_posted_metrics_snapshot,
+        run_materialize_synthetic_post_coverage_fn=run_materialize_synthetic_post_coverage,
+        run_import_real_posted_lineage_fn=run_import_real_posted_lineage,
+        run_validate_real_artifact_intake_fn=run_validate_real_artifact_intake,
+        run_bootstrap_real_artifact_intake_bundle_fn=run_bootstrap_real_artifact_intake_bundle,
+        run_summarize_real_artifact_intake_fn=run_summarize_real_artifact_intake,
+        run_report_real_artifact_intake_coverage_fn=run_report_real_artifact_intake_coverage,
+        run_preflight_real_artifact_intake_refresh_fn=run_preflight_real_artifact_intake_refresh,
+        run_record_real_artifact_intake_preflight_history_fn=run_record_real_artifact_intake_preflight_history,
+        run_summarize_real_artifact_intake_preflight_history_fn=run_summarize_real_artifact_intake_preflight_history,
+        run_report_real_artifact_intake_preflight_trends_fn=run_report_real_artifact_intake_preflight_trends,
+        run_record_real_artifact_intake_refresh_outcome_history_fn=run_record_real_artifact_intake_refresh_outcome_history,
+        run_summarize_real_artifact_intake_refresh_outcome_history_fn=run_summarize_real_artifact_intake_refresh_outcome_history,
+        run_report_real_artifact_intake_refresh_outcome_trends_fn=run_report_real_artifact_intake_refresh_outcome_trends,
+        run_report_real_artifact_intake_history_comparison_fn=run_report_real_artifact_intake_history_comparison,
+        run_render_real_artifact_intake_dashboard_fn=run_render_real_artifact_intake_dashboard,
+        run_summarize_real_artifact_intake_dashboard_registry_fn=run_summarize_real_artifact_intake_dashboard_registry,
+        run_summarize_real_artifact_intake_comparison_targets_fn=run_summarize_real_artifact_intake_comparison_targets,
+        run_record_real_artifact_intake_dashboard_summary_history_fn=run_record_real_artifact_intake_dashboard_summary_history,
+        run_summarize_real_artifact_intake_dashboard_summary_history_fn=run_summarize_real_artifact_intake_dashboard_summary_history,
+        run_report_real_artifact_intake_dashboard_summary_trends_fn=run_report_real_artifact_intake_dashboard_summary_trends,
+        run_advise_real_artifact_intake_dedup_fn=run_advise_real_artifact_intake_dedup,
+        run_materialize_real_artifact_intake_dedup_resolutions_fn=run_materialize_real_artifact_intake_dedup_resolutions,
+        run_summarize_real_artifact_intake_dedup_resolutions_fn=run_summarize_real_artifact_intake_dedup_resolutions,
+        run_update_real_artifact_intake_dedup_resolution_fn=run_update_real_artifact_intake_dedup_resolution,
+        run_refresh_real_only_benchmark_fn=run_refresh_real_only_benchmark,
+        run_refresh_real_artifact_intake_fn=run_refresh_real_artifact_intake,
+        run_report_posted_performance_fn=run_report_posted_performance,
+    )
+    if export_posting_pre_shadow_exit is not None:
+        return export_posting_pre_shadow_exit
 
     if args.run_shadow_ranking_replay:
         if not args.dataset_manifest:
@@ -5676,118 +5712,6 @@ def main() -> int:
         )
         return 0
 
-    if args.build_approval_target_dataset:
-        if not args.registry_path:
-            parser.error("--build-approval-target-dataset requires --registry-path")
-        if not args.game:
-            parser.error("--build-approval-target-dataset requires --game")
-        _print_cli_result(
-            run_build_approval_target_dataset(
-                registry_path=args.registry_path,
-                game=args.game,
-                platform=args.platform,
-                evidence_mode=args.evidence_mode,
-                output_root=args.output_root,
-                output_path=args.output_path,
-            ),
-            command_name="build_approval_target_dataset",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.adapt_approval_target_dataset:
-        _print_cli_result(
-            run_adapt_approval_target_dataset(
-                args.adapt_approval_target_dataset,
-                output_root=args.output_root,
-                output_path=args.output_path,
-            ),
-            command_name="adapt_approval_target_dataset",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.build_accepted_clip_inventory:
-        if not args.source_root:
-            parser.error("--build-accepted-clip-inventory requires --source-root")
-        if len(args.source_root) != 1:
-            parser.error("--build-accepted-clip-inventory accepts exactly one --source-root")
-        if not args.game:
-            parser.error("--build-accepted-clip-inventory requires --game")
-        _print_cli_result(
-            run_build_accepted_clip_inventory(
-                source_root=args.source_root[0],
-                game=args.game,
-                output_root=args.output_root,
-                output_path=args.output_path,
-            ),
-            command_name="build_accepted_clip_inventory",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.build_accepted_clip_intake_manifest:
-        if not args.accepted_inventory_manifest:
-            parser.error("--build-accepted-clip-intake-manifest requires --accepted-inventory-manifest")
-        _print_cli_result(
-            run_build_accepted_clip_intake_manifest(
-                args.accepted_inventory_manifest,
-                output_root=args.output_root,
-                output_path=args.output_path,
-            ),
-            command_name="build_accepted_clip_intake_manifest",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.adapt_accepted_clip_intake_to_source_manifest:
-        if not args.accepted_clip_intake_manifest:
-            parser.error("--adapt-accepted-clip-intake-to-source-manifest requires --accepted-clip-intake-manifest")
-        _print_cli_result(
-            run_adapt_accepted_clip_intake_to_source_manifest(
-                args.accepted_clip_intake_manifest,
-                output_root=args.output_root,
-                output_path=args.output_path,
-            ),
-            command_name="adapt_accepted_clip_intake_to_source_manifest",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.run_accepted_fixture_trial_batch:
-        if not args.fixture_source_manifest:
-            parser.error("--run-accepted-fixture-trial-batch requires --fixture-source-manifest")
-        _print_cli_result(
-            run_accepted_fixture_trial_batch(
-                args.fixture_source_manifest,
-                output_root=args.output_root,
-                output_path=args.output_path,
-                game=args.game,
-                pattern=args.pattern,
-                limit=args.limit,
-                emit_runtime=args.emit_runtime,
-                emit_fused=args.emit_fused,
-            ),
-            command_name="run_accepted_fixture_trial_batch",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.prepare_accepted_proxy_review:
-        if not args.accepted_fixture_trial_batch_manifest:
-            parser.error("--prepare-accepted-proxy-review requires --accepted-fixture-trial-batch-manifest")
-        _print_cli_result(
-            run_prepare_accepted_proxy_review(
-                args.accepted_fixture_trial_batch_manifest,
-                output_root=args.output_root,
-                output_path=args.output_path,
-                gpt_repo=args.gpt_repo,
-            ),
-            command_name="prepare_accepted_proxy_review",
-            full_json=args.full_json,
-        )
-        return 0
-
     if args.summarize_shadow_experiment_ledger:
         _print_cli_result(
             run_summarize_shadow_experiment_ledger(
@@ -5801,14 +5725,6 @@ def main() -> int:
             command_name="summarize_shadow_experiment_ledger",
             full_json=args.full_json,
         )
-        return 0
-
-    if args.export_runtime_analysis:
-        print(json.dumps(run_export_runtime_analysis(args.export_runtime_analysis, game=args.game), indent=2))
-        return 0
-
-    if args.export_fused_analysis:
-        print(json.dumps(run_export_fused_analysis(args.export_fused_analysis, game=args.game), indent=2))
         return 0
 
     if args.compare_fixture_sidecars:
@@ -5880,423 +5796,59 @@ def main() -> int:
         print(json.dumps(result, indent=2))
         return 0 if result.get("ok") else 1
 
-    if args.export_highlight_selection is not None:
-        result = run_export_highlight_selection(
-            args.proxy_sidecar or args.export_highlight_selection or None,
-            fused_sidecar=args.fused_sidecar,
-            output_path=args.output_path,
-        )
-        _print_cli_result(result, full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.derive_hook_candidates:
-        result = run_derive_hook_candidates(
-            args.derive_hook_candidates,
-            registry_path=args.registry_path,
-            output_path=args.output_path,
-        )
-        _print_cli_result(result, full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.compare_hook_candidates:
-        if not args.baseline_sidecar_root or not args.trial_sidecar_root:
-            parser.error("--compare-hook-candidates requires --baseline-sidecar-root and --trial-sidecar-root")
-        result = run_compare_hook_candidates(
-            args.compare_hook_candidates,
-            baseline_sidecar_root=args.baseline_sidecar_root,
-            trial_sidecar_root=args.trial_sidecar_root,
-            game=args.game,
-            output_path=args.output_path,
-        )
-        _print_cli_result(result, command_name="compare_hook_candidates", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.report_hook_evaluation:
-        if not args.baseline_sidecar_root or not args.trial_sidecar_root:
-            parser.error("--report-hook-evaluation requires --baseline-sidecar-root and --trial-sidecar-root")
-        if not args.registry_path:
-            parser.error("--report-hook-evaluation requires --registry-path")
-        result = run_report_hook_evaluation(
-            args.report_hook_evaluation,
-            baseline_sidecar_root=args.baseline_sidecar_root,
-            trial_sidecar_root=args.trial_sidecar_root,
-            registry_path=args.registry_path,
-            game=args.game,
-            output_path=args.output_path,
-        )
-        _print_cli_result(result, command_name="report_hook_evaluation", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.create_workflow_run:
-        if not args.workflow_type:
-            parser.error("--create-workflow-run requires --workflow-type")
-        result = run_create_workflow_run(
-            args.workflow_type,
-            registry_path=args.registry_path,
-            output_path=args.output_path,
-            game=args.game,
-            fixture_id=args.fixture_id,
-        )
-        _print_cli_result(result, full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.create_highlight_export_batch:
-        result = run_create_highlight_export_batch(
-            registry_path=args.registry_path,
-            workflow_run_id=args.workflow_run_id,
-            selection_manifest=args.selection_manifest,
-            game=args.game,
-            fixture_id=args.fixture_id,
-            output_path=args.output_path,
-        )
-        _print_cli_result(result, full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.record_post_ledger:
-        if not args.export_manifest:
-            parser.error("--record-post-ledger requires --export-manifest")
-        result = run_record_post_ledger(
-            args.export_manifest,
-            workflow_run_id=args.workflow_run_id,
-            platform=args.platform,
-            account_id=args.account_id,
-            output_path=args.output_path,
-        )
-        _print_cli_result(result, full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.record_posted_metrics_snapshot:
-        if not args.post_ledger_manifest:
-            parser.error("--record-posted-metrics-snapshot requires --post-ledger-manifest")
-        result = run_record_posted_metrics_snapshot(
-            args.post_ledger_manifest,
-            workflow_run_id=args.workflow_run_id,
-            platform=args.platform,
-            account_id=args.account_id,
-            output_path=args.output_path,
-            view_count=args.view_count,
-            like_count=args.like_count,
-            comment_count=args.comment_count,
-            share_count=args.share_count,
-            save_count=args.save_count,
-            watch_time_seconds=args.watch_time_seconds,
-            average_watch_time_seconds=args.average_watch_time_seconds,
-            completion_rate=args.completion_rate,
-            engagement_rate=args.engagement_rate,
-        )
-        _print_cli_result(result, full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.materialize_synthetic_post_coverage:
-        if not args.registry_path:
-            parser.error("--materialize-synthetic-post-coverage requires --registry-path")
-        result = run_materialize_synthetic_post_coverage(
-            registry_path=args.registry_path,
-            game=args.game,
-            fixture_id=args.fixture_id,
-            platform=args.platform,
-            account_id=args.account_id,
-            workflow_run_id=args.workflow_run_id,
-            output_root=args.output_root,
-            synthetic_profile=args.synthetic_profile or "balanced",
-            include_rejected=bool(args.include_rejected),
-        )
-        _print_cli_result(result, command_name="materialize_synthetic_post_coverage", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.import_real_posted_lineage:
-        if not args.registry_path:
-            parser.error("--import-real-posted-lineage requires --registry-path")
-        if not args.source_root:
-            parser.error("--import-real-posted-lineage requires at least one --source-root")
-        result = run_import_real_posted_lineage(
-            source_roots=args.source_root,
-            registry_path=args.registry_path,
-            game=args.game,
-            platform=args.platform,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.validate_real_artifact_intake:
-        result = run_validate_real_artifact_intake(
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.bootstrap_real_artifact_intake_bundle:
-        if not args.bundle_name:
-            parser.error("--bootstrap-real-artifact-intake-bundle requires --bundle-name")
-        result = run_bootstrap_real_artifact_intake_bundle(
-            args.bundle_name,
-            intake_root=args.intake_root,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.summarize_real_artifact_intake is not None:
-        result = run_summarize_real_artifact_intake(
-            args.summarize_real_artifact_intake,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.report_real_artifact_intake_coverage is not None:
-        result = run_report_real_artifact_intake_coverage(
-            args.report_real_artifact_intake_coverage,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.preflight_real_artifact_intake_refresh is not None:
-        result = run_preflight_real_artifact_intake_refresh(
-            args.preflight_real_artifact_intake_refresh,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-            require_resolved_dedup=args.require_resolved_dedup,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.record_real_artifact_intake_preflight_history is not None:
-        result = run_record_real_artifact_intake_preflight_history(
-            args.record_real_artifact_intake_preflight_history,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-            require_resolved_dedup=args.require_resolved_dedup,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.summarize_real_artifact_intake_preflight_history:
-        result = run_summarize_real_artifact_intake_preflight_history(
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.report_real_artifact_intake_preflight_trends:
-        result = run_report_real_artifact_intake_preflight_trends(
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.record_real_artifact_intake_refresh_outcome_history:
-        result = run_record_real_artifact_intake_refresh_outcome_history(
-            intake_root=args.intake_root,
-            registry_path=args.registry_path,
-            game=args.game,
-            platform=args.platform,
-            require_resolved_dedup=args.require_resolved_dedup,
-            output_root=args.output_root,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.summarize_real_artifact_intake_refresh_outcome_history:
-        result = run_summarize_real_artifact_intake_refresh_outcome_history(
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.report_real_artifact_intake_refresh_outcome_trends:
-        result = run_report_real_artifact_intake_refresh_outcome_trends(
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.report_real_artifact_intake_history_comparison is not None:
-        result = run_report_real_artifact_intake_history_comparison(
-            args.report_real_artifact_intake_history_comparison,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.render_real_artifact_intake_dashboard is not None:
-        result = run_render_real_artifact_intake_dashboard(
-            args.render_real_artifact_intake_dashboard,
-            validation_manifest=args.summarize_real_artifact_intake,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.summarize_real_artifact_intake_dashboard_registry:
-        result = run_summarize_real_artifact_intake_dashboard_registry(
-            registry_path=args.registry_path,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.summarize_real_artifact_intake_comparison_targets:
-        result = run_summarize_real_artifact_intake_comparison_targets(
-            registry_path=args.registry_path,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.record_real_artifact_intake_dashboard_summary_history:
-        result = run_record_real_artifact_intake_dashboard_summary_history(
-            registry_path=args.registry_path,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.summarize_real_artifact_intake_dashboard_summary_history:
-        result = run_summarize_real_artifact_intake_dashboard_summary_history(
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.report_real_artifact_intake_dashboard_summary_trends:
-        result = run_report_real_artifact_intake_dashboard_summary_trends(
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.advise_real_artifact_intake_dedup is not None:
-        result = run_advise_real_artifact_intake_dedup(
-            args.advise_real_artifact_intake_dedup,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.materialize_real_artifact_intake_dedup_resolutions is not None:
-        result = run_materialize_real_artifact_intake_dedup_resolutions(
-            args.materialize_real_artifact_intake_dedup_resolutions,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.summarize_real_artifact_intake_dedup_resolutions is not None:
-        result = run_summarize_real_artifact_intake_dedup_resolutions(
-            args.summarize_real_artifact_intake_dedup_resolutions,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.update_real_artifact_intake_dedup_resolution is not None:
-        if not args.group_id:
-            parser.error("--update-real-artifact-intake-dedup-resolution requires --group-id")
-        if not args.resolution_status:
-            parser.error("--update-real-artifact-intake-dedup-resolution requires --resolution-status")
-        result = run_update_real_artifact_intake_dedup_resolution(
-            args.update_real_artifact_intake_dedup_resolution,
-            group_id=args.group_id,
-            status=args.resolution_status,
-            reviewed_by=args.reviewed_by,
-            notes=args.notes,
-            intake_root=args.intake_root,
-            game=args.game,
-            platform=args.platform,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.refresh_real_only_benchmark:
-        if not args.registry_path:
-            parser.error("--refresh-real-only-benchmark requires --registry-path")
-        if not args.source_root:
-            parser.error("--refresh-real-only-benchmark requires at least one --source-root")
-        result = run_refresh_real_only_benchmark(
-            source_roots=args.source_root,
-            registry_path=args.registry_path,
-            game=args.game,
-            platform=args.platform,
-            output_root=args.output_root,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.refresh_real_artifact_intake:
-        result = run_refresh_real_artifact_intake(
-            intake_root=args.intake_root,
-            registry_path=args.registry_path,
-            game=args.game,
-            platform=args.platform,
-            require_resolved_dedup=args.require_resolved_dedup,
-            record_dashboard_summary_history=args.record_dashboard_summary_history_on_refresh,
-            record_refresh_outcome_history=args.record_refresh_outcome_history_on_refresh,
-            render_dashboard=args.render_dashboard_on_refresh,
-            refresh_artifact_registry=args.refresh_artifact_registry_on_refresh,
-            comparison_manifest=args.compare_evidence_on_refresh,
-            output_root=args.output_root,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.report_posted_performance:
-        result = run_report_posted_performance(
-            registry_path=args.registry_path,
-            game=args.game,
-            platform=args.platform,
-            account_id=args.account_id,
-            workflow_run_id=args.workflow_run_id,
-            candidate_id=args.candidate_id,
-            fixture_id=args.fixture_id,
-            hook_archetype=args.hook_archetype,
-            hook_mode=args.hook_mode,
-            output_path=args.output_path,
-        )
-        _print_cli_result(result, command_name="report_posted_performance", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
+    export_posting_post_shadow_exit = dispatch_export_posting_commands(
+        args,
+        parser=parser,
+        phase="post_shadow",
+        print_cli_result_fn=_print_cli_result,
+        run_export_v2_training_datasets_fn=run_export_v2_training_datasets,
+        run_build_approval_target_dataset_fn=run_build_approval_target_dataset,
+        run_adapt_approval_target_dataset_fn=run_adapt_approval_target_dataset,
+        run_build_accepted_clip_inventory_fn=run_build_accepted_clip_inventory,
+        run_build_accepted_clip_intake_manifest_fn=run_build_accepted_clip_intake_manifest,
+        run_adapt_accepted_clip_intake_to_source_manifest_fn=run_adapt_accepted_clip_intake_to_source_manifest,
+        run_accepted_fixture_trial_batch_fn=run_accepted_fixture_trial_batch,
+        run_prepare_accepted_proxy_review_fn=run_prepare_accepted_proxy_review,
+        run_export_runtime_analysis_fn=run_export_runtime_analysis,
+        run_export_fused_analysis_fn=run_export_fused_analysis,
+        run_export_highlight_selection_fn=run_export_highlight_selection,
+        run_derive_hook_candidates_fn=run_derive_hook_candidates,
+        run_compare_hook_candidates_fn=run_compare_hook_candidates,
+        run_report_hook_evaluation_fn=run_report_hook_evaluation,
+        run_create_workflow_run_fn=run_create_workflow_run,
+        run_create_highlight_export_batch_fn=run_create_highlight_export_batch,
+        run_record_post_ledger_fn=run_record_post_ledger,
+        run_record_posted_metrics_snapshot_fn=run_record_posted_metrics_snapshot,
+        run_materialize_synthetic_post_coverage_fn=run_materialize_synthetic_post_coverage,
+        run_import_real_posted_lineage_fn=run_import_real_posted_lineage,
+        run_validate_real_artifact_intake_fn=run_validate_real_artifact_intake,
+        run_bootstrap_real_artifact_intake_bundle_fn=run_bootstrap_real_artifact_intake_bundle,
+        run_summarize_real_artifact_intake_fn=run_summarize_real_artifact_intake,
+        run_report_real_artifact_intake_coverage_fn=run_report_real_artifact_intake_coverage,
+        run_preflight_real_artifact_intake_refresh_fn=run_preflight_real_artifact_intake_refresh,
+        run_record_real_artifact_intake_preflight_history_fn=run_record_real_artifact_intake_preflight_history,
+        run_summarize_real_artifact_intake_preflight_history_fn=run_summarize_real_artifact_intake_preflight_history,
+        run_report_real_artifact_intake_preflight_trends_fn=run_report_real_artifact_intake_preflight_trends,
+        run_record_real_artifact_intake_refresh_outcome_history_fn=run_record_real_artifact_intake_refresh_outcome_history,
+        run_summarize_real_artifact_intake_refresh_outcome_history_fn=run_summarize_real_artifact_intake_refresh_outcome_history,
+        run_report_real_artifact_intake_refresh_outcome_trends_fn=run_report_real_artifact_intake_refresh_outcome_trends,
+        run_report_real_artifact_intake_history_comparison_fn=run_report_real_artifact_intake_history_comparison,
+        run_render_real_artifact_intake_dashboard_fn=run_render_real_artifact_intake_dashboard,
+        run_summarize_real_artifact_intake_dashboard_registry_fn=run_summarize_real_artifact_intake_dashboard_registry,
+        run_summarize_real_artifact_intake_comparison_targets_fn=run_summarize_real_artifact_intake_comparison_targets,
+        run_record_real_artifact_intake_dashboard_summary_history_fn=run_record_real_artifact_intake_dashboard_summary_history,
+        run_summarize_real_artifact_intake_dashboard_summary_history_fn=run_summarize_real_artifact_intake_dashboard_summary_history,
+        run_report_real_artifact_intake_dashboard_summary_trends_fn=run_report_real_artifact_intake_dashboard_summary_trends,
+        run_advise_real_artifact_intake_dedup_fn=run_advise_real_artifact_intake_dedup,
+        run_materialize_real_artifact_intake_dedup_resolutions_fn=run_materialize_real_artifact_intake_dedup_resolutions,
+        run_summarize_real_artifact_intake_dedup_resolutions_fn=run_summarize_real_artifact_intake_dedup_resolutions,
+        run_update_real_artifact_intake_dedup_resolution_fn=run_update_real_artifact_intake_dedup_resolution,
+        run_refresh_real_only_benchmark_fn=run_refresh_real_only_benchmark,
+        run_refresh_real_artifact_intake_fn=run_refresh_real_artifact_intake,
+        run_report_posted_performance_fn=run_report_posted_performance,
+    )
+    if export_posting_post_shadow_exit is not None:
+        return export_posting_post_shadow_exit
 
     if args.query_workflow_queue:
         if not args.workflow_type:
