@@ -31,6 +31,7 @@ from pipeline.commands.maintenance import (
     run_validate_published_pack as _maintenance_run_validate_published_pack,
 )
 from pipeline.commands.review_calibration import dispatch_review_calibration_commands
+from pipeline.commands.shadow_training import dispatch_shadow_training_commands
 from pipeline.config import (
     DEFAULT_CONFIG,
     deep_merge as _config_deep_merge,
@@ -5498,234 +5499,26 @@ def main() -> int:
     if export_posting_pre_shadow_exit is not None:
         return export_posting_pre_shadow_exit
 
-    if args.run_shadow_ranking_replay:
-        if not args.dataset_manifest:
-            parser.error("--run-shadow-ranking-replay requires --dataset-manifest")
-        _print_cli_result(
-            run_run_shadow_ranking_replay(
-                args.dataset_manifest,
-                model_path=args.model_path,
-                model_family=args.model_family,
-                model_version=args.model_version,
-                output_path=args.output_path,
-                game=args.game,
-                fixture_id=args.fixture_id,
-                candidate_id=args.candidate_id,
-                platform=args.platform,
-            ),
-            command_name="run_shadow_ranking_replay",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.compare_shadow_ranking_replay:
-        _print_cli_result(
-            run_compare_shadow_ranking_replay(
-                args.compare_shadow_ranking_replay,
-                output_path=args.output_path,
-            ),
-            command_name="compare_shadow_ranking_replay",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.train_shadow_ranking_model:
-        if not args.dataset_manifest:
-            parser.error("--train-shadow-ranking-model requires --dataset-manifest")
-        print(
-            json.dumps(
-                run_train_shadow_ranking_model(
-                    args.dataset_manifest,
-                    model_output_path=args.model_output_path,
-                    model_family=args.model_family or "linear_shadow_ranker",
-                    training_target=args.training_target or "approved_or_selected_probability",
-                    split_key=args.split_key or "fixture_id",
-                    train_fraction=args.train_fraction if args.train_fraction is not None else 0.8,
-                    game=args.game,
-                    fixture_id=args.fixture_id,
-                    candidate_id=args.candidate_id,
-                    platform=args.platform,
-                ),
-                indent=2,
-            )
-        )
-        return 0
-
-    if args.compare_shadow_model_families:
-        _print_cli_result(
-            run_compare_shadow_model_families(
-                args.compare_shadow_model_families,
-                output_path=args.output_path,
-                training_target=args.training_target,
-                game=args.game,
-                platform=args.platform,
-            ),
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.run_shadow_benchmark_matrix:
-        if not args.dataset_manifest:
-            parser.error("--run-shadow-benchmark-matrix requires --dataset-manifest")
-        _print_cli_result(
-            run_run_shadow_benchmark_matrix(
-                args.dataset_manifest,
-                policy_path=args.policy_path,
-                model_family=args.model_family,
-                training_target=args.training_target,
-                split_key=args.split_key or "fixture_id",
-                train_fraction=args.train_fraction if args.train_fraction is not None else 0.8,
-                game=args.game,
-                platform=args.platform,
-                output_path=args.output_path,
-            ),
-            command_name="run_shadow_benchmark_matrix",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.summarize_shadow_benchmark_matrix is not None:
-        _print_cli_result(
-            run_summarize_shadow_benchmark_matrix(
-                None if args.summarize_shadow_benchmark_matrix == "" else args.summarize_shadow_benchmark_matrix,
-                registry_path=args.registry_path,
-                training_target=args.training_target,
-                game=args.game,
-                platform=args.platform,
-                recommendation_decision=args.recommendation_decision,
-                model_family=args.model_family,
-            ),
-            command_name="summarize_shadow_benchmark_matrix",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.review_shadow_benchmark_results:
-        _print_cli_result(
-            run_review_shadow_benchmark_results(
-                args.review_shadow_benchmark_results,
-                output_path=args.output_path,
-                training_target=args.training_target,
-                model_family=args.model_family,
-                game=args.game,
-                platform=args.platform,
-            ),
-            command_name="review_shadow_benchmark_results",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.compare_shadow_benchmark_evidence_modes:
-        _print_cli_result(
-            run_compare_shadow_benchmark_evidence_modes(
-                args.compare_shadow_benchmark_evidence_modes[0],
-                args.compare_shadow_benchmark_evidence_modes[1],
-                output_path=args.output_path,
-                training_target=args.training_target,
-                game=args.game,
-                platform=args.platform,
-            ),
-            command_name="compare_shadow_benchmark_evidence_modes",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.summarize_shadow_target_readiness is not None:
-        _print_cli_result(
-            run_summarize_shadow_target_readiness(
-                None if args.summarize_shadow_target_readiness == "" else args.summarize_shadow_target_readiness,
-                registry_path=args.registry_path,
-                training_target=args.training_target,
-                game=args.game,
-                platform=args.platform,
-                model_family=args.model_family,
-            ),
-            command_name="summarize_shadow_target_readiness",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.evaluate_shadow_ranking_model:
-        if not args.model_path:
-            parser.error("--evaluate-shadow-ranking-model requires --model-path")
-        _print_cli_result(
-            run_evaluate_shadow_ranking_model(
-                model_path=args.model_path,
-                dataset_manifest=args.dataset_manifest,
-                output_path=args.output_path,
-                game=args.game,
-                fixture_id=args.fixture_id,
-                candidate_id=args.candidate_id,
-                platform=args.platform,
-            ),
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.evaluate_shadow_experiment_policy:
-        if not args.experiment_manifest:
-            parser.error("--evaluate-shadow-experiment-policy requires --experiment-manifest")
-        _print_cli_result(
-            run_evaluate_shadow_experiment_policy(
-                args.experiment_manifest,
-                policy_path=args.policy_path,
-                target=args.target,
-                output_path=args.output_path,
-                game=args.game,
-                platform=args.platform,
-            ),
-            command_name="evaluate_shadow_experiment_policy",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.run_shadow_operator:
-        if not args.mode:
-            parser.error("--run-shadow-operator requires --mode")
-        normalized_mode = str(args.mode).strip().lower()
-        if normalized_mode not in {"train", "benchmark", "govern", "full"}:
-            parser.error("--run-shadow-operator requires --mode train|benchmark|govern|full")
-        if normalized_mode in {"train", "benchmark", "full"} and not args.dataset_manifest:
-            parser.error(f"--run-shadow-operator with --mode {normalized_mode} requires --dataset-manifest")
-        if normalized_mode == "govern" and not args.experiment_manifest:
-            parser.error("--run-shadow-operator with --mode govern requires --experiment-manifest")
-        _print_cli_result(
-            run_run_shadow_operator(
-                mode=normalized_mode,
-                dataset_manifest=args.dataset_manifest,
-                model_path=args.model_path,
-                model_family=args.model_family,
-                model_version=args.model_version,
-                experiment_manifest=args.experiment_manifest,
-                training_target=args.training_target,
-                target=args.target,
-                policy_path=args.policy_path,
-                game=args.game,
-                platform=args.platform,
-                output_root=args.output_root,
-                output_path=args.output_path,
-                split_key=args.split_key,
-                train_fraction=args.train_fraction,
-            ),
-            command_name="run_shadow_operator",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.summarize_shadow_experiment_ledger:
-        _print_cli_result(
-            run_summarize_shadow_experiment_ledger(
-                registry_path=args.registry_path,
-                target=args.target,
-                game=args.game,
-                platform=args.platform,
-                recommendation_decision=args.recommendation_decision,
-                training_target=args.training_target,
-            ),
-            command_name="summarize_shadow_experiment_ledger",
-            full_json=args.full_json,
-        )
-        return 0
+    shadow_training_exit = dispatch_shadow_training_commands(
+        args,
+        parser=parser,
+        print_cli_result_fn=_print_cli_result,
+        run_run_shadow_ranking_replay_fn=run_run_shadow_ranking_replay,
+        run_compare_shadow_ranking_replay_fn=run_compare_shadow_ranking_replay,
+        run_train_shadow_ranking_model_fn=run_train_shadow_ranking_model,
+        run_compare_shadow_model_families_fn=run_compare_shadow_model_families,
+        run_run_shadow_benchmark_matrix_fn=run_run_shadow_benchmark_matrix,
+        run_summarize_shadow_benchmark_matrix_fn=run_summarize_shadow_benchmark_matrix,
+        run_review_shadow_benchmark_results_fn=run_review_shadow_benchmark_results,
+        run_compare_shadow_benchmark_evidence_modes_fn=run_compare_shadow_benchmark_evidence_modes,
+        run_summarize_shadow_target_readiness_fn=run_summarize_shadow_target_readiness,
+        run_evaluate_shadow_ranking_model_fn=run_evaluate_shadow_ranking_model,
+        run_evaluate_shadow_experiment_policy_fn=run_evaluate_shadow_experiment_policy,
+        run_run_shadow_operator_fn=run_run_shadow_operator,
+        run_summarize_shadow_experiment_ledger_fn=run_summarize_shadow_experiment_ledger,
+    )
+    if shadow_training_exit is not None:
+        return shadow_training_exit
 
     if args.compare_fixture_sidecars:
         if not args.baseline_sidecar_root or not args.trial_sidecar_root:
