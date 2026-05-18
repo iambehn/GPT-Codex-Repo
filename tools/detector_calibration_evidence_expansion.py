@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +11,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from pipeline.artifact_paths import (
+    resolve_path as _artifact_resolve_path,
+    resolve_timestamped_output_path as _artifact_resolve_timestamped_output_path,
+    utc_now_iso as _artifact_utc_now_iso,
+    utc_timestamp_slug as _artifact_utc_timestamp_slug,
+    write_json as _artifact_write_json,
+)
 
 SCHEMA_VERSION = "detector_calibration_evidence_expansion_v1"
 PUBLISH_DECISION_SCHEMA_VERSION = "detector_calibration_publish_decision_manifest_v1"
@@ -302,10 +309,12 @@ def _validate_expansion_manifest(payload: dict[str, Any]) -> None:
 
 
 def _resolve_expansion_output_path(*, game: str, asset_id: str, output_path: str | Path | None) -> Path:
-    if output_path is not None:
-        return _resolve_path(output_path)
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    return DEFAULT_OUTPUT_ROOT / game / "evidence_expansion" / _asset_slug(asset_id) / f"{timestamp}.detector_calibration_evidence_expansion.json"
+    return _artifact_resolve_timestamped_output_path(
+        output_path=output_path,
+        default_dir=DEFAULT_OUTPUT_ROOT / game / "evidence_expansion" / _asset_slug(asset_id),
+        filename_suffix="detector_calibration_evidence_expansion.json",
+        timestamp_slug=_utc_timestamp_slug(),
+    )
 
 
 def _asset_slug(asset_id: str) -> str:
@@ -322,12 +331,7 @@ def _nested_value(payload: dict[str, Any], *path: str) -> Any:
 
 
 def _resolve_path(path: str | Path) -> Path:
-    resolved = Path(path).expanduser()
-    if not resolved.is_absolute():
-        resolved = (Path.cwd() / resolved).resolve()
-    else:
-        resolved = resolved.resolve()
-    return resolved
+    return _artifact_resolve_path(path)
 
 
 def _load_json(path: str | Path) -> dict[str, Any]:
@@ -335,13 +339,15 @@ def _load_json(path: str | Path) -> dict[str, Any]:
 
 
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
-    target = _resolve_path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _artifact_write_json(path, payload)
 
 
 def _utc_now() -> str:
-    return datetime.now(UTC).isoformat()
+    return _artifact_utc_now_iso()
+
+
+def _utc_timestamp_slug() -> str:
+    return _artifact_utc_timestamp_slug()
 
 
 def _safe_int(value: Any) -> int | None:
