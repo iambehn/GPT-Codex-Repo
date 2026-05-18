@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +10,12 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from pipeline.artifact_paths import (
+    resolve_timestamped_output_path as _artifact_resolve_timestamped_output_path,
+    utc_now_iso as _artifact_utc_now_iso,
+    utc_timestamp_slug as _artifact_utc_timestamp_slug,
+    write_json as _artifact_write_json,
+)
 from tools.detector_calibration_next_action_apply_history_trend import (  # noqa: E402
     _build_trend,
 )
@@ -145,13 +150,11 @@ def _comparison_sort_key(row: dict[str, Any]) -> tuple[float, float, float, str]
 
 
 def _resolve_output_path(*, output_path: str | Path | None) -> Path:
-    if output_path is not None:
-        return _resolve_path(output_path)
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    return (
-        DEFAULT_OUTPUT_ROOT
-        / "cross_game_analysis"
-        / f"{timestamp}.detector_calibration_next_action_cross_game_ledger_comparison.json"
+    return _artifact_resolve_timestamped_output_path(
+        output_path=output_path,
+        default_dir=DEFAULT_OUTPUT_ROOT / "cross_game_analysis",
+        filename_suffix="detector_calibration_next_action_cross_game_ledger_comparison.json",
+        timestamp_slug=_utc_timestamp_slug(),
     )
 
 
@@ -216,25 +219,26 @@ def _record_comparison_ledger(
     ledger_path: str | Path | None,
 ) -> tuple[Path, str]:
     resolved_ledger_path = _resolve_path(ledger_path) if ledger_path is not None else _default_ledger_path()
-    now = datetime.now(UTC)
-    run_id = now.strftime("%Y%m%dT%H%M%SZ")
-    recorded_at = now.isoformat().replace("+00:00", "Z")
+    run_id = _utc_timestamp_slug()
+    recorded_at = _utc_now()
     ledger = _load_or_initialize_ledger(ledger_path=resolved_ledger_path)
     ledger["rows"].append(_build_ledger_row(run_id=run_id, recorded_at=recorded_at, comparison_result=comparison_result))
     ledger["updated_at"] = recorded_at
     ledger["row_count"] = len(ledger["rows"])
-    resolved_ledger_path.parent.mkdir(parents=True, exist_ok=True)
-    resolved_ledger_path.write_text(json.dumps(ledger, indent=2), encoding="utf-8")
+    _artifact_write_json(resolved_ledger_path, ledger)
     return resolved_ledger_path, run_id
 
 
 def _utc_now() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    return _artifact_utc_now_iso().replace("+00:00", "Z")
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _artifact_write_json(path, payload)
+
+
+def _utc_timestamp_slug() -> str:
+    return _artifact_utc_timestamp_slug()
 
 
 def _parser() -> argparse.ArgumentParser:
