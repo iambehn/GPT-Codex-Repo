@@ -11,12 +11,14 @@ from .maintenance import (
 )
 from .review_calibration import dispatch_review_calibration_commands
 from .shadow_training import dispatch_shadow_training_commands
+from .workflow_registry import dispatch_workflow_registry_commands
 
 __all__ = [
     "dispatch_export_posting_commands",
     "dispatch_maintenance_commands",
     "dispatch_review_calibration_commands",
     "dispatch_shadow_training_commands",
+    "dispatch_workflow_registry_commands",
     "run_audit_pipeline_contracts",
     "run_check_roi_runtime",
     "run_decision_regression_goldsets",

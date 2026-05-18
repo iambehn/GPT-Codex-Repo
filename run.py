@@ -32,6 +32,7 @@ from pipeline.commands.maintenance import (
 )
 from pipeline.commands.review_calibration import dispatch_review_calibration_commands
 from pipeline.commands.shadow_training import dispatch_shadow_training_commands
+from pipeline.commands.workflow_registry import dispatch_workflow_registry_commands
 from pipeline.config import (
     DEFAULT_CONFIG,
     deep_merge as _config_deep_merge,
@@ -5520,74 +5521,22 @@ def main() -> int:
     if shadow_training_exit is not None:
         return shadow_training_exit
 
-    if args.compare_fixture_sidecars:
-        if not args.baseline_sidecar_root or not args.trial_sidecar_root:
-            parser.error("--compare-fixture-sidecars requires --baseline-sidecar-root and --trial-sidecar-root")
-        print(
-            json.dumps(
-                run_compare_fixture_sidecars(
-                    args.compare_fixture_sidecars,
-                    baseline_sidecar_root=args.baseline_sidecar_root,
-                    trial_sidecar_root=args.trial_sidecar_root,
-                    artifact_layer=args.artifact_layer,
-                    game=args.game,
-                    output_path=args.output_path,
-                ),
-                indent=2,
-            )
-        )
-        return 0
-
-    if args.run_fixture_trial:
-        if not args.fixture_source_manifest or not args.trial_name:
-            parser.error("--run-fixture-trial requires --fixture-source-manifest and --trial-name")
-        result = run_fixture_trial(
-            args.run_fixture_trial,
-            fixture_source_manifest=args.fixture_source_manifest,
-            trial_name=args.trial_name,
-            output_root=args.output_root,
-            game=args.game,
-            pattern=args.pattern,
-            limit=args.limit,
-            proposal_backend=args.proposal_backend,
-            asr_backend=args.asr_backend,
-            emit_runtime=args.emit_runtime,
-            emit_fused=args.emit_fused,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.compare_fixture_trials:
-        if not args.baseline_run_root or not args.trial_run_root:
-            parser.error("--compare-fixture-trials requires --baseline-run-root and --trial-run-root")
-        result = run_compare_fixture_trials(
-            args.compare_fixture_trials,
-            baseline_run_root=args.baseline_run_root,
-            trial_run_root=args.trial_run_root,
-            artifact_layer=args.artifact_layer,
-            game=args.game,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.run_fixture_trial_batch:
-        if not args.fixture_source_manifest:
-            parser.error("--run-fixture-trial-batch requires --fixture-source-manifest")
-        result = run_fixture_trial_batch(
-            args.run_fixture_trial_batch,
-            fixture_source_manifest=args.fixture_source_manifest,
-            trial_names=args.trial,
-            batch_name=args.batch_name,
-            output_root=args.output_root,
-            game=args.game,
-            pattern=args.pattern,
-            limit=args.limit,
-            emit_runtime=args.emit_runtime,
-            emit_fused=args.emit_fused,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
+    workflow_registry_pre_export_exit = dispatch_workflow_registry_commands(
+        args,
+        parser=parser,
+        phase="pre_export",
+        print_cli_result_fn=_print_cli_result,
+        run_compare_fixture_sidecars_fn=run_compare_fixture_sidecars,
+        run_fixture_trial_fn=run_fixture_trial,
+        run_compare_fixture_trials_fn=run_compare_fixture_trials,
+        run_fixture_trial_batch_fn=run_fixture_trial_batch,
+        run_query_workflow_queue_fn=run_query_workflow_queue,
+        run_refresh_clip_registry_fn=run_refresh_clip_registry,
+        run_query_clip_registry_fn=run_query_clip_registry,
+        run_transition_candidate_lifecycle_fn=run_transition_candidate_lifecycle,
+    )
+    if workflow_registry_pre_export_exit is not None:
+        return workflow_registry_pre_export_exit
 
     export_posting_post_shadow_exit = dispatch_export_posting_commands(
         args,
@@ -5643,79 +5592,22 @@ def main() -> int:
     if export_posting_post_shadow_exit is not None:
         return export_posting_post_shadow_exit
 
-    if args.query_workflow_queue:
-        if not args.workflow_type:
-            parser.error("--query-workflow-queue requires --workflow-type")
-        result = run_query_workflow_queue(
-            args.workflow_type,
-            registry_path=args.registry_path,
-            game=args.game,
-            fixture_id=args.fixture_id,
-            limit=args.limit,
-        )
-        _print_cli_result(result, command_name="query_workflow_queue", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.refresh_clip_registry:
-        result = run_refresh_clip_registry(
-            args.refresh_clip_registry,
-            game=args.game,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-            registry_path=args.registry_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.query_clip_registry:
-        result = run_query_clip_registry(
-            mode=args.mode or "fused-events",
-            game=args.game,
-            event_type=args.event_type,
-            action=args.action,
-            review_status=args.review_status,
-            gate_status=args.gate_status,
-            fixture_id=args.fixture_id,
-            trial_name=args.trial_name,
-            artifact_layer=args.artifact_layer,
-            recommendation_decision=args.recommendation_decision,
-            coverage_status=args.coverage_status,
-            has_disagreement=True if args.has_disagreement else None,
-            candidate_id=args.candidate_id,
-            lifecycle_state=args.lifecycle_state,
-            hook_archetype=args.hook_archetype,
-            hook_mode=args.hook_mode,
-            comparison_status=args.comparison_status,
-            export_status=args.export_status,
-            post_status=args.post_status,
-            platform=args.platform,
-            account_id=args.account_id,
-            evidence_mode=args.evidence_mode,
-            model_family=args.model_family,
-            training_target=args.training_target,
-            workflow_type=args.workflow_type,
-            workflow_run_id=args.workflow_run_id,
-            stage=args.stage,
-            status=args.status,
-            limit=args.limit,
-            registry_path=args.registry_path,
-        )
-        _print_cli_result(result, command_name="query_clip_registry", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.transition_candidate_lifecycle:
-        if not args.candidate_id or not args.to_state:
-            parser.error("--transition-candidate-lifecycle requires --candidate-id and --to-state")
-        result = run_transition_candidate_lifecycle(
-            args.candidate_id,
-            args.to_state,
-            reason=args.reason,
-            source_artifact=args.source_artifact,
-            actor=args.actor,
-            registry_path=args.registry_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
+    workflow_registry_post_export_exit = dispatch_workflow_registry_commands(
+        args,
+        parser=parser,
+        phase="post_export",
+        print_cli_result_fn=_print_cli_result,
+        run_compare_fixture_sidecars_fn=run_compare_fixture_sidecars,
+        run_fixture_trial_fn=run_fixture_trial,
+        run_compare_fixture_trials_fn=run_compare_fixture_trials,
+        run_fixture_trial_batch_fn=run_fixture_trial_batch,
+        run_query_workflow_queue_fn=run_query_workflow_queue,
+        run_refresh_clip_registry_fn=run_refresh_clip_registry,
+        run_query_clip_registry_fn=run_query_clip_registry,
+        run_transition_candidate_lifecycle_fn=run_transition_candidate_lifecycle,
+    )
+    if workflow_registry_post_export_exit is not None:
+        return workflow_registry_post_export_exit
 
     review_pre_exit = dispatch_review_calibration_commands(
         args,
