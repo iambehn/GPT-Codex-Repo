@@ -10,6 +10,7 @@ from .maintenance import (
     run_repo_quality_health,
     run_validate_published_pack,
 )
+from .onboarding_analysis import dispatch_onboarding_analysis_commands
 from .review_calibration import dispatch_review_calibration_commands
 from .shadow_training import dispatch_shadow_training_commands
 from .workflow_registry import dispatch_workflow_registry_commands
@@ -18,6 +19,7 @@ __all__ = [
     "dispatch_detector_calibration_operator_commands",
     "dispatch_export_posting_commands",
     "dispatch_maintenance_commands",
+    "dispatch_onboarding_analysis_commands",
     "dispatch_review_calibration_commands",
     "dispatch_shadow_training_commands",
     "dispatch_workflow_registry_commands",

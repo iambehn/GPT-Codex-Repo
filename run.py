@@ -31,6 +31,7 @@ from pipeline.commands.maintenance import (
     run_repo_quality_health as _maintenance_run_repo_quality_health,
     run_validate_published_pack as _maintenance_run_validate_published_pack,
 )
+from pipeline.commands.onboarding_analysis import dispatch_onboarding_analysis_commands
 from pipeline.commands.review_calibration import dispatch_review_calibration_commands
 from pipeline.commands.shadow_training import dispatch_shadow_training_commands
 from pipeline.commands.workflow_registry import dispatch_workflow_registry_commands
@@ -5711,176 +5712,32 @@ def main() -> int:
     if review_post_exit is not None:
         return review_post_exit
 
-    if args.enrich_game_from_wiki:
-        if not args.wiki_url and not args.wiki_manifest and not args.wiki_source:
-            parser.error("--enrich-game-from-wiki requires --wiki-url, --wiki-manifest, or --wiki-source")
-        result = run_enrich_game_from_wiki(
-            args.enrich_game_from_wiki,
-            args.wiki_url,
-            wiki_manifest=args.wiki_manifest,
-            wiki_sources=args.wiki_source,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.adapt_game_schema:
-        result = run_adapt_game_schema(args.adapt_game_schema)
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.ingest_game_sources:
-        if not args.source_manifest:
-            parser.error("--ingest-game-sources requires --source-manifest")
-        result = run_ingest_game_sources(args.ingest_game_sources, args.source_manifest)
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.build_onboarding_draft:
-        result = run_build_onboarding_draft(args.build_onboarding_draft)
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.report_unresolved_derived_rows:
-        result = run_report_unresolved_derived_rows(
-            args.report_unresolved_derived_rows,
-            output_path=args.output_path,
-        )
-        _print_cli_result(result, command_name="report_unresolved_derived_rows", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.derive_game_detection_manifest:
-        result = run_derive_game_detection_manifest(args.derive_game_detection_manifest, output_path=args.output_path)
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.fill_derived_detection_rows:
-        if not args.detection_id:
-            parser.error("--fill-derived-detection-rows requires at least one --detection-id")
-        if not args.fill_source_manifest:
-            parser.error("--fill-derived-detection-rows requires at least one --fill-source-manifest")
-        result = run_fill_derived_detection_rows(
-            args.fill_derived_detection_rows,
-            detection_ids=args.detection_id,
-            source_manifests=args.fill_source_manifest,
-            output_path=args.output_path,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.prepare_derived_row_review:
-        if not args.detection_id:
-            parser.error("--prepare-derived-row-review requires at least one --detection-id")
-        result = run_prepare_derived_row_review(
-            args.prepare_derived_row_review,
-            detection_ids=args.detection_id,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.summarize_derived_row_review:
-        result = run_summarize_derived_row_review(args.summarize_derived_row_review)
-        _print_cli_result(result, command_name="summarize_derived_row_review", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.apply_derived_row_review:
-        result = run_apply_derived_row_review(
-            args.apply_derived_row_review,
-            accept_recommended=args.accept_recommended,
-            only_auto_populated=args.only_auto_populated,
-            reject_zero_candidate=args.reject_zero_candidate,
-            defer_zero_candidate=args.defer_zero_candidate,
-        )
-        _print_cli_result(result, command_name="apply_derived_row_review", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.onboard_game:
-        if not args.source_manifest:
-            parser.error("--onboard-game requires --source-manifest")
-        result = run_onboard_game(args.onboard_game, args.source_manifest)
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.publish_onboarding_draft:
-        result = run_publish_onboarding_draft(args.publish_onboarding_draft)
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.publish_onboarding_batch:
-        result = run_publish_onboarding_batch(
-            args.publish_onboarding_batch,
-            game=args.game,
-            apply=args.apply,
-            output_path=args.output_path,
-        )
-        _print_cli_result(result, command_name="publish_onboarding_batch", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.validate_onboarding_publish:
-        result = run_validate_onboarding_publish(args.validate_onboarding_publish)
-        _print_cli_result(result, command_name="validate_onboarding_publish", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.report_onboarding_batch:
-        result = run_report_onboarding_batch(args.report_onboarding_batch, game=args.game, output_path=args.output_path)
-        _print_cli_result(result, command_name="report_onboarding_batch", full_json=args.full_json)
-        return 0 if result.get("ok") else 1
-
-    if args.fuse_clip_signals:
-        source, game = args.fuse_clip_signals
-        result = run_fuse_clip_signals(
-            source,
-            game,
-            proxy_sidecar=args.proxy_sidecar,
-            runtime_sidecar=args.runtime_sidecar,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-            sample_fps=args.sample_fps,
-            limit_frames=args.limit_frames,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.match_roi_templates:
-        source, game = args.match_roi_templates
-        result = run_match_roi_templates(
-            source,
-            game,
-            sample_fps=args.sample_fps,
-            limit_frames=args.limit_frames,
-            output_path=args.output_path,
-            min_score=args.min_score,
-            debug_output_dir=args.debug_output_dir,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.map_roi_events:
-        source, game = args.map_roi_events
-        result = run_map_roi_events(
-            source,
-            game,
-            matcher_report=args.matcher_report,
-            sample_fps=args.sample_fps,
-            limit_frames=args.limit_frames,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.analyze_roi_runtime:
-        source, game = args.analyze_roi_runtime
-        result = run_analyze_roi_runtime(
-            source,
-            game,
-            matcher_report=args.matcher_report,
-            sample_fps=args.sample_fps,
-            limit_frames=args.limit_frames,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
+    onboarding_analysis_exit = dispatch_onboarding_analysis_commands(
+        args,
+        parser=parser,
+        print_cli_result_fn=_print_cli_result,
+        run_enrich_game_from_wiki_fn=run_enrich_game_from_wiki,
+        run_adapt_game_schema_fn=run_adapt_game_schema,
+        run_ingest_game_sources_fn=run_ingest_game_sources,
+        run_build_onboarding_draft_fn=run_build_onboarding_draft,
+        run_report_unresolved_derived_rows_fn=run_report_unresolved_derived_rows,
+        run_derive_game_detection_manifest_fn=run_derive_game_detection_manifest,
+        run_fill_derived_detection_rows_fn=run_fill_derived_detection_rows,
+        run_prepare_derived_row_review_fn=run_prepare_derived_row_review,
+        run_summarize_derived_row_review_fn=run_summarize_derived_row_review,
+        run_apply_derived_row_review_fn=run_apply_derived_row_review,
+        run_onboard_game_fn=run_onboard_game,
+        run_publish_onboarding_draft_fn=run_publish_onboarding_draft,
+        run_publish_onboarding_batch_fn=run_publish_onboarding_batch,
+        run_validate_onboarding_publish_fn=run_validate_onboarding_publish,
+        run_report_onboarding_batch_fn=run_report_onboarding_batch,
+        run_fuse_clip_signals_fn=run_fuse_clip_signals,
+        run_match_roi_templates_fn=run_match_roi_templates,
+        run_map_roi_events_fn=run_map_roi_events,
+        run_analyze_roi_runtime_fn=run_analyze_roi_runtime,
+    )
+    if onboarding_analysis_exit is not None:
+        return onboarding_analysis_exit
 
     parser.print_help()
     return 0
