@@ -29,6 +29,8 @@ class DerivedRowReviewGoldsetTests(unittest.TestCase):
                 self.assertEqual(review_payload["apply_status"], "applied")
                 self.assertEqual(review_payload["review_decision"], case["expected_review_decision"])
                 self.assertEqual(review_payload["candidate_option_count"], case["expected_candidate_option_count"])
+                self.assertTrue(self._is_fixture_owned_path(str(review_payload.get("draft_root") or "")))
+                self.assertTrue(self._is_fixture_owned_path(str(review_payload.get("review_file_path") or "")))
                 self.assertEqual(review_payload["row_snapshot"]["asset_family"], case["expected_asset_family"])
                 self.assertEqual(
                     review_payload["row_snapshot"]["target_display_name"],
@@ -56,6 +58,21 @@ class DerivedRowReviewGoldsetTests(unittest.TestCase):
                     self.assertEqual(selected_candidate_id, "")
                     self.assertEqual(review_payload["recommended_decision"], "defer_row")
                     self.assertTrue(str(review_payload.get("review_notes") or "").strip())
+
+                for row in review_payload.get("candidate_options", []):
+                    if not isinstance(row, dict):
+                        continue
+                    master_path = str(row.get("master_path") or "").strip()
+                    if master_path:
+                        self.assertTrue(self._is_fixture_owned_path(master_path))
+
+    def _is_fixture_owned_path(self, value: str) -> bool:
+        normalized = value.strip().replace("\\", "/")
+        if not normalized:
+            return False
+        if "/assets/games/" in normalized or normalized.startswith("/Users/"):
+            return False
+        return normalized.startswith("tests/fixtures/onboarding_review_goldsets/")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,147 @@
+{
+  "schema_version": "fused_review_bridge_goldset_v1",
+  "cases": [
+    {
+      "case_id": "prepare_creates_one_item_per_fused_event",
+      "scenario": "prepare",
+      "game": "marvel_rivals",
+      "selection_mode": "review_default",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "events": [
+            {
+              "event_id": "event-1",
+              "event_type": "medal_seen",
+              "final_score": 0.91,
+              "gate_status": "confirmed",
+              "synergy_applied": true
+            },
+            {
+              "event_id": "event-2",
+              "event_type": "ability_plus_medal_combo",
+              "final_score": 0.88,
+              "gate_status": "confirmed",
+              "synergy_applied": false
+            }
+          ]
+        }
+      ],
+      "expected_item_count": 2,
+      "expected_ordered_event_ids": ["event-1", "event-2"],
+      "expected_selection_action_filter": "review_default",
+      "expected_selected_template_id": "fused_review_bridge",
+      "expected_clip_type": "fused_event_candidate",
+      "expected_first_event_type": "medal_seen"
+    },
+    {
+      "case_id": "prepare_suppresses_identity_events_by_default",
+      "scenario": "prepare",
+      "game": "marvel_rivals",
+      "selection_mode": "review_default",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "events": [
+            {
+              "event_id": "event-1",
+              "event_type": "pov_character_identified",
+              "final_score": 0.91,
+              "gate_status": "confirmed",
+              "synergy_applied": false
+            },
+            {
+              "event_id": "event-2",
+              "event_type": "medal_seen",
+              "final_score": 0.88,
+              "gate_status": "confirmed",
+              "synergy_applied": false
+            }
+          ]
+        }
+      ],
+      "expected_item_count": 1,
+      "expected_ordered_event_ids": ["event-2"],
+      "expected_first_event_type": "medal_seen"
+    },
+    {
+      "case_id": "apply_updates_fused_review_events",
+      "scenario": "apply",
+      "game": "marvel_rivals",
+      "selection_mode": "all_non_skip",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "events": [
+            {
+              "event_id": "event-1",
+              "event_type": "medal_seen",
+              "final_score": 0.91,
+              "gate_status": "confirmed",
+              "synergy_applied": false
+            }
+          ]
+        },
+        {
+          "stem": "bravo",
+          "events": [
+            {
+              "event_id": "event-2",
+              "event_type": "ability_seen",
+              "final_score": 0.58,
+              "gate_status": "ambiguous",
+              "synergy_applied": false
+            }
+          ]
+        }
+      ],
+      "review_updates": [
+        {
+          "event_id": "event-1",
+          "review_status": "accepted",
+          "reviewed_at": "2026-05-02T12:00:00Z",
+          "write_final_clip": true
+        },
+        {
+          "event_id": "event-2",
+          "review_status": "rejected",
+          "reviewed_at": "2026-05-02T12:05:00Z",
+          "write_final_clip": false
+        }
+      ],
+      "expected_approved_count": 1,
+      "expected_rejected_count": 1,
+      "expected_sidecar_review_statuses": {
+        "alpha:event-1": "approved",
+        "bravo:event-2": "rejected"
+      }
+    },
+    {
+      "case_id": "cleanup_removes_generated_fused_bridge_artifacts",
+      "scenario": "cleanup",
+      "game": "marvel_rivals",
+      "selection_mode": "review_default",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "events": [
+            {
+              "event_id": "event-1",
+              "event_type": "medal_seen",
+              "final_score": 0.91,
+              "gate_status": "confirmed",
+              "synergy_applied": false
+            }
+          ]
+        }
+      ],
+      "review_updates": [
+        {
+          "event_id": "event-1",
+          "write_final_clip": true
+        }
+      ],
+      "expected_cleanup_count": 1
+    }
+  ]
+}

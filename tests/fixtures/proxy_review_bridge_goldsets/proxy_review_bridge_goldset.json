@@ -1,0 +1,150 @@
+{
+  "schema_version": "proxy_review_bridge_goldset_v1",
+  "cases": [
+    {
+      "case_id": "prepare_from_sidecars_download_candidates",
+      "scenario": "prepare",
+      "game": "marvel_rivals",
+      "selection_mode": "sidecars",
+      "action_filter": "download_candidate",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "score": 0.81,
+          "action": "download_candidate",
+          "sources": ["audio_spike", "visual_flash_spike"],
+          "source_families": ["audio_prepass", "visual_prepass"]
+        },
+        {
+          "stem": "bravo",
+          "score": 0.77,
+          "action": "download_candidate",
+          "sources": ["audio_spike", "visual_motion_spike"],
+          "source_families": ["audio_prepass", "visual_prepass"]
+        },
+        {
+          "stem": "charlie",
+          "score": 0.54,
+          "action": "inspect",
+          "sources": ["audio_spike"],
+          "source_families": ["audio_prepass"]
+        }
+      ],
+      "expected_item_count": 2,
+      "expected_ordered_sources": ["alpha.mp4", "bravo.mp4"],
+      "expected_selection_action_filter": "download_candidate",
+      "expected_selected_template_id": "proxy_review_bridge",
+      "expected_clip_type": "proxy_candidate",
+      "expected_highlight_score": 81,
+      "expected_bridge_owned": true
+    },
+    {
+      "case_id": "prepare_from_explicit_batch_candidates_without_windows",
+      "scenario": "prepare",
+      "game": "marvel_rivals",
+      "selection_mode": "batch_report",
+      "action_filter": "download_candidate",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "score": 0.42,
+          "action": "download_candidate",
+          "sources": ["accepted_clip"],
+          "source_families": ["accepted_ingest"],
+          "empty_windows": true
+        }
+      ],
+      "batch_report_rows": [
+        {
+          "stem": "alpha",
+          "include_source": true,
+          "top_recommended_action": "download_candidate",
+          "top_proxy_score": 0.42,
+          "sources": ["accepted_clip"],
+          "source_families": ["accepted_ingest"]
+        }
+      ],
+      "expected_item_count": 1,
+      "expected_ordered_sources": ["alpha.mp4"],
+      "expected_top_proxy_score": 0.42
+    },
+    {
+      "case_id": "apply_updates_proxy_review_statuses",
+      "scenario": "apply",
+      "game": "marvel_rivals",
+      "selection_mode": "sidecars",
+      "action_filter": "download_candidate",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "score": 0.81,
+          "action": "download_candidate",
+          "sources": ["audio_spike", "visual_flash_spike"],
+          "source_families": ["audio_prepass", "visual_prepass"]
+        },
+        {
+          "stem": "bravo",
+          "score": 0.79,
+          "action": "download_candidate",
+          "sources": ["audio_spike", "visual_motion_spike"],
+          "source_families": ["audio_prepass", "visual_prepass"]
+        },
+        {
+          "stem": "charlie",
+          "score": 0.77,
+          "action": "download_candidate",
+          "sources": ["audio_spike", "visual_motion_spike"],
+          "source_families": ["audio_prepass", "visual_prepass"]
+        }
+      ],
+      "review_updates": [
+        {
+          "stem": "alpha",
+          "review_status": "approved",
+          "reviewed_at": "2026-04-29T12:00:00Z",
+          "final_bucket": "accepted",
+          "write_final_clip": true
+        },
+        {
+          "stem": "bravo",
+          "review_status": "rejected",
+          "reviewed_at": "2026-04-29T12:05:00Z",
+          "final_bucket": "rejected",
+          "write_final_clip": true
+        }
+      ],
+      "expected_approved_count": 1,
+      "expected_rejected_count": 1,
+      "expected_unreviewed_count": 1,
+      "expected_sidecar_review_statuses": {
+        "alpha": "approved",
+        "bravo": "rejected",
+        "charlie": "unreviewed"
+      }
+    },
+    {
+      "case_id": "cleanup_removes_generated_proxy_bridge_artifacts",
+      "scenario": "cleanup",
+      "game": "marvel_rivals",
+      "selection_mode": "sidecars",
+      "action_filter": "download_candidate",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "score": 0.81,
+          "action": "download_candidate",
+          "sources": ["audio_spike", "visual_flash_spike"],
+          "source_families": ["audio_prepass", "visual_prepass"]
+        }
+      ],
+      "review_updates": [
+        {
+          "stem": "alpha",
+          "final_bucket": "accepted",
+          "write_final_clip": true
+        }
+      ],
+      "expected_cleanup_count": 1
+    }
+  ]
+}

@@ -15,6 +15,9 @@ if str(REPO_ROOT) not in sys.path:
 DECISION_REGRESSION_SUITES = (
     ("onboarding_review_goldset", "tests.test_onboarding_review_goldset"),
     ("fusion_boundary_goldset", "tests.test_fusion_boundary_goldset"),
+    ("runtime_review_bridge_goldset", "tests.test_runtime_review_bridge_goldset"),
+    ("proxy_review_bridge_goldset", "tests.test_proxy_review_bridge_goldset"),
+    ("fused_review_bridge_goldset", "tests.test_fused_review_bridge_goldset"),
     ("onboarding_identity_review_goldset", "tests.test_onboarding_identity_review_goldset"),
     ("publish_readiness_goldset", "tests.test_publish_readiness_goldset"),
 )

@@ -767,14 +767,14 @@ class RunTests(unittest.TestCase):
                 return_value={
                     "ok": True,
                     "status": "ok",
-                    "rendered_output": "Suite count: 4\nTotal tests: 8",
+                    "rendered_output": "Suite count: 7\nTotal tests: 14",
                 },
             ) as mock_run:
                 with redirect_stdout(stdout):
                     exit_code = run_main()
             self.assertEqual(exit_code, 0)
             mock_run.assert_called_once_with(emit_json=False)
-            self.assertIn("Suite count: 4", stdout.getvalue())
+            self.assertIn("Suite count: 7", stdout.getvalue())
         finally:
             sys.argv = original_argv
 
@@ -788,7 +788,7 @@ class RunTests(unittest.TestCase):
                 return_value={
                     "ok": True,
                     "status": "ok",
-                    "rendered_output": json.dumps({"suite_count": 4}, indent=2),
+                    "rendered_output": json.dumps({"suite_count": 7}, indent=2),
                 },
             ) as mock_run:
                 with redirect_stdout(stdout):
@@ -796,7 +796,7 @@ class RunTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             mock_run.assert_called_once_with(emit_json=True)
             payload = json.loads(stdout.getvalue())
-            self.assertEqual(payload["suite_count"], 4)
+            self.assertEqual(payload["suite_count"], 7)
         finally:
             sys.argv = original_argv
 

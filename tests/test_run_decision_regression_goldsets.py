@@ -33,6 +33,36 @@ def _suite_rows(*, failing: bool = False) -> list[dict]:
             "output": "failure output" if failing else "",
         },
         {
+            "suite_name": "runtime_review_bridge_goldset",
+            "module_name": "tests.test_runtime_review_bridge_goldset",
+            "ok": True,
+            "tests_run": 2,
+            "failure_count": 0,
+            "error_count": 0,
+            "skipped_count": 0,
+            "output": "",
+        },
+        {
+            "suite_name": "proxy_review_bridge_goldset",
+            "module_name": "tests.test_proxy_review_bridge_goldset",
+            "ok": True,
+            "tests_run": 2,
+            "failure_count": 0,
+            "error_count": 0,
+            "skipped_count": 0,
+            "output": "",
+        },
+        {
+            "suite_name": "fused_review_bridge_goldset",
+            "module_name": "tests.test_fused_review_bridge_goldset",
+            "ok": True,
+            "tests_run": 2,
+            "failure_count": 0,
+            "error_count": 0,
+            "skipped_count": 0,
+            "output": "",
+        },
+        {
             "suite_name": "onboarding_identity_review_goldset",
             "module_name": "tests.test_onboarding_identity_review_goldset",
             "ok": True,
@@ -64,8 +94,11 @@ class RunDecisionRegressionGoldsetsTests(unittest.TestCase):
         ):
             result = run_decision_regression_goldsets()
         self.assertTrue(result["ok"])
-        self.assertIn("Suite count: 4", result["rendered_output"])
-        self.assertIn("Total tests: 8", result["rendered_output"])
+        self.assertIn("Suite count: 7", result["rendered_output"])
+        self.assertIn("Total tests: 14", result["rendered_output"])
+        self.assertIn("fused_review_bridge_goldset | ok=True", result["rendered_output"])
+        self.assertIn("proxy_review_bridge_goldset | ok=True", result["rendered_output"])
+        self.assertIn("runtime_review_bridge_goldset | ok=True", result["rendered_output"])
         self.assertIn("fusion_boundary_goldset | ok=True", result["rendered_output"])
 
     def test_failure_status_propagates(self) -> None:
@@ -85,8 +118,8 @@ class RunDecisionRegressionGoldsetsTests(unittest.TestCase):
         ):
             result = run_decision_regression_goldsets(emit_json=True)
         payload = json.loads(result["rendered_output"])
-        self.assertEqual(payload["suite_count"], 4)
-        self.assertEqual(payload["total_tests"], 8)
+        self.assertEqual(payload["suite_count"], 7)
+        self.assertEqual(payload["total_tests"], 14)
 
     def test_main_returns_error_code_when_suite_fails(self) -> None:
         with patch(

@@ -1,0 +1,125 @@
+{
+  "schema_version": "runtime_review_bridge_goldset_v1",
+  "cases": [
+    {
+      "case_id": "default_review_selection_order",
+      "scenario": "prepare",
+      "game": "marvel_rivals",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "highlight_score": 0.91,
+          "action": "highlight_candidate",
+          "event_types": ["medal_seen"]
+        },
+        {
+          "stem": "bravo",
+          "highlight_score": 0.82,
+          "action": "highlight_candidate",
+          "event_types": ["ability_seen"]
+        },
+        {
+          "stem": "charlie",
+          "highlight_score": 0.56,
+          "action": "inspect",
+          "event_types": ["pov_character_identified"]
+        },
+        {
+          "stem": "delta",
+          "highlight_score": 0.42,
+          "action": "inspect",
+          "event_types": ["ability_seen"]
+        }
+      ],
+      "expected_selection_action_filter": "review_default",
+      "expected_item_count": 4,
+      "expected_ordered_sources": ["alpha.mp4", "bravo.mp4", "charlie.mp4", "delta.mp4"],
+      "expected_selected_template_id": "runtime_review_bridge",
+      "expected_clip_type": "runtime_candidate",
+      "expected_bridge_owned": true
+    },
+    {
+      "case_id": "highlight_only_filtering",
+      "scenario": "prepare",
+      "game": "marvel_rivals",
+      "action_filter": "highlight_candidate",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "highlight_score": 0.91,
+          "action": "highlight_candidate",
+          "event_types": ["medal_seen"]
+        },
+        {
+          "stem": "bravo",
+          "highlight_score": 0.42,
+          "action": "inspect",
+          "event_types": ["ability_seen"]
+        }
+      ],
+      "expected_selection_action_filter": "highlight_candidate",
+      "expected_item_count": 1,
+      "expected_ordered_sources": ["alpha.mp4"]
+    },
+    {
+      "case_id": "apply_updates_sidecars",
+      "scenario": "apply",
+      "game": "marvel_rivals",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "highlight_score": 0.91,
+          "action": "highlight_candidate",
+          "event_types": ["medal_seen"]
+        },
+        {
+          "stem": "bravo",
+          "highlight_score": 0.56,
+          "action": "inspect",
+          "event_types": ["ability_seen"]
+        }
+      ],
+      "review_updates": [
+        {
+          "stem": "alpha",
+          "review_status": "accepted",
+          "reviewed_at": "2026-05-01T12:00:00Z",
+          "write_final_clip": true
+        },
+        {
+          "stem": "bravo",
+          "review_status": "rejected",
+          "reviewed_at": "2026-05-01T12:05:00Z",
+          "write_final_clip": false
+        }
+      ],
+      "expected_approved_count": 1,
+      "expected_rejected_count": 1,
+      "expected_sidecar_review_statuses": {
+        "alpha": "approved",
+        "bravo": "rejected"
+      },
+      "expected_proxy_review_present": false
+    },
+    {
+      "case_id": "cleanup_removes_generated_bridge_artifacts",
+      "scenario": "cleanup",
+      "game": "marvel_rivals",
+      "sidecars": [
+        {
+          "stem": "alpha",
+          "highlight_score": 0.91,
+          "action": "highlight_candidate",
+          "event_types": ["medal_seen"]
+        }
+      ],
+      "review_updates": [
+        {
+          "stem": "alpha",
+          "write_final_clip": true
+        }
+      ],
+      "expected_cleanup_count": 1
+    }
+  ]
+}
