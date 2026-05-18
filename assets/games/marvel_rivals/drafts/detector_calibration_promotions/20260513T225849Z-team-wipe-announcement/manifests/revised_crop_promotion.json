@@ -1,0 +1,105 @@
+{
+  "schema_version": "detector_calibration_revised_crop_promotion_v1",
+  "promotion_id": "20260513T225849Z-team-wipe-announcement",
+  "promotion_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/marvel_rivals/drafts/detector_calibration_promotions/20260513T225849Z-team-wipe-announcement",
+  "created_at": "2026-05-13T22:58:49Z",
+  "game": "marvel_rivals",
+  "operator_approval": {
+    "approved_by": "tj",
+    "notes": null
+  },
+  "source_evidence": {
+    "session_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/detector_calibration/marvel_rivals/20260513T003647Z-team-wipe-announcement",
+    "review_record_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/detector_calibration/marvel_rivals/20260513T003647Z-team-wipe-announcement/review_record.json",
+    "candidate_id": "rev-002",
+    "run_id": "replay-003",
+    "replay_result_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/detector_calibration/marvel_rivals/20260513T003647Z-team-wipe-announcement/replay_results/replay-003/replay_result.json",
+    "source": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/runtime_analysis/marvel_rivals/ace_local_export_verify_20260512/media_segments/absolute-cinema-3522796292.mp4",
+    "runtime_sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/runtime_analysis/marvel_rivals/ace_local_export_verify_20260512/runtime_sidecars/absolute-cinema-3522796292.runtime_analysis.json",
+    "fused_sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/runtime_analysis/marvel_rivals/ace_local_export_verify_20260512/fused_sidecars/absolute-cinema-3522796292.fused_analysis.json",
+    "proxy_sidecar_path": null,
+    "event_type": "team_wipe_seen",
+    "event_row_id": "marvel_rivals.team_wipe_seen.95e63335c9"
+  },
+  "published_asset": {
+    "asset_id": "marvel_rivals.ace.team_wipe_announcement",
+    "candidate_id": "candidate_manual_ace_team_wipe_announcement_20260512",
+    "detection_id": "marvel_rivals.ace.team_wipe_announcement",
+    "asset_family": "team_wipe_announcement",
+    "roi_ref": "team_wipe_announcement",
+    "template_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/marvel_rivals/templates/team_wipes/ace.png",
+    "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/marvel_rivals/masters/team_wipes/ace.png"
+  },
+  "revised_crop": {
+    "candidate_id": "rev-002",
+    "crop_png_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/detector_calibration/marvel_rivals/20260513T003647Z-team-wipe-announcement/crop_candidates/rev-002/rev-002.png",
+    "crop": {
+      "x": 557,
+      "y": 191,
+      "w": 829,
+      "h": 175
+    },
+    "template_comparison": {
+      "status": "ok",
+      "published_template_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/marvel_rivals/templates/team_wipes/ace.png",
+      "revised_crop_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/detector_calibration/marvel_rivals/20260513T003647Z-team-wipe-announcement/crop_candidates/rev-002/rev-002.png",
+      "published_dimensions": {
+        "width": 921,
+        "height": 194
+      },
+      "revised_dimensions": {
+        "width": 829,
+        "height": 175
+      },
+      "delta": {
+        "width": -92,
+        "height": -19
+      },
+      "dimensions_match": false,
+      "spatial_overlap": {
+        "reference_crop": "499,172,921,194",
+        "reference_source": "roi_fallback",
+        "intersection": {
+          "x": 557,
+          "y": 191,
+          "w": 829,
+          "h": 175
+        },
+        "intersection_area": 145075,
+        "revised_area": 145075,
+        "reference_area": 178674,
+        "iou": 0.811954,
+        "revised_coverage_ratio": 1.0,
+        "reference_coverage_ratio": 0.811954
+      }
+    }
+  },
+  "replay_evidence": {
+    "trial_runtime_sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/detector_calibration/marvel_rivals/20260513T003647Z-team-wipe-announcement/replay_results/replay-003/trial/runtime_analysis.json",
+    "trial_fused_sidecar_path": null,
+    "current_runtime_sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/detector_calibration/marvel_rivals/20260513T003647Z-team-wipe-announcement/replay_results/replay-003/current/runtime_analysis.json",
+    "current_fused_sidecar_path": null,
+    "eligibility": {
+      "ok": true,
+      "status": "ok",
+      "candidate_id": "rev-002",
+      "run_id": "replay-003",
+      "replay_result_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/detector_calibration/marvel_rivals/20260513T003647Z-team-wipe-announcement/replay_results/replay-003/replay_result.json",
+      "primary_source": "replay_run",
+      "secondary_source": "crop_candidate",
+      "primary_reference_source": "localized_match",
+      "primary_reference_crop": "557,191,829,175",
+      "secondary_reference_source": "roi_fallback",
+      "secondary_reference_crop": "499,172,921,194",
+      "primary_iou": 1.0,
+      "secondary_iou": 0.811954,
+      "delta_iou": 0.188046,
+      "difference_summary": "Replay changed overlap source from roi_fallback to localized_match and changed IoU from 0.811954 to 1.0."
+    }
+  },
+  "draft_update": {
+    "template_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/marvel_rivals/drafts/detector_calibration_promotions/20260513T225849Z-team-wipe-announcement/templates/team_wipes/ace.png",
+    "template_relpath": "templates/team_wipes/ace.png",
+    "copied_from_revised_crop_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/detector_calibration/marvel_rivals/20260513T003647Z-team-wipe-announcement/crop_candidates/rev-002/rev-002.png"
+  }
+}
