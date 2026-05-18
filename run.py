@@ -29,6 +29,7 @@ from pipeline.commands.maintenance import (
     run_repo_quality_health as _maintenance_run_repo_quality_health,
     run_validate_published_pack as _maintenance_run_validate_published_pack,
 )
+from pipeline.commands.review_calibration import dispatch_review_calibration_commands
 from pipeline.config import (
     DEFAULT_CONFIG,
     deep_merge as _config_deep_merge,
@@ -6371,154 +6372,39 @@ def main() -> int:
         print(json.dumps(result, indent=2))
         return 0 if result.get("ok") else 1
 
-    if args.calibrate_proxy_review:
-        result = run_calibrate_proxy_review(
-            args.calibrate_proxy_review,
-            game=args.game,
-            output_path=args.output_path,
-            min_reviewed=args.min_reviewed,
-            include_unreviewed=args.include_unreviewed,
-            debug_output_dir=args.debug_output_dir,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.replay_proxy_scoring:
-        if not args.trial_proxy_config:
-            parser.error("--replay-proxy-scoring requires --trial-proxy-config")
-        result = run_replay_proxy_scoring(
-            args.replay_proxy_scoring,
-            args.trial_proxy_config,
-            game=args.game,
-            output_path=args.output_path,
-            min_reviewed=args.min_reviewed,
-            include_unreviewed=args.include_unreviewed,
-            debug_output_dir=args.debug_output_dir,
-            trial_name=args.trial_name,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.calibrate_runtime_review:
-        result = run_calibrate_runtime_review(
-            args.calibrate_runtime_review,
-            game=args.game,
-            output_path=args.output_path,
-            min_reviewed=args.min_reviewed,
-            include_unreviewed=args.include_unreviewed,
-            debug_output_dir=args.debug_output_dir,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.replay_runtime_scoring:
-        if not args.trial_config:
-            parser.error("--replay-runtime-scoring requires --trial-config")
-        result = run_replay_runtime_scoring(
-            args.replay_runtime_scoring,
-            args.trial_config,
-            game=args.game,
-            output_path=args.output_path,
-            min_reviewed=args.min_reviewed,
-            include_unreviewed=args.include_unreviewed,
-            debug_output_dir=args.debug_output_dir,
-            trial_name=args.trial_name,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.validate_fusion_goldset:
-        result = run_validate_fusion_goldset(
-            args.validate_fusion_goldset,
-            game=args.game,
-            media_root=args.media_root,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-            sample_fps=args.sample_fps,
-            limit_frames=args.limit_frames,
-            proxy_sidecar_root=args.proxy_sidecar_root,
-            runtime_sidecar_root=args.runtime_sidecar_root,
-            fused_sidecar_root=args.fused_sidecar_root,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.replay_fusion_rules:
-        if not args.trial_rules:
-            parser.error("--replay-fusion-rules requires --trial-rules")
-        result = run_replay_fusion_rules(
-            args.replay_fusion_rules,
-            args.trial_rules,
-            game=args.game,
-            media_root=args.media_root,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-            sample_fps=args.sample_fps,
-            limit_frames=args.limit_frames,
-            proxy_sidecar_root=args.proxy_sidecar_root,
-            runtime_sidecar_root=args.runtime_sidecar_root,
-            trial_name=args.trial_name,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.replay_template_thresholds:
-        if not args.trial_templates:
-            parser.error("--replay-template-thresholds requires --trial-templates")
-        result = run_replay_template_thresholds(
-            args.replay_template_thresholds,
-            args.trial_templates,
-            game=args.game,
-            media_root=args.media_root,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-            sample_fps=args.sample_fps,
-            limit_frames=args.limit_frames,
-            trial_name=args.trial_name,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.replay_runtime_event_rules:
-        if not args.trial_runtime_rules:
-            parser.error("--replay-runtime-event-rules requires --trial-runtime-rules")
-        result = run_replay_runtime_event_rules(
-            args.replay_runtime_event_rules,
-            args.trial_runtime_rules,
-            game=args.game,
-            media_root=args.media_root,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-            sample_fps=args.sample_fps,
-            limit_frames=args.limit_frames,
-            trial_name=args.trial_name,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.promote_runtime_scoring:
-        result = run_promote_runtime_scoring(
-            args.promote_runtime_scoring,
-            sidecar_root=args.sidecar_root,
-            game=args.game,
-            min_reviewed=args.min_reviewed,
-            force=args.force,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-            trial_name=args.trial_name,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.rollback_runtime_scoring:
-        result = run_rollback_runtime_scoring(
-            args.rollback_runtime_scoring,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-            rollback_name=args.rollback_name,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
+    review_pre_exit = dispatch_review_calibration_commands(
+        args,
+        parser=parser,
+        phase="pre",
+        run_calibrate_proxy_review_fn=run_calibrate_proxy_review,
+        run_replay_proxy_scoring_fn=run_replay_proxy_scoring,
+        run_calibrate_runtime_review_fn=run_calibrate_runtime_review,
+        run_replay_runtime_scoring_fn=run_replay_runtime_scoring,
+        run_validate_fusion_goldset_fn=run_validate_fusion_goldset,
+        run_replay_fusion_rules_fn=run_replay_fusion_rules,
+        run_replay_template_thresholds_fn=run_replay_template_thresholds,
+        run_replay_runtime_event_rules_fn=run_replay_runtime_event_rules,
+        run_promote_runtime_scoring_fn=run_promote_runtime_scoring,
+        run_rollback_runtime_scoring_fn=run_rollback_runtime_scoring,
+        run_prepare_proxy_review_fn=run_prepare_proxy_review,
+        run_prepare_runtime_review_fn=run_prepare_runtime_review,
+        run_prepare_fused_review_fn=run_prepare_fused_review,
+        run_apply_proxy_review_fn=run_apply_proxy_review,
+        run_apply_runtime_review_fn=run_apply_runtime_review,
+        run_apply_fused_review_fn=run_apply_fused_review,
+        run_cleanup_proxy_review_fn=run_cleanup_proxy_review,
+        run_cleanup_runtime_review_fn=run_cleanup_runtime_review,
+        run_cleanup_fused_review_fn=run_cleanup_fused_review,
+        run_prepare_onboarding_identity_review_fn=run_prepare_onboarding_identity_review,
+        run_apply_onboarding_identity_review_fn=run_apply_onboarding_identity_review,
+        run_cleanup_onboarding_identity_review_fn=run_cleanup_onboarding_identity_review,
+        run_render_replay_viewer_fn=run_render_replay_viewer,
+        run_render_proxy_replay_viewer_fn=run_render_proxy_replay_viewer,
+        run_render_unified_replay_viewer_fn=run_render_unified_replay_viewer,
+        run_launch_highlight_review_app_fn=run_launch_highlight_review_app,
+    )
+    if review_pre_exit is not None:
+        return review_pre_exit
 
     maintenance_exit = dispatch_maintenance_commands(
         args,
@@ -6532,121 +6418,6 @@ def main() -> int:
     )
     if maintenance_exit is not None:
         return maintenance_exit
-
-    if args.prepare_proxy_review:
-        print(
-            json.dumps(
-                run_prepare_proxy_review(
-                    args.prepare_proxy_review,
-                    batch_report=args.batch_report,
-                    sidecar_root=args.sidecar_root,
-                    action=args.action or "download_candidate",
-                    limit=args.limit,
-                    gpt_repo=args.gpt_repo,
-                    session_name=args.session_name,
-                ),
-                indent=2,
-            )
-        )
-        return 0
-
-    if args.prepare_runtime_review:
-        print(
-            json.dumps(
-                run_prepare_runtime_review(
-                    args.prepare_runtime_review,
-                    sidecar_root=args.sidecar_root,
-                    action=args.action,
-                    limit=args.limit,
-                    gpt_repo=args.gpt_repo,
-                    session_name=args.session_name,
-                ),
-                indent=2,
-            )
-        )
-        return 0
-
-    if args.prepare_fused_review:
-        print(
-            json.dumps(
-                run_prepare_fused_review(
-                    args.prepare_fused_review,
-                    sidecar_root=args.sidecar_root,
-                    action=args.action,
-                    limit=args.limit,
-                    gpt_repo=args.gpt_repo,
-                    session_name=args.session_name,
-                    event_type=args.event_type,
-                ),
-                indent=2,
-            )
-        )
-        return 0
-
-    if args.render_replay_viewer:
-        print(
-            json.dumps(
-                run_render_replay_viewer(
-                    args.render_replay_viewer,
-                    fused_sidecar=args.fused_sidecar,
-                    output_path=args.output_path,
-                ),
-                indent=2,
-            )
-        )
-        return 0
-
-    if args.render_proxy_replay_viewer:
-        print(
-            json.dumps(
-                run_render_proxy_replay_viewer(
-                    args.render_proxy_replay_viewer,
-                    output_path=args.output_path,
-                ),
-                indent=2,
-            )
-        )
-        return 0
-
-    if args.render_unified_replay_viewer:
-        print(
-            json.dumps(
-                run_render_unified_replay_viewer(
-                    proxy_sidecar=args.proxy_sidecar,
-                    runtime_sidecar=args.runtime_sidecar,
-                    fused_sidecar=args.fused_sidecar,
-                    fixture_comparison_report=args.fixture_comparison_report,
-                    fixture_trial_batch_manifest=args.fixture_trial_batch_manifest,
-                    proxy_calibration_report=args.proxy_calibration_report,
-                    proxy_replay_report=args.proxy_replay_report,
-                    runtime_calibration_report=args.runtime_calibration_report,
-                    runtime_replay_report=args.runtime_replay_report,
-                    registry_path=args.registry_path,
-                    output_path=args.output_path,
-                ),
-                indent=2,
-            )
-        )
-        return 0
-
-    if args.launch_highlight_review_app:
-        result = run_launch_highlight_review_app(
-            args.launch_highlight_review_app,
-            fixture_manifest=args.fixture_manifest,
-            fixture_comparison_report=args.fixture_comparison_report,
-            fixture_trial_batch_manifest=args.fixture_trial_batch_manifest,
-            proxy_review_session_manifest=args.proxy_review_session_manifest,
-            fused_review_session_manifest=args.fused_review_session_manifest,
-            proxy_calibration_report=args.proxy_calibration_report,
-            proxy_replay_report=args.proxy_replay_report,
-            runtime_calibration_report=args.runtime_calibration_report,
-            runtime_replay_report=args.runtime_replay_report,
-            registry_path=args.registry_path,
-            output_path=args.output_path,
-            launch=True,
-        )
-        print(json.dumps({key: value for key, value in result.items() if key != "app"}, indent=2))
-        return 0 if result.get("ok") else 1
 
     if args.inspect_detector_calibration_followup_report:
         try:
@@ -6810,50 +6581,39 @@ def main() -> int:
         print(json.dumps(result, indent=2))
         return 0 if result.get("ok") else 1
 
-    if args.apply_proxy_review:
-        print(json.dumps(run_apply_proxy_review(args.apply_proxy_review, gpt_repo=args.gpt_repo), indent=2))
-        return 0
-
-    if args.apply_runtime_review:
-        print(json.dumps(run_apply_runtime_review(args.apply_runtime_review, gpt_repo=args.gpt_repo), indent=2))
-        return 0
-
-    if args.apply_fused_review:
-        print(json.dumps(run_apply_fused_review(args.apply_fused_review, gpt_repo=args.gpt_repo), indent=2))
-        return 0
-
-    if args.cleanup_proxy_review:
-        print(json.dumps(run_cleanup_proxy_review(args.cleanup_proxy_review, gpt_repo=args.gpt_repo), indent=2))
-        return 0
-
-    if args.cleanup_runtime_review:
-        print(json.dumps(run_cleanup_runtime_review(args.cleanup_runtime_review, gpt_repo=args.gpt_repo), indent=2))
-        return 0
-
-    if args.cleanup_fused_review:
-        print(json.dumps(run_cleanup_fused_review(args.cleanup_fused_review, gpt_repo=args.gpt_repo), indent=2))
-        return 0
-
-    if args.prepare_onboarding_identity_review:
-        print(
-            json.dumps(
-                run_prepare_onboarding_identity_review(
-                    args.prepare_onboarding_identity_review,
-                    gpt_repo=args.gpt_repo,
-                    session_name=args.session_name,
-                ),
-                indent=2,
-            )
-        )
-        return 0
-
-    if args.apply_onboarding_identity_review:
-        print(json.dumps(run_apply_onboarding_identity_review(args.apply_onboarding_identity_review, gpt_repo=args.gpt_repo), indent=2))
-        return 0
-
-    if args.cleanup_onboarding_identity_review:
-        print(json.dumps(run_cleanup_onboarding_identity_review(args.cleanup_onboarding_identity_review, gpt_repo=args.gpt_repo), indent=2))
-        return 0
+    review_post_exit = dispatch_review_calibration_commands(
+        args,
+        parser=parser,
+        phase="post",
+        run_calibrate_proxy_review_fn=run_calibrate_proxy_review,
+        run_replay_proxy_scoring_fn=run_replay_proxy_scoring,
+        run_calibrate_runtime_review_fn=run_calibrate_runtime_review,
+        run_replay_runtime_scoring_fn=run_replay_runtime_scoring,
+        run_validate_fusion_goldset_fn=run_validate_fusion_goldset,
+        run_replay_fusion_rules_fn=run_replay_fusion_rules,
+        run_replay_template_thresholds_fn=run_replay_template_thresholds,
+        run_replay_runtime_event_rules_fn=run_replay_runtime_event_rules,
+        run_promote_runtime_scoring_fn=run_promote_runtime_scoring,
+        run_rollback_runtime_scoring_fn=run_rollback_runtime_scoring,
+        run_prepare_proxy_review_fn=run_prepare_proxy_review,
+        run_prepare_runtime_review_fn=run_prepare_runtime_review,
+        run_prepare_fused_review_fn=run_prepare_fused_review,
+        run_apply_proxy_review_fn=run_apply_proxy_review,
+        run_apply_runtime_review_fn=run_apply_runtime_review,
+        run_apply_fused_review_fn=run_apply_fused_review,
+        run_cleanup_proxy_review_fn=run_cleanup_proxy_review,
+        run_cleanup_runtime_review_fn=run_cleanup_runtime_review,
+        run_cleanup_fused_review_fn=run_cleanup_fused_review,
+        run_prepare_onboarding_identity_review_fn=run_prepare_onboarding_identity_review,
+        run_apply_onboarding_identity_review_fn=run_apply_onboarding_identity_review,
+        run_cleanup_onboarding_identity_review_fn=run_cleanup_onboarding_identity_review,
+        run_render_replay_viewer_fn=run_render_replay_viewer,
+        run_render_proxy_replay_viewer_fn=run_render_proxy_replay_viewer,
+        run_render_unified_replay_viewer_fn=run_render_unified_replay_viewer,
+        run_launch_highlight_review_app_fn=run_launch_highlight_review_app,
+    )
+    if review_post_exit is not None:
+        return review_post_exit
 
     if args.enrich_game_from_wiki:
         if not args.wiki_url and not args.wiki_manifest and not args.wiki_source:
