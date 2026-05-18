@@ -1,0 +1,199 @@
+from __future__ import annotations
+
+from copy import deepcopy
+from typing import Any
+
+
+DEFAULT_CONFIG: dict[str, Any] = {
+    "proxy_scanner": {
+        "sources": {
+            "chat_velocity": {
+                "enabled": True,
+                "bucket_seconds": 5,
+                "rolling_baseline_seconds": 300,
+                "burst_threshold": 3.0,
+                "default_confidence": 0.70,
+            },
+            "playlist_hls": {
+                "enabled": True,
+                "duration_spike_ratio": 1.75,
+                "variance_window_segments": 3,
+                "default_confidence": 0.65,
+                "discontinuity_confidence": 0.80,
+            },
+            "audio_prepass": {
+                "enabled": True,
+                "sample_rate": 16000,
+                "window_ms": 250,
+                "rolling_baseline_windows": 20,
+                "z_score_threshold": 3.0,
+                "default_confidence": 0.72,
+                "suppress_initial_seconds": 1.0,
+                "suppress_final_seconds": 1.0,
+                "min_cluster_windows": 2,
+                "min_peak_ratio": 3.0,
+            },
+            "visual_prepass": {
+                "enabled": True,
+                "sample_fps": 4.0,
+                "default_confidence": 0.70,
+                "rolling_baseline_frames": 12,
+                "motion_z_score_threshold": 2.8,
+                "flash_z_score_threshold": 3.2,
+                "suppress_initial_seconds": 1.0,
+                "suppress_final_seconds": 1.0,
+                "min_cluster_frames": 2,
+            },
+            "hf_multimodal": {
+                "enabled": False,
+                "shortlist_count": 5,
+                "generic_queries": [
+                    "highlight moment",
+                    "clutch play",
+                    "high action combat",
+                    "objective swing",
+                ],
+                "transcript_keywords": [
+                    "ace",
+                    "clutch",
+                    "crazy",
+                    "huge",
+                    "insane",
+                    "lets go",
+                    "no way",
+                    "team wipe",
+                    "wow",
+                ],
+                "stage_weights": {
+                    "proposal": 0.35,
+                    "transcript": 0.20,
+                    "semantic": 0.25,
+                    "novelty": 0.20,
+                },
+                "signal_thresholds": {
+                    "proposal": 0.55,
+                    "transcript": 0.60,
+                    "semantic": 0.60,
+                    "novelty": 0.60,
+                    "rerank": 0.65,
+                },
+                "components": {
+                    "shot_detector": {
+                        "enabled": True,
+                        "model_id": "georgesung/shot-boundary-detection-transnet-v2",
+                        "revision": "main",
+                        "execution_mode": "local",
+                        "runtime_options": {
+                            "proposal_backend": "transnetv2",
+                            "device": "auto",
+                            "threshold": 0.5,
+                        },
+                    },
+                    "asr": {
+                        "enabled": True,
+                        "model_id": "openai/whisper-large-v3-turbo",
+                        "revision": "main",
+                        "execution_mode": "local",
+                        "runtime_options": {
+                            "asr_backend": "whisper",
+                            "device": "auto",
+                            "sample_rate": 16000,
+                            "chunk_length_s": 30,
+                            "batch_size": 8,
+                        },
+                    },
+                    "semantic": {
+                        "enabled": True,
+                        "model_id": "microsoft/xclip-base-patch32",
+                        "revision": "main",
+                        "execution_mode": "local",
+                        "runtime_options": {
+                            "device": "auto",
+                            "frame_count": 8,
+                        },
+                    },
+                    "keyframes": {
+                        "enabled": True,
+                        "model_id": "google/siglip-so400m-patch14-384",
+                        "revision": "main",
+                        "execution_mode": "local",
+                        "runtime_options": {
+                            "device": "auto",
+                            "cluster_similarity_threshold": 0.92,
+                        },
+                    },
+                    "reranker": {
+                        "enabled": True,
+                        "model_id": "HuggingFaceTB/SmolVLM2-2.2B-Instruct",
+                        "revision": "main",
+                        "execution_mode": "local",
+                        "runtime_options": {
+                            "device": "auto",
+                            "frames_per_candidate": 3,
+                            "max_new_tokens": 96,
+                            "temperature": 0.0,
+                        },
+                    },
+                },
+            },
+        },
+        "weights": {
+            "chat_spike": 3.5,
+            "playlist_spike": 2.5,
+            "playlist_discontinuity": 2.0,
+            "audio_spike": 3.0,
+            "visual_motion_spike": 2.8,
+            "visual_flash_spike": 2.6,
+            "hf_shot_boundary": 2.4,
+            "hf_transcript_salience": 2.2,
+            "hf_semantic_match": 2.6,
+            "hf_keyframe_novelty": 2.0,
+            "hf_rerank_highlight": 3.2,
+        },
+        "candidate_selection": {
+            "dedupe_gap_seconds": 3,
+            "merge_gap_seconds": 30,
+            "audio_only_merge_gap_seconds": 8,
+            "window_pre_seconds": 10,
+            "window_post_seconds": 25,
+            "audio_only_window_pre_seconds": 3,
+            "audio_only_window_post_seconds": 6,
+            "min_proxy_score": 0.30,
+            "max_windows": 20,
+            "agreement_bonus_per_extra_source": 0.10,
+            "max_agreement_bonus": 0.25,
+        },
+        "cost_gates": {
+            "inspect_min_score": 0.40,
+            "download_candidate_min_score": 0.75,
+            "download_candidate_min_sources": 2,
+        },
+        "sidecar": {
+            "output_dir": "outputs/proxy_scans",
+        },
+    },
+    "runtime_analysis": {
+        "scoring": {
+            "event_weights": {
+                "medal_seen": 0.45,
+                "ability_seen": 0.18,
+                "pov_character_identified": 0.08,
+            },
+            "event_caps": {
+                "medal_seen": 2,
+                "ability_seen": 3,
+                "pov_character_identified": 1,
+            },
+            "detection_support_weight": 0.03,
+            "max_detection_support": 0.12,
+            "action_thresholds": {
+                "inspect": 0.25,
+                "highlight_candidate": 0.60,
+            },
+        }
+    },
+}
+
+
+def default_config() -> dict[str, Any]:
+    return deepcopy(DEFAULT_CONFIG)

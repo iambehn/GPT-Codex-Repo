@@ -19,6 +19,15 @@ def _missing_optional_tool(tool_name: str, exc: ModuleNotFoundError):
 
 from pipeline.chat_scanner import scan_chat_log
 from pipeline.clip_registry import query_clip_registry, refresh_clip_registry, transition_candidate_lifecycle
+from pipeline.config import (
+    DEFAULT_CONFIG,
+    deep_merge as _config_deep_merge,
+    load_pipeline_config,
+    load_repo_config_file as _config_load_repo_config_file,
+    normalize_config as _config_normalize_config,
+    normalize_config_with_warnings as _config_normalize_config_with_warnings,
+    normalize_proxy_scanner_config as _config_normalize_proxy_scanner_config,
+)
 from pipeline.contract_audit import audit_pipeline_contracts
 from pipeline.event_mapper import EventMapperError, load_runtime_rule_trial_overrides, map_roi_events
 from pipeline.evaluation_fixtures import load_evaluation_fixture_manifest
@@ -249,6 +258,7 @@ except ModuleNotFoundError as exc:
 
 
 REPO_ROOT = Path(__file__).resolve().parent
+_CONFIG_PATH_OVERRIDE: Path | None = None
 PROXY_SCAN_SCHEMA_VERSION = "proxy_scan_v1"
 FIXTURE_TRIAL_RUN_SCHEMA_VERSION = "fixture_trial_run_v1"
 FIXTURE_TRIAL_BATCH_SCHEMA_VERSION = "fixture_trial_batch_v1"
@@ -260,255 +270,34 @@ FIXTURE_TRIAL_PRESETS = {
     "distil-whisper": {"proposal_backend": "transnetv2", "asr_backend": "distil_whisper"},
     "cheap-stage-combined": {"proposal_backend": "pyscenedetect", "asr_backend": "distil_whisper"},
 }
-DEFAULT_CONFIG = {
-    "proxy_scanner": {
-        "sources": {
-            "chat_velocity": {
-                "enabled": True,
-                "bucket_seconds": 5,
-                "rolling_baseline_seconds": 300,
-                "burst_threshold": 3.0,
-                "default_confidence": 0.70,
-            },
-            "playlist_hls": {
-                "enabled": True,
-                "duration_spike_ratio": 1.75,
-                "variance_window_segments": 3,
-                "default_confidence": 0.65,
-                "discontinuity_confidence": 0.80,
-            },
-            "audio_prepass": {
-                "enabled": True,
-                "sample_rate": 16000,
-                "window_ms": 250,
-                "rolling_baseline_windows": 20,
-                "z_score_threshold": 3.0,
-                "default_confidence": 0.72,
-                "suppress_initial_seconds": 1.0,
-                "suppress_final_seconds": 1.0,
-                "min_cluster_windows": 2,
-                "min_peak_ratio": 3.0,
-            },
-            "visual_prepass": {
-                "enabled": True,
-                "sample_fps": 4.0,
-                "default_confidence": 0.70,
-                "rolling_baseline_frames": 12,
-                "motion_z_score_threshold": 2.8,
-                "flash_z_score_threshold": 3.2,
-                "suppress_initial_seconds": 1.0,
-                "suppress_final_seconds": 1.0,
-                "min_cluster_frames": 2,
-            },
-            "hf_multimodal": {
-                "enabled": False,
-                "shortlist_count": 5,
-                "generic_queries": [
-                    "highlight moment",
-                    "clutch play",
-                    "high action combat",
-                    "objective swing",
-                ],
-                "transcript_keywords": [
-                    "ace",
-                    "clutch",
-                    "crazy",
-                    "huge",
-                    "insane",
-                    "lets go",
-                    "no way",
-                    "team wipe",
-                    "wow",
-                ],
-                "stage_weights": {
-                    "proposal": 0.35,
-                    "transcript": 0.20,
-                    "semantic": 0.25,
-                    "novelty": 0.20,
-                },
-                "signal_thresholds": {
-                    "proposal": 0.55,
-                    "transcript": 0.60,
-                    "semantic": 0.60,
-                    "novelty": 0.60,
-                    "rerank": 0.65,
-                },
-                "components": {
-                    "shot_detector": {
-                        "enabled": True,
-                        "model_id": "georgesung/shot-boundary-detection-transnet-v2",
-                        "revision": "main",
-                        "execution_mode": "local",
-                        "runtime_options": {
-                            "proposal_backend": "transnetv2",
-                            "device": "auto",
-                            "threshold": 0.5,
-                        },
-                    },
-                    "asr": {
-                        "enabled": True,
-                        "model_id": "openai/whisper-large-v3-turbo",
-                        "revision": "main",
-                        "execution_mode": "local",
-                        "runtime_options": {
-                            "asr_backend": "whisper",
-                            "device": "auto",
-                            "sample_rate": 16000,
-                            "chunk_length_s": 30,
-                            "batch_size": 8,
-                        },
-                    },
-                    "semantic": {
-                        "enabled": True,
-                        "model_id": "microsoft/xclip-base-patch32",
-                        "revision": "main",
-                        "execution_mode": "local",
-                        "runtime_options": {
-                            "device": "auto",
-                            "frame_count": 8,
-                        },
-                    },
-                    "keyframes": {
-                        "enabled": True,
-                        "model_id": "google/siglip-so400m-patch14-384",
-                        "revision": "main",
-                        "execution_mode": "local",
-                        "runtime_options": {
-                            "device": "auto",
-                            "cluster_similarity_threshold": 0.92,
-                        },
-                    },
-                    "reranker": {
-                        "enabled": True,
-                        "model_id": "HuggingFaceTB/SmolVLM2-2.2B-Instruct",
-                        "revision": "main",
-                        "execution_mode": "local",
-                        "runtime_options": {
-                            "device": "auto",
-                            "frames_per_candidate": 3,
-                            "max_new_tokens": 96,
-                            "temperature": 0.0,
-                        },
-                    },
-                },
-            },
-        },
-        "weights": {
-            "chat_spike": 3.5,
-            "playlist_spike": 2.5,
-            "playlist_discontinuity": 2.0,
-            "audio_spike": 3.0,
-            "visual_motion_spike": 2.8,
-            "visual_flash_spike": 2.6,
-            "hf_shot_boundary": 2.4,
-            "hf_transcript_salience": 2.2,
-            "hf_semantic_match": 2.6,
-            "hf_keyframe_novelty": 2.0,
-            "hf_rerank_highlight": 3.2,
-        },
-        "candidate_selection": {
-            "dedupe_gap_seconds": 3,
-            "merge_gap_seconds": 30,
-            "audio_only_merge_gap_seconds": 8,
-            "window_pre_seconds": 10,
-            "window_post_seconds": 25,
-            "audio_only_window_pre_seconds": 3,
-            "audio_only_window_post_seconds": 6,
-            "min_proxy_score": 0.30,
-            "max_windows": 20,
-            "agreement_bonus_per_extra_source": 0.10,
-            "max_agreement_bonus": 0.25,
-        },
-        "cost_gates": {
-            "inspect_min_score": 0.40,
-            "download_candidate_min_score": 0.75,
-            "download_candidate_min_sources": 2,
-        },
-        "sidecar": {
-            "output_dir": "outputs/proxy_scans",
-        },
-    },
-    "runtime_analysis": {
-        "scoring": {
-            "event_weights": {
-                "medal_seen": 0.45,
-                "ability_seen": 0.18,
-                "pov_character_identified": 0.08,
-            },
-            "event_caps": {
-                "medal_seen": 2,
-                "ability_seen": 3,
-                "pov_character_identified": 1,
-            },
-            "detection_support_weight": 0.03,
-            "max_detection_support": 0.12,
-            "action_thresholds": {
-                "inspect": 0.25,
-                "highlight_candidate": 0.60,
-            },
-        }
-    },
-}
-
-
 def load_config() -> dict[str, Any]:
-    path = REPO_ROOT / "config.yaml"
-    if not path.exists():
-        return _normalize_config(DEFAULT_CONFIG)
-    loaded = load_yaml_file(path)
-    return _normalize_config(_deep_merge(DEFAULT_CONFIG, loaded))
+    return load_pipeline_config(REPO_ROOT, config_path=_CONFIG_PATH_OVERRIDE).config
 
 
 def _load_repo_config_file() -> dict[str, Any]:
-    path = REPO_ROOT / "config.yaml"
-    if not path.exists():
-        return {}
-    loaded = load_yaml_file(path)
-    return loaded if isinstance(loaded, dict) else {}
+    return _config_load_repo_config_file(REPO_ROOT, _CONFIG_PATH_OVERRIDE)
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    merged: dict[str, Any] = {}
-    for key in set(base) | set(override):
-        base_value = base.get(key)
-        override_value = override.get(key)
-        if isinstance(base_value, dict) and isinstance(override_value, dict):
-            merged[key] = _deep_merge(base_value, override_value)
-        elif key in override:
-            merged[key] = override_value
-        else:
-            merged[key] = base_value
-    return merged
+    return _config_deep_merge(base, override)
 
 
 def _normalize_config(config: dict[str, Any]) -> dict[str, Any]:
-    normalized = deepcopy(config)
-    normalized["proxy_scanner"] = _normalize_proxy_scanner_config(normalized.get("proxy_scanner", {}))
-    return normalized
+    return _config_normalize_config(config)
 
 
 def _normalize_config_with_warnings(config: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    warnings: list[dict[str, Any]] = []
-    proxy_config = config.get("proxy_scanner", {}) if isinstance(config.get("proxy_scanner", {}), dict) else {}
-    if isinstance(proxy_config.get("signals"), dict) and proxy_config.get("signals"):
-        warnings.append(
-            {
-                "status": "legacy_proxy_signals_config",
-                "surface": "proxy_scanner.signals",
-                "message": "legacy proxy_scanner.signals config was normalized into proxy_scanner.sources",
-            }
-        )
-    return _normalize_config(config), warnings
+    return _config_normalize_config_with_warnings(config)
 
 
 def _normalize_proxy_scanner_config(proxy_config: dict[str, Any]) -> dict[str, Any]:
-    normalized = deepcopy(proxy_config)
-    legacy_sources = normalized.pop("signals", {}) if isinstance(normalized.get("signals"), dict) else {}
-    explicit_sources = normalized.get("sources", {}) if isinstance(normalized.get("sources"), dict) else {}
-    merged_sources = _deep_merge(DEFAULT_CONFIG["proxy_scanner"]["sources"], legacy_sources)
-    merged_sources = _deep_merge(merged_sources, explicit_sources)
-    normalized["sources"] = merged_sources
-    return normalized
+    return _config_normalize_proxy_scanner_config(proxy_config)
+
+
+def _effective_config_path() -> Path:
+    if _CONFIG_PATH_OVERRIDE is not None:
+        return _CONFIG_PATH_OVERRIDE
+    return (REPO_ROOT / "config.yaml").resolve()
 
 
 def run_scan_chat_log(log_path: Path, game: str) -> dict[str, Any]:
@@ -1013,7 +802,7 @@ def run_summarize_shadow_target_readiness(
 
 
 def run_export_runtime_analysis(sidecar_root: str | Path, game: str | None = None) -> dict[str, Any]:
-    config = _normalize_config(load_config())
+    config = load_config()
     runtime_cfg = config.get("runtime_analysis", {})
     return export_runtime_analysis(sidecar_root, game=game, scoring_config=runtime_cfg.get("scoring", {}))
 
@@ -1031,7 +820,7 @@ def run_calibrate_proxy_review(
     include_unreviewed: bool = False,
     debug_output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    config = _normalize_config(load_config())
+    config = load_config()
     proxy_cfg = config.get("proxy_scanner", {})
     return calibrate_proxy_review(
         sidecar_root,
@@ -1055,7 +844,7 @@ def run_replay_proxy_scoring(
     debug_output_dir: str | Path | None = None,
     trial_name: str | None = None,
 ) -> dict[str, Any]:
-    config = _normalize_config(load_config())
+    config = load_config()
     proxy_cfg = config.get("proxy_scanner", {})
     return replay_proxy_scoring(
         sidecar_root,
@@ -2115,7 +1904,7 @@ def run_fixture_trial(
         for row in list(source_manifest.get("fixtures", []))
     }
     evaluation_fixture_ids = {str(row["fixture_id"]) for row in list(evaluation_manifest.get("fixtures", []))}
-    base_config = _normalize_config(load_config())
+    base_config = load_config()
     effective_overrides = _resolve_fixture_trial_overrides(
         trial_name,
         proposal_backend=proposal_backend,
@@ -2486,7 +2275,7 @@ def run_calibrate_runtime_review(
     include_unreviewed: bool = False,
     debug_output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    config = _normalize_config(load_config())
+    config = load_config()
     runtime_cfg = config.get("runtime_analysis", {})
     return calibrate_runtime_review(
         sidecar_root,
@@ -2510,7 +2299,7 @@ def run_replay_runtime_scoring(
     debug_output_dir: str | Path | None = None,
     trial_name: str | None = None,
 ) -> dict[str, Any]:
-    config = _normalize_config(load_config())
+    config = load_config()
     runtime_cfg = config.get("runtime_analysis", {})
     return replay_runtime_scoring(
         sidecar_root,
@@ -2536,14 +2325,14 @@ def run_promote_runtime_scoring(
     debug_output_dir: str | Path | None = None,
     trial_name: str | None = None,
 ) -> dict[str, Any]:
-    config = _normalize_config(load_config())
+    config = load_config()
     runtime_cfg = config.get("runtime_analysis", {})
     return promote_runtime_scoring(
         trial_config,
         sidecar_root=sidecar_root,
         game=game,
         current_scoring_config=runtime_cfg.get("scoring", {}),
-        config_path=REPO_ROOT / "config.yaml",
+        config_path=_effective_config_path(),
         config_data=_load_repo_config_file(),
         default_config=DEFAULT_CONFIG,
         min_reviewed=min_reviewed,
@@ -2561,11 +2350,11 @@ def run_rollback_runtime_scoring(
     debug_output_dir: str | Path | None = None,
     rollback_name: str | None = None,
 ) -> dict[str, Any]:
-    config = _normalize_config(load_config())
+    config = load_config()
     runtime_cfg = config.get("runtime_analysis", {})
     return rollback_runtime_scoring(
         snapshot_dir,
-        config_path=REPO_ROOT / "config.yaml",
+        config_path=_effective_config_path(),
         config_data=_load_repo_config_file(),
         default_config=DEFAULT_CONFIG,
         current_scoring_config=runtime_cfg.get("scoring", {}),
@@ -4465,7 +4254,13 @@ def _proxy_scan_batch_id(root: Path, game: str, pattern: str, limit: int | None)
 
 
 def main() -> int:
+    global _CONFIG_PATH_OVERRIDE
     parser = argparse.ArgumentParser(description="Initial runnable scaffold for the gaming clip pipeline.")
+    parser.add_argument(
+        "--config",
+        metavar="PATH",
+        help="Optional config override path used by config-backed commands.",
+    )
     parser.add_argument("--list-games", action="store_true", help="List available game packs.")
     parser.add_argument("--init-game", metavar="GAME", help="Copy a starter game pack into assets/games.")
     parser.add_argument("--validate-game-pack", metavar="GAME", help="Validate a game pack.")
@@ -5612,6 +5407,14 @@ def main() -> int:
         help="List published pack templates grouped by ROI for runtime inspection.",
     )
     args = parser.parse_args()
+    _CONFIG_PATH_OVERRIDE = None
+    if args.config:
+        override = Path(args.config).expanduser()
+        if not override.is_absolute():
+            override = (Path.cwd() / override).resolve()
+        else:
+            override = override.resolve()
+        _CONFIG_PATH_OVERRIDE = override
 
     if args.list_games:
         print(json.dumps({"ok": True, "games": list_games()}, indent=2))

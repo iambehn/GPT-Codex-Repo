@@ -1,3 +1,10 @@
+# Root repo config for pipeline defaults and local overrides.
+# Placeholder support:
+# - ${VAR}
+# - ${ENV:VAR}
+# Missing placeholders fail validation during config load.
+# Keep secrets out of this file when possible; prefer environment variables.
+
 proxy_scanner:
   sources:
     chat_velocity:

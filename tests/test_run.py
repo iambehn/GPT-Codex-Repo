@@ -713,6 +713,48 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_audit_pipeline_contracts_with_config_override(self) -> None:
+        original_argv = sys.argv
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as handle:
+                handle.write(
+                    "\n".join(
+                        [
+                            "proxy_scanner:",
+                            "  signals:",
+                            "    audio_prepass:",
+                            "      enabled: true",
+                        ]
+                    )
+                    + "\n"
+                )
+                config_path = Path(handle.name)
+            self.addCleanup(config_path.unlink)
+
+            sys.argv = [
+                "run.py",
+                "--audit-pipeline-contracts",
+                "--config",
+                str(config_path),
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.audit_pipeline_contracts",
+                return_value={"ok": True, "status": "ok", "pack_contracts": []},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+            kwargs = mock_run.call_args.kwargs
+            self.assertEqual(
+                kwargs["config_payload"],
+                {"proxy_scanner": {"signals": {"audio_prepass": {"enabled": True}}}},
+            )
+        finally:
+            sys.argv = original_argv
+
     def test_cli_routes_to_inspect_quality_maintenance_findings(self) -> None:
         original_argv = sys.argv
         try:
