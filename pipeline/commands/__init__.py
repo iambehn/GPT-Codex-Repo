@@ -1,3 +1,4 @@
+from .game_intake import dispatch_game_intake_commands
 from .detector_calibration_operator import dispatch_detector_calibration_operator_commands
 from .export_posting import dispatch_export_posting_commands
 from .maintenance import (
@@ -18,6 +19,7 @@ from .workflow_registry import dispatch_workflow_registry_commands
 __all__ = [
     "dispatch_detector_calibration_operator_commands",
     "dispatch_export_posting_commands",
+    "dispatch_game_intake_commands",
     "dispatch_maintenance_commands",
     "dispatch_onboarding_analysis_commands",
     "dispatch_review_calibration_commands",

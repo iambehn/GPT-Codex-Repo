@@ -21,6 +21,7 @@ from pipeline.chat_scanner import scan_chat_log
 from pipeline.clip_registry import query_clip_registry, refresh_clip_registry, transition_candidate_lifecycle
 from pipeline.commands.detector_calibration_operator import dispatch_detector_calibration_operator_commands
 from pipeline.commands.export_posting import dispatch_export_posting_commands
+from pipeline.commands.game_intake import dispatch_game_intake_commands
 from pipeline.commands.maintenance import (
     dispatch_maintenance_commands,
     run_audit_pipeline_contracts as _maintenance_run_audit_pipeline_contracts,
@@ -5413,40 +5414,19 @@ def main() -> int:
             override = override.resolve()
         _CONFIG_PATH_OVERRIDE = override
 
-    if args.list_games:
-        print(json.dumps({"ok": True, "games": list_games()}, indent=2))
-        return 0
-
-    if args.init_game:
-        print(json.dumps(init_game_pack(args.init_game), indent=2))
-        return 0
-
-    if args.validate_game_pack:
-        print(json.dumps(validate_game_pack(args.validate_game_pack), indent=2))
-        return 0
-
-    if args.scan_chat_log:
-        log_path, game = args.scan_chat_log
-        _print_cli_result(run_scan_chat_log(Path(log_path), game), command_name="scan_chat_log", full_json=args.full_json)
-        return 0
-
-    if args.scan_vod:
-        source, game = args.scan_vod
-        _print_cli_result(run_scan_vod(source, game, chat_log=args.chat_log), command_name="scan_vod", full_json=args.full_json)
-        return 0
-
-    if args.scan_vod_batch:
-        root, game = args.scan_vod_batch
-        _print_cli_result(
-            run_scan_vod_batch(root, game, pattern=args.pattern, limit=args.limit),
-            command_name="scan_vod_batch",
-            full_json=args.full_json,
-        )
-        return 0
-
-    if args.export_training_data:
-        print(json.dumps(run_export_training_data(args.export_training_data, game=args.game), indent=2))
-        return 0
+    game_intake_exit = dispatch_game_intake_commands(
+        args,
+        print_cli_result_fn=_print_cli_result,
+        list_games_fn=list_games,
+        init_game_pack_fn=init_game_pack,
+        validate_game_pack_fn=validate_game_pack,
+        run_scan_chat_log_fn=run_scan_chat_log,
+        run_scan_vod_fn=run_scan_vod,
+        run_scan_vod_batch_fn=run_scan_vod_batch,
+        run_export_training_data_fn=run_export_training_data,
+    )
+    if game_intake_exit is not None:
+        return game_intake_exit
 
     export_posting_pre_shadow_exit = dispatch_export_posting_commands(
         args,
