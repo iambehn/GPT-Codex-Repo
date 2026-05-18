@@ -1,0 +1,46 @@
+{
+  "schema_version": "runtime_scoring_promotion_rollback_goldset_v1",
+  "cases": [
+    {
+      "case_id": "promotion_applies_trial_scoring",
+      "scenario": "promotion",
+      "game": "marvel_rivals",
+      "trial_threshold": 0.45,
+      "sidecar_profile": "prefer_trial",
+      "min_reviewed": 2,
+      "expected_ok": true,
+      "expected_status": "ok",
+      "expected_force_used": false,
+      "expected_highlight_threshold": 0.45,
+      "expected_proxy_inspect_min_score": 0.4
+    },
+    {
+      "case_id": "promotion_blocked_by_replay",
+      "scenario": "promotion",
+      "game": "marvel_rivals",
+      "trial_threshold": 0.6,
+      "sidecar_profile": "prefer_trial",
+      "min_reviewed": 2,
+      "expected_ok": false,
+      "expected_status": "promotion_blocked_by_replay"
+    },
+    {
+      "case_id": "rollback_restores_previous_scoring",
+      "scenario": "rollback",
+      "rollback_name": "goldset-rollback",
+      "current_threshold": 0.45,
+      "previous_threshold": 0.6,
+      "expected_ok": true,
+      "expected_status": "ok",
+      "expected_restored_highlight_threshold": 0.6,
+      "expected_proxy_inspect_min_score": 0.4
+    },
+    {
+      "case_id": "rollback_rejects_invalid_snapshot_payload",
+      "scenario": "rollback",
+      "invalid_snapshot_payload": true,
+      "expected_ok": false,
+      "expected_status": "invalid_restore_payload"
+    }
+  ]
+}
