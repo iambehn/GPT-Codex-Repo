@@ -32,8 +32,8 @@ def _regression_result(*, ok: bool = True) -> dict:
         "ok": ok,
         "status": "ok" if ok else "test_failures",
         "result_payload": {
-            "suite_count": 8,
-            "total_tests": 16,
+            "suite_count": 9,
+            "total_tests": 18,
             "failure_count": 0 if ok else 1,
             "error_count": 0,
             "skipped_count": 0,
@@ -91,7 +91,7 @@ class RunRepoQualityHealthTests(unittest.TestCase):
             result = run_repo_quality_health(emit_json=True)
         payload = json.loads(result["rendered_output"])
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["decision_regression_summary"]["suite_count"], 8)
+        self.assertEqual(payload["decision_regression_summary"]["suite_count"], 9)
 
     def test_main_returns_error_code_on_failure(self) -> None:
         with patch(

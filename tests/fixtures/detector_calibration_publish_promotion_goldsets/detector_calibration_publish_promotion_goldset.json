@@ -1,0 +1,59 @@
+{
+  "schema_version": "detector_calibration_publish_promotion_goldset_v1",
+  "cases": [
+    {
+      "case_id": "publish_decision_multi_evidence_ready",
+      "scenario": "publish_decision",
+      "asset_id": "marvel_rivals.ace.team_wipe_announcement",
+      "triage_rows": [
+        {
+          "status": "publish_ready",
+          "promotion_id": "ace-a",
+          "delta_iou": 0.4,
+          "created_at": "2026-05-14T02:00:00Z",
+          "source": "/tmp/clip-a.mp4"
+        },
+        {
+          "status": "publish_ready",
+          "promotion_id": "ace-b",
+          "delta_iou": 0.2,
+          "created_at": "2026-05-14T01:00:00Z",
+          "source": "/tmp/clip-b.mp4"
+        }
+      ],
+      "expected_statuses": ["ready_to_publish", "ready_to_publish"],
+      "expected_replay_count": 2,
+      "expected_distinct_source_count": 2
+    },
+    {
+      "case_id": "publish_decision_single_evidence_needs_broader",
+      "scenario": "publish_decision",
+      "asset_id": "marvel_rivals.human_torch.hero_portrait",
+      "triage_rows": [
+        {
+          "status": "publish_ready",
+          "promotion_id": "hero",
+          "delta_iou": 0.95,
+          "created_at": "2026-05-14T01:00:00Z",
+          "source": "/tmp/clip-a.mp4"
+        }
+      ],
+      "expected_statuses": ["needs_broader_evidence"],
+      "expected_reason": "publish_ready_but_single_evidence_base"
+    },
+    {
+      "case_id": "published_pack_promotion_success",
+      "scenario": "promotion",
+      "promoted_by": "tj",
+      "expected_status": "ok",
+      "expected_source": "detector_calibration_revised_crop_promotion_v1",
+      "expected_run_id": "replay-003"
+    },
+    {
+      "case_id": "published_pack_rollback_success",
+      "scenario": "rollback",
+      "rolled_back_by": "tj",
+      "expected_status": "ok"
+    }
+  ]
+}

@@ -73,6 +73,16 @@ def _suite_rows(*, failing: bool = False) -> list[dict]:
             "output": "",
         },
         {
+            "suite_name": "detector_calibration_publish_promotion_goldset",
+            "module_name": "tests.test_detector_calibration_publish_promotion_goldset",
+            "ok": True,
+            "tests_run": 2,
+            "failure_count": 0,
+            "error_count": 0,
+            "skipped_count": 0,
+            "output": "",
+        },
+        {
             "suite_name": "onboarding_identity_review_goldset",
             "module_name": "tests.test_onboarding_identity_review_goldset",
             "ok": True,
@@ -104,8 +114,9 @@ class RunDecisionRegressionGoldsetsTests(unittest.TestCase):
         ):
             result = run_decision_regression_goldsets()
         self.assertTrue(result["ok"])
-        self.assertIn("Suite count: 8", result["rendered_output"])
-        self.assertIn("Total tests: 16", result["rendered_output"])
+        self.assertIn("Suite count: 9", result["rendered_output"])
+        self.assertIn("Total tests: 18", result["rendered_output"])
+        self.assertIn("detector_calibration_publish_promotion_goldset | ok=True", result["rendered_output"])
         self.assertIn("runtime_scoring_promotion_rollback_goldset | ok=True", result["rendered_output"])
         self.assertIn("fused_review_bridge_goldset | ok=True", result["rendered_output"])
         self.assertIn("proxy_review_bridge_goldset | ok=True", result["rendered_output"])
@@ -129,8 +140,8 @@ class RunDecisionRegressionGoldsetsTests(unittest.TestCase):
         ):
             result = run_decision_regression_goldsets(emit_json=True)
         payload = json.loads(result["rendered_output"])
-        self.assertEqual(payload["suite_count"], 8)
-        self.assertEqual(payload["total_tests"], 16)
+        self.assertEqual(payload["suite_count"], 9)
+        self.assertEqual(payload["total_tests"], 18)
 
     def test_main_returns_error_code_when_suite_fails(self) -> None:
         with patch(

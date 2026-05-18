@@ -19,6 +19,7 @@ DECISION_REGRESSION_SUITES = (
     ("proxy_review_bridge_goldset", "tests.test_proxy_review_bridge_goldset"),
     ("fused_review_bridge_goldset", "tests.test_fused_review_bridge_goldset"),
     ("runtime_scoring_promotion_rollback_goldset", "tests.test_runtime_scoring_promotion_rollback_goldset"),
+    ("detector_calibration_publish_promotion_goldset", "tests.test_detector_calibration_publish_promotion_goldset"),
     ("onboarding_identity_review_goldset", "tests.test_onboarding_identity_review_goldset"),
     ("publish_readiness_goldset", "tests.test_publish_readiness_goldset"),
 )
