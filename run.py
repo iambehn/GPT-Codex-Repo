@@ -19,6 +19,16 @@ def _missing_optional_tool(tool_name: str, exc: ModuleNotFoundError):
 
 from pipeline.chat_scanner import scan_chat_log
 from pipeline.clip_registry import query_clip_registry, refresh_clip_registry, transition_candidate_lifecycle
+from pipeline.commands.maintenance import (
+    dispatch_maintenance_commands,
+    run_audit_pipeline_contracts as _maintenance_run_audit_pipeline_contracts,
+    run_check_roi_runtime as _maintenance_run_check_roi_runtime,
+    run_decision_regression_goldsets as _maintenance_run_decision_regression_goldsets,
+    run_inspect_quality_maintenance_findings as _maintenance_run_inspect_quality_maintenance_findings,
+    run_list_pack_templates as _maintenance_run_list_pack_templates,
+    run_repo_quality_health as _maintenance_run_repo_quality_health,
+    run_validate_published_pack as _maintenance_run_validate_published_pack,
+)
 from pipeline.config import (
     DEFAULT_CONFIG,
     deep_merge as _config_deep_merge,
@@ -157,9 +167,6 @@ from pipeline.training_export import export_training_data
 from pipeline.v2_training_export import export_v2_training_datasets
 from pipeline.unified_replay_viewer import render_unified_replay_viewer
 from pipeline.wiki_enrichment import WikiFetchError, WikiSource, enrich_game_from_sources, enrich_game_from_wiki
-from tools.inspect_quality_maintenance_findings import inspect_quality_maintenance_findings
-from tools.run_decision_regression_goldsets import run_decision_regression_goldsets
-from tools.run_repo_quality_health import run_repo_quality_health
 
 try:
     from tools.inspect_detector_calibration_followup_report import inspect_detector_calibration_followup_report
@@ -1750,7 +1757,7 @@ def run_inspect_quality_maintenance_findings(
     game: str | None = None,
     emit_json: bool = False,
 ) -> dict[str, Any]:
-    return inspect_quality_maintenance_findings(
+    return _maintenance_run_inspect_quality_maintenance_findings(
         repo_root=REPO_ROOT,
         game=game,
         emit_json=emit_json,
@@ -1761,7 +1768,7 @@ def run_run_decision_regression_goldsets(
     *,
     emit_json: bool = False,
 ) -> dict[str, Any]:
-    return run_decision_regression_goldsets(
+    return _maintenance_run_decision_regression_goldsets(
         emit_json=emit_json,
     )
 
@@ -1770,7 +1777,7 @@ def run_run_repo_quality_health(
     *,
     emit_json: bool = False,
 ) -> dict[str, Any]:
-    return run_repo_quality_health(
+    return _maintenance_run_repo_quality_health(
         emit_json=emit_json,
     )
 
@@ -3755,14 +3762,16 @@ def _load_sidecar_from_root(
 
 
 def run_check_roi_runtime() -> dict[str, Any]:
-    return check_roi_runtime()
+    return _maintenance_run_check_roi_runtime(
+        checker=check_roi_runtime,
+    )
 
 
 def run_validate_published_pack(game: str) -> dict[str, Any]:
-    try:
-        return validate_published_pack(game)
-    except RoiMatcherError as exc:
-        return exc.to_dict(game=game)
+    return _maintenance_run_validate_published_pack(
+        game,
+        validator=validate_published_pack,
+    )
 
 
 def run_audit_pipeline_contracts(
@@ -3771,39 +3780,21 @@ def run_audit_pipeline_contracts(
     output_path: str | Path | None = None,
     debug_output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    raw_config = _load_repo_config_file()
-    result = audit_pipeline_contracts(game=game, repo_root=REPO_ROOT, config_payload=raw_config)
-    if output_path is not None:
-        target = Path(output_path).expanduser()
-        if not target.is_absolute():
-            target = (Path.cwd() / target).resolve()
-        else:
-            target = target.resolve()
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    if debug_output_dir is not None:
-        debug_root = Path(debug_output_dir).expanduser()
-        if not debug_root.is_absolute():
-            debug_root = (Path.cwd() / debug_root).resolve()
-        else:
-            debug_root = debug_root.resolve()
-        debug_root.mkdir(parents=True, exist_ok=True)
-        (debug_root / "pipeline_contract_audit.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
-    return result
+    return _maintenance_run_audit_pipeline_contracts(
+        game=game,
+        output_path=output_path,
+        debug_output_dir=debug_output_dir,
+        repo_root=REPO_ROOT,
+        config_payload=_load_repo_config_file(),
+        auditor=audit_pipeline_contracts,
+    )
 
 
 def run_list_pack_templates(game: str) -> dict[str, Any]:
-    try:
-        return list_pack_templates(game)
-    except RoiMatcherError as exc:
-        return exc.to_dict(game=game)
-    except FileNotFoundError as exc:
-        return {
-            "ok": False,
-            "status": "missing_game_pack",
-            "game": game,
-            "error": str(exc),
-        }
+    return _maintenance_run_list_pack_templates(
+        game,
+        lister=list_pack_templates,
+    )
 
 
 def _resolve_wiki_sources(
@@ -6529,14 +6520,18 @@ def main() -> int:
         print(json.dumps(result, indent=2))
         return 0 if result.get("ok") else 1
 
-    if args.audit_pipeline_contracts:
-        result = run_audit_pipeline_contracts(
-            game=args.game,
-            output_path=args.output_path,
-            debug_output_dir=args.debug_output_dir,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
+    maintenance_exit = dispatch_maintenance_commands(
+        args,
+        run_audit_pipeline_contracts_fn=run_audit_pipeline_contracts,
+        run_inspect_quality_maintenance_findings_fn=run_inspect_quality_maintenance_findings,
+        run_decision_regression_goldsets_fn=run_run_decision_regression_goldsets,
+        run_repo_quality_health_fn=run_run_repo_quality_health,
+        run_check_roi_runtime_fn=run_check_roi_runtime,
+        run_validate_published_pack_fn=run_validate_published_pack,
+        run_list_pack_templates_fn=run_list_pack_templates,
+    )
+    if maintenance_exit is not None:
+        return maintenance_exit
 
     if args.prepare_proxy_review:
         print(
@@ -6797,40 +6792,6 @@ def main() -> int:
         print(result["rendered_output"])
         return 0 if result.get("ok") else 1
 
-    if args.inspect_quality_maintenance_findings:
-        try:
-            result = run_inspect_quality_maintenance_findings(
-                game=args.game,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.run_decision_regression_goldsets:
-        try:
-            result = run_run_decision_regression_goldsets(
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.run_repo_quality_health:
-        try:
-            result = run_run_repo_quality_health(
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
     if args.apply_detector_calibration_next_action:
         if not args.asset_id:
             print("Error: --apply-detector-calibration-next-action requires --asset-id")
@@ -7020,21 +6981,6 @@ def main() -> int:
             sample_fps=args.sample_fps,
             limit_frames=args.limit_frames,
         )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.check_roi_runtime:
-        result = run_check_roi_runtime()
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.validate_published_pack:
-        result = run_validate_published_pack(args.validate_published_pack)
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.list_pack_templates:
-        result = run_list_pack_templates(args.list_pack_templates)
         print(json.dumps(result, indent=2))
         return 0 if result.get("ok") else 1
 
