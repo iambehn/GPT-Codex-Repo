@@ -19,6 +19,7 @@ def _missing_optional_tool(tool_name: str, exc: ModuleNotFoundError):
 
 from pipeline.chat_scanner import scan_chat_log
 from pipeline.clip_registry import query_clip_registry, refresh_clip_registry, transition_candidate_lifecycle
+from pipeline.commands.detector_calibration_operator import dispatch_detector_calibration_operator_commands
 from pipeline.commands.export_posting import dispatch_export_posting_commands
 from pipeline.commands.maintenance import (
     dispatch_maintenance_commands,
@@ -5656,167 +5657,25 @@ def main() -> int:
     if maintenance_exit is not None:
         return maintenance_exit
 
-    if args.inspect_detector_calibration_followup_report:
-        try:
-            result = run_inspect_detector_calibration_followup_report(
-                args.inspect_detector_calibration_followup_report,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_promotion_triage_manifest:
-        try:
-            result = run_inspect_detector_calibration_promotion_triage_manifest(
-                args.inspect_detector_calibration_promotion_triage_manifest,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_publish_decision_manifest:
-        try:
-            result = run_inspect_detector_calibration_publish_decision_manifest(
-                args.inspect_detector_calibration_publish_decision_manifest,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_evidence_expansion_queue_manifest:
-        try:
-            result = run_inspect_detector_calibration_evidence_expansion_queue_manifest(
-                args.inspect_detector_calibration_evidence_expansion_queue_manifest,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_evidence_expansion_progress_manifest:
-        try:
-            result = run_inspect_detector_calibration_evidence_expansion_progress_manifest(
-                args.inspect_detector_calibration_evidence_expansion_progress_manifest,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_next_actions_manifest:
-        try:
-            result = run_inspect_detector_calibration_next_actions_manifest(
-                args.inspect_detector_calibration_next_actions_manifest,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_next_action_apply_ledger:
-        try:
-            result = run_inspect_detector_calibration_next_action_apply_ledger(
-                args.inspect_detector_calibration_next_action_apply_ledger,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_next_action_apply_history_summary:
-        try:
-            result = run_inspect_detector_calibration_next_action_apply_history_summary(
-                args.inspect_detector_calibration_next_action_apply_history_summary,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_next_action_apply_history_trend:
-        try:
-            result = run_inspect_detector_calibration_next_action_apply_history_trend(
-                args.inspect_detector_calibration_next_action_apply_history_trend,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_next_action_cross_game_ledger_comparison:
-        try:
-            result = run_inspect_detector_calibration_next_action_cross_game_ledger_comparison(
-                args.inspect_detector_calibration_next_action_cross_game_ledger_comparison,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger:
-        try:
-            result = run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger(
-                args.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary:
-        try:
-            result = run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary(
-                args.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary,
-                emit_json=bool(args.json),
-            )
-        except Exception as exc:
-            print(f"Error: {exc}")
-            return 1
-        print(result["rendered_output"])
-        return 0 if result.get("ok") else 1
-
-    if args.apply_detector_calibration_next_action:
-        if not args.asset_id:
-            print("Error: --apply-detector-calibration-next-action requires --asset-id")
-            return 1
-        result = run_apply_detector_calibration_next_action(
-            args.apply_detector_calibration_next_action,
-            asset_id=args.asset_id,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
-
-    if args.apply_detector_calibration_next_actions:
-        result = run_apply_detector_calibration_next_actions_batch(
-            args.apply_detector_calibration_next_actions,
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("ok") else 1
+    detector_calibration_operator_exit = dispatch_detector_calibration_operator_commands(
+        args,
+        run_inspect_detector_calibration_followup_report_fn=run_inspect_detector_calibration_followup_report,
+        run_inspect_detector_calibration_promotion_triage_manifest_fn=run_inspect_detector_calibration_promotion_triage_manifest,
+        run_inspect_detector_calibration_publish_decision_manifest_fn=run_inspect_detector_calibration_publish_decision_manifest,
+        run_inspect_detector_calibration_evidence_expansion_queue_manifest_fn=run_inspect_detector_calibration_evidence_expansion_queue_manifest,
+        run_inspect_detector_calibration_evidence_expansion_progress_manifest_fn=run_inspect_detector_calibration_evidence_expansion_progress_manifest,
+        run_inspect_detector_calibration_next_actions_manifest_fn=run_inspect_detector_calibration_next_actions_manifest,
+        run_inspect_detector_calibration_next_action_apply_ledger_fn=run_inspect_detector_calibration_next_action_apply_ledger,
+        run_inspect_detector_calibration_next_action_apply_history_summary_fn=run_inspect_detector_calibration_next_action_apply_history_summary,
+        run_inspect_detector_calibration_next_action_apply_history_trend_fn=run_inspect_detector_calibration_next_action_apply_history_trend,
+        run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_fn=run_inspect_detector_calibration_next_action_cross_game_ledger_comparison,
+        run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger_fn=run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger,
+        run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary_fn=run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary,
+        run_apply_detector_calibration_next_action_fn=run_apply_detector_calibration_next_action,
+        run_apply_detector_calibration_next_actions_batch_fn=run_apply_detector_calibration_next_actions_batch,
+    )
+    if detector_calibration_operator_exit is not None:
+        return detector_calibration_operator_exit
 
     review_post_exit = dispatch_review_calibration_commands(
         args,
