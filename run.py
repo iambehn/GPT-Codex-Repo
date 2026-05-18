@@ -10,6 +10,13 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+
+def _missing_optional_tool(tool_name: str, exc: ModuleNotFoundError):
+    def _raiser(*args: Any, **kwargs: Any) -> Any:
+        raise ModuleNotFoundError(f"optional tool unavailable: {tool_name}") from exc
+
+    return _raiser
+
 from pipeline.chat_scanner import scan_chat_log
 from pipeline.clip_registry import query_clip_registry, refresh_clip_registry, transition_candidate_lifecycle
 from pipeline.contract_audit import audit_pipeline_contracts
@@ -141,6 +148,104 @@ from pipeline.training_export import export_training_data
 from pipeline.v2_training_export import export_v2_training_datasets
 from pipeline.unified_replay_viewer import render_unified_replay_viewer
 from pipeline.wiki_enrichment import WikiFetchError, WikiSource, enrich_game_from_sources, enrich_game_from_wiki
+from tools.inspect_quality_maintenance_findings import inspect_quality_maintenance_findings
+from tools.run_decision_regression_goldsets import run_decision_regression_goldsets
+from tools.run_repo_quality_health import run_repo_quality_health
+
+try:
+    from tools.inspect_detector_calibration_followup_report import inspect_detector_calibration_followup_report
+    from tools.inspect_detector_calibration_evidence_expansion_queue_manifest import (
+        inspect_detector_calibration_evidence_expansion_queue_manifest,
+    )
+    from tools.inspect_detector_calibration_evidence_expansion_progress_manifest import (
+        inspect_detector_calibration_evidence_expansion_progress_manifest,
+    )
+    from tools.inspect_detector_calibration_next_actions_manifest import (
+        inspect_detector_calibration_next_actions_manifest,
+    )
+    from tools.inspect_detector_calibration_next_action_apply_ledger import (
+        inspect_detector_calibration_next_action_apply_ledger,
+    )
+    from tools.inspect_detector_calibration_next_action_apply_history_summary import (
+        inspect_detector_calibration_next_action_apply_history_summary,
+    )
+    from tools.inspect_detector_calibration_next_action_apply_history_trend import (
+        inspect_detector_calibration_next_action_apply_history_trend,
+    )
+    from tools.inspect_detector_calibration_next_action_cross_game_ledger_comparison import (
+        inspect_detector_calibration_next_action_cross_game_ledger_comparison,
+    )
+    from tools.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger import (
+        inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger,
+    )
+    from tools.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary import (
+        inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary,
+    )
+    from tools.detector_calibration_next_action_apply import apply_detector_calibration_next_action
+    from tools.detector_calibration_next_action_apply_batch import apply_detector_calibration_next_actions_batch
+    from tools.inspect_detector_calibration_publish_decision_manifest import (
+        inspect_detector_calibration_publish_decision_manifest,
+    )
+    from tools.inspect_detector_calibration_promotion_triage_manifest import (
+        inspect_detector_calibration_promotion_triage_manifest,
+    )
+except ModuleNotFoundError as exc:
+    inspect_detector_calibration_followup_report = _missing_optional_tool(
+        "inspect_detector_calibration_followup_report",
+        exc,
+    )
+    inspect_detector_calibration_evidence_expansion_queue_manifest = _missing_optional_tool(
+        "inspect_detector_calibration_evidence_expansion_queue_manifest",
+        exc,
+    )
+    inspect_detector_calibration_evidence_expansion_progress_manifest = _missing_optional_tool(
+        "inspect_detector_calibration_evidence_expansion_progress_manifest",
+        exc,
+    )
+    inspect_detector_calibration_next_actions_manifest = _missing_optional_tool(
+        "inspect_detector_calibration_next_actions_manifest",
+        exc,
+    )
+    inspect_detector_calibration_next_action_apply_ledger = _missing_optional_tool(
+        "inspect_detector_calibration_next_action_apply_ledger",
+        exc,
+    )
+    inspect_detector_calibration_next_action_apply_history_summary = _missing_optional_tool(
+        "inspect_detector_calibration_next_action_apply_history_summary",
+        exc,
+    )
+    inspect_detector_calibration_next_action_apply_history_trend = _missing_optional_tool(
+        "inspect_detector_calibration_next_action_apply_history_trend",
+        exc,
+    )
+    inspect_detector_calibration_next_action_cross_game_ledger_comparison = _missing_optional_tool(
+        "inspect_detector_calibration_next_action_cross_game_ledger_comparison",
+        exc,
+    )
+    inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger = _missing_optional_tool(
+        "inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger",
+        exc,
+    )
+    inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary = _missing_optional_tool(
+        "inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary",
+        exc,
+    )
+    apply_detector_calibration_next_action = _missing_optional_tool(
+        "apply_detector_calibration_next_action",
+        exc,
+    )
+    apply_detector_calibration_next_actions_batch = _missing_optional_tool(
+        "apply_detector_calibration_next_actions_batch",
+        exc,
+    )
+    inspect_detector_calibration_publish_decision_manifest = _missing_optional_tool(
+        "inspect_detector_calibration_publish_decision_manifest",
+        exc,
+    )
+    inspect_detector_calibration_promotion_triage_manifest = _missing_optional_tool(
+        "inspect_detector_calibration_promotion_triage_manifest",
+        exc,
+    )
 
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -1693,6 +1798,7 @@ def run_launch_highlight_review_app(
     fixture_comparison_report: str | Path | None = None,
     fixture_trial_batch_manifest: str | Path | None = None,
     proxy_review_session_manifest: str | Path | None = None,
+    fused_review_session_manifest: str | Path | None = None,
     proxy_calibration_report: str | Path | None = None,
     proxy_replay_report: str | Path | None = None,
     runtime_calibration_report: str | Path | None = None,
@@ -1707,6 +1813,7 @@ def run_launch_highlight_review_app(
         fixture_comparison_report=fixture_comparison_report,
         fixture_trial_batch_manifest=fixture_trial_batch_manifest,
         proxy_review_session_manifest=proxy_review_session_manifest,
+        fused_review_session_manifest=fused_review_session_manifest,
         proxy_calibration_report=proxy_calibration_report,
         proxy_replay_report=proxy_replay_report,
         runtime_calibration_report=runtime_calibration_report,
@@ -1714,6 +1821,192 @@ def run_launch_highlight_review_app(
         registry_path=registry_path,
         output_path=output_path,
         launch=launch,
+    )
+
+
+def run_inspect_detector_calibration_followup_report(
+    report: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_followup_report(
+        report=report,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_promotion_triage_manifest(
+    manifest: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_promotion_triage_manifest(
+        manifest=manifest,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_publish_decision_manifest(
+    manifest: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_publish_decision_manifest(
+        manifest=manifest,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_evidence_expansion_queue_manifest(
+    manifest: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_evidence_expansion_queue_manifest(
+        manifest=manifest,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_evidence_expansion_progress_manifest(
+    manifest: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_evidence_expansion_progress_manifest(
+        manifest=manifest,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_next_actions_manifest(
+    manifest: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_next_actions_manifest(
+        manifest=manifest,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_next_action_apply_ledger(
+    ledger: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_next_action_apply_ledger(
+        ledger=ledger,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_next_action_apply_history_summary(
+    summary: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_next_action_apply_history_summary(
+        summary=summary,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_next_action_apply_history_trend(
+    trend: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_next_action_apply_history_trend(
+        trend=trend,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_next_action_cross_game_ledger_comparison(
+    comparison: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_next_action_cross_game_ledger_comparison(
+        comparison=comparison,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger(
+    ledger: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger(
+        ledger=ledger,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary(
+    summary: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary(
+        summary=summary,
+        emit_json=emit_json,
+    )
+
+
+def run_inspect_quality_maintenance_findings(
+    *,
+    game: str | None = None,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_quality_maintenance_findings(
+        repo_root=REPO_ROOT,
+        game=game,
+        emit_json=emit_json,
+    )
+
+
+def run_run_decision_regression_goldsets(
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return run_decision_regression_goldsets(
+        emit_json=emit_json,
+    )
+
+
+def run_run_repo_quality_health(
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return run_repo_quality_health(
+        emit_json=emit_json,
+    )
+
+
+def run_apply_detector_calibration_next_action(
+    next_actions_manifest: str | Path,
+    *,
+    asset_id: str,
+    evidence_expansion_root: str | Path | None = None,
+) -> dict[str, Any]:
+    return apply_detector_calibration_next_action(
+        next_actions_manifest=next_actions_manifest,
+        asset_id=asset_id,
+        evidence_expansion_root=evidence_expansion_root,
+    )
+
+
+def run_apply_detector_calibration_next_actions_batch(
+    next_actions_manifest: str | Path,
+    *,
+    evidence_expansion_root: str | Path | None = None,
+) -> dict[str, Any]:
+    return apply_detector_calibration_next_actions_batch(
+        next_actions_manifest=next_actions_manifest,
+        evidence_expansion_root=evidence_expansion_root,
     )
 
 
@@ -4941,6 +5234,100 @@ def main() -> int:
         help="Launch a lightweight Gradio-backed local review app over sidecars and optional evaluation fixtures.",
     )
     parser.add_argument(
+        "--inspect-detector-calibration-followup-report",
+        metavar="REPORT",
+        help="Inspect one compact detector-calibration follow-up report in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-promotion-triage-manifest",
+        metavar="MANIFEST",
+        help="Inspect one detector-calibration promotion triage manifest in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-publish-decision-manifest",
+        metavar="MANIFEST",
+        help="Inspect one detector-calibration publish decision manifest in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-evidence-expansion-queue-manifest",
+        metavar="MANIFEST",
+        help="Inspect one detector-calibration evidence-expansion queue manifest in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-evidence-expansion-progress-manifest",
+        metavar="MANIFEST",
+        help="Inspect one detector-calibration evidence-expansion progress manifest in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-next-actions-manifest",
+        metavar="MANIFEST",
+        help="Inspect one detector-calibration next-actions manifest in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-next-action-apply-ledger",
+        metavar="LEDGER",
+        help="Inspect one detector-calibration next-action batch apply ledger in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-next-action-apply-history-summary",
+        metavar="SUMMARY",
+        help="Inspect one detector-calibration next-action batch apply history summary in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-next-action-apply-history-trend",
+        metavar="TREND",
+        help="Inspect one detector-calibration next-action batch apply history trend in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-next-action-cross-game-ledger-comparison",
+        metavar="COMPARISON",
+        help="Inspect one detector-calibration next-action cross-game ledger comparison in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-next-action-cross-game-ledger-comparison-history-ledger",
+        metavar="LEDGER",
+        help="Inspect one detector-calibration next-action cross-game ledger comparison history ledger in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-detector-calibration-next-action-cross-game-ledger-comparison-history-summary",
+        metavar="SUMMARY",
+        help="Inspect one detector-calibration next-action cross-game ledger comparison history summary in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--inspect-quality-maintenance-findings",
+        action="store_true",
+        help="Inspect compact repo quality-maintenance findings derived from the contract audit.",
+    )
+    parser.add_argument(
+        "--run-decision-regression-goldsets",
+        action="store_true",
+        help="Run the focused decision-regression goldset suites in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
+        "--run-repo-quality-health",
+        action="store_true",
+        help="Run the compact combined repo-quality health checks over maintenance findings and decision-regression goldsets.",
+    )
+    parser.add_argument(
+        "--apply-detector-calibration-next-action",
+        metavar="MANIFEST",
+        help="Apply one collect_more_evidence detector-calibration next-action row into an evidence-expansion work item.",
+    )
+    parser.add_argument(
+        "--apply-detector-calibration-next-actions",
+        metavar="MANIFEST",
+        help="Apply every collect_more_evidence detector-calibration next-action row in one next-actions manifest.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="When used with a detector-calibration inspector flag, print the loaded payload unchanged.",
+    )
+    parser.add_argument(
+        "--asset-id",
+        help="Asset id used by detector-calibration action workflows that target one asset row.",
+    )
+    parser.add_argument(
         "--compare-fixture-sidecars",
         metavar="FIXTURE_MANIFEST",
         help="Compare baseline and trial sidecar roots against one evaluation fixture manifest.",
@@ -5014,6 +5401,11 @@ def main() -> int:
         "--proxy-review-session-manifest",
         metavar="PATH",
         help="Optional proxy review session manifest used by --launch-highlight-review-app.",
+    )
+    parser.add_argument(
+        "--fused-review-session-manifest",
+        metavar="PATH",
+        help="Optional fused review session manifest used by --launch-highlight-review-app.",
     )
     parser.add_argument(
         "--accepted-fixture-trial-batch-manifest",
@@ -6446,6 +6838,7 @@ def main() -> int:
             fixture_comparison_report=args.fixture_comparison_report,
             fixture_trial_batch_manifest=args.fixture_trial_batch_manifest,
             proxy_review_session_manifest=args.proxy_review_session_manifest,
+            fused_review_session_manifest=args.fused_review_session_manifest,
             proxy_calibration_report=args.proxy_calibration_report,
             proxy_replay_report=args.proxy_replay_report,
             runtime_calibration_report=args.runtime_calibration_report,
@@ -6455,6 +6848,202 @@ def main() -> int:
             launch=True,
         )
         print(json.dumps({key: value for key, value in result.items() if key != "app"}, indent=2))
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_followup_report:
+        try:
+            result = run_inspect_detector_calibration_followup_report(
+                args.inspect_detector_calibration_followup_report,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_promotion_triage_manifest:
+        try:
+            result = run_inspect_detector_calibration_promotion_triage_manifest(
+                args.inspect_detector_calibration_promotion_triage_manifest,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_publish_decision_manifest:
+        try:
+            result = run_inspect_detector_calibration_publish_decision_manifest(
+                args.inspect_detector_calibration_publish_decision_manifest,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_evidence_expansion_queue_manifest:
+        try:
+            result = run_inspect_detector_calibration_evidence_expansion_queue_manifest(
+                args.inspect_detector_calibration_evidence_expansion_queue_manifest,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_evidence_expansion_progress_manifest:
+        try:
+            result = run_inspect_detector_calibration_evidence_expansion_progress_manifest(
+                args.inspect_detector_calibration_evidence_expansion_progress_manifest,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_next_actions_manifest:
+        try:
+            result = run_inspect_detector_calibration_next_actions_manifest(
+                args.inspect_detector_calibration_next_actions_manifest,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_next_action_apply_ledger:
+        try:
+            result = run_inspect_detector_calibration_next_action_apply_ledger(
+                args.inspect_detector_calibration_next_action_apply_ledger,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_next_action_apply_history_summary:
+        try:
+            result = run_inspect_detector_calibration_next_action_apply_history_summary(
+                args.inspect_detector_calibration_next_action_apply_history_summary,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_next_action_apply_history_trend:
+        try:
+            result = run_inspect_detector_calibration_next_action_apply_history_trend(
+                args.inspect_detector_calibration_next_action_apply_history_trend,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_next_action_cross_game_ledger_comparison:
+        try:
+            result = run_inspect_detector_calibration_next_action_cross_game_ledger_comparison(
+                args.inspect_detector_calibration_next_action_cross_game_ledger_comparison,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger:
+        try:
+            result = run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger(
+                args.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary:
+        try:
+            result = run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary(
+                args.inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.inspect_quality_maintenance_findings:
+        try:
+            result = run_inspect_quality_maintenance_findings(
+                game=args.game,
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.run_decision_regression_goldsets:
+        try:
+            result = run_run_decision_regression_goldsets(
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.run_repo_quality_health:
+        try:
+            result = run_run_repo_quality_health(
+                emit_json=bool(args.json),
+            )
+        except Exception as exc:
+            print(f"Error: {exc}")
+            return 1
+        print(result["rendered_output"])
+        return 0 if result.get("ok") else 1
+
+    if args.apply_detector_calibration_next_action:
+        if not args.asset_id:
+            print("Error: --apply-detector-calibration-next-action requires --asset-id")
+            return 1
+        result = run_apply_detector_calibration_next_action(
+            args.apply_detector_calibration_next_action,
+            asset_id=args.asset_id,
+        )
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("ok") else 1
+
+    if args.apply_detector_calibration_next_actions:
+        result = run_apply_detector_calibration_next_actions_batch(
+            args.apply_detector_calibration_next_actions,
+        )
+        print(json.dumps(result, indent=2))
         return 0 if result.get("ok") else 1
 
     if args.apply_proxy_review:

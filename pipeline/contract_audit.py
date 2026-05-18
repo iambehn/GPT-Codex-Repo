@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import ast
 import json
+import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +21,98 @@ CANONICAL_CONTRACTS = {
     "fusion_rules": "fusion_rules_v1",
 }
 
+PUBLISHED_PACK_DRAFT_ONLY_MANIFESTS = (
+    "derived_detection_manifest.yaml",
+    "game_detection_schema.yaml",
+    "onboarding_state.json",
+)
+
+MANIFEST_CONTRACT_DOC_SCHEMA_TOKENS = (
+    "game_detection_manifest_v1",
+    "runtime_detection_schema_v1",
+    "fusion_rules_v1",
+)
+
+REGISTRY_SCOPE_DOC_REQUIRED_ANCHORS = (
+    "## Registry-Managed Schema Ownership",
+    "## Explicit Local-Only Schema Scopes",
+)
+
+LOCAL_ONLY_SCHEMA_PREFIXES = (
+    "accepted_clip_",
+    "accepted_fixture_",
+    "accepted_proxy_review_",
+    "approval_target_dataset_",
+    "derived_row_review_",
+    "evaluation_fixture_manifest_",
+    "fixture_source_manifest_",
+    "fused_export_",
+    "fusion_goldset_clip_",
+    "onboarding_identity_review_session_",
+    "proxy_replay_viewer_",
+    "proxy_review_session_",
+    "real_artifact_intake_bundle_",
+    "real_artifact_intake_coverage_report_",
+    "real_artifact_intake_dedup_",
+    "real_artifact_intake_refresh_",
+    "real_artifact_intake_summary_",
+    "real_artifact_intake_validation_",
+    "real_artifact_intake_history_comparison_",
+    "real_artifact_intake_comparison_target_",
+    "real_artifact_intake_dashboard_registry_summary_",
+    "real_artifact_intake_dashboard_summary_",
+    "replay_viewer_",
+    "research_runtime_",
+    "runtime_export_",
+    "shadow_operator_run_",
+    "training_export_",
+    "unified_replay_viewer_",
+    "v2_training_dataset_export_",
+)
+
+_SCHEMA_CONSTANT_NAME_RE = re.compile(r"^[A-Z0-9_]+SCHEMA_VERSION$")
+_REVIEW_CLEAR_STATUSES = {"approved", "rejected"}
+
+GOVERNANCE_REQUIRED_SURFACES = {
+    "agents": {
+        "relative_path": Path("AGENTS.md"),
+        "anchors": (
+            "## Decision Hierarchy",
+            "## Heuristic Placement Rules",
+            "## Anti-Bloat Rules",
+            "## Validation Requirements",
+            "## Escalation Rules",
+        ),
+    },
+    "v2_index": {
+        "relative_path": Path("docs/v2/INDEX.md"),
+        "anchors": (
+            "ENGINEERING_GOVERNANCE.md",
+            "QUALITY_MAINTENANCE.md",
+        ),
+    },
+    "engineering_governance": {
+        "relative_path": Path("docs/v2/ENGINEERING_GOVERNANCE.md"),
+        "anchors": (
+            "## Decision Classes",
+            "## Heuristic Placement Model",
+            "## Acceptable Placement",
+            "## Unacceptable Placement",
+            "## Validation Spine",
+        ),
+    },
+    "quality_maintenance": {
+        "relative_path": Path("docs/v2/QUALITY_MAINTENANCE.md"),
+        "anchors": (
+            "## Maintenance Classes",
+            "## Recurring Checks",
+            "## Drift Signals",
+            "## Triggered Actions",
+            "## Long-Run Data-Quality Preservation",
+        ),
+    },
+}
+
 
 def audit_pipeline_contracts(
     *,
@@ -31,6 +126,12 @@ def audit_pipeline_contracts(
     onboarding_publish_consistency: list[dict[str, Any]] = []
     runtime_contract_findings: list[dict[str, Any]] = []
     fusion_contract_findings: list[dict[str, Any]] = []
+    manifest_authority_findings: list[dict[str, Any]] = []
+    schema_documentation_findings = _audit_manifest_contract_docs(repo_root)
+    registry_scope_doc_findings = _audit_registry_scope_doc(repo_root)
+    registry_schema_findings = _audit_registry_schema_ownership(repo_root)
+    quality_maintenance_findings = _audit_quality_maintenance(repo_root)
+    governance_surfaces = _audit_governance_surfaces(repo_root)
     warnings: list[dict[str, Any]] = []
 
     for game_id in games:
@@ -87,6 +188,10 @@ def audit_pipeline_contracts(
         runtime_contract_findings.extend({"game": game_id, **row} for row in validation.get("runtime_contract_findings", []))
         fusion_contract_findings.extend({"game": game_id, **row} for row in consistency.get("fusion_contract_findings", []))
         runtime_contract_findings.extend({"game": game_id, **row} for row in validation.get("ontology_findings", []))
+        manifest_authority_findings.extend(
+            {"game": game_id, **row}
+            for row in _audit_published_manifest_authority(repo_root / "assets" / "games" / game_id)
+        )
 
     config = config_payload if isinstance(config_payload, dict) else {}
     legacy_proxy_signals = (
@@ -102,6 +207,12 @@ def audit_pipeline_contracts(
                 "message": "legacy proxy-scanner 'signals' config is still being normalized into proxy_scanner.sources",
             }
         )
+    warnings.extend(_manifest_authority_warnings(manifest_authority_findings))
+    warnings.extend(_schema_documentation_warnings(schema_documentation_findings))
+    warnings.extend(_registry_scope_doc_warnings(registry_scope_doc_findings))
+    warnings.extend(_registry_schema_warnings(registry_schema_findings))
+    warnings.extend(_quality_maintenance_warnings(quality_maintenance_findings))
+    warnings.extend(_governance_warnings(governance_surfaces))
 
     return {
         "ok": True,
@@ -112,6 +223,12 @@ def audit_pipeline_contracts(
         "onboarding_publish_consistency": onboarding_publish_consistency,
         "runtime_contract_findings": runtime_contract_findings,
         "fusion_contract_findings": fusion_contract_findings,
+        "manifest_authority_findings": manifest_authority_findings,
+        "schema_documentation_findings": schema_documentation_findings,
+        "registry_scope_doc_findings": registry_scope_doc_findings,
+        "registry_schema_findings": registry_schema_findings,
+        "quality_maintenance_findings": quality_maintenance_findings,
+        "governance_surfaces": governance_surfaces,
         "recommended_cleanup_order": [
             "Remove target_id_source=asset_id_suffix after converting all published runtime_cv_rules to template_field semantics.",
             "Retire legacy proxy_scanner.signals config once all local config.yaml variants use proxy_scanner.sources only.",
@@ -285,3 +402,450 @@ def _runtime_rule_matches_warn_first(expected_rule: Any, actual_rule: Any) -> bo
         actual_normalized["target_id_source"] = expected_normalized.get("target_id_source")
         actual_normalized["target_value_field"] = expected_normalized.get("target_value_field")
     return actual_normalized == expected_normalized
+
+
+def _audit_governance_surfaces(repo_root: Path) -> list[dict[str, Any]]:
+    root = repo_root.expanduser().resolve()
+    if not (root / "AGENTS.md").exists() and not (root / "docs" / "v2").exists():
+        return []
+
+    findings: list[dict[str, Any]] = []
+    for surface_name, spec in GOVERNANCE_REQUIRED_SURFACES.items():
+        target = root / spec["relative_path"]
+        if not target.exists():
+            findings.append(
+                {
+                    "surface": surface_name,
+                    "path": str(spec["relative_path"]),
+                    "status": "missing",
+                }
+            )
+            continue
+        content = target.read_text(encoding="utf-8")
+        missing_anchors = [anchor for anchor in spec["anchors"] if anchor not in content]
+        findings.append(
+            {
+                "surface": surface_name,
+                "path": str(spec["relative_path"]),
+                "status": "ok" if not missing_anchors else "incomplete",
+                "missing_anchors": missing_anchors,
+            }
+        )
+    return findings
+
+
+def _governance_warnings(governance_surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    warnings: list[dict[str, Any]] = []
+    for row in governance_surfaces:
+        status = row.get("status")
+        if status == "missing":
+            warnings.append(
+                {
+                    "status": "missing_governance_surface",
+                    "surface": row.get("surface"),
+                    "path": row.get("path"),
+                }
+            )
+        elif status == "incomplete":
+            warnings.append(
+                {
+                    "status": "incomplete_governance_surface",
+                    "surface": row.get("surface"),
+                    "path": row.get("path"),
+                    "missing_anchors": row.get("missing_anchors", []),
+                }
+            )
+    return warnings
+
+
+def _audit_published_manifest_authority(game_root: Path) -> list[dict[str, Any]]:
+    manifests_root = game_root / "manifests"
+    if not manifests_root.exists():
+        return []
+    findings: list[dict[str, Any]] = []
+    for filename in PUBLISHED_PACK_DRAFT_ONLY_MANIFESTS:
+        target = manifests_root / filename
+        if target.exists():
+            findings.append(
+                {
+                    "status": "draft_only_manifest_in_published_pack",
+                    "path": str(target),
+                    "filename": filename,
+                }
+            )
+    return findings
+
+
+def _manifest_authority_warnings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    warnings: list[dict[str, Any]] = []
+    for row in findings:
+        warnings.append(
+            {
+                "status": row["status"],
+                "game": row.get("game"),
+                "path": row.get("path"),
+                "filename": row.get("filename"),
+            }
+        )
+    return warnings
+
+
+def _audit_manifest_contract_docs(repo_root: Path) -> list[dict[str, Any]]:
+    doc_path = repo_root.expanduser().resolve() / "docs" / "v2" / "MANIFEST_CONTRACTS.md"
+    if not doc_path.exists():
+        return []
+    content = doc_path.read_text(encoding="utf-8")
+    missing_tokens = [token for token in MANIFEST_CONTRACT_DOC_SCHEMA_TOKENS if token not in content]
+    if not missing_tokens:
+        return [
+            {
+                "surface": "manifest_contracts_doc",
+                "path": str(doc_path.relative_to(repo_root.expanduser().resolve())),
+                "status": "ok",
+                "documented_schema_versions": list(MANIFEST_CONTRACT_DOC_SCHEMA_TOKENS),
+            }
+        ]
+    return [
+        {
+            "surface": "manifest_contracts_doc",
+            "path": str(doc_path.relative_to(repo_root.expanduser().resolve())),
+            "status": "missing_schema_version_docs",
+            "missing_schema_versions": missing_tokens,
+        }
+    ]
+
+
+def _schema_documentation_warnings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    warnings: list[dict[str, Any]] = []
+    for row in findings:
+        if row.get("status") == "missing_schema_version_docs":
+            warnings.append(
+                {
+                    "status": "undocumented_canonical_schema_version",
+                    "surface": row.get("surface"),
+                    "path": row.get("path"),
+                    "missing_schema_versions": row.get("missing_schema_versions", []),
+                }
+            )
+    return warnings
+
+
+def _audit_registry_scope_doc(repo_root: Path) -> list[dict[str, Any]]:
+    doc_path = repo_root.expanduser().resolve() / "docs" / "v2" / "REGISTRY_ORCHESTRATION_STATE.md"
+    if not doc_path.exists():
+        return []
+    content = doc_path.read_text(encoding="utf-8")
+    missing_anchors = [anchor for anchor in REGISTRY_SCOPE_DOC_REQUIRED_ANCHORS if anchor not in content]
+    return [
+        {
+            "surface": "registry_scope_doc",
+            "path": str(doc_path.relative_to(repo_root.expanduser().resolve())),
+            "status": "ok" if not missing_anchors else "incomplete",
+            "missing_anchors": missing_anchors,
+        }
+    ]
+
+
+def _registry_scope_doc_warnings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    warnings: list[dict[str, Any]] = []
+    for row in findings:
+        if row.get("status") == "incomplete":
+            warnings.append(
+                {
+                    "status": "incomplete_registry_scope_doc",
+                    "surface": row.get("surface"),
+                    "path": row.get("path"),
+                    "missing_anchors": row.get("missing_anchors", []),
+                }
+            )
+    return warnings
+
+
+def _audit_registry_schema_ownership(repo_root: Path) -> list[dict[str, Any]]:
+    root = repo_root.expanduser().resolve()
+    pipeline_root = root / "pipeline"
+    clip_registry_path = pipeline_root / "clip_registry.py"
+    if not pipeline_root.exists() or not clip_registry_path.exists():
+        return []
+
+    schema_rows = _collect_pipeline_schema_constants(pipeline_root)
+    if not schema_rows:
+        return []
+    registry_versions = _collect_registry_managed_schema_versions(clip_registry_path, schema_rows)
+    by_schema_version: dict[str, list[dict[str, str]]] = {}
+    for row in schema_rows:
+        by_schema_version.setdefault(row["schema_version"], []).append(row)
+
+    findings: list[dict[str, Any]] = []
+    for schema_version, owners in sorted(by_schema_version.items()):
+        if schema_version in registry_versions:
+            continue
+        if _is_explicit_local_only_schema(schema_version):
+            continue
+        findings.append(
+            {
+                "status": "unscoped_schema_version",
+                "schema_version": schema_version,
+                "owners": [
+                    {
+                        "module": owner["module"],
+                        "constant_name": owner["constant_name"],
+                    }
+                    for owner in owners
+                ],
+            }
+        )
+    return findings
+
+
+def _registry_schema_warnings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    warnings: list[dict[str, Any]] = []
+    for row in findings:
+        if row.get("status") == "unscoped_schema_version":
+            warnings.append(
+                {
+                    "status": "unscoped_registry_schema_version",
+                    "schema_version": row.get("schema_version"),
+                    "owners": row.get("owners", []),
+                }
+            )
+    return warnings
+
+
+def _collect_pipeline_schema_constants(pipeline_root: Path) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for path in sorted(pipeline_root.rglob("*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except SyntaxError:
+            continue
+        for node in tree.body:
+            if not isinstance(node, ast.Assign):
+                continue
+            if not isinstance(node.value, ast.Constant) or not isinstance(node.value.value, str):
+                continue
+            for target in node.targets:
+                if isinstance(target, ast.Name) and _SCHEMA_CONSTANT_NAME_RE.match(target.id):
+                    rows.append(
+                        {
+                            "module": str(path.relative_to(pipeline_root.parent)),
+                            "constant_name": target.id,
+                            "schema_version": node.value.value,
+                        }
+                    )
+    return rows
+
+
+def _collect_registry_managed_schema_versions(
+    clip_registry_path: Path,
+    schema_rows: list[dict[str, str]],
+) -> set[str]:
+    tree = ast.parse(clip_registry_path.read_text(encoding="utf-8"))
+    registry_constant_names: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and _SCHEMA_CONSTANT_NAME_RE.match(target.id):
+                    registry_constant_names.add(target.id)
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                imported_name = alias.asname or alias.name
+                if _SCHEMA_CONSTANT_NAME_RE.match(imported_name):
+                    registry_constant_names.add(imported_name)
+
+    values_by_name: dict[str, set[str]] = {}
+    for row in schema_rows:
+        values_by_name.setdefault(row["constant_name"], set()).add(row["schema_version"])
+
+    managed: set[str] = set()
+    for name in registry_constant_names:
+        managed.update(values_by_name.get(name, set()))
+    return managed
+
+
+def _is_explicit_local_only_schema(schema_version: str) -> bool:
+    return any(schema_version.startswith(prefix) for prefix in LOCAL_ONLY_SCHEMA_PREFIXES)
+
+
+def _audit_quality_maintenance(repo_root: Path) -> list[dict[str, Any]]:
+    root = repo_root.expanduser().resolve()
+    findings: list[dict[str, Any]] = []
+    findings.extend(_audit_fixture_freshness(root))
+    findings.extend(_audit_review_backlog(root))
+    findings.extend(_audit_review_file_drift(root))
+    return findings
+
+
+def _audit_fixture_freshness(repo_root: Path) -> list[dict[str, Any]]:
+    fixtures_root = repo_root / "tests" / "fixtures" / "fusion_goldsets"
+    if not fixtures_root.exists():
+        return []
+    findings: list[dict[str, Any]] = []
+    validation_surface = repo_root / "pipeline" / "fusion_validation.py"
+    for game_dir in sorted(path for path in fixtures_root.iterdir() if path.is_dir()):
+        fixture_files = sorted(path for path in game_dir.glob("*.json") if path.is_file())
+        if not fixture_files:
+            continue
+        dependency_paths = [validation_surface] if validation_surface.exists() else []
+        game_manifest_root = repo_root / "assets" / "games" / game_dir.name / "manifests"
+        for relative_name in ("detection_manifest.yaml", "fusion_rules.yaml"):
+            candidate = game_manifest_root / relative_name
+            if candidate.exists():
+                dependency_paths.append(candidate)
+        if not dependency_paths:
+            continue
+        newest_dependency = max(path.stat().st_mtime for path in dependency_paths)
+        newest_fixture = max(path.stat().st_mtime for path in fixture_files)
+        if newest_fixture < newest_dependency:
+            stale_by_days = math.ceil((newest_dependency - newest_fixture) / 86400)
+            findings.append(
+                {
+                    "surface": "fixture_freshness",
+                    "game": game_dir.name,
+                    "status": "fixture_refresh_recommended",
+                    "severity": "warning",
+                    "fixture_count": len(fixture_files),
+                    "stale_by_days": stale_by_days,
+                    "latest_fixture_mtime": newest_fixture,
+                    "latest_dependency_mtime": newest_dependency,
+                }
+            )
+        else:
+            findings.append(
+                {
+                    "surface": "fixture_freshness",
+                    "game": game_dir.name,
+                    "status": "fresh",
+                    "severity": "informational",
+                    "fixture_count": len(fixture_files),
+                    "latest_fixture_mtime": newest_fixture,
+                    "latest_dependency_mtime": newest_dependency,
+                }
+            )
+    return findings
+
+
+def _audit_review_backlog(repo_root: Path) -> list[dict[str, Any]]:
+    assets_root = repo_root / "assets" / "games"
+    if not assets_root.exists():
+        return []
+    findings: list[dict[str, Any]] = []
+    for review_dir in sorted(assets_root.glob("*/drafts/onboarding/*/review/derived_row_reviews")):
+        review_files = sorted(path for path in review_dir.glob("*.json") if path.is_file())
+        if not review_files:
+            continue
+        try:
+            relative_review_dir = review_dir.relative_to(assets_root)
+            game = relative_review_dir.parts[0]
+        except ValueError:
+            game = None
+        pending_count = 0
+        status_counts: dict[str, int] = {}
+        for path in review_files:
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                pending_count += 1
+                status_counts["invalid_json"] = status_counts.get("invalid_json", 0) + 1
+                continue
+            review_status = str(payload.get("review_status") or "unreviewed").strip() or "unreviewed"
+            status_counts[review_status] = status_counts.get(review_status, 0) + 1
+            if review_status not in _REVIEW_CLEAR_STATUSES:
+                pending_count += 1
+        total_count = len(review_files)
+        pending_ratio = pending_count / total_count if total_count else 0.0
+        if pending_count == 0:
+            severity = "informational"
+            status = "review_backlog_clear"
+        elif pending_count >= 20 or pending_ratio >= 0.2:
+            severity = "blocking"
+            status = "review_backlog_high"
+        else:
+            severity = "warning"
+            status = "review_backlog_present"
+        findings.append(
+            {
+                "surface": "review_backlog",
+                "game": game,
+                "draft_root": str(review_dir.parent.parent.parent),
+                "review_dir": str(review_dir),
+                "status": status,
+                "severity": severity,
+                "total_review_files": total_count,
+                "pending_review_count": pending_count,
+                "pending_review_ratio": round(pending_ratio, 4),
+                "status_counts": status_counts,
+            }
+        )
+    return findings
+
+
+def _quality_maintenance_warnings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    warnings: list[dict[str, Any]] = []
+    for row in findings:
+        severity = row.get("severity")
+        if severity not in {"blocking", "warning"}:
+            continue
+        warning = dict(row)
+        warning["status"] = f"quality_maintenance_{row.get('status')}"
+        warnings.append(warning)
+    return warnings
+
+
+def _audit_review_file_drift(repo_root: Path) -> list[dict[str, Any]]:
+    assets_root = repo_root / "assets" / "games"
+    if not assets_root.exists():
+        return []
+    findings: list[dict[str, Any]] = []
+    for draft_root in sorted(assets_root.glob("*/drafts/onboarding/*")):
+        review_dir = draft_root / "review" / "derived_row_reviews"
+        if not review_dir.exists():
+            continue
+        detection_manifest_path = draft_root / "manifests" / "derived_detection_manifest.yaml"
+        if not detection_manifest_path.exists():
+            continue
+        detection_manifest = load_yaml_file(detection_manifest_path)
+        rows = detection_manifest.get("rows", []) if isinstance(detection_manifest, dict) else []
+        if not isinstance(rows, list):
+            continue
+        detection_ids = {
+            str(row.get("detection_id") or "").strip()
+            for row in rows
+            if isinstance(row, dict) and str(row.get("detection_id") or "").strip()
+        }
+        stale_rows: list[dict[str, Any]] = []
+        for review_file in sorted(review_dir.glob("*.json")):
+            try:
+                payload = json.loads(review_file.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            detection_id = str(payload.get("detection_id") or "").strip()
+            if detection_id and detection_id not in detection_ids:
+                stale_rows.append(
+                    {
+                        "detection_id": detection_id,
+                        "review_file_path": str(review_file),
+                        "review_status": str(payload.get("review_status") or "").strip() or None,
+                        "review_decision": str(payload.get("review_decision") or "").strip() or None,
+                        "candidate_option_count": int(payload.get("candidate_option_count") or 0),
+                    }
+                )
+        if stale_rows:
+            try:
+                relative_draft_root = draft_root.relative_to(assets_root)
+                game = relative_draft_root.parts[0]
+            except ValueError:
+                game = None
+            findings.append(
+                {
+                    "surface": "review_file_drift",
+                    "game": game,
+                    "draft_root": str(draft_root),
+                    "review_dir": str(review_dir),
+                    "status": "stale_review_files_present",
+                    "severity": "warning",
+                    "stale_review_count": len(stale_rows),
+                    "stale_rows": stale_rows,
+                }
+            )
+    return findings

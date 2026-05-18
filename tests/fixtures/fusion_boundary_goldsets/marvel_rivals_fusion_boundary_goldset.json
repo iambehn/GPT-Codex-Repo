@@ -1,0 +1,80 @@
+{
+  "schema_version": "fusion_boundary_goldset_v1",
+  "description": "Reviewed fusion fixture expectations that should remain stable unless fusion boundary behavior changes deliberately.",
+  "cases": [
+    {
+      "case_id": "ability_equipment_visibility_positive",
+      "fixture_path": "tests/fixtures/fusion_goldsets/marvel_rivals/ability-equipment-visibility.fusion_goldset.json",
+      "expected_coverage_tag": "ability_or_equipment_visibility",
+      "expected_detection_count": 1,
+      "expected_runtime_event_count": 1,
+      "expected_fused_event_count": 1,
+      "expected_boundary_count": 0,
+      "expected_first_fused_event_type": "ability_seen",
+      "expected_required_signal_types": [
+        "ability_visibility"
+      ]
+    },
+    {
+      "case_id": "gated_confirmation_boundary",
+      "fixture_path": "tests/fixtures/fusion_goldsets/marvel_rivals/gated-confirmation.fusion_goldset.json",
+      "expected_coverage_tag": "gated_confirmation",
+      "expected_detection_count": 0,
+      "expected_runtime_event_count": 1,
+      "expected_fused_event_count": 1,
+      "expected_boundary_count": 1,
+      "expected_first_fused_event_type": "medal_seen",
+      "expected_gate_status": "confirmed",
+      "expected_required_signal_types": [
+        "chat_spike",
+        "medal_visibility"
+      ]
+    },
+    {
+      "case_id": "identity_heavy_runtime_only_negative",
+      "fixture_path": "tests/fixtures/fusion_goldsets/marvel_rivals/identity-hero.fusion_goldset.json",
+      "expected_coverage_tag": "identity_heavy",
+      "expected_detection_count": 1,
+      "expected_runtime_event_count": 1,
+      "expected_fused_event_count": 0,
+      "expected_boundary_count": 0,
+      "expected_first_fused_event_type": null
+    },
+    {
+      "case_id": "low_signal_negative_control",
+      "fixture_path": "tests/fixtures/fusion_goldsets/marvel_rivals/low-signal-negative.fusion_goldset.json",
+      "expected_coverage_tag": "low_signal_negative",
+      "expected_detection_count": 0,
+      "expected_runtime_event_count": 0,
+      "expected_fused_event_count": 0,
+      "expected_boundary_count": 0,
+      "expected_first_fused_event_type": null
+    },
+    {
+      "case_id": "medal_heavy_positive",
+      "fixture_path": "tests/fixtures/fusion_goldsets/marvel_rivals/medal-heavy.fusion_goldset.json",
+      "expected_coverage_tag": "medal_heavy",
+      "expected_detection_count": 1,
+      "expected_runtime_event_count": 1,
+      "expected_fused_event_count": 1,
+      "expected_boundary_count": 0,
+      "expected_first_fused_event_type": "medal_seen"
+    },
+    {
+      "case_id": "synergy_positive_combo",
+      "fixture_path": "tests/fixtures/fusion_goldsets/marvel_rivals/synergy-positive.fusion_goldset.json",
+      "expected_coverage_tag": "synergy_positive",
+      "expected_detection_count": 0,
+      "expected_runtime_event_count": 2,
+      "expected_fused_event_count": 1,
+      "expected_boundary_count": 0,
+      "expected_first_fused_event_type": "ability_plus_medal_combo",
+      "expected_synergy_expected": true,
+      "expected_minimum_required_signals_met": true,
+      "expected_required_signal_types": [
+        "ability_visibility",
+        "medal_visibility"
+      ]
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 {
   "schema_version": "derived_row_review_v1",
   "review_id": "derived-row-review-c72ec70e3c58",
-  "created_at": "2026-05-05T22:17:00.777075+00:00",
-  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z",
+  "created_at": "2026-05-05T21:33:55.999674+00:00",
+  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z",
   "game": "call_of_duty",
   "detection_id": "call_of_duty.t.hero_portrait",
   "row_snapshot": {
@@ -86,7 +86,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/3/30/Rorke_Menu.jpg/revision/latest/smart/width/40/height/30?cb=20131202235721",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/gabriel_t_rorke-2c01c9.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/gabriel_t_rorke-2c01c9.png"
     },
     {
       "binding_id": "binding_adb98d29c300",
@@ -99,7 +99,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/2/2b/T-800_Operator_Default_BO6.png/revision/latest/smart/width/40/height/30?cb=20250530131111",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/t_800-be77b6.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/t_800-be77b6.png"
     },
     {
       "binding_id": "binding_bb3d642a3ff0",
@@ -112,7 +112,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/7/72/T-1000_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223140053",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/t_1000-79e286.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/t_1000-79e286.png"
     },
     {
       "binding_id": "binding_3a21bc04e7fc",
@@ -125,7 +125,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/b/b7/Khaled_Infobox_MW.png/revision/latest/smart/width/40/height/30?cb=20201108185805",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/khaled_al_asad_reboot-33293e.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/khaled_al_asad_reboot-33293e.png"
     },
     {
       "binding_id": "binding_a7cb2ab8da5d",
@@ -138,7 +138,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/b/b2/Bulldozer_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121748",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/wyatt_bulldozer_jones-1ed557.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/wyatt_bulldozer_jones-1ed557.png"
     },
     {
       "binding_id": "binding_2a89b8d75fa7",
@@ -151,7 +151,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/e/ee/Bale_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163417",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/dmitry_bale-c748b9.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/dmitry_bale-c748b9.png"
     },
     {
       "binding_id": "binding_7dc3ef10f7e8",
@@ -164,7 +164,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/5/53/Nikolai_Infobox_MWIII.png/revision/latest/smart/width/40/height/30?cb=20231104194805",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/nikolai_reboot-c5fd49.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/nikolai_reboot-c5fd49.png"
     },
     {
       "binding_id": "binding_46a6a7dbf676",
@@ -177,7 +177,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/d/d3/Kitsune_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121602",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/kaori_kitsune_tanaka-dc222d.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/kaori_kitsune_tanaka-dc222d.png"
     },
     {
       "binding_id": "binding_200a046244e6",
@@ -190,7 +190,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/e/e0/Grinch_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163321",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/grinch_operator-0826cb.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/grinch_operator-0826cb.png"
     },
     {
       "binding_id": "binding_841cb4f24c36",
@@ -203,7 +203,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/f/f4/Nikto_Operator_Default_MWII.png/revision/latest/smart/width/40/height/30?cb=20240512090335",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/nikto-0b43a7.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/nikto-0b43a7.png"
     },
     {
       "binding_id": "binding_d00c6f19c21a",
@@ -216,7 +216,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/c/c6/Florence_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223140006",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/florence_carter-1836b1.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/florence_carter-1836b1.png"
     },
     {
       "binding_id": "binding_85020a28bcb7",
@@ -229,7 +229,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/e/e2/Thomas_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223135910",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/thomas_bolt-e1cf6d.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/thomas_bolt-e1cf6d.png"
     },
     {
       "binding_id": "binding_a92b7f83597c",
@@ -242,7 +242,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/1/1f/SamanthaMaxis_HUD_Outbreak_Zombies_BOCW.png/revision/latest/smart/width/40/height/30?cb=20210524122528",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/samantha_maxis-d75acb.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/samantha_maxis-d75acb.png"
     },
     {
       "binding_id": "binding_ff89f3a34b43",
@@ -255,7 +255,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/1/1c/Morte_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163601",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/sergio_morte_sulla-1fd85e.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/sergio_morte_sulla-1fd85e.png"
     },
     {
       "binding_id": "binding_643c3042a066",
@@ -268,7 +268,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/c/ca/Stone_Operator_Default_BO6.png/revision/latest/smart/width/40/height/30?cb=20250530131129",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/harry_stone-99c756.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/harry_stone-99c756.png"
     },
     {
       "binding_id": "binding_7d218b03ba07",
@@ -281,7 +281,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/e/e9/Knight_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121635",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/roman_knight_gray-ccb2f4.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/roman_knight_gray-ccb2f4.png"
     },
     {
       "binding_id": "binding_b1e5c2866db8",
@@ -294,7 +294,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/b/be/Fuze_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121533",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/benito_fuze_ortega-30e945.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/benito_fuze_ortega-30e945.png"
     },
     {
       "binding_id": "binding_1dd6c314d9db",
@@ -307,7 +307,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/5/5c/Carver_Butcher_1984_Profile.png/revision/latest/smart/width/40/height/30?cb=20211214123255",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/carver_butcher-f4da48.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/carver_butcher-f4da48.png"
     },
     {
       "binding_id": "binding_6962acc7018d",
@@ -320,7 +320,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/0/0d/Charly_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163829",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/charlotte_charly_johnstone-44df39.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/charlotte_charly_johnstone-44df39.png"
     },
     {
       "binding_id": "binding_b2fd15b34d8a",
@@ -333,7 +333,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/1/14/Soap_Infobox_2023_MWIII.png/revision/latest/smart/width/40/height/30?cb=20231110195214",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/johnny_soap_mactavish-fe2480.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/johnny_soap_mactavish-fe2480.png"
     },
     {
       "binding_id": "binding_56ac05fdb3e4",
@@ -346,7 +346,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/8/86/Stitch_Operator_Default_BO6.png/revision/latest/smart/width/40/height/30?cb=20250529164210",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/vikhor_stitch_kuzmin-ef721a.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/vikhor_stitch_kuzmin-ef721a.png"
     },
     {
       "binding_id": "binding_38e03a392266",
@@ -359,7 +359,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/c/cd/Thorne_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163813",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/jacob_thorne-1c5a08.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/jacob_thorne-1c5a08.png"
     },
     {
       "binding_id": "binding_c37858a263f4",
@@ -372,7 +372,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/f/fb/Krueger_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163916",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/sebastian_krueger_modern_warfare-ed11a8.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/sebastian_krueger_modern_warfare-ed11a8.png"
     },
     {
       "binding_id": "binding_5599ec8b21ac",
@@ -385,7 +385,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/a/a0/Wolf_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121803",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/terrell_wolf-dfee93.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/terrell_wolf-dfee93.png"
     },
     {
       "binding_id": "binding_812e7ce6be55",
@@ -398,7 +398,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/d/d2/Portnova_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121652",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/yirina_portnova-110a4e.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/yirina_portnova-110a4e.png"
     },
     {
       "binding_id": "binding_da4fc8f65497",
@@ -411,7 +411,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/b/b9/Minotaur_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163139",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/maxim_minotaur_bale-7bb717.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/maxim_minotaur_bale-7bb717.png"
     },
     {
       "binding_id": "binding_89c6f9186ec4",
@@ -424,7 +424,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/f/fb/Talon_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163728",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/talon_operator-1132a0.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/talon_operator-1132a0.png"
     },
     {
       "binding_id": "binding_1a141ef0d612",
@@ -437,7 +437,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/1/1d/Jackal_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121603",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/owethu_jackal_mabuza-b855a9.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/owethu_jackal_mabuza-b855a9.png"
     },
     {
       "binding_id": "binding_439d643bc2c8",
@@ -450,7 +450,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/a/ae/Lerch_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163155",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/marcus_lerch_ortega-93524a.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/marcus_lerch_ortega-93524a.png"
     },
     {
       "binding_id": "binding_4a2074bdd77f",
@@ -463,7 +463,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/0/02/Arthur_Kingsley_Captured_CODV.jpg/revision/latest/smart/width/40/height/30?cb=20220818034220",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/arthur_kingsley-531281.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/arthur_kingsley-531281.png"
     },
     {
       "binding_id": "binding_d73c8cb2471f",
@@ -476,7 +476,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/1/1f/Ghostface_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121546",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/ghostface-0beac2.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/ghostface-0beac2.png"
     },
     {
       "binding_id": "binding_8f7c0bfa4d34",
@@ -489,7 +489,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/a/a3/Mateo_Hernandez.png/revision/latest/smart/width/40/height/30?cb=20211106171253",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/mateo_hernandez-6cc4ec.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/mateo_hernandez-6cc4ec.png"
     },
     {
       "binding_id": "binding_fedb2c9582ec",
@@ -502,7 +502,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/9/92/Competitor_NATO_Infobox_BOCW.png/revision/latest/smart/width/40/height/30?cb=20241117052345",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/competitor-7f29ec.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/competitor-7f29ec.png"
     },
     {
       "binding_id": "binding_9559037aa4fa",
@@ -515,7 +515,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/4/42/Padmavati_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223141350",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/padmavati_balan-a38ed6.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/padmavati_balan-a38ed6.png"
     },
     {
       "binding_id": "binding_4978292e39bd",
@@ -528,7 +528,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/5/52/Vargas_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121655",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/sebastian_vargas-9d829e.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/sebastian_vargas-9d829e.png"
     },
     {
       "binding_id": "binding_6092f8081818",
@@ -541,7 +541,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/a/a8/Beatrice_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223141334",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/beatrice_mercier-e4a711.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/beatrice_mercier-e4a711.png"
     },
     {
       "binding_id": "binding_70af020a6ba4",
@@ -554,7 +554,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/a/a8/Hunter_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121833",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/jason_hunter-7f13e2.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/jason_hunter-7f13e2.png"
     },
     {
       "binding_id": "binding_a6bf0edf15fa",
@@ -567,7 +567,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/d/d4/Shigenori_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223141303",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/shigenori_ota-e5f6ad.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/shigenori_ota-e5f6ad.png"
     },
     {
       "binding_id": "binding_0d2e08a89fb9",
@@ -580,7 +580,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/1/17/Wraith_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121604",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/freya_wraith_helvig-b37495.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/freya_wraith_helvig-b37495.png"
     },
     {
       "binding_id": "binding_1b009325946d",
@@ -593,7 +593,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/b/b4/Ghost_Infobox_2023_MWIII.png/revision/latest/smart/width/40/height/30?cb=20231118184755",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/simon_ghost_riley_reboot-955335.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/simon_ghost_riley_reboot-955335.png"
     },
     {
       "binding_id": "binding_c29ced626762",
@@ -606,7 +606,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/1/17/Antonov_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121622",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/maxim_antonov-ca21c0.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/maxim_antonov-ca21c0.png"
     },
     {
       "binding_id": "binding_e50e27e5c144",
@@ -619,7 +619,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/b/b6/Wyatt_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163627",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/jackson_wyatt-e5628b.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/jackson_wyatt-e5628b.png"
     },
     {
       "binding_id": "binding_acacce21873b",
@@ -632,7 +632,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/e/e4/JohnPrice_Infobox_MWIII.png/revision/latest/smart/width/40/height/30?cb=20240112040220",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/john_price_reboot-95a90e.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/john_price_reboot-95a90e.png"
     },
     {
       "binding_id": "binding_427484657da4",
@@ -645,7 +645,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/4/4d/Daniel_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223141219",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/daniel_yatsu-328394.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/daniel_yatsu-328394.png"
     },
     {
       "binding_id": "binding_109e4a298c9a",
@@ -658,7 +658,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/6/65/Domino_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163713",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/dominique_domino_tam-86f288.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/dominique_domino_tam-86f288.png"
     },
     {
       "binding_id": "binding_26aab3161d36",
@@ -671,7 +671,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/9/90/Stryker_Operator_Default_BOCW.png/revision/latest/smart/width/40/height/30?cb=20240223121701",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/colton_stryker_greenfield-91c9cb.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/colton_stryker_greenfield-91c9cb.png"
     },
     {
       "binding_id": "binding_a0a78a7f9ba9",
@@ -684,7 +684,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/0/0b/Tae_Young_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223140022",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/kim_tae_young-23bcd5.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/kim_tae_young-23bcd5.png"
     },
     {
       "binding_id": "binding_bf3f0fabce5f",
@@ -697,7 +697,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/8/83/Roland_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223141317",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/roland_zeimet-88f5f7.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/roland_zeimet-88f5f7.png"
     },
     {
       "binding_id": "binding_31ed777ca65c",
@@ -710,7 +710,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/7/74/Otter_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163757",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/benjamin_otter_lee-266e31.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/benjamin_otter_lee-266e31.png"
     },
     {
       "binding_id": "binding_861e662cf94d",
@@ -723,7 +723,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/c/ca/Constanze_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223141405",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/constanze_muller-c2d90b.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/constanze_muller-c2d90b.png"
     },
     {
       "binding_id": "binding_14066f09c375",
@@ -736,7 +736,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/c/c0/Golem_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163657",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/hans_golem_blaustein-af4013.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/hans_golem_blaustein-af4013.png"
     },
     {
       "binding_id": "binding_a9393ccd5d1d",
@@ -749,7 +749,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/d/df/Zane_Operator_Default_MW.png/revision/latest/smart/width/40/height/30?cb=20240222163306",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/viktor_zane_metiko-e0a713.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/viktor_zane_metiko-e0a713.png"
     },
     {
       "binding_id": "binding_678471610a32",
@@ -762,7 +762,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/5/58/Gustavo_Operator_Default_CODV.png/revision/latest/smart/width/40/height/30?cb=20240223135925",
       "source_kind": "category_member_image",
       "candidate_quality": "high",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/gustavo_dos_santos-47b2f7.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/gustavo_dos_santos-47b2f7.png"
     },
     {
       "binding_id": "binding_cf37c4961773",
@@ -775,7 +775,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/7/78/PolinaPetrova_Promo_CODV.jpg/revision/latest/smart/width/40/height/30?cb=20210819213343",
       "source_kind": "category_member_image",
       "candidate_quality": "medium",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/heroes/polina_petrova-d52b57.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/heroes/polina_petrova-d52b57.png"
     },
     {
       "binding_id": "binding_03f6bc877709",
@@ -788,7 +788,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/a/ac/FortunesKeep_Overview_WZ2.png/revision/latest/smart/width/40/height/30?cb=20260310193951",
       "source_kind": "category_member_image",
       "candidate_quality": "medium",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/hud/fortune_s_keep-bfc76e.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/hud/fortune_s_keep-bfc76e.png"
     },
     {
       "binding_id": "binding_1eb464fcbcf7",
@@ -801,7 +801,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/f/fe/RebirthIsland_LoadingScreen_Season2_BO7_WZ2.png/revision/latest/smart/width/40/height/30?cb=20260212222529",
       "source_kind": "category_member_image",
       "candidate_quality": "medium",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/hud/rebirth_island_warzone-4cf264.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/hud/rebirth_island_warzone-4cf264.png"
     },
     {
       "binding_id": "binding_575842f4209a",
@@ -814,16 +814,17 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/c/c9/ArmisticeTrainingFacility_LoadingScreen_WZ.png/revision/latest/smart/width/40/height/30?cb=20250913190215",
       "source_kind": "category_member_image",
       "candidate_quality": "medium",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/hud/armistice_training_facility-ae4f66.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/hud/armistice_training_facility-ae4f66.png"
     }
   ],
-  "review_status": "unreviewed",
-  "review_decision": "",
+  "review_status": "approved",
+  "review_decision": "defer_row",
   "selected_candidate_id": "",
-  "review_notes": "",
-  "apply_status": "missing_detection_row",
+  "review_notes": "Deferred because the target display name is only an initial and the candidate set contains multiple plausible hero identities with no safe deterministic match.",
+  "apply_status": "applied",
   "recommended_decision": "defer_row",
   "recommended_candidate_id": "",
-  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/review/derived_row_reviews/call-of-duty-t-hero-portrait.review.json",
-  "auto_populated_in_run": false
+  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/review/derived_row_reviews/call-of-duty-t-hero-portrait.review.json",
+  "auto_populated_in_run": false,
+  "applied_at": "2026-05-18T00:21:12.107303+00:00"
 }

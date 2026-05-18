@@ -18,6 +18,7 @@ This index is the categorization authority.
 | Category | Canonical Doc | Use For | Do Not Use For |
 | --- | --- | --- | --- |
 | Architecture / Operating Model | [ARCHITECTURE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/ARCHITECTURE.md) | Pipeline boundaries, staged compute policy, operating model | Detailed experiment results or one-off implementation notes |
+| Engineering Governance / Maintenance | [ENGINEERING_GOVERNANCE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/ENGINEERING_GOVERNANCE.md) and [QUALITY_MAINTENANCE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/QUALITY_MAINTENANCE.md) | Repo-wide governance posture, heuristic placement rules, validation spine, maintenance severity and drift playbook | Subsystem-specific runtime logic, threshold catalogs, or one-off cleanup notes |
 | Research Agent Framework | [RESEARCH_AGENT_FRAMEWORK.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_AGENT_FRAMEWORK.md) | Repo-specific research-agent operating model, runtime contract, tool-role split, output-control policy | Pipeline runtime mechanics, benchmark results, or generic AI-personality advice |
 | Manifest Contracts / Game Packs | [MANIFEST_CONTRACTS.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/MANIFEST_CONTRACTS.md) | Game-pack structure, canonical manifest fields, publish/validation rules | Detector tuning or platform-posting behavior |
 | Detection / Runtime / Fusion | [DETECTION_RUNTIME_FUSION.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/DETECTION_RUNTIME_FUSION.md) | Proposal generation, runtime signals, fusion, reranking policy | Editorial packaging or sourcing logic |
@@ -42,7 +43,13 @@ This index is the categorization authority.
 ## Practical Placement Rules
 
 - If the content answers "how is the pipeline supposed to work?", put it in a subsystem doc.
+- If it answers "how should repo-wide engineering heuristics, validation obligations, and anti-bloat rules be applied?", put it in [ENGINEERING_GOVERNANCE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/ENGINEERING_GOVERNANCE.md).
+- If it answers "how should recurring health checks, drift signals, and maintenance severity be handled?", put it in [QUALITY_MAINTENANCE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/QUALITY_MAINTENANCE.md).
 - If it answers "how should the repo shape research-agent outputs and tool roles?", put it in the research-agent framework doc.
+- If it answers "how should the repo's two Custom GPTs be configured and separated?", put it in [RESEARCH_AGENT_CUSTOM_GPT_CONFIGS.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_AGENT_CUSTOM_GPT_CONFIGS.md).
+- If it answers "which upload-ready knowledge files should the two Custom GPTs use?", put it in [custom_gpt_knowledge/README.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/README.md).
+- If it answers "how should I fill out the builder UI for these GPTs step by step?", put it in [custom_gpt_knowledge/BUILDER_CHECKLIST.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/BUILDER_CHECKLIST.md).
+- If it answers "in what order should I launch, test, and start using both GPTs?", put it in [custom_gpt_knowledge/LAUNCH_SEQUENCE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/LAUNCH_SEQUENCE.md).
 - If it answers "how should an operator run ChatGPT agent mode against the repo's research contract?", put it in [RESEARCH_AGENT_CHATGPT_OPERATOR_WORKFLOW.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_AGENT_CHATGPT_OPERATOR_WORKFLOW.md).
 - If it answers "why did we choose this?", put it in an ADR.
 - If it answers "what happened when we tried it?", put it in an experiment ledger.

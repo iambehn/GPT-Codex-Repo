@@ -1,8 +1,8 @@
 {
   "schema_version": "derived_row_review_v1",
   "review_id": "derived-row-review-10542d94fb5a",
-  "created_at": "2026-05-05T22:17:00.778298+00:00",
-  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z",
+  "created_at": "2026-05-05T21:33:56.001084+00:00",
+  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z",
   "game": "call_of_duty",
   "detection_id": "call_of_duty.caldera.medal_icon",
   "row_snapshot": {
@@ -85,7 +85,7 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/8/8c/CalderaArchipelagoAirbase_LoadingScreen_WZ.png/revision/latest/smart/width/40/height/30?cb=20250913030213",
       "source_kind": "category_member_image",
       "candidate_quality": "medium",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/hud/caldera_archipelago_airbase-974ac6.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/hud/caldera_archipelago_airbase-974ac6.png"
     },
     {
       "binding_id": "binding_554354b3ffa4",
@@ -98,16 +98,17 @@
       "source_url": "https://static.wikia.nocookie.net/callofduty/images/5/56/Caldera_LoadingScreen_WZ.png/revision/latest/smart/width/40/height/30?cb=20220405161936",
       "source_kind": "category_member_image",
       "candidate_quality": "medium",
-      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/masters/hud/caldera_map-78bbb8.png"
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/masters/hud/caldera_map-78bbb8.png"
     }
   ],
-  "review_status": "unreviewed",
-  "review_decision": "",
+  "review_status": "approved",
+  "review_decision": "defer_row",
   "selected_candidate_id": "",
-  "review_notes": "",
-  "apply_status": "missing_detection_row",
+  "review_notes": "Deferred because the remaining candidates do not cleanly match the target badge/icon surface and the current evidence is too weak for a safe accept or reject-all decision.",
+  "apply_status": "applied",
   "recommended_decision": "defer_row",
   "recommended_candidate_id": "",
-  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/review/derived_row_reviews/call-of-duty-caldera-medal-icon.review.json",
-  "auto_populated_in_run": false
+  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/review/derived_row_reviews/call-of-duty-caldera-medal-icon.review.json",
+  "auto_populated_in_run": false,
+  "applied_at": "2026-05-18T00:21:12.092720+00:00"
 }

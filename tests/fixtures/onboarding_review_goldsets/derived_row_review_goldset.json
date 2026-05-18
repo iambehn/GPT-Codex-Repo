@@ -1,0 +1,60 @@
+{
+  "schema_version": "derived_row_review_goldset_v1",
+  "description": "Reviewed onboarding derived-row decisions that should stay stable unless the underlying review contract changes deliberately.",
+  "cases": [
+    {
+      "case_id": "call_of_duty_armor_plates_accept",
+      "review_file_path": "assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/review/derived_row_reviews/call-of-duty-armor-plates-equipment-icon.review.json",
+      "expected_review_decision": "accept_candidate",
+      "expected_asset_family": "equipment_icon",
+      "expected_target_display_name": "Armor Plates",
+      "expected_candidate_option_count": 1,
+      "selected_candidate_required": true
+    },
+    {
+      "case_id": "call_of_duty_armored_truck_reject_zero_candidate",
+      "review_file_path": "assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/review/derived_row_reviews/call-of-duty-armored-truck-medal-icon.review.json",
+      "expected_review_decision": "reject_all_candidates",
+      "expected_asset_family": "medal_icon",
+      "expected_target_display_name": "Armored Truck",
+      "expected_candidate_option_count": 0,
+      "selected_candidate_required": false
+    },
+    {
+      "case_id": "call_of_duty_t_defer_ambiguous_identity",
+      "review_file_path": "assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/review/derived_row_reviews/call-of-duty-t-hero-portrait.review.json",
+      "expected_review_decision": "defer_row",
+      "expected_asset_family": "hero_portrait",
+      "expected_target_display_name": "T",
+      "expected_candidate_option_count": 57,
+      "selected_candidate_required": false
+    },
+    {
+      "case_id": "call_of_duty_caldera_defer_low_confidence_surface",
+      "review_file_path": "assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/review/derived_row_reviews/call-of-duty-caldera-medal-icon.review.json",
+      "expected_review_decision": "defer_row",
+      "expected_asset_family": "medal_icon",
+      "expected_target_display_name": "Caldera",
+      "expected_candidate_option_count": 2,
+      "selected_candidate_required": false
+    },
+    {
+      "case_id": "marvel_rivals_human_torch_accept",
+      "review_file_path": "assets/games/marvel_rivals/drafts/onboarding/20260509T143952Z/review/derived_row_reviews/marvel-rivals-human-torch-hero-portrait.review.json",
+      "expected_review_decision": "accept_candidate",
+      "expected_asset_family": "hero_portrait",
+      "expected_target_display_name": "Human Torch",
+      "expected_candidate_option_count": 1,
+      "selected_candidate_required": true
+    },
+    {
+      "case_id": "marvel_rivals_black_panther_accept",
+      "review_file_path": "assets/games/marvel_rivals/drafts/onboarding/20260509T143952Z/review/derived_row_reviews/marvel-rivals-black-panther-hero-portrait.review.json",
+      "expected_review_decision": "accept_candidate",
+      "expected_asset_family": "hero_portrait",
+      "expected_target_display_name": "Black Panther",
+      "expected_candidate_option_count": 1,
+      "selected_candidate_required": true
+    }
+  ]
+}

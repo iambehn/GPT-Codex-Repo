@@ -3,6 +3,15 @@
   "clip_id": "marvel-rivals-low-signal-negative-01",
   "game": "marvel_rivals",
   "source": "clips/low-signal-negative-01.mp4",
+  "fixture_review": {
+    "reviewed_at": "2026-05-18T00:00:00Z",
+    "review_basis": [
+      "assets/games/marvel_rivals/manifests/detection_manifest.yaml",
+      "assets/games/marvel_rivals/manifests/fusion_rules.yaml",
+      "pipeline/fusion_validation.py"
+    ],
+    "notes": "Refreshed after manifest and validation hardening; preserves the negative low-signal control case."
+  },
   "coverage_tags": ["low_signal_negative"],
   "tolerances": {
     "timestamp_tolerance_seconds": 0.5,

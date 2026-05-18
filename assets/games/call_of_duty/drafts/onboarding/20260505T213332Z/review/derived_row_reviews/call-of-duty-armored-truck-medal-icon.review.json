@@ -1,16 +1,16 @@
 {
   "schema_version": "derived_row_review_v1",
-  "review_id": "derived-row-review-3e3efec7d79c",
-  "created_at": "2026-05-05T22:17:00.773065+00:00",
-  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z",
+  "review_id": "derived-row-review-b8e2e6a9d9c1",
+  "created_at": "2026-05-05T21:33:55.987123+00:00",
+  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z",
   "game": "call_of_duty",
-  "detection_id": "call_of_duty.attack_helicopter.medal_icon",
+  "detection_id": "call_of_duty.armored_truck.medal_icon",
   "row_snapshot": {
-    "detection_id": "call_of_duty.attack_helicopter.medal_icon",
+    "detection_id": "call_of_duty.armored_truck.medal_icon",
     "game_id": "call_of_duty",
     "target_kind": "event",
-    "target_id": "attack_helicopter",
-    "target_display_name": "Attack Helicopter",
+    "target_id": "armored_truck",
+    "target_display_name": "Armored Truck",
     "target_aliases": [],
     "ontology_collection": "events",
     "asset_family": "medal_icon",
@@ -19,7 +19,7 @@
       "event_row_id"
     ],
     "template_semantics": {
-      "event_row_id": "attack_helicopter"
+      "event_row_id": "armored_truck"
     },
     "template_defaults": {
       "roi_ref": "medal_area",
@@ -74,13 +74,14 @@
   ],
   "candidate_option_count": 0,
   "candidate_options": [],
-  "review_status": "unreviewed",
-  "review_decision": "",
+  "review_status": "approved",
+  "review_decision": "reject_all_candidates",
   "selected_candidate_id": "",
-  "review_notes": "",
-  "apply_status": "missing_detection_row",
+  "review_notes": "auto-rejected zero-candidate row",
+  "apply_status": "applied",
   "recommended_decision": "defer_row",
   "recommended_candidate_id": "",
-  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213409Z/review/derived_row_reviews/call-of-duty-attack-helicopter-medal-icon.review.json",
-  "auto_populated_in_run": false
+  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/call_of_duty/drafts/onboarding/20260505T213332Z/review/derived_row_reviews/call-of-duty-armored-truck-medal-icon.review.json",
+  "auto_populated_in_run": false,
+  "applied_at": "2026-05-18T00:21:12.090142+00:00"
 }

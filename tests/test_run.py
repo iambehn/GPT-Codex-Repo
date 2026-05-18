@@ -713,6 +713,136 @@ class RunTests(unittest.TestCase):
         finally:
             sys.argv = original_argv
 
+    def test_cli_routes_to_inspect_quality_maintenance_findings(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--inspect-quality-maintenance-findings", "--game", "marvel_rivals"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_quality_maintenance_findings",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Repo root: /tmp/repo\nFindings\n[warning] fixture_freshness",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(game="marvel_rivals", emit_json=False)
+            self.assertIn("Repo root: /tmp/repo", stdout.getvalue())
+            self.assertIn("[warning] fixture_freshness", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_quality_maintenance_findings_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--inspect-quality-maintenance-findings", "--json"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_quality_maintenance_findings",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"total_findings": 2}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(game=None, emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["total_findings"], 2)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_run_decision_regression_goldsets(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--run-decision-regression-goldsets"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_run_decision_regression_goldsets",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Suite count: 4\nTotal tests: 8",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(emit_json=False)
+            self.assertIn("Suite count: 4", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_run_decision_regression_goldsets_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--run-decision-regression-goldsets", "--json"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_run_decision_regression_goldsets",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"suite_count": 4}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["suite_count"], 4)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_run_repo_quality_health(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--run-repo-quality-health"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_run_repo_quality_health",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Ok: True\nMaintenance ok: True",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(emit_json=False)
+            self.assertIn("Ok: True", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_run_repo_quality_health_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = ["run.py", "--run-repo-quality-health", "--json"]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_run_repo_quality_health",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"ok": True}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
     def test_cli_routes_to_refresh_clip_registry(self) -> None:
         original_argv = sys.argv
         try:
@@ -769,6 +899,742 @@ class RunTests(unittest.TestCase):
             payload = json.loads(stdout.getvalue())
             self.assertIn("rows", payload)
             self.assertNotIn("rows_sample", payload)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_followup_report(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-followup-report",
+                "/tmp/report.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_followup_report",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Report path: /tmp/report.json\nTop follow-up\nAsset id: test.asset",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/report.json", emit_json=False)
+            self.assertIn("Report path: /tmp/report.json", stdout.getvalue())
+            self.assertIn("Asset id: test.asset", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_followup_report_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-followup-report",
+                "/tmp/report.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_followup_report",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"game": "marvel_rivals"}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/report.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["game"], "marvel_rivals")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_promotion_triage_manifest(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-promotion-triage-manifest",
+                "/tmp/triage.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_promotion_triage_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Manifest path: /tmp/triage.json\nTop publish-ready\nAsset id: test.asset",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/triage.json", emit_json=False)
+            self.assertIn("Manifest path: /tmp/triage.json", stdout.getvalue())
+            self.assertIn("Asset id: test.asset", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_promotion_triage_manifest_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-promotion-triage-manifest",
+                "/tmp/triage.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_promotion_triage_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"game": "marvel_rivals"}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/triage.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["game"], "marvel_rivals")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_publish_decision_manifest(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-publish-decision-manifest",
+                "/tmp/decision.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_publish_decision_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Manifest path: /tmp/decision.json\nTop ready-to-publish\nAsset id: test.asset",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/decision.json", emit_json=False)
+            self.assertIn("Manifest path: /tmp/decision.json", stdout.getvalue())
+            self.assertIn("Asset id: test.asset", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_publish_decision_manifest_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-publish-decision-manifest",
+                "/tmp/decision.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_publish_decision_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"game": "marvel_rivals"}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/decision.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["game"], "marvel_rivals")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_evidence_expansion_queue_manifest(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-evidence-expansion-queue-manifest",
+                "/tmp/queue.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_evidence_expansion_queue_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Manifest path: /tmp/queue.json\nTop in-progress\nAsset id: test.asset",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/queue.json", emit_json=False)
+            self.assertIn("Manifest path: /tmp/queue.json", stdout.getvalue())
+            self.assertIn("Asset id: test.asset", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_evidence_expansion_queue_manifest_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-evidence-expansion-queue-manifest",
+                "/tmp/queue.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_evidence_expansion_queue_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"game": "marvel_rivals"}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/queue.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["game"], "marvel_rivals")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_evidence_expansion_progress_manifest(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-evidence-expansion-progress-manifest",
+                "/tmp/progress.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_evidence_expansion_progress_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Manifest path: /tmp/progress.json\nTop actively-collecting\nAsset id: test.asset",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/progress.json", emit_json=False)
+            self.assertIn("Manifest path: /tmp/progress.json", stdout.getvalue())
+            self.assertIn("Asset id: test.asset", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_evidence_expansion_progress_manifest_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-evidence-expansion-progress-manifest",
+                "/tmp/progress.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_evidence_expansion_progress_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"game": "marvel_rivals"}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/progress.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["game"], "marvel_rivals")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_actions_manifest(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-actions-manifest",
+                "/tmp/next-actions.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_actions_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Manifest path: /tmp/next-actions.json\nTop review-for-publish\nAsset id: test.asset",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/next-actions.json", emit_json=False)
+            self.assertIn("Manifest path: /tmp/next-actions.json", stdout.getvalue())
+            self.assertIn("Asset id: test.asset", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_actions_manifest_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-actions-manifest",
+                "/tmp/next-actions.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_actions_manifest",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"game": "marvel_rivals"}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/next-actions.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["game"], "marvel_rivals")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_apply_ledger(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-apply-ledger",
+                "/tmp/ledger.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_apply_ledger",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Ledger path: /tmp/ledger.json\nLatest run\nRun id: 20260515T214456Z",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/ledger.json", emit_json=False)
+            self.assertIn("Ledger path: /tmp/ledger.json", stdout.getvalue())
+            self.assertIn("Run id: 20260515T214456Z", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_apply_ledger_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-apply-ledger",
+                "/tmp/ledger.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_apply_ledger",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"game": "marvel_rivals"}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/ledger.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["game"], "marvel_rivals")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_apply_history_summary(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-apply-history-summary",
+                "/tmp/summary.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_apply_history_summary",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Summary path: /tmp/summary.json\nSummary\nTotal runs: 1",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/summary.json", emit_json=False)
+            self.assertIn("Summary path: /tmp/summary.json", stdout.getvalue())
+            self.assertIn("Total runs: 1", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_apply_history_summary_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-apply-history-summary",
+                "/tmp/summary.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_apply_history_summary",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"game": "marvel_rivals"}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/summary.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["game"], "marvel_rivals")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_apply_history_trend(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-apply-history-trend",
+                "/tmp/trend.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_apply_history_trend",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Trend path: /tmp/trend.json\nTrend\nOk rate: 1.0",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/trend.json", emit_json=False)
+            self.assertIn("Trend path: /tmp/trend.json", stdout.getvalue())
+            self.assertIn("Ok rate: 1.0", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_apply_history_trend_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-apply-history-trend",
+                "/tmp/trend.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_apply_history_trend",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"game": "marvel_rivals"}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/trend.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["game"], "marvel_rivals")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_cross_game_ledger_comparison(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-cross-game-ledger-comparison",
+                "/tmp/comparison.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_cross_game_ledger_comparison",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Comparison path: /tmp/comparison.json\nTop game\nGame: overwatch",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/comparison.json", emit_json=False)
+            self.assertIn("Comparison path: /tmp/comparison.json", stdout.getvalue())
+            self.assertIn("Game: overwatch", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_cross_game_ledger_comparison_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-cross-game-ledger-comparison",
+                "/tmp/comparison.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_cross_game_ledger_comparison",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"row_count": 2}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/comparison.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["row_count"], 2)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-cross-game-ledger-comparison-history-ledger",
+                "/tmp/history-ledger.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Ledger path: /tmp/history-ledger.json\nLatest run\nTop game: overwatch",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/history-ledger.json", emit_json=False)
+            self.assertIn("Ledger path: /tmp/history-ledger.json", stdout.getvalue())
+            self.assertIn("Top game: overwatch", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-cross-game-ledger-comparison-history-ledger",
+                "/tmp/history-ledger.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_ledger",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"row_count": 1}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/history-ledger.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["row_count"], 1)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-cross-game-ledger-comparison-history-summary",
+                "/tmp/history-summary.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": "Summary path: /tmp/history-summary.json\nSummary\nLatest top game: overwatch",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/history-summary.json", emit_json=False)
+            self.assertIn("Summary path: /tmp/history-summary.json", stdout.getvalue())
+            self.assertIn("Latest top game: overwatch", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary_with_json(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--inspect-detector-calibration-next-action-cross-game-ledger-comparison-history-summary",
+                "/tmp/history-summary.json",
+                "--json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_inspect_detector_calibration_next_action_cross_game_ledger_comparison_history_summary",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "rendered_output": json.dumps({"source_row_count": 3}, indent=2),
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/history-summary.json", emit_json=True)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["source_row_count"], 3)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_apply_detector_calibration_next_action(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--apply-detector-calibration-next-action",
+                "/tmp/next-actions.json",
+                "--asset-id",
+                "marvel_rivals.human_torch.hero_portrait",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_apply_detector_calibration_next_action",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "asset_id": "marvel_rivals.human_torch.hero_portrait",
+                    "reuse_mode": "reused_existing",
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with(
+                "/tmp/next-actions.json",
+                asset_id="marvel_rivals.human_torch.hero_portrait",
+            )
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["reuse_mode"], "reused_existing")
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_apply_detector_calibration_next_action_requires_asset_id(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--apply-detector-calibration-next-action",
+                "/tmp/next-actions.json",
+            ]
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = run_main()
+            self.assertEqual(exit_code, 1)
+            self.assertIn("--apply-detector-calibration-next-action requires --asset-id", stdout.getvalue())
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_apply_detector_calibration_next_actions_batch(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--apply-detector-calibration-next-actions",
+                "/tmp/next-actions.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_apply_detector_calibration_next_actions_batch",
+                return_value={
+                    "ok": True,
+                    "status": "ok",
+                    "selected_row_count": 2,
+                    "applied_row_count": 2,
+                },
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/next-actions.json")
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["selected_row_count"], 2)
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_apply_detector_calibration_next_actions_batch_returns_failure_exit(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--apply-detector-calibration-next-actions",
+                "/tmp/next-actions.json",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_apply_detector_calibration_next_actions_batch",
+                return_value={
+                    "ok": False,
+                    "status": "no_actionable_rows",
+                    "selected_row_count": 0,
+                },
+            ):
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 1)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["status"], "no_actionable_rows")
         finally:
             sys.argv = original_argv
 
@@ -3688,6 +4554,8 @@ class RunTests(unittest.TestCase):
                 "/tmp/fixtures.json",
                 "--proxy-review-session-manifest",
                 "/tmp/proxy-review-session.json",
+                "--fused-review-session-manifest",
+                "/tmp/fused-review-session.json",
             ]
             stdout = io.StringIO()
             with patch(
@@ -3703,6 +4571,7 @@ class RunTests(unittest.TestCase):
                 fixture_comparison_report=None,
                 fixture_trial_batch_manifest=None,
                 proxy_review_session_manifest="/tmp/proxy-review-session.json",
+                fused_review_session_manifest="/tmp/fused-review-session.json",
                 proxy_calibration_report=None,
                 proxy_replay_report=None,
                 runtime_calibration_report=None,

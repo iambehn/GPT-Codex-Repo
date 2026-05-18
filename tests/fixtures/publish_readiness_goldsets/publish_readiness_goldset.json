@@ -1,0 +1,59 @@
+{
+  "schema_version": "publish_readiness_goldset_v1",
+  "description": "Stable publish-readiness gating scenarios that should remain coherent unless onboarding publish policy changes deliberately.",
+  "cases": [
+    {
+      "case_id": "ready_to_publish_with_accepted_binding",
+      "accepted": true,
+      "expected_can_publish": true,
+      "expected_readiness": "ready_to_publish"
+    },
+    {
+      "case_id": "needs_population_review_for_identity_conflict",
+      "accepted": true,
+      "qa_rows": [
+        {
+          "item_type": "conflicting_identity_match",
+          "reason": "canonical identity could not be reconciled safely"
+        }
+      ],
+      "expected_can_publish": false,
+      "expected_readiness": "needs_population_review",
+      "expected_finding_type": "conflicting_identity_match"
+    },
+    {
+      "case_id": "needs_binding_review_for_missing_accepted_binding",
+      "accepted": false,
+      "expected_can_publish": false,
+      "expected_readiness": "needs_binding_review",
+      "expected_finding_type": "missing_accepted_binding"
+    },
+    {
+      "case_id": "structurally_invalid_for_duplicate_accepted_binding",
+      "accepted": true,
+      "duplicate_accept": true,
+      "expected_can_publish": false,
+      "expected_readiness": "structurally_invalid",
+      "expected_finding_type": "conflicting_accepted_bindings"
+    },
+    {
+      "case_id": "needs_binding_review_for_unresolved_required_derived_row",
+      "accepted": true,
+      "derived_detection_manifest": {
+        "schema_version": "derived_game_detection_manifest_v1",
+        "rows": [
+          {
+            "detection_id": "marvel_rivals.final_judgment.ability_icon",
+            "target_id": "final_judgment",
+            "required": true,
+            "status": "unresolved",
+            "reason": "no accepted binding exists for this required detection row yet"
+          }
+        ]
+      },
+      "expected_can_publish": false,
+      "expected_readiness": "needs_binding_review",
+      "expected_finding_type": "unresolved_required_derived_row"
+    }
+  ]
+}

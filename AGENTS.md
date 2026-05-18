@@ -31,6 +31,13 @@ Before changing behavior, inspect the surfaces that already govern it:
 
 Do not invent parallel schemas, duplicate manifests, alternate workflow files, or new source-of-truth documents when an existing surface already governs the area.
 
+## Decision Hierarchy
+
+- Local code, tests, manifests, and persisted artifacts outrank prose when behavior is in question.
+- Canonical V2 docs outrank chat-derived notes, planning fragments, or draft summaries.
+- Draft research notes are advisory until their durable conclusions are promoted into canonical docs, manifests, code, or tests.
+- If two surfaces disagree, change the weaker surface or stop and surface the conflict; do not silently pick one.
+
 ## Core Invariants
 
 - Normalize multimodal evidence to one canonical time base before fusion.
@@ -50,6 +57,21 @@ Do not invent parallel schemas, duplicate manifests, alternate workflow files, o
 - For noisy CLI/report commands, default to compact, high-signal output; expose full payloads only when explicitly requested.
 - Do not leave generated state, temporary summaries, or review artifacts ambiguous about whether they are draft-only or published.
 
+## Heuristic Placement Rules
+
+- Keep repo-wide policy in `AGENTS.md`; keep rationale in canonical docs; keep machine-checkable truth in code, manifests, fixtures, or tests.
+- Do not introduce numeric thresholds, scoring ranges, or behavior-changing acceptable ranges only in prose.
+- Every material decision heuristic should have both a human-readable rationale and an enforceable example, fixture, or contract check.
+- Reject new decision rules that live only in chat or documentation when they would change runtime, review, calibration, or publish behavior.
+
+## Anti-Bloat Rules
+
+- Do not add parallel schemas, duplicate workflow files, or alternate sources of truth.
+- Prefer extending existing contracts, manifests, and operator flows over building side systems.
+- Prefer narrow tools, compact reports, and focused inspectors over broad manager scripts.
+- New workflow features should state explicit non-goals so scope creep is visible.
+- If a new artifact or helper only mirrors existing state without improving validation or inspectability, do not add it.
+
 ## Planning And Verification
 
 - Plan first for changes that affect fusion, schemas, onboarding state transitions, calibration policy, publish readiness, or review workflow contracts.
@@ -60,6 +82,15 @@ Do not invent parallel schemas, duplicate manifests, alternate workflow files, o
 - If a change mutates workflow state, verify both the returned status and the persisted artifacts.
 - If a command or output is confusing, tighten the contract rather than documenting around the confusion.
 
+## Validation Requirements
+
+- Every behavior change needs the narrowest matching validation.
+- If a heuristic affects decisions, add or update a test, fixture, replay check, or contract audit that demonstrates the intended outcome.
+- If a new artifact is introduced, validate both the returned status and the persisted state.
+- Treat `tests/test_contract_audit.py` and related contract checks as a governance surface, not just a schema smoke test.
+- Prefer explicit regression coverage for decision boundaries over broad code-coverage-only tests.
+- For changes that touch onboarding, fusion, review, calibration, contract, or publish-readiness surfaces, prefer `python run.py --run-repo-quality-health` as the default closeout health gate unless a narrower check is clearly sufficient.
+
 ## Organization Rules
 
 - Keep durable repo-wide rules in `AGENTS.md`.
@@ -68,6 +99,13 @@ Do not invent parallel schemas, duplicate manifests, alternate workflow files, o
 - Keep runtime facts in structured manifests, catalogs, assets, or tests, not only in prose.
 - Do not leave important decisions stranded only in chat.
 - Archive or supersede stale guidance instead of letting multiple conflicting notes compete.
+
+## Escalation Rules
+
+- Stop and surface uncertainty when local truth is weak, multiple plausible contracts exist, or a change would silently alter thresholds, schema fields, workflow state, or review semantics.
+- Escalate before implementing when a request implies a new source of truth instead of an extension to an existing one.
+- If you cannot point to the governing code, manifest, doc, or test for a behavior change, the change is not ready to implement.
+- Use [ENGINEERING_GOVERNANCE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/ENGINEERING_GOVERNANCE.md) and [QUALITY_MAINTENANCE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/QUALITY_MAINTENANCE.md) for the expanded governance and maintenance rules instead of growing this file.
 
 ## Repo-Specific Focus Areas
 

@@ -1952,7 +1952,8 @@ def _build_candidate_row(
     paragraph_referential: bool = False,
 ) -> dict[str, Any]:
     normalized_display_name = _normalize_schema_name(display_name, adapter=adapter)
-    candidate_id = f"candidate_{hashlib.sha1(f'{source['url']}|{image_url}|{normalized_display_name}'.encode('utf-8')).hexdigest()[:12]}"
+    candidate_key = f"{source['url']}|{image_url}|{normalized_display_name}"
+    candidate_id = f"candidate_{hashlib.sha1(candidate_key.encode('utf-8')).hexdigest()[:12]}"
     asset_family = _source_role_asset_family(source["role"], normalized_display_name, adapter=adapter)
     quality = analyze_asset_candidate(
         display_name=normalized_display_name,
@@ -2047,9 +2048,10 @@ def _build_binding_candidates(
             confidence = float(binding["score"])
             if confidence <= 0:
                 continue
+            binding_key = f"{target_id}|{candidate['candidate_id']}"
             bindings.append(
                 {
-                    "binding_id": f"binding_{hashlib.sha1(f'{target_id}|{candidate['candidate_id']}'.encode('utf-8')).hexdigest()[:12]}",
+                    "binding_id": f"binding_{hashlib.sha1(binding_key.encode('utf-8')).hexdigest()[:12]}",
                     "game_id": game,
                     "detection_id": detection_row["detection_id"],
                     "target_kind": target_kind,

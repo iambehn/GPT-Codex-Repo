@@ -1,0 +1,46 @@
+{
+  "schema_version": "onboarding_identity_review_goldset_v1",
+  "description": "Stable onboarding identity-review bridge scenarios that should remain coherent unless the bridge contract changes deliberately.",
+  "cases": [
+    {
+      "case_id": "recommend_adopt_seed_identity_for_name_upgrade",
+      "scenario": "prepare_review",
+      "hero_display_name": "Punisher",
+      "aliases": [
+        "punisher"
+      ],
+      "include_info_identity_row": true,
+      "expected_recommended_decision": "adopt_seed_identity",
+      "expected_target_id": "punisher",
+      "expected_seed_candidate_display_name": "The Punisher"
+    },
+    {
+      "case_id": "recommend_keep_source_identity_when_no_upgrade_exists",
+      "scenario": "prepare_review",
+      "hero_display_name": "The Punisher",
+      "aliases": [
+        "punisher"
+      ],
+      "include_info_identity_row": true,
+      "expected_recommended_decision": "keep_source_identity",
+      "expected_target_id": "punisher",
+      "expected_seed_candidate_display_name": "The Punisher"
+    },
+    {
+      "case_id": "apply_defer_identity_resolution_keeps_publish_blocker",
+      "scenario": "apply_review",
+      "hero_display_name": "Punisher",
+      "aliases": [
+        "punisher"
+      ],
+      "include_info_identity_row": true,
+      "expected_target_id": "punisher",
+      "expected_seed_candidate_display_name": "The Punisher",
+      "applied_review_decision": "defer_identity_resolution",
+      "expected_result_counter": "deferred_count",
+      "expected_result_count": 1,
+      "expected_can_publish": false,
+      "expected_entity_review_status": "deferred"
+    }
+  ]
+}

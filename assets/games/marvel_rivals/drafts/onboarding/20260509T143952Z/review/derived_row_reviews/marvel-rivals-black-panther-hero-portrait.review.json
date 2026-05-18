@@ -1,0 +1,102 @@
+{
+  "schema_version": "derived_row_review_v1",
+  "review_id": "derived-row-review-5fd7a14c583f",
+  "created_at": "2026-05-09T14:41:06.122095+00:00",
+  "draft_root": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/marvel_rivals/drafts/onboarding/20260509T143952Z",
+  "game": "marvel_rivals",
+  "detection_id": "marvel_rivals.black_panther.hero_portrait",
+  "row_snapshot": {
+    "detection_id": "marvel_rivals.black_panther.hero_portrait",
+    "game_id": "marvel_rivals",
+    "target_kind": "hero",
+    "target_id": "black_panther",
+    "target_display_name": "Black Panther",
+    "target_aliases": [],
+    "ontology_collection": "heroes",
+    "asset_family": "hero_portrait",
+    "requires_asset": true,
+    "required_semantic_fields": [
+      "entity_id"
+    ],
+    "template_semantics": {
+      "entity_id": "black_panther"
+    },
+    "template_defaults": {
+      "roi_ref": "hero_portrait",
+      "match_method": "TM_CCOEFF_NORMED",
+      "threshold": 0.88,
+      "scale_set": [
+        0.95,
+        1.0,
+        1.05
+      ],
+      "temporal_window": 4
+    },
+    "runtime_rule": {
+      "signal_type": "character_identity",
+      "event_type": "pov_character_identified",
+      "target_field": "entity_id",
+      "target_id_source": "template_field",
+      "target_value_field": "entity_id",
+      "identity_competition": "strongest_overlap"
+    },
+    "fusion_rule_ids": [
+      "character_identity_atomic"
+    ],
+    "status": "unresolved_pending_review",
+    "binding_status": "pending_review",
+    "source_page_url": "https://marvelrivals.fandom.com/wiki/Category:Heroes",
+    "required": true,
+    "blocking_publish": true,
+    "reason": "candidate bindings exist but no accepted binding has been selected yet",
+    "semantic_ids": [
+      "entity_id"
+    ],
+    "accepted_candidate_id": "null",
+    "accepted_candidate_master_path": "null",
+    "accepted_candidate_source_url": "null",
+    "binding_candidate_count": 1,
+    "provenance_basis": {
+      "ontology_collection": "heroes",
+      "source_page_url": "https://marvelrivals.fandom.com/wiki/Category:Heroes",
+      "source_role": "roster",
+      "canonical_identity_basis": "source_initial"
+    }
+  },
+  "allowed_review_statuses": [
+    "approved",
+    "rejected",
+    "unreviewed"
+  ],
+  "allowed_decisions": [
+    "accept_candidate",
+    "defer_row",
+    "reject_all_candidates"
+  ],
+  "candidate_option_count": 1,
+  "candidate_options": [
+    {
+      "binding_id": "binding_6ccdc4073367",
+      "candidate_id": "candidate_1a3be5f436cf",
+      "candidate_display_name": "Black Panther",
+      "confidence": 0.92,
+      "binding_score": 0.92,
+      "status": "pending_review",
+      "reason": "exact normalized or alias match; high-quality candidate; category member source; portrait-like image kind",
+      "source_url": "https://static.wikia.nocookie.net/marvel-rivals/images/6/65/Black_Panther_Hero_Portrait.png/revision/latest/smart/width/40/height/30?cb=20250901103332",
+      "source_kind": "category_member_image",
+      "candidate_quality": "high",
+      "master_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/marvel_rivals/drafts/onboarding/20260509T143952Z/masters/heroes/black_panther-f436cf.png"
+    }
+  ],
+  "review_status": "approved",
+  "review_decision": "accept_candidate",
+  "selected_candidate_id": "candidate_1a3be5f436cf",
+  "review_notes": "accepted during conservative onboarding triage: single-candidate high-confidence binding",
+  "apply_status": "applied",
+  "recommended_decision": "accept_candidate",
+  "recommended_candidate_id": "candidate_1a3be5f436cf",
+  "review_file_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/marvel_rivals/drafts/onboarding/20260509T143952Z/review/derived_row_reviews/marvel-rivals-black-panther-hero-portrait.review.json",
+  "auto_populated_in_run": false,
+  "applied_at": "2026-05-09T15:38:26.843224+00:00"
+}

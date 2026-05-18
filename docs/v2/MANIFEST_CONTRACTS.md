@@ -52,6 +52,38 @@ Expected game-pack categories:
 - HUD and ROI maps
 - runtime templates and masks
 
+## Published Manifest Authority
+
+Published packs keep their authoritative manifest set narrow.
+
+Published authority files under `assets/games/<game>/manifests/` are:
+
+- `detection_manifest.yaml`
+- `cv_templates.yaml`
+- `runtime_cv_rules.yaml`
+- `fusion_rules.yaml`
+- `assets_manifest.json`
+
+Draft-only onboarding or review authority files should not be promoted into the published pack manifests directory.
+
+Examples of draft-only manifest surfaces:
+
+- `derived_detection_manifest.yaml`
+- `game_detection_schema.yaml`
+- `onboarding_state.json`
+
+If those files appear in a published pack, treat that as contract clutter and source-of-truth drift rather than harmless duplication.
+
+## Documented Schema Versions
+
+The canonical published-pack schema versions that should remain documented here are:
+
+- `game_detection_manifest_v1`
+- `runtime_detection_schema_v1`
+- `fusion_rules_v1`
+
+These names document the current canonical contract surfaces. The full machine-checkable truth still lives in manifests, validation code, and tests.
+
 ## Derived Detection Manifest V1
 
 The onboarding path now has an explicit intermediate contract:

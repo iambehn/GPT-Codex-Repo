@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -157,3 +158,316 @@ class ContractAuditTests(unittest.TestCase):
         self.assertEqual(by_game["legacy_game"]["contract_status"], "legacy_assisted")
         self.assertEqual(by_game["marvel_rivals"]["ontology_status"], "ok")
         self.assertTrue(any(row["status"] == "legacy_proxy_signals_config" for row in result["legacy_usage"]))
+
+    def test_contract_audit_reports_governance_surface_health(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "starter_assets").mkdir(parents=True, exist_ok=True)
+            self._write_pack(root, game="marvel_rivals", legacy=False)
+            (root / "AGENTS.md").write_text(
+                "\n".join(
+                    [
+                        "# AGENTS.md",
+                        "## Decision Hierarchy",
+                        "## Heuristic Placement Rules",
+                        "## Anti-Bloat Rules",
+                        "## Validation Requirements",
+                        "## Escalation Rules",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            docs_root = root / "docs" / "v2"
+            docs_root.mkdir(parents=True, exist_ok=True)
+            (docs_root / "INDEX.md").write_text(
+                "\n".join(
+                    [
+                        "# V2 Source of Truth Index",
+                        "ENGINEERING_GOVERNANCE.md",
+                        "QUALITY_MAINTENANCE.md",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (docs_root / "ENGINEERING_GOVERNANCE.md").write_text(
+                "\n".join(
+                    [
+                        "# Engineering Governance",
+                        "## Decision Classes",
+                        "## Heuristic Placement Model",
+                        "## Acceptable Placement",
+                        "## Unacceptable Placement",
+                        "## Validation Spine",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (docs_root / "QUALITY_MAINTENANCE.md").write_text(
+                "\n".join(
+                    [
+                        "# Quality Maintenance",
+                        "## Maintenance Classes",
+                        "## Recurring Checks",
+                        "## Drift Signals",
+                        "## Triggered Actions",
+                        "## Long-Run Data-Quality Preservation",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ), patch("pipeline.roi_matcher._template_dimensions", return_value=(10, 10)):
+                result = audit_pipeline_contracts(repo_root=root)
+
+        by_surface = {row["surface"]: row for row in result["governance_surfaces"]}
+        self.assertEqual(by_surface["agents"]["status"], "ok")
+        self.assertEqual(by_surface["v2_index"]["status"], "ok")
+        self.assertEqual(by_surface["engineering_governance"]["status"], "ok")
+        self.assertEqual(by_surface["quality_maintenance"]["status"], "ok")
+        self.assertFalse(any(row["status"].endswith("governance_surface") for row in result["warnings"]))
+
+    def test_contract_audit_warns_when_governance_surface_is_incomplete(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "starter_assets").mkdir(parents=True, exist_ok=True)
+            self._write_pack(root, game="marvel_rivals", legacy=False)
+            (root / "AGENTS.md").write_text("# AGENTS.md\n## Decision Hierarchy\n", encoding="utf-8")
+            docs_root = root / "docs" / "v2"
+            docs_root.mkdir(parents=True, exist_ok=True)
+            (docs_root / "INDEX.md").write_text("# V2 Source of Truth Index\n", encoding="utf-8")
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ), patch("pipeline.roi_matcher._template_dimensions", return_value=(10, 10)):
+                result = audit_pipeline_contracts(repo_root=root)
+
+        warnings = {row["status"] for row in result["warnings"]}
+        self.assertIn("incomplete_governance_surface", warnings)
+        self.assertIn("missing_governance_surface", warnings)
+
+    def test_contract_audit_flags_draft_only_manifest_in_published_pack(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "starter_assets").mkdir(parents=True, exist_ok=True)
+            self._write_pack(root, game="marvel_rivals", legacy=False)
+            (
+                root / "assets" / "games" / "marvel_rivals" / "manifests" / "derived_detection_manifest.yaml"
+            ).write_text("schema_version: derived_game_detection_manifest_v1\n", encoding="utf-8")
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ), patch("pipeline.roi_matcher._template_dimensions", return_value=(10, 10)):
+                result = audit_pipeline_contracts(repo_root=root)
+
+        self.assertTrue(
+            any(row["status"] == "draft_only_manifest_in_published_pack" for row in result["manifest_authority_findings"])
+        )
+        self.assertTrue(any(row["status"] == "draft_only_manifest_in_published_pack" for row in result["warnings"]))
+
+    def test_contract_audit_warns_when_manifest_contract_doc_misses_schema_versions(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "starter_assets").mkdir(parents=True, exist_ok=True)
+            self._write_pack(root, game="marvel_rivals", legacy=False)
+            docs_root = root / "docs" / "v2"
+            docs_root.mkdir(parents=True, exist_ok=True)
+            (docs_root / "MANIFEST_CONTRACTS.md").write_text(
+                "# Manifest Contracts / Game Packs\n\nNo schema version catalog here.\n",
+                encoding="utf-8",
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ), patch("pipeline.roi_matcher._template_dimensions", return_value=(10, 10)):
+                result = audit_pipeline_contracts(repo_root=root)
+
+        self.assertEqual(result["schema_documentation_findings"][0]["status"], "missing_schema_version_docs")
+        self.assertTrue(any(row["status"] == "undocumented_canonical_schema_version" for row in result["warnings"]))
+
+    def test_contract_audit_warns_when_schema_version_is_neither_registry_managed_nor_local_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "starter_assets").mkdir(parents=True, exist_ok=True)
+            self._write_pack(root, game="marvel_rivals", legacy=False)
+            pipeline_root = root / "pipeline"
+            pipeline_root.mkdir(parents=True, exist_ok=True)
+            (pipeline_root / "clip_registry.py").write_text(
+                '\n'.join(
+                    [
+                        'PROXY_SCAN_SCHEMA_VERSION = "proxy_scan_v1"',
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (pipeline_root / "rogue_surface.py").write_text(
+                '\n'.join(
+                    [
+                        'ROGUE_SURFACE_SCHEMA_VERSION = "rogue_surface_v1"',
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            docs_root = root / "docs" / "v2"
+            docs_root.mkdir(parents=True, exist_ok=True)
+            (docs_root / "REGISTRY_ORCHESTRATION_STATE.md").write_text(
+                "\n".join(
+                    [
+                        "# Registry / Orchestration / State",
+                        "## Registry-Managed Schema Ownership",
+                        "## Explicit Local-Only Schema Scopes",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ), patch("pipeline.roi_matcher._template_dimensions", return_value=(10, 10)):
+                result = audit_pipeline_contracts(repo_root=root)
+
+        self.assertTrue(any(row["status"] == "unscoped_schema_version" for row in result["registry_schema_findings"]))
+        self.assertTrue(any(row["status"] == "unscoped_registry_schema_version" for row in result["warnings"]))
+
+    def test_contract_audit_accepts_documented_local_only_schema_prefixes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "starter_assets").mkdir(parents=True, exist_ok=True)
+            self._write_pack(root, game="marvel_rivals", legacy=False)
+            pipeline_root = root / "pipeline"
+            pipeline_root.mkdir(parents=True, exist_ok=True)
+            (pipeline_root / "clip_registry.py").write_text(
+                '\n'.join(
+                    [
+                        'PROXY_SCAN_SCHEMA_VERSION = "proxy_scan_v1"',
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (pipeline_root / "local_helper.py").write_text(
+                '\n'.join(
+                    [
+                        'RESEARCH_RUNTIME_TRACE_SCHEMA_VERSION = "research_runtime_turn_trace_v1"',
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            docs_root = root / "docs" / "v2"
+            docs_root.mkdir(parents=True, exist_ok=True)
+            (docs_root / "REGISTRY_ORCHESTRATION_STATE.md").write_text(
+                "\n".join(
+                    [
+                        "# Registry / Orchestration / State",
+                        "## Registry-Managed Schema Ownership",
+                        "## Explicit Local-Only Schema Scopes",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ), patch("pipeline.roi_matcher._template_dimensions", return_value=(10, 10)):
+                result = audit_pipeline_contracts(repo_root=root)
+
+        self.assertFalse(any(row["status"] == "unscoped_schema_version" for row in result["registry_schema_findings"]))
+
+    def test_contract_audit_reports_stale_fixture_freshness_as_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "starter_assets").mkdir(parents=True, exist_ok=True)
+            fixtures_root = root / "tests" / "fixtures" / "fusion_goldsets" / "marvel_rivals"
+            fixtures_root.mkdir(parents=True, exist_ok=True)
+            fixture_path = fixtures_root / "sample.fusion_goldset.json"
+            fixture_path.write_text('{"schema_version":"fusion_goldset_clip_v1"}\n', encoding="utf-8")
+            assets_root = root / "assets" / "games" / "marvel_rivals" / "manifests"
+            assets_root.mkdir(parents=True, exist_ok=True)
+            detection_manifest = assets_root / "detection_manifest.yaml"
+            detection_manifest.write_text("schema_version: game_detection_manifest_v1\n", encoding="utf-8")
+            fusion_rules = assets_root / "fusion_rules.yaml"
+            fusion_rules.write_text("schema_version: fusion_rules_v1\n", encoding="utf-8")
+            pipeline_root = root / "pipeline"
+            pipeline_root.mkdir(parents=True, exist_ok=True)
+            validation_surface = pipeline_root / "fusion_validation.py"
+            validation_surface.write_text("SUPPORTED_GOLDSET_SCHEMA_VERSION = 'fusion_goldset_clip_v1'\n", encoding="utf-8")
+            os.utime(fixture_path, (1000, 1000))
+            os.utime(detection_manifest, (2000, 2000))
+            os.utime(fusion_rules, (2000, 2000))
+            os.utime(validation_surface, (2000, 2000))
+
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ):
+                result = audit_pipeline_contracts(repo_root=root)
+
+        self.assertTrue(any(row["status"] == "fixture_refresh_recommended" for row in result["quality_maintenance_findings"]))
+        self.assertTrue(
+            any(row["status"] == "quality_maintenance_fixture_refresh_recommended" for row in result["warnings"])
+        )
+
+    def test_contract_audit_reports_review_backlog_severity(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "starter_assets").mkdir(parents=True, exist_ok=True)
+            review_root = root / "assets" / "games" / "test_game" / "drafts" / "onboarding" / "draft1" / "review" / "derived_row_reviews"
+            review_root.mkdir(parents=True, exist_ok=True)
+            for index in range(10):
+                payload = {"review_status": "approved" if index < 7 else "unreviewed"}
+                (review_root / f"row_{index}.json").write_text(json.dumps(payload), encoding="utf-8")
+
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ):
+                result = audit_pipeline_contracts(repo_root=root)
+
+        backlog_rows = [row for row in result["quality_maintenance_findings"] if row["surface"] == "review_backlog"]
+        self.assertEqual(len(backlog_rows), 1)
+        self.assertEqual(backlog_rows[0]["status"], "review_backlog_high")
+        self.assertEqual(backlog_rows[0]["severity"], "blocking")
+        self.assertTrue(any(row["status"] == "quality_maintenance_review_backlog_high" for row in result["warnings"]))
+
+    def test_contract_audit_reports_stale_review_files_when_detection_rows_disappear(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "starter_assets").mkdir(parents=True, exist_ok=True)
+            review_root = root / "assets" / "games" / "test_game" / "drafts" / "onboarding" / "draft1" / "review" / "derived_row_reviews"
+            review_root.mkdir(parents=True, exist_ok=True)
+            detection_manifest_root = root / "assets" / "games" / "test_game" / "drafts" / "onboarding" / "draft1" / "manifests"
+            detection_manifest_root.mkdir(parents=True, exist_ok=True)
+            (detection_manifest_root / "derived_detection_manifest.yaml").write_text(
+                "\n".join(
+                    [
+                        "rows:",
+                        "  - detection_id: test_game.live_row.hero_portrait",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (review_root / "stale.review.json").write_text(
+                json.dumps(
+                    {
+                        "detection_id": "test_game.removed_row.hero_portrait",
+                        "review_status": "approved",
+                        "review_decision": "defer_row",
+                        "candidate_option_count": 0,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ):
+                result = audit_pipeline_contracts(repo_root=root)
+
+        drift_rows = [row for row in result["quality_maintenance_findings"] if row["surface"] == "review_file_drift"]
+        self.assertEqual(len(drift_rows), 1)
+        self.assertEqual(drift_rows[0]["status"], "stale_review_files_present")
+        self.assertEqual(drift_rows[0]["stale_review_count"], 1)
+        self.assertTrue(any(row["status"] == "quality_maintenance_stale_review_files_present" for row in result["warnings"]))

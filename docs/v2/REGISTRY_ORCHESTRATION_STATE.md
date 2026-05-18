@@ -57,6 +57,70 @@ The current operational chain should be treated as explicit and queryable:
 
 The registry is responsible for indexing and joining that chain. The artifacts remain the detailed evidence source of truth.
 
+## Registry-Managed Schema Ownership
+
+Registry-managed artifact schemas should remain centralized through `pipeline/clip_registry.py`.
+
+That means:
+
+- a schema version that the registry ingests, joins, or exposes as a query surface should be represented in the registry contract layer
+- introducing a new registry-managed artifact should update the registry code and matching tests rather than relying on ad hoc file scans
+- central registry ownership is for cross-workflow, queryable state, not every helper artifact in the repo
+
+Examples of registry-managed families include:
+
+- core sidecars and review sessions
+- workflow and export artifacts
+- hook and comparison artifacts
+- shadow-evaluation artifacts that are queryable across runs
+- dashboard-level intake artifacts that are intentionally exposed through registry analytics
+
+## Explicit Local-Only Schema Scopes
+
+Not every schema version belongs in the central registry.
+
+These local-only families are expected to stay outside `pipeline/clip_registry.py` unless their role changes:
+
+- `accepted_clip_`
+- `accepted_fixture_`
+- `accepted_proxy_review_`
+- `approval_target_dataset_`
+- `derived_row_review_`
+- `evaluation_fixture_manifest_`
+- `fixture_source_manifest_`
+- `fused_export_`
+- `fusion_goldset_clip_`
+- `onboarding_identity_review_session_`
+- `proxy_replay_viewer_`
+- `proxy_review_session_`
+- `real_artifact_intake_bundle_`
+- `real_artifact_intake_coverage_report_`
+- `real_artifact_intake_dedup_`
+- `real_artifact_intake_refresh_`
+- `real_artifact_intake_summary_`
+- `real_artifact_intake_validation_`
+- `real_artifact_intake_history_comparison_`
+- `real_artifact_intake_comparison_target_`
+- `real_artifact_intake_dashboard_registry_summary_`
+- `real_artifact_intake_dashboard_summary_`
+- `replay_viewer_`
+- `research_runtime_`
+- `runtime_export_`
+- `shadow_operator_run_`
+- `training_export_`
+- `unified_replay_viewer_`
+- `v2_training_dataset_export_`
+
+These are intentionally local because they are:
+
+- operator helpers
+- onboarding or review prep artifacts
+- export-only outputs
+- research-runtime artifacts
+- maintenance or reporting artifacts that do not define the central lifecycle/query contract
+
+If one of these families becomes a cross-workflow query surface, promote it deliberately into the registry contract instead of relying on drift.
+
 ## Query Semantics
 
 Current registry query behavior is intentionally split into two shapes:
