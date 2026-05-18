@@ -275,6 +275,31 @@ class V2TrainingExportTests(unittest.TestCase):
             self.assertTrue(latest_performance["post_performance_recoverable"])
             self.assertEqual(latest_performance["post_performance_missing_fields"], [])
 
+    def test_export_v2_training_datasets_emits_origin_source_for_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            registry_path, posted_candidate_id, sparse_candidate_id = _prepare_registry(root)
+
+            result = export_v2_training_datasets(
+                registry_path=registry_path,
+                output_root=root / "dataset_exports",
+                game="marvel_rivals",
+            )
+
+            manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
+            self.assertIn("origin_source", manifest["split_dimensions"])
+
+            candidate_rows = _read_jsonl(Path(result["dataset_views"]["candidates"]["jsonl_path"]))
+            posted_candidate = next(row for row in candidate_rows if row["candidate_id"] == posted_candidate_id)
+            sparse_candidate = next(row for row in candidate_rows if row["candidate_id"] == sparse_candidate_id)
+
+            self.assertEqual(posted_candidate["origin_source"], posted_candidate["source"])
+            self.assertEqual(sparse_candidate["origin_source"], sparse_candidate["source"])
+            self.assertEqual(
+                posted_candidate["split_lineage_key"],
+                f"marvel_rivals::{posted_candidate['origin_source']}",
+            )
+
     def test_export_v2_training_datasets_filters_real_only_vs_synthetic_augmented(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)

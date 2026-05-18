@@ -264,7 +264,9 @@ def _approval_label_from_registry_row(row: dict[str, Any]) -> dict[str, Any] | N
         return {"approval_label": 0.0, "label_source": "review_outcome"}
     if lifecycle_state in {"approved", "selected_for_export"}:
         return {"approval_label": 1.0, "label_source": "lifecycle_state"}
-    if lifecycle_state in {"rejected", "invalidated", "superseded"}:
+    # `invalidated` and `superseded` are workflow hygiene states, not durable
+    # negative labels for approval-target training.
+    if lifecycle_state == "rejected":
         return {"approval_label": 0.0, "label_source": "lifecycle_state"}
     return None
 

@@ -166,6 +166,74 @@ class ShadowEvaluationPolicyTests(unittest.TestCase):
             self.assertEqual(ledger["recommendation"]["decision"], "blocked_by_policy")
             self.assertIn("fixture_id=fixture-b", ledger["recommendation"]["blocking_reasons"])
 
+    def test_policy_honors_primary_metric_and_top_k_cap_for_candidate_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            policy = write_shadow_evaluation_policy(root / "policy" / "default.shadow_evaluation_policy.json")
+            policy_path = Path(policy["manifest_path"])
+            payload = json.loads(policy_path.read_text(encoding="utf-8"))
+            payload["targets"]["candidate_approval_probability"]["primary_metric"] = "ranking_gain"
+            payload["targets"]["candidate_approval_probability"]["top_k_cap"] = 1
+            policy_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+            replay_path = root / "replays" / "sharper.shadow_ranking_replay.json"
+            experiment_path = root / "experiments" / "sharper.shadow_ranking_experiment.json"
+            replay_rows = [
+                self._candidate_row("pos-1", "fixture-a", True, 1.0, 0.99, 0.99),
+                self._candidate_row("pos-2", "fixture-a", True, 1.0, 0.98, 0.20),
+                self._candidate_row("neg-1", "fixture-a", False, 0.0, 0.10, 0.95),
+            ]
+            _write_json(
+                replay_path,
+                {
+                    "schema_version": "shadow_ranking_replay_v1",
+                    "replay_id": "replay-sharper",
+                    "created_at": "2026-05-12T00:00:00+00:00",
+                    "model_family": "linear_shadow_ranker",
+                    "model_version": "v1",
+                    "dataset_manifest_path": "/tmp/dataset.json",
+                    "row_count": len(replay_rows),
+                    "rows": replay_rows,
+                },
+            )
+            _write_json(
+                experiment_path,
+                {
+                    "schema_version": "shadow_ranking_experiment_v1",
+                    "experiment_id": "exp-sharper",
+                    "created_at": "2026-05-12T00:00:00+00:00",
+                    "model_path": "/tmp/model.json",
+                    "model_id": "shadow-model-sharper",
+                    "model_family": "linear_shadow_ranker",
+                    "model_version": "v1",
+                    "dataset_manifest_path": "/tmp/dataset.json",
+                    "dataset_export_id": "dataset-1",
+                    "training_target": "approved_or_selected_probability",
+                    "split_key": "fixture_id",
+                    "train_fraction": 0.8,
+                    "replay_manifest_path": str(replay_path),
+                    "comparison_report_path": "/tmp/comparison.json",
+                    "replay_row_count": len(replay_rows),
+                    "comparison_row_count": len(replay_rows),
+                    "comparison_recommendation": {"decision": "prefer_shadow", "reason": "global aggregate improved"},
+                    "comparison_summary": {},
+                    "training_metrics": {},
+                    "evaluation_metrics": {},
+                },
+            )
+
+            ledger = evaluate_shadow_experiment_policy(
+                experiment_path,
+                policy_path=policy_path,
+                target="candidate_approval_probability",
+                output_path=root / "ledgers" / "sharper.shadow_experiment_ledger.json",
+            )
+
+            self.assertTrue(ledger["ok"])
+            self.assertEqual(ledger["global_metrics"]["primary_metric_name"], "ranking_gain")
+            self.assertEqual(ledger["global_metrics"]["top_k"], 1)
+            self.assertGreater(float(ledger["global_metrics"]["primary_metric_delta"] or 0.0), 0.0)
+
     @staticmethod
     def _candidate_row(
         candidate_id: str,

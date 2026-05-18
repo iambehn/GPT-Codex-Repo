@@ -175,6 +175,146 @@ class ApprovalTargetDatasetAdapterTests(unittest.TestCase):
             self.assertEqual(model["status"], "ok")
             self.assertEqual(model["row_count"], 3)
 
+    def test_adapted_rows_use_source_lineage_key_not_candidate_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            approval_manifest = root / "approval-target.manifest.json"
+            approval_manifest.parent.mkdir(parents=True, exist_ok=True)
+            approval_manifest.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "approval_target_dataset_v1",
+                        "dataset_id": "dataset-123",
+                        "filters": {"game": "marvel_rivals"},
+                        "rows": [
+                            {
+                                "candidate_id": "candidate-a",
+                                "game": "marvel_rivals",
+                                "source": "/tmp/source-a.mp4",
+                                "fixture_id": None,
+                                "event_id": "event-a",
+                                "lifecycle_state": "selected_for_export",
+                                "review_outcome": None,
+                                "selected_highlight_event_type": "team_wipe_seen",
+                            },
+                            {
+                                "candidate_id": "candidate-b",
+                                "game": "marvel_rivals",
+                                "source": "/tmp/source-a.mp4",
+                                "fixture_id": None,
+                                "event_id": "event-b",
+                                "lifecycle_state": "selected_for_export",
+                                "review_outcome": None,
+                                "selected_highlight_event_type": "team_wipe_seen",
+                            },
+                            {
+                                "candidate_id": "candidate-c",
+                                "game": "marvel_rivals",
+                                "source": "/tmp/source-b.mp4",
+                                "fixture_id": "fixture-b",
+                                "event_id": "event-c",
+                                "lifecycle_state": "selected_for_export",
+                                "review_outcome": None,
+                                "selected_highlight_event_type": "team_wipe_seen",
+                            },
+                        ],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            adapted = adapt_approval_target_dataset(
+                approval_manifest,
+                output_root=root / "adapted_exports",
+            )
+
+            candidate_rows = [
+                json.loads(line)
+                for line in Path(adapted["dataset_views"]["candidates"]["jsonl_path"]).read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            row_a = next(row for row in candidate_rows if row["candidate_id"] == "candidate-a")
+            row_b = next(row for row in candidate_rows if row["candidate_id"] == "candidate-b")
+            row_c = next(row for row in candidate_rows if row["candidate_id"] == "candidate-c")
+
+            self.assertEqual(row_a["split_lineage_key"], "marvel_rivals::/tmp/source-a.mp4")
+            self.assertEqual(row_b["split_lineage_key"], "marvel_rivals::/tmp/source-a.mp4")
+            self.assertEqual(row_c["split_lineage_key"], "marvel_rivals::/tmp/source-b.mp4::fixture-b")
+            self.assertNotEqual(row_a["split_lineage_key"], row_a["split_candidate_key"])
+            self.assertEqual(row_a["split_lineage_key"], row_b["split_lineage_key"])
+            self.assertNotEqual(row_a["split_lineage_key"], row_c["split_lineage_key"])
+
+    def test_adapter_recovers_origin_source_from_export_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            export_root = root / "outputs" / "runtime_analysis" / "marvel_rivals" / "ace_local_export_20260512T000309Z"
+            segment_path = export_root / "media_segments" / "0-and-5-value-3167119478.mp4"
+            fused_path = export_root / "fused_sidecars" / "0-and-5-value-3167119478.fused_analysis.json"
+            segment_path.parent.mkdir(parents=True, exist_ok=True)
+            fused_path.parent.mkdir(parents=True, exist_ok=True)
+            segment_path.write_bytes(b"segment")
+            fused_path.write_text("{}", encoding="utf-8")
+            (export_root / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "ace_local_export_v1",
+                        "exports": [
+                            {
+                                "clip_path": "/tmp/raw/0 and 5 value source.mp4",
+                                "segment_path": str(segment_path),
+                                "fused_sidecar_path": str(fused_path),
+                            }
+                        ],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            approval_manifest = root / "approval-target.manifest.json"
+            approval_manifest.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "approval_target_dataset_v1",
+                        "dataset_id": "dataset-123",
+                        "filters": {"game": "marvel_rivals"},
+                        "rows": [
+                            {
+                                "candidate_id": "candidate-proof",
+                                "game": "marvel_rivals",
+                                "source": str(segment_path),
+                                "fixture_id": None,
+                                "event_id": "event-proof",
+                                "lifecycle_state": "selected_for_export",
+                                "review_outcome": None,
+                                "selected_highlight_event_type": "team_wipe_seen",
+                                "fused_sidecar_path": str(fused_path),
+                            }
+                        ],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            adapted = adapt_approval_target_dataset(
+                approval_manifest,
+                output_root=root / "adapted_exports",
+            )
+
+            candidate_rows = [
+                json.loads(line)
+                for line in Path(adapted["dataset_views"]["candidates"]["jsonl_path"]).read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            row = candidate_rows[0]
+            self.assertEqual(row["source"], str(segment_path))
+            self.assertEqual(row["origin_source"], "/tmp/raw/0 and 5 value source.mp4")
+            self.assertEqual(
+                row["split_lineage_key"],
+                "marvel_rivals::/tmp/raw/0 and 5 value source.mp4",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -155,8 +155,16 @@ class ApprovalTargetDatasetTests(unittest.TestCase):
             {"approval_label": 1.0, "label_source": "lifecycle_state"},
         )
         self.assertEqual(
-            _approval_label_from_registry_row({"latest_review_status": None, "lifecycle_state": "invalidated"}),
+            _approval_label_from_registry_row({"latest_review_status": None, "lifecycle_state": "rejected"}),
             {"approval_label": 0.0, "label_source": "lifecycle_state"},
+        )
+
+    def test_approval_label_excludes_hygiene_lifecycle_states(self) -> None:
+        self.assertIsNone(
+            _approval_label_from_registry_row({"latest_review_status": None, "lifecycle_state": "invalidated"})
+        )
+        self.assertIsNone(
+            _approval_label_from_registry_row({"latest_review_status": None, "lifecycle_state": "superseded"})
         )
 
     def test_approval_label_excludes_posted_without_review(self) -> None:

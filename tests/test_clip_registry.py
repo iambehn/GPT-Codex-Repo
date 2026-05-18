@@ -607,6 +607,39 @@ class ClipRegistryTests(unittest.TestCase):
             self.assertEqual(runtime_count, 1)
             self.assertEqual(fused_count, 1)
 
+    def test_refresh_dedupes_duplicate_analysis_ids_across_multiple_sidecars(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            runtime_a = root / "runtime" / "alpha.runtime_analysis.json"
+            runtime_b = root / "runtime" / "alpha-copy.runtime_analysis.json"
+            fused_a = root / "fused" / "alpha.fused_analysis.json"
+            fused_b = root / "fused" / "alpha-copy.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+
+            _runtime_sidecar(runtime_a, game="marvel_rivals", source=media)
+            _runtime_sidecar(runtime_b, game="marvel_rivals", source=media)
+            _fused_sidecar(fused_a, game="marvel_rivals", source=media)
+            _fused_sidecar(fused_b, game="marvel_rivals", source=media)
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            connection = sqlite3.connect(str(registry_path))
+            try:
+                runtime_count = connection.execute("SELECT COUNT(*) FROM runtime_analyses").fetchone()[0]
+                runtime_event_count = connection.execute("SELECT COUNT(*) FROM runtime_events").fetchone()[0]
+                fused_count = connection.execute("SELECT COUNT(*) FROM fused_analyses").fetchone()[0]
+                fused_event_count = connection.execute("SELECT COUNT(*) FROM fused_events").fetchone()[0]
+            finally:
+                connection.close()
+            self.assertEqual(runtime_count, 1)
+            self.assertEqual(runtime_event_count, 1)
+            self.assertEqual(fused_count, 1)
+            self.assertEqual(fused_event_count, 1)
+
     def test_missing_review_sidecar_emits_warning_without_mutation(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)

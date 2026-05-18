@@ -13,7 +13,7 @@ from pipeline.highlight_export_batch import (
 )
 from pipeline.highlight_selection_export import export_highlight_selection
 from pipeline.hook_candidate_export import derive_hook_candidates
-from pipeline.shadow_ranking_replay import compare_shadow_ranking_replay, run_shadow_ranking_replay
+from pipeline.shadow_ranking_replay import _feature_vector, compare_shadow_ranking_replay, run_shadow_ranking_replay
 from pipeline.v2_training_export import export_v2_training_datasets
 from pipeline.workflow_run_state import create_workflow_run
 
@@ -144,6 +144,42 @@ def _prepare_dataset(root: Path) -> tuple[dict, Path]:
 
 
 class ShadowRankingReplayTests(unittest.TestCase):
+    def test_feature_vector_treats_selected_for_export_as_positive_label(self) -> None:
+        features = _feature_vector(
+            {
+                "lifecycle_state": "selected_for_export",
+                "review_outcome": None,
+                "final_score": 0.93436,
+                "export_present": False,
+                "post_present": False,
+                "latest_view_count": None,
+                "latest_engagement_rate": None,
+            },
+            hook_row=None,
+            outcome_row=None,
+            performance_row=None,
+        )
+        self.assertTrue(features["label_positive"])
+        self.assertAlmostEqual(features["label_score"], 0.53359, places=5)
+
+    def test_feature_vector_keeps_rejected_review_negative_even_if_posted(self) -> None:
+        features = _feature_vector(
+            {
+                "lifecycle_state": "posted",
+                "review_outcome": "rejected",
+                "final_score": 0.77,
+                "export_present": False,
+                "post_present": False,
+                "latest_view_count": None,
+                "latest_engagement_rate": None,
+            },
+            hook_row=None,
+            outcome_row=None,
+            performance_row=None,
+        )
+        self.assertFalse(features["label_positive"])
+        self.assertAlmostEqual(features["label_score"], 0.1925, places=5)
+
     def test_run_shadow_ranking_replay_and_compare(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)

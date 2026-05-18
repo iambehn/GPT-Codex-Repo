@@ -389,14 +389,18 @@ def _feature_vector(
     latest_view_count = _float(candidate.get("latest_view_count"))
     latest_engagement_rate = _float(candidate.get("latest_engagement_rate"))
     hook_strength = _float(candidate.get("preferred_hook_strength", (hook_row or {}).get("hook_strength")))
-    label_positive = bool(
-        str(candidate.get("review_outcome") or "").strip().lower() == "approved"
-        or candidate.get("export_present")
-        or candidate.get("post_present")
-    )
+    lifecycle_state = str(candidate.get("lifecycle_state") or "").strip()
+    review_outcome = str(candidate.get("review_outcome") or "").strip().lower()
+    if review_outcome == "rejected":
+        approved_or_selected_positive = False
+    elif review_outcome == "approved":
+        approved_or_selected_positive = True
+    else:
+        approved_or_selected_positive = lifecycle_state in {"approved", "selected_for_export", "exported", "posted"}
+    label_positive = bool(approved_or_selected_positive)
     label_score = (
         (_float(candidate.get("final_score")) * 0.25)
-        + (0.30 if str(candidate.get("review_outcome") or "").strip().lower() == "approved" else 0.0)
+        + (0.30 if approved_or_selected_positive else 0.0)
         + (0.20 if candidate.get("export_present") else 0.0)
         + (0.20 if candidate.get("post_present") else 0.0)
         + min(latest_view_count / 1000.0, 0.10)
@@ -430,7 +434,7 @@ def _feature_vector(
         "preferred_hook_sound_off_legibility_score": _feature_value(candidate, "preferred_hook_sound_off_legibility_score", (hook_row or {}).get("sound_off_legibility_score")),
         "preferred_hook_packaging_strategy_present": _feature_value(candidate, "preferred_hook_packaging_strategy_present"),
         "preferred_hook_rejection_reason_present": _feature_value(candidate, "preferred_hook_rejection_reason_present"),
-        "is_approved": 1.0 if str(candidate.get("review_outcome") or "").strip().lower() == "approved" else 0.0,
+        "is_approved": 1.0 if review_outcome == "approved" else 0.0,
         "export_present": 1.0 if candidate.get("export_present") else 0.0,
         "post_present": 1.0 if candidate.get("post_present") else 0.0,
         "metrics_present": 1.0 if candidate.get("metrics_present") else 0.0,

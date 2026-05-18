@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import math
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -111,10 +112,11 @@ def map_matcher_result(
     confirmed_rows = matcher_result.get("confirmed_detections", [])
     if not isinstance(confirmed_rows, list):
         raise EventMapperError("invalid_matcher_report", "matcher report must contain a list of confirmed_detections")
+    valid_confirmed_rows, invalid_confirmed_detection_reasons = _sanitize_confirmed_rows(confirmed_rows)
 
     signals = build_runtime_signals(
         game,
-        confirmed_rows,
+        valid_confirmed_rows,
         metadata_by_asset,
         sample_fps=float(matcher_result.get("sample_fps", 0.0) or 0.0),
     )
@@ -137,9 +139,43 @@ def map_matcher_result(
         "signals": signals,
         "event_count": len(events),
         "events": events,
+        "invalid_confirmed_detection_count": sum(invalid_confirmed_detection_reasons.values()),
+        "invalid_confirmed_detection_reasons": invalid_confirmed_detection_reasons,
         "event_summary": _event_summary(events, identity_competition_drop_count=identity_competition_drop_count),
     }
     return result
+
+
+def _sanitize_confirmed_rows(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    valid_rows: list[dict[str, Any]] = []
+    invalid_reasons: dict[str, int] = {}
+    for row in rows:
+        invalid_reason = _invalid_confirmed_row_reason(row)
+        if invalid_reason is not None:
+            invalid_reasons[invalid_reason] = invalid_reasons.get(invalid_reason, 0) + 1
+            continue
+        valid_rows.append(row)
+    return valid_rows, invalid_reasons
+
+
+def _invalid_confirmed_row_reason(row: dict[str, Any]) -> str | None:
+    first_timestamp = _coerce_float(row.get("first_timestamp"))
+    if first_timestamp is None or not math.isfinite(first_timestamp):
+        return "non_finite_first_timestamp"
+    last_timestamp = _coerce_float(row.get("last_timestamp"))
+    if last_timestamp is None or not math.isfinite(last_timestamp):
+        return "non_finite_last_timestamp"
+    peak_score = _coerce_float(row.get("peak_score"))
+    if peak_score is None or not math.isfinite(peak_score):
+        return "non_finite_peak_score"
+    return None
+
+
+def _coerce_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _load_asset_event_metadata(
@@ -457,29 +493,40 @@ def _resolve_identity_competition(events: list[dict[str, Any]]) -> tuple[list[di
     dropped_identity = 0
     for roi_ref, rows in grouped.items():
         del roi_ref
-        ordered = sorted(rows, key=lambda row: (float(row["start_timestamp"]), -float(row["confidence"])))
-        active: list[dict[str, Any]] = []
+        ordered = sorted(
+            rows,
+            key=lambda row: (
+                float(row["start_timestamp"]),
+                float(row["end_timestamp"]),
+                str(row.get("asset_id", "")),
+            ),
+        )
+        segments: list[list[dict[str, Any]]] = []
+        current_segment: list[dict[str, Any]] = []
+        current_segment_end: float | None = None
         for row in ordered:
-            overlap = next(
-                (
-                    existing for existing in active
-                    if float(row["start_timestamp"]) <= float(existing["end_timestamp"])
-                    and float(row["end_timestamp"]) >= float(existing["start_timestamp"])
+            start_timestamp = float(row["start_timestamp"])
+            end_timestamp = float(row["end_timestamp"])
+            if current_segment and current_segment_end is not None and start_timestamp > current_segment_end:
+                segments.append(current_segment)
+                current_segment = []
+                current_segment_end = None
+            current_segment.append(row)
+            current_segment_end = end_timestamp if current_segment_end is None else max(current_segment_end, end_timestamp)
+        if current_segment:
+            segments.append(current_segment)
+
+        for segment in segments:
+            winner = max(
+                segment,
+                key=lambda row: (
+                    float(row["confidence"]),
+                    int(row["source_detection_count"]),
+                    str(row.get("asset_id", "")),
                 ),
-                None,
             )
-            if overlap is None:
-                active.append(row)
-                continue
-            existing_strength = (float(overlap["confidence"]), int(overlap["source_detection_count"]))
-            candidate_strength = (float(row["confidence"]), int(row["source_detection_count"]))
-            if candidate_strength > existing_strength:
-                active.remove(overlap)
-                active.append(row)
-                dropped_identity += 1
-                continue
-            dropped_identity += 1
-        kept_identity.extend(active)
+            kept_identity.append(winner)
+            dropped_identity += max(0, len(segment) - 1)
     resolved = non_identity_events + kept_identity
     for row in resolved:
         row.pop("_identity_competition", None)

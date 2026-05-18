@@ -92,6 +92,7 @@ def refresh_clip_registry(
     registry.parent.mkdir(parents=True, exist_ok=True)
 
     collected = _collect_registry_rows(root, game=game)
+    _dedupe_analysis_artifacts(collected)
     result = _write_registry(registry, root, collected, game=game)
 
     warnings_path = None
@@ -108,6 +109,171 @@ def refresh_clip_registry(
         output.write_text(json.dumps(result, indent=2), encoding="utf-8")
 
     return result
+
+
+def _dedupe_analysis_artifacts(collected: dict[str, Any]) -> None:
+    runtime_rows = collected.get("runtime_analyses", [])
+    if isinstance(runtime_rows, list):
+        selected_runtime = _dedupe_rows_by_latest(
+            runtime_rows,
+            key_fields=("analysis_id",),
+            mtime_field="last_ingested_mtime",
+            path_field="sidecar_path",
+        )
+        collected["runtime_analyses"] = list(selected_runtime.values())
+        allowed_runtime = {
+            (str(row.get("analysis_id") or "").strip(), str(row.get("sidecar_path") or "").strip())
+            for row in collected["runtime_analyses"]
+        }
+        collected["runtime_events"] = _dedupe_child_rows(
+            collected.get("runtime_events", []),
+            allowed_pairs=allowed_runtime,
+            parent_id_field="analysis_id",
+            sidecar_path_field="sidecar_path",
+            unique_key_fields=("analysis_id", "event_index"),
+        )
+        collected["runtime_detections"] = _dedupe_child_rows(
+            collected.get("runtime_detections", []),
+            allowed_pairs=allowed_runtime,
+            parent_id_field="analysis_id",
+            sidecar_path_field="sidecar_path",
+            unique_key_fields=("analysis_id", "detection_index"),
+        )
+        _sync_clip_sidecar_fields(
+            collected.get("clips", []),
+            collected["runtime_analyses"],
+            sidecar_field="runtime_sidecar_path",
+            review_status_field="runtime_review_status",
+        )
+
+    fused_rows = collected.get("fused_analyses", [])
+    if isinstance(fused_rows, list):
+        selected_fused = _dedupe_rows_by_latest(
+            fused_rows,
+            key_fields=("fusion_id",),
+            mtime_field="last_ingested_mtime",
+            path_field="sidecar_path",
+        )
+        collected["fused_analyses"] = list(selected_fused.values())
+        allowed_fused = {
+            (str(row.get("fusion_id") or "").strip(), str(row.get("sidecar_path") or "").strip())
+            for row in collected["fused_analyses"]
+        }
+        collected["fused_events"] = _dedupe_child_rows(
+            collected.get("fused_events", []),
+            allowed_pairs=allowed_fused,
+            parent_id_field="fusion_id",
+            sidecar_path_field="sidecar_path",
+            unique_key_fields=("fusion_id", "event_index"),
+        )
+        collected["fused_signal_refs"] = _dedupe_child_rows(
+            collected.get("fused_signal_refs", []),
+            allowed_pairs=allowed_fused,
+            parent_id_field="fusion_id",
+            sidecar_path_field="sidecar_path",
+            unique_key_fields=("fusion_id", "event_id", "signal_index"),
+        )
+        _sync_clip_sidecar_fields(
+            collected.get("clips", []),
+            collected["fused_analyses"],
+            sidecar_field="fused_sidecar_path",
+            review_status_field="fused_review_status",
+            action_field="top_fused_action",
+            score_field="top_fused_score",
+            top_event_rows=collected["fused_events"],
+        )
+
+
+def _dedupe_rows_by_latest(
+    rows: list[dict[str, Any]],
+    *,
+    key_fields: tuple[str, ...],
+    mtime_field: str,
+    path_field: str,
+) -> dict[tuple[str, ...], dict[str, Any]]:
+    selected: dict[tuple[str, ...], dict[str, Any]] = {}
+    for row in rows:
+        key = tuple(str(row.get(field) or "").strip() for field in key_fields)
+        if not all(key):
+            continue
+        current = selected.get(key)
+        if current is None:
+            selected[key] = row
+            continue
+        row_mtime = float(row.get(mtime_field) or 0.0)
+        current_mtime = float(current.get(mtime_field) or 0.0)
+        row_path = str(row.get(path_field) or "").strip()
+        current_path = str(current.get(path_field) or "").strip()
+        if row_mtime > current_mtime or (row_mtime == current_mtime and row_path > current_path):
+            selected[key] = row
+    return selected
+
+
+def _dedupe_child_rows(
+    rows: Any,
+    *,
+    allowed_pairs: set[tuple[str, str]],
+    parent_id_field: str,
+    sidecar_path_field: str,
+    unique_key_fields: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    if not isinstance(rows, list):
+        return []
+    kept: list[dict[str, Any]] = []
+    seen: set[tuple[str, ...]] = set()
+    for row in rows:
+        parent_pair = (
+            str(row.get(parent_id_field) or "").strip(),
+            str(row.get(sidecar_path_field) or "").strip(),
+        )
+        if parent_pair not in allowed_pairs:
+            continue
+        unique_key = tuple(str(row.get(field) or "").strip() for field in unique_key_fields)
+        if unique_key in seen:
+            continue
+        seen.add(unique_key)
+        kept.append(row)
+    return kept
+
+
+def _sync_clip_sidecar_fields(
+    clip_rows: Any,
+    analysis_rows: list[dict[str, Any]],
+    *,
+    sidecar_field: str,
+    review_status_field: str,
+    action_field: str | None = None,
+    score_field: str | None = None,
+    top_event_rows: list[dict[str, Any]] | None = None,
+) -> None:
+    if not isinstance(clip_rows, list):
+        return
+    by_source = {
+        (str(row.get("game") or "").strip(), str(row.get("source") or "").strip()): row
+        for row in analysis_rows
+    }
+    top_event_by_fusion: dict[str, dict[str, Any]] = {}
+    if top_event_rows:
+        for event_row in top_event_rows:
+            fusion_id = str(event_row.get("fusion_id") or "").strip()
+            if not fusion_id:
+                continue
+            current = top_event_by_fusion.get(fusion_id)
+            if current is None or float(event_row.get("final_score") or 0.0) > float(current.get("final_score") or 0.0):
+                top_event_by_fusion[fusion_id] = event_row
+    for clip in clip_rows:
+        key = (str(clip.get("game") or "").strip(), str(clip.get("source") or "").strip())
+        selected = by_source.get(key)
+        if selected is None:
+            continue
+        clip[sidecar_field] = selected.get("sidecar_path")
+        clip[review_status_field] = selected.get(review_status_field)
+        if action_field and score_field:
+            fusion_id = str(selected.get("fusion_id") or "").strip()
+            top_event = top_event_by_fusion.get(fusion_id)
+            if top_event is not None:
+                clip[action_field] = top_event.get("recommended_action")
+                clip[score_field] = top_event.get("final_score")
 
 
 def query_clip_registry(
@@ -1007,6 +1173,7 @@ def _ingest_fused_sidecar(path: Path, rows: dict[str, Any], *, game: str | None)
                 {
                     "fusion_id": fusion_id,
                     "event_id": event_id,
+                    "sidecar_path": resolved_path,
                     "signal_index": signal_index,
                     "signal_id": signal_key,
                     "signal_type": signal_row.get("signal_type"),
@@ -4372,7 +4539,9 @@ def _bulk_insert(connection: sqlite3.Connection, table_name: str, rows: list[dic
         return
     placeholders = ", ".join("?" for _ in columns)
     column_sql = ", ".join(columns)
-    sql = f"INSERT INTO {table_name} ({column_sql}) VALUES ({placeholders})"
+    # The registry is rebuilt as a mirror from collected artifacts, so stable-key
+    # collisions should converge to one latest row instead of failing the refresh.
+    sql = f"INSERT OR REPLACE INTO {table_name} ({column_sql}) VALUES ({placeholders})"
     payloads = []
     for row in rows:
         payloads.append(tuple(row.get(column) for column in columns))

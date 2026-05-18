@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pipeline.source_lineage import build_split_lineage_key, infer_origin_source
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APPROVAL_TARGET_DATASET_SCHEMA_VERSION = "approval_target_dataset_v1"
@@ -128,6 +130,7 @@ def _adapt_candidate_row(row: dict[str, Any]) -> dict[str, Any]:
         "candidate_id": row.get("candidate_id"),
         "game": row.get("game"),
         "source": row.get("source"),
+        "origin_source": _origin_source(row),
         "fixture_id": row.get("fixture_id"),
         "event_id": row.get("event_id"),
         "fused_sidecar_path": row.get("fused_sidecar_path"),
@@ -201,8 +204,29 @@ def _adapt_candidate_row(row: dict[str, Any]) -> dict[str, Any]:
         "metrics_complete_present": 0.0,
         "split_candidate_key": row.get("candidate_id"),
         "split_fixture_key": row.get("fixture_id") or "",
-        "split_lineage_key": row.get("candidate_id"),
+        "split_lineage_key": _split_lineage_key(row),
     }
+
+
+def _split_lineage_key(row: dict[str, Any] | None) -> str:
+    if not row:
+        return ""
+    return build_split_lineage_key(
+        game=row.get("game"),
+        source=row.get("source"),
+        origin_source=row.get("origin_source") or _origin_source(row),
+        fixture_id=row.get("fixture_id"),
+    )
+
+
+def _origin_source(row: dict[str, Any] | None) -> str:
+    if not row:
+        return ""
+    return infer_origin_source(
+        source=row.get("source"),
+        fused_sidecar_path=row.get("fused_sidecar_path"),
+        highlight_selection_manifest_path=row.get("highlight_selection_manifest_path"),
+    )
 
 
 def _adapted_dataset_id(source_manifest_path: str, payload: dict[str, Any]) -> str:

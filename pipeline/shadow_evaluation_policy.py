@@ -24,6 +24,12 @@ SUPPORTED_TARGETS = (
     "export_selection_probability",
     "post_performance_score",
 )
+SUPPORTED_PRIMARY_METRICS = (
+    "top_k_recall",
+    "precision_at_k",
+    "ranking_gain",
+    "pearson_correlation",
+)
 
 
 def write_shadow_evaluation_policy(output_path: str | Path | None = None) -> dict[str, Any]:
@@ -91,8 +97,14 @@ def evaluate_shadow_experiment_policy(
 
     prepared_rows = _prepare_rows(rows, evaluation_target=evaluation_target)
     policy_target = dict(policy["targets"].get(evaluation_target, {}))
-    global_slice = _slice_metrics(prepared_rows, slice_type="global", slice_value="all", target=evaluation_target)
-    slice_rows = _build_slice_rows(prepared_rows, target=evaluation_target)
+    global_slice = _slice_metrics(
+        prepared_rows,
+        slice_type="global",
+        slice_value="all",
+        target=evaluation_target,
+        policy_target=policy_target,
+    )
+    slice_rows = _build_slice_rows(prepared_rows, target=evaluation_target, policy_target=policy_target)
     governed_recommendation = _govern_recommendation(
         global_slice,
         slice_rows,
@@ -357,21 +369,31 @@ def _slice_metrics(
     slice_type: str,
     slice_value: str,
     target: str,
+    policy_target: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     covered_rows = [row for row in rows if bool(row.get("target_label_covered"))]
     positive_count = sum(1 for row in covered_rows if bool(row.get("target_label_positive")))
     shadow_sorted = sorted(covered_rows, key=lambda row: (-float(_predicted_score(row, target=target)), str(row.get("candidate_id") or "")))
     heuristic_sorted = sorted(covered_rows, key=lambda row: (-float(row.get("heuristic_final_score") or 0.0), str(row.get("candidate_id") or "")))
-    top_k = positive_count if positive_count > 0 else len(covered_rows)
+    top_k = _top_k_budget(covered_rows, positive_count=positive_count, policy_target=policy_target)
     shadow_hits = _topk_hits(shadow_sorted, top_k)
     heuristic_hits = _topk_hits(heuristic_sorted, top_k)
     shadow_gain = _ranking_gain(shadow_sorted)
     heuristic_gain = _ranking_gain(heuristic_sorted)
     shadow_corr = _pearson(shadow_sorted, value_key="target_label_score", score_func=lambda row: _predicted_score(row, target=target))
     heuristic_corr = _pearson(heuristic_sorted, value_key="target_label_score", score_func=lambda row: float(row.get("heuristic_final_score") or 0.0))
-    primary_name = "pearson_correlation" if target == "post_performance_score" else "top_k_recall"
-    shadow_primary = shadow_corr if primary_name == "pearson_correlation" else (shadow_hits / positive_count if positive_count > 0 else None)
-    heuristic_primary = heuristic_corr if primary_name == "pearson_correlation" else (heuristic_hits / positive_count if positive_count > 0 else None)
+    primary_name = _resolve_primary_metric_name(target=target, policy_target=policy_target)
+    shadow_primary, heuristic_primary = _primary_metric_values(
+        primary_name,
+        positive_count=positive_count,
+        top_k=top_k,
+        shadow_hits=shadow_hits,
+        heuristic_hits=heuristic_hits,
+        shadow_gain=shadow_gain,
+        heuristic_gain=heuristic_gain,
+        shadow_corr=shadow_corr,
+        heuristic_corr=heuristic_corr,
+    )
     shadow_fp = _false_positive_cost(shadow_sorted, top_k)
     heuristic_fp = _false_positive_cost(heuristic_sorted, top_k)
     coverage_status = "sufficient"
@@ -407,7 +429,12 @@ def _slice_metrics(
     }
 
 
-def _build_slice_rows(rows: list[dict[str, Any]], *, target: str) -> list[dict[str, Any]]:
+def _build_slice_rows(
+    rows: list[dict[str, Any]],
+    *,
+    target: str,
+    policy_target: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     slice_specs = (
         ("game", lambda row: str(row.get("game") or "unknown")),
         ("fixture_id", lambda row: str(row.get("fixture_id") or "unassigned")),
@@ -424,8 +451,71 @@ def _build_slice_rows(rows: list[dict[str, Any]], *, target: str) -> list[dict[s
         for row in rows:
             grouped.setdefault(selector(row), []).append(row)
         for slice_value, bucket in sorted(grouped.items()):
-            slices.append(_slice_metrics(bucket, slice_type=slice_type, slice_value=slice_value, target=target))
+            slices.append(
+                _slice_metrics(
+                    bucket,
+                    slice_type=slice_type,
+                    slice_value=slice_value,
+                    target=target,
+                    policy_target=policy_target,
+                )
+            )
     return slices
+
+
+def _resolve_primary_metric_name(*, target: str, policy_target: dict[str, Any] | None) -> str:
+    configured = str((policy_target or {}).get("primary_metric") or "").strip()
+    if configured in SUPPORTED_PRIMARY_METRICS:
+        return configured
+    return "pearson_correlation" if target == "post_performance_score" else "top_k_recall"
+
+
+def _top_k_budget(
+    covered_rows: list[dict[str, Any]],
+    *,
+    positive_count: int,
+    policy_target: dict[str, Any] | None,
+) -> int:
+    if not covered_rows:
+        return 0
+    base_top_k = positive_count if positive_count > 0 else len(covered_rows)
+    raw_cap = (policy_target or {}).get("top_k_cap")
+    if raw_cap is None:
+        return base_top_k
+    try:
+        cap = int(raw_cap)
+    except (TypeError, ValueError):
+        return base_top_k
+    if cap <= 0:
+        return base_top_k
+    return min(base_top_k, cap)
+
+
+def _primary_metric_values(
+    primary_name: str,
+    *,
+    positive_count: int,
+    top_k: int,
+    shadow_hits: int,
+    heuristic_hits: int,
+    shadow_gain: float,
+    heuristic_gain: float,
+    shadow_corr: float | None,
+    heuristic_corr: float | None,
+) -> tuple[float | None, float | None]:
+    if primary_name == "pearson_correlation":
+        return shadow_corr, heuristic_corr
+    if primary_name == "ranking_gain":
+        return shadow_gain, heuristic_gain
+    if primary_name == "precision_at_k":
+        if top_k <= 0:
+            return None, None
+        return shadow_hits / top_k, heuristic_hits / top_k
+    if primary_name == "top_k_recall":
+        if positive_count <= 0:
+            return None, None
+        return shadow_hits / positive_count, heuristic_hits / positive_count
+    return None, None
 
 
 def _govern_recommendation(

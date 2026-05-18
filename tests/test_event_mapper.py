@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import sys
 import tempfile
 import unittest
@@ -418,6 +419,63 @@ class EventMapperTests(unittest.TestCase):
         self.assertEqual(result["events"][0]["asset_id"], "marvel_rivals.alt-hero.hero_portrait")
         self.assertEqual(result["event_summary"]["identity_competition_drop_count"], 1)
 
+    def test_map_matcher_result_keeps_one_identity_winner_per_non_overlapping_segment(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            self._write_published_pack(root)
+            confirmed = [
+                {
+                    "asset_id": "marvel_rivals.punisher.hero_portrait",
+                    "roi_ref": "hero_portrait",
+                    "first_timestamp": 1.0,
+                    "last_timestamp": 2.0,
+                    "peak_score": 0.94,
+                    "supporting_frames": 3,
+                    "temporal_window": 3,
+                },
+                {
+                    "asset_id": "marvel_rivals.alt-hero.hero_portrait",
+                    "roi_ref": "hero_portrait",
+                    "first_timestamp": 1.5,
+                    "last_timestamp": 2.25,
+                    "peak_score": 0.99,
+                    "supporting_frames": 4,
+                    "temporal_window": 3,
+                },
+                {
+                    "asset_id": "marvel_rivals.punisher.hero_portrait",
+                    "roi_ref": "hero_portrait",
+                    "first_timestamp": 5.0,
+                    "last_timestamp": 6.0,
+                    "peak_score": 0.97,
+                    "supporting_frames": 5,
+                    "temporal_window": 3,
+                },
+                {
+                    "asset_id": "marvel_rivals.alt-hero.hero_portrait",
+                    "roi_ref": "hero_portrait",
+                    "first_timestamp": 5.25,
+                    "last_timestamp": 5.75,
+                    "peak_score": 0.95,
+                    "supporting_frames": 2,
+                    "temporal_window": 3,
+                },
+            ]
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ):
+                result = map_matcher_result("marvel_rivals", self._matcher_report(confirmed))
+        self.assertEqual(result["event_count"], 2)
+        kept_assets = [row["asset_id"] for row in result["events"]]
+        self.assertEqual(
+            kept_assets,
+            [
+                "marvel_rivals.alt-hero.hero_portrait",
+                "marvel_rivals.punisher.hero_portrait",
+            ],
+        )
+        self.assertEqual(result["event_summary"]["identity_competition_drop_count"], 2)
+
     def test_map_matcher_result_applies_runtime_rule_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
@@ -507,6 +565,41 @@ class EventMapperTests(unittest.TestCase):
                 with self.assertRaises(EventMapperError) as exc:
                     map_matcher_result("marvel_rivals", self._matcher_report(confirmed))
         self.assertEqual(exc.exception.status, "template_rule_target_mismatch")
+
+    def test_map_matcher_result_drops_non_finite_confirmed_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            self._write_published_pack(root)
+            confirmed = [
+                {
+                    "asset_id": "marvel_rivals.punisher.hero_portrait",
+                    "roi_ref": "hero_portrait",
+                    "first_timestamp": 1.0,
+                    "last_timestamp": 1.5,
+                    "peak_score": 0.98,
+                    "supporting_frames": 4,
+                    "temporal_window": 3,
+                },
+                {
+                    "asset_id": "marvel_rivals.alt-hero.hero_portrait",
+                    "roi_ref": "hero_portrait",
+                    "first_timestamp": 2.0,
+                    "last_timestamp": 2.5,
+                    "peak_score": math.nan,
+                    "supporting_frames": 4,
+                    "temporal_window": 3,
+                },
+            ]
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ):
+                result = map_matcher_result("marvel_rivals", self._matcher_report(confirmed))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["signal_count"], 1)
+        self.assertEqual(result["event_count"], 1)
+        self.assertEqual(result["invalid_confirmed_detection_count"], 1)
+        self.assertEqual(result["invalid_confirmed_detection_reasons"], {"non_finite_peak_score": 1})
+        self.assertEqual(result["signals"][0]["asset_id"], "marvel_rivals.punisher.hero_portrait")
 
     def test_load_matcher_report_raises_for_missing_path(self) -> None:
         with self.assertRaises(EventMapperError) as exc:

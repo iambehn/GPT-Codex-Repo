@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pipeline.source_lineage import build_split_lineage_key, infer_origin_source
+
 from pipeline.clip_registry import query_clip_registry
 
 
@@ -242,6 +244,7 @@ def _assemble_dataset(query_results: dict[str, Any], *, filters: dict[str, Any])
                 "event_id": row.get("event_id"),
                 "game": row.get("game"),
                 "source": row.get("source"),
+                "origin_source": _origin_source(row),
                 "fixture_id": row.get("fixture_id"),
                 "fused_sidecar_path": row.get("fused_sidecar_path"),
                 "review_outcome": row.get("latest_review_status"),
@@ -378,6 +381,7 @@ def _assemble_dataset(query_results: dict[str, Any], *, filters: dict[str, Any])
                 "event_id": row.get("event_id"),
                 "game": row.get("game"),
                 "source": row.get("source"),
+                "origin_source": _origin_source(row),
                 "fixture_id": row.get("fixture_id"),
                 "fused_sidecar_path": row.get("fused_sidecar_path"),
                 "lifecycle_state": row.get("lifecycle_state"),
@@ -529,6 +533,8 @@ def _assemble_dataset(query_results: dict[str, Any], *, filters: dict[str, Any])
                 "event_id": export_row.get("event_id") if export_row else post_row.get("event_id") if post_row else None,
                 "hook_id": metrics_row.get("hook_id") or export_row.get("hook_id") if export_row else None,
                 "game": metrics_row.get("game") or export_row.get("game") if export_row else post_row.get("game") if post_row else None,
+                "source": metrics_row.get("source") or export_row.get("source") if export_row else post_row.get("source") if post_row else None,
+                "origin_source": _origin_source(export_row or post_row or metrics_row),
                 "fixture_id": export_row.get("fixture_id") if export_row else None,
                 "platform": metrics_row.get("platform"),
                 "account_id": metrics_row.get("account_id"),
@@ -617,6 +623,7 @@ def _build_outcome_row(
         "fixture_id": export_row.get("fixture_id") if export_row else None,
         "game": export_row.get("game") if export_row else post_row.get("game") if post_row else None,
         "source": export_row.get("source") if export_row else None,
+        "origin_source": _origin_source(reference),
         "fused_sidecar_path": export_row.get("fused_sidecar_path") if export_row else None,
         "hook_manifest_path": export_row.get("hook_manifest_path") if export_row else None,
         "highlight_selection_manifest_path": export_row.get("highlight_selection_manifest_path") if export_row else None,
@@ -713,7 +720,7 @@ def _build_manifest(
             "candidates_with_metrics": sum(1 for row in coverage if row.get("metrics_present")),
             "candidates_with_eligible_post_performance_labels": sum(1 for row in coverage if row.get("latest_post_performance_label_eligible")),
         },
-        "split_dimensions": ["candidate_id", "fixture_id", "game", "source"],
+        "split_dimensions": ["candidate_id", "fixture_id", "game", "source", "origin_source"],
         "legacy_training_export_note": "training_export_v1 remains supported for proxy-scan sidecars and is not the canonical V2 training export surface.",
         "warning_count": len(warnings),
         "warnings": warnings,
@@ -998,13 +1005,21 @@ def _selected_highlight_details(row: dict[str, Any] | None) -> dict[str, Any]:
 def _split_lineage_key(row: dict[str, Any] | None) -> str:
     if not row:
         return ""
-    return "::".join(
-        [
-            str(row.get("game") or ""),
-            str(row.get("source") or ""),
-            str(row.get("fixture_id") or ""),
-            str(row.get("candidate_id") or ""),
-        ]
+    return build_split_lineage_key(
+        game=row.get("game"),
+        source=row.get("source"),
+        origin_source=row.get("origin_source") or _origin_source(row),
+        fixture_id=row.get("fixture_id"),
+    )
+
+
+def _origin_source(row: dict[str, Any] | None) -> str:
+    if not row:
+        return ""
+    return infer_origin_source(
+        source=row.get("source"),
+        fused_sidecar_path=row.get("fused_sidecar_path"),
+        highlight_selection_manifest_path=row.get("highlight_selection_manifest_path"),
     )
 
 

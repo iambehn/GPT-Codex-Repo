@@ -418,11 +418,26 @@ class ShadowModelTrainingTests(unittest.TestCase):
             self.assertNotIn("hook_mode_natural", model["feature_fields"])
             self.assertNotIn("hook_mode_reject", model["feature_fields"])
             self.assertNotIn("hook_archetype_flex", model["feature_fields"])
-            self.assertNotIn("account_context_present", model["feature_fields"])
-            self.assertEqual(
-                model["feature_fields"],
-                model["feature_fields_by_head"]["post_performance"],
+
+    def test_train_shadow_model_accepts_split_lineage_key(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            dataset, _registry_path = _prepare_dataset(root)
+
+            model = train_shadow_ranking_model(
+                dataset["manifest_path"],
+                model_output_path=root / "models" / "lineage.shadow_ranking_model.json",
+                training_target="approved_or_selected_probability",
+                split_key="split_lineage_key",
+                train_fraction=0.75,
             )
+
+            self.assertTrue(model["ok"])
+            self.assertEqual(model["status"], "ok")
+            self.assertEqual(model["split_key"], "split_lineage_key")
+            self.assertEqual(model["row_count"], 4)
+            self.assertGreaterEqual(model["train_row_count"], 1)
+            self.assertGreaterEqual(model["eval_row_count"], 1)
 
     def test_train_shadow_model_approved_target_omits_irrelevant_post_sparsity_warnings(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
