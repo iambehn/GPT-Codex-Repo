@@ -9,6 +9,7 @@ from typing import Any
 
 from pipeline.clip_registry import load_candidate_lifecycle_details, load_hook_candidate_details
 from pipeline.evaluation_fixtures import load_evaluation_fixture_manifest
+from pipeline.fused_review_bridge import FUSED_REVIEW_SESSION_SCHEMA_VERSION
 from pipeline.proxy_review_bridge import PROXY_REVIEW_SESSION_SCHEMA_VERSION
 from pipeline.unified_replay_viewer import render_unified_replay_viewer
 
@@ -20,6 +21,7 @@ def load_highlight_review_records(
     fixture_comparison_report: str | Path | None = None,
     fixture_trial_batch_manifest: str | Path | None = None,
     proxy_review_session_manifest: str | Path | None = None,
+    fused_review_session_manifest: str | Path | None = None,
     registry_path: str | Path | None = None,
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
@@ -80,6 +82,8 @@ def load_highlight_review_records(
 
     if proxy_review_session_manifest is not None:
         records.extend(_load_proxy_review_session_records(proxy_review_session_manifest))
+    if fused_review_session_manifest is not None:
+        records.extend(_load_fused_review_session_records(fused_review_session_manifest))
 
     if sidecar_root is not None:
         root = _resolve_path(sidecar_root)
@@ -191,10 +195,12 @@ def launch_highlight_review_app(
     fixture_comparison_report: str | Path | None = None,
     fixture_trial_batch_manifest: str | Path | None = None,
     proxy_review_session_manifest: str | Path | None = None,
+    fused_review_session_manifest: str | Path | None = None,
     proxy_calibration_report: str | Path | None = None,
     proxy_replay_report: str | Path | None = None,
     runtime_calibration_report: str | Path | None = None,
     runtime_replay_report: str | Path | None = None,
+    detector_calibration_followup_manifest: str | Path | None = None,
     registry_path: str | Path | None = None,
     output_path: str | Path | None = None,
     launch: bool = True,
@@ -205,6 +211,7 @@ def launch_highlight_review_app(
         fixture_comparison_report=fixture_comparison_report,
         fixture_trial_batch_manifest=fixture_trial_batch_manifest,
         proxy_review_session_manifest=proxy_review_session_manifest,
+        fused_review_session_manifest=fused_review_session_manifest,
         registry_path=registry_path,
     )
     if not records:
@@ -213,6 +220,11 @@ def launch_highlight_review_app(
             "status": "no_review_records",
             "error": "no fixture records or sidecar records were found",
         }
+    followup_manifest_result = _load_detector_calibration_followup_manifest(
+        detector_calibration_followup_manifest
+    )
+    if not followup_manifest_result["ok"]:
+        return followup_manifest_result
 
     try:
         gradio = importlib.import_module("gradio")
@@ -224,10 +236,27 @@ def launch_highlight_review_app(
         }
 
     records_by_id = {str(row["record_id"]): row for row in records}
-    choices = [(str(row["label"]), str(row["record_id"])) for row in records]
     record_order = [str(row["record_id"]) for row in records]
+    followup_rows = list(followup_manifest_result.get("rows", []))
 
-    def _render_record(record_id: str) -> tuple[str, str | None, str, str, str]:
+    def _render_empty_record() -> tuple[str, str | None, str, str, str, str, str]:
+        return (
+            "## No records available\n- Current selector filter produced no review records.",
+            None,
+            _display_path("Primary viewer path", None),
+            _display_path("Secondary viewer path", None),
+            "No detector calibration handoff available for this record.",
+            _render_calibration_followup_summary(
+                {},
+                manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+                followup_rows=followup_rows,
+            ),
+            json.dumps({"status": "empty_active_record_set"}, indent=2),
+        )
+
+    def _render_record(record_id: str | None) -> tuple[str, str | None, str, str, str, str, str]:
+        if not record_id:
+            return _render_empty_record()
         row = records_by_id[str(record_id)]
         summary = _record_summary(row)
         if row.get("kind") == "proxy_review_session_item":
@@ -236,7 +265,27 @@ def launch_highlight_review_app(
                 str(row.get("processed_clip_path") or "") or None,
                 _display_path("Source clip path", row.get("source_clip_path")),
                 _display_path("Proxy sidecar path", row.get("proxy_sidecar_path")),
+                "",
+                _render_calibration_followup_summary(
+                    row,
+                    manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+                    followup_rows=followup_rows,
+                ),
                 json.dumps(_proxy_review_session_payload(row), indent=2),
+            )
+        if row.get("kind") == "fused_review_session_item":
+            return (
+                summary,
+                str(row.get("processed_clip_path") or "") or None,
+                _display_path("Source clip path", row.get("source_clip_path")),
+                _display_path("Fused sidecar path", row.get("fused_sidecar_path")),
+                "",
+                _render_calibration_followup_summary(
+                    row,
+                    manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+                    followup_rows=followup_rows,
+                ),
+                json.dumps(_fused_review_session_payload(row), indent=2),
             )
         if row.get("kind") == "fixture":
             comparison_rows = list(row.get("fixture_comparison_rows", []))
@@ -273,13 +322,19 @@ def launch_highlight_review_app(
                 render_payload["preferred_comparison"] = preferred
                 if batch_rows:
                     render_payload["fixture_trial_batch_rows"] = batch_rows
-            return (
-                summary,
-                None,
-                _display_path("Primary viewer path", baseline_path),
-                _display_path("Secondary viewer path", trial_path),
-                json.dumps(render_payload, indent=2),
-            )
+                return (
+                    summary,
+                    None,
+                    _display_path("Primary viewer path", baseline_path),
+                    _display_path("Secondary viewer path", trial_path),
+                    "",
+                    _render_calibration_followup_summary(
+                        row,
+                        manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+                        followup_rows=followup_rows,
+                    ),
+                    json.dumps(render_payload, indent=2),
+                )
         result = render_unified_replay_viewer(
             proxy_sidecar=row.get("proxy_sidecar_path"),
             runtime_sidecar=row.get("runtime_sidecar_path"),
@@ -293,33 +348,146 @@ def launch_highlight_review_app(
             registry_path=registry_path,
             output_path=output_path,
         )
+        calibration_handoff_summary = _render_calibration_handoff_summary(result.get("viewer_payload"))
+        matched_followup_rows = _match_calibration_followup_rows(
+            row,
+            manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+            followup_rows=followup_rows,
+        )
+        matched_followup_rows = _sort_calibration_followup_rows(matched_followup_rows)
+        followup_summary = _render_calibration_followup_summary(
+            row,
+            manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+            followup_rows=followup_rows,
+        )
+        debug_result = dict(result)
+        debug_result["matched_calibration_followup_rows"] = matched_followup_rows
+        top_calibration_followup = _top_calibration_followup_payload(matched_followup_rows)
+        if top_calibration_followup is not None:
+            debug_result["top_calibration_followup"] = top_calibration_followup
         return (
             summary,
             None,
             _display_path("Primary viewer path", result.get("viewer_path")),
             _display_path("Secondary viewer path", None),
-            json.dumps(result, indent=2),
+            calibration_handoff_summary,
+            followup_summary,
+            json.dumps(debug_result, indent=2),
         )
 
-    def _next_record_id(record_id: str) -> str:
+    def _next_record_id(record_id: str, *, active_record_ids: list[str]) -> str:
         try:
-            index = record_order.index(str(record_id))
+            index = active_record_ids.index(str(record_id))
         except ValueError:
             return str(record_id)
-        for candidate_id in record_order[index + 1 :]:
+        for candidate_id in active_record_ids[index + 1 :]:
             candidate_row = records_by_id.get(candidate_id, {})
-            if candidate_row.get("kind") != "proxy_review_session_item":
+            if not _is_review_session_item(candidate_row):
                 return candidate_id
             if str(candidate_row.get("review_status") or "unreviewed") == "unreviewed":
                 return candidate_id
         return str(record_id)
 
-    def _apply_decision(record_id: str, decision: str) -> tuple[str, str, str | None, str, str, str, str]:
+    def _render_active_record(
+        record_id: str | None,
+        show_only_followup_records: bool,
+    ) -> tuple[dict[str, Any], dict[str, Any], str, str, str | None, str, str, str, str, str]:
+        active_rows = _active_review_records(
+            records,
+            manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+            followup_rows=followup_rows,
+            show_only_followup_records=show_only_followup_records,
+        )
+        active_record_ids = [str(item["record_id"]) for item in active_rows]
+        resolved_record_id = _resolve_active_record_id(record_id, active_record_ids)
+        selector_payload = _selector_update_payload(
+            choices=[(str(item["label"]), str(item["record_id"])) for item in active_rows],
+            value=resolved_record_id,
+        )
+        toggle_payload = _toggle_update_payload(
+            label=_followup_toggle_label(
+                records,
+                manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+                followup_rows=followup_rows,
+            ),
+            value=show_only_followup_records,
+        )
+        followup_status = _render_calibration_followup_status(
+            records,
+            manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+            followup_rows=followup_rows,
+            show_only_followup_records=show_only_followup_records,
+        )
+        if resolved_record_id is None:
+            summary, media_path, primary_path, secondary_path, calibration_handoff, calibration_followup, payload = _render_empty_record()
+        else:
+            summary, media_path, primary_path, secondary_path, calibration_handoff, calibration_followup, payload = _render_record(resolved_record_id)
+        return (
+            selector_payload,
+            toggle_payload,
+            followup_status,
+            summary,
+            media_path,
+            primary_path,
+            secondary_path,
+            calibration_handoff,
+            calibration_followup,
+            payload,
+        )
+
+    def _apply_decision(
+        record_id: str | None,
+        show_only_followup_records: bool,
+        decision: str,
+    ) -> tuple[dict[str, Any], dict[str, Any], str, str, str | None, str, str, str, str, str, str]:
+        if not record_id:
+            selector_payload, toggle_payload, followup_status, summary, media_path, primary_path, secondary_path, calibration_handoff, calibration_followup, payload = _render_active_record(
+                None,
+                show_only_followup_records,
+            )
+            return (
+                selector_payload,
+                toggle_payload,
+                followup_status,
+                summary,
+                media_path,
+                primary_path,
+                secondary_path,
+                calibration_handoff,
+                calibration_followup,
+                payload,
+                "No active record is available for the current selector filter.",
+            )
         row = records_by_id[str(record_id)]
-        if row.get("kind") != "proxy_review_session_item":
-            summary, media_path, primary_path, secondary_path, payload = _render_record(record_id)
-            return str(record_id), summary, media_path, primary_path, secondary_path, payload, "Selected record is not a proxy review session item."
-        write_result = _finalize_proxy_review_session_decision(row, decision)
+        if not _is_review_session_item(row):
+            selector_payload, toggle_payload, followup_status, summary, media_path, primary_path, secondary_path, calibration_handoff, calibration_followup, payload = _render_active_record(
+                record_id,
+                show_only_followup_records,
+            )
+            return (
+                selector_payload,
+                toggle_payload,
+                followup_status,
+                summary,
+                media_path,
+                primary_path,
+                secondary_path,
+                calibration_handoff,
+                calibration_followup,
+                payload,
+                "Selected record is not a review session item.",
+            )
+        active_rows = _active_review_records(
+            records,
+            manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+            followup_rows=followup_rows,
+            show_only_followup_records=show_only_followup_records,
+        )
+        active_record_ids = [str(item["record_id"]) for item in active_rows]
+        if row.get("kind") == "proxy_review_session_item":
+            write_result = _finalize_proxy_review_session_decision(row, decision)
+        else:
+            write_result = _finalize_fused_review_session_decision(row, decision)
         if write_result.get("ok"):
             row["review_status"] = write_result.get("review_status")
             row["reviewed_at"] = write_result.get("reviewed_at")
@@ -329,7 +497,7 @@ def launch_highlight_review_app(
                 row["gpt_final_path"] = str(write_result["gpt_final_path"])
             if write_result.get("gpt_meta_payload"):
                 row["gpt_meta_payload"] = dict(write_result["gpt_meta_payload"])
-            next_record_id = _next_record_id(record_id)
+            next_record_id = _next_record_id(record_id, active_record_ids=active_record_ids)
             if next_record_id == str(record_id):
                 status_message = f"Updated review status to {row['review_status']}. Reached last item."
             else:
@@ -337,12 +505,35 @@ def launch_highlight_review_app(
         else:
             next_record_id = str(record_id)
             status_message = str(write_result.get("error") or "Failed to update review status.")
-        summary, media_path, primary_path, secondary_path, payload = _render_record(next_record_id)
-        return next_record_id, summary, media_path, primary_path, secondary_path, payload, status_message
+        selector_payload, toggle_payload, followup_status, summary, media_path, primary_path, secondary_path, calibration_handoff, calibration_followup, payload = _render_active_record(
+            next_record_id,
+            show_only_followup_records,
+        )
+        return selector_payload, toggle_payload, followup_status, summary, media_path, primary_path, secondary_path, calibration_handoff, calibration_followup, payload, status_message
 
     with gradio.Blocks(title="Highlight Review App") as app:
         gradio.Markdown("# Highlight Review App")
-        selector = gradio.Dropdown(choices=choices, value=choices[0][1], label="Fixture or reviewed clip")
+        initial_rows = _active_review_records(
+            records,
+            manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+            followup_rows=followup_rows,
+            show_only_followup_records=False,
+        )
+        initial_record_id = str(initial_rows[0]["record_id"]) if initial_rows else None
+        selector = gradio.Dropdown(
+            choices=[(str(row["label"]), str(row["record_id"])) for row in initial_rows],
+            value=initial_record_id,
+            label="Fixture or reviewed clip",
+        )
+        followup_only_toggle = gradio.Checkbox(
+            label=_followup_toggle_label(
+                records,
+                manifest_loaded=bool(followup_manifest_result.get("manifest_loaded")),
+                followup_rows=followup_rows,
+            ),
+            value=False,
+        )
+        followup_status_box = gradio.Textbox(label="Calibration follow-up status", lines=2)
         with gradio.Row():
             with gradio.Column(scale=3):
                 media_player = gradio.Video(label="Review media", height=396)
@@ -354,32 +545,39 @@ def launch_highlight_review_app(
                 unreviewed_button = gradio.Button("Leave unreviewed")
                 baseline_viewer_path_box = gradio.Textbox(label="Primary path", lines=3)
                 trial_viewer_path_box = gradio.Textbox(label="Secondary path", lines=3)
+                calibration_handoff_box = gradio.Textbox(label="Detector calibration handoff", lines=8)
+                calibration_followup_box = gradio.Textbox(label="Calibration follow-up", lines=8)
                 with gradio.Accordion("Debug details", open=False):
                     payload_box = gradio.Code(label="Viewer render payload", language="json")
         selector.change(
-            _render_record,
-            inputs=selector,
-            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box],
+            _render_active_record,
+            inputs=[selector, followup_only_toggle],
+            outputs=[selector, followup_only_toggle, followup_status_box, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, calibration_handoff_box, calibration_followup_box, payload_box],
+        )
+        followup_only_toggle.change(
+            _render_active_record,
+            inputs=[selector, followup_only_toggle],
+            outputs=[selector, followup_only_toggle, followup_status_box, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, calibration_handoff_box, calibration_followup_box, payload_box],
         )
         approve_button.click(
-            lambda record_id: _apply_decision(record_id, "approved"),
-            inputs=selector,
-            outputs=[selector, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            lambda record_id, show_only_followup_records: _apply_decision(record_id, show_only_followup_records, "approved"),
+            inputs=[selector, followup_only_toggle],
+            outputs=[selector, followup_only_toggle, followup_status_box, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, calibration_handoff_box, calibration_followup_box, payload_box, decision_status_box],
         )
         reject_button.click(
-            lambda record_id: _apply_decision(record_id, "rejected"),
-            inputs=selector,
-            outputs=[selector, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            lambda record_id, show_only_followup_records: _apply_decision(record_id, show_only_followup_records, "rejected"),
+            inputs=[selector, followup_only_toggle],
+            outputs=[selector, followup_only_toggle, followup_status_box, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, calibration_handoff_box, calibration_followup_box, payload_box, decision_status_box],
         )
         unreviewed_button.click(
-            lambda record_id: _apply_decision(record_id, "unreviewed"),
-            inputs=selector,
-            outputs=[selector, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            lambda record_id, show_only_followup_records: _apply_decision(record_id, show_only_followup_records, "unreviewed"),
+            inputs=[selector, followup_only_toggle],
+            outputs=[selector, followup_only_toggle, followup_status_box, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, calibration_handoff_box, calibration_followup_box, payload_box, decision_status_box],
         )
         app.load(
-            lambda: (*_render_record(choices[0][1]), ""),
+            lambda: (*_render_active_record(initial_record_id, False), ""),
             inputs=None,
-            outputs=[summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, payload_box, decision_status_box],
+            outputs=[selector, followup_only_toggle, followup_status_box, summary_box, media_player, baseline_viewer_path_box, trial_viewer_path_box, calibration_handoff_box, calibration_followup_box, payload_box, decision_status_box],
         )
 
     if launch:
@@ -419,6 +617,343 @@ def _base_sidecar_record(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _load_detector_calibration_followup_manifest(path: str | Path | None) -> dict[str, Any]:
+    if path is None:
+        return {
+            "ok": True,
+            "status": "no_followup_manifest",
+            "manifest_loaded": False,
+            "rows": [],
+        }
+    resolved = _resolve_path(path)
+    try:
+        payload = json.loads(resolved.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "ok": False,
+            "status": "invalid_detector_calibration_followup_manifest",
+            "followup_manifest_path": str(resolved),
+            "error": f"failed to load detector calibration follow-up manifest: {exc}",
+        }
+    rows = payload.get("rows", [])
+    if not isinstance(rows, list):
+        rows = []
+    normalized_rows = [row for row in rows if isinstance(row, dict)]
+    return {
+        "ok": True,
+        "status": "ok",
+        "manifest_loaded": True,
+        "manifest_path": str(resolved),
+        "rows": normalized_rows,
+    }
+
+
+def _active_review_records(
+    records: list[dict[str, Any]],
+    *,
+    manifest_loaded: bool,
+    followup_rows: list[dict[str, Any]],
+    show_only_followup_records: bool,
+) -> list[dict[str, Any]]:
+    if not show_only_followup_records:
+        return list(records)
+    return [
+        row
+        for row in records
+        if _match_calibration_followup_rows(
+            row,
+            manifest_loaded=manifest_loaded,
+            followup_rows=followup_rows,
+        )
+    ]
+
+
+def _resolve_active_record_id(current_record_id: str | None, active_record_ids: list[str]) -> str | None:
+    current = str(current_record_id or "").strip()
+    if current and current in active_record_ids:
+        return current
+    if active_record_ids:
+        return active_record_ids[0]
+    return None
+
+
+def _selector_update_payload(*, choices: list[tuple[str, str]], value: str | None) -> dict[str, Any]:
+    return {
+        "choices": choices,
+        "value": value,
+    }
+
+
+def _calibration_followup_counts(
+    records: list[dict[str, Any]],
+    *,
+    manifest_loaded: bool,
+    followup_rows: list[dict[str, Any]],
+) -> tuple[int, int]:
+    total_count = len(records)
+    if not manifest_loaded:
+        return 0, total_count
+    matched_count = len(
+        _active_review_records(
+            records,
+            manifest_loaded=manifest_loaded,
+            followup_rows=followup_rows,
+            show_only_followup_records=True,
+        )
+    )
+    return matched_count, total_count
+
+
+def _followup_toggle_label(
+    records: list[dict[str, Any]],
+    *,
+    manifest_loaded: bool,
+    followup_rows: list[dict[str, Any]],
+) -> str:
+    matched_count, total_count = _calibration_followup_counts(
+        records,
+        manifest_loaded=manifest_loaded,
+        followup_rows=followup_rows,
+    )
+    return f"Show only calibration follow-up records ({matched_count}/{total_count})"
+
+
+def _toggle_update_payload(*, label: str, value: bool) -> dict[str, Any]:
+    return {
+        "label": label,
+        "value": value,
+    }
+
+
+def _render_calibration_followup_status(
+    records: list[dict[str, Any]],
+    *,
+    manifest_loaded: bool,
+    followup_rows: list[dict[str, Any]],
+    show_only_followup_records: bool,
+) -> str:
+    if not manifest_loaded:
+        return "Calibration follow-up manifest not loaded."
+    matched_count, total_count = _calibration_followup_counts(
+        records,
+        manifest_loaded=manifest_loaded,
+        followup_rows=followup_rows,
+    )
+    if show_only_followup_records:
+        return f"Showing {matched_count} of {total_count} records with calibration follow-up."
+    return f"{matched_count} of {total_count} records have calibration follow-up."
+
+
+def _match_calibration_followup_rows(
+    row: dict[str, Any],
+    *,
+    manifest_loaded: bool,
+    followup_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not manifest_loaded:
+        return []
+    if str(row.get("kind") or "").strip() != "sidecar":
+        return []
+    runtime_sidecar_path = str(row.get("runtime_sidecar_path") or "").strip()
+    if runtime_sidecar_path:
+        return [
+            candidate
+            for candidate in followup_rows
+            if str(candidate.get("runtime_sidecar_path") or "").strip() == runtime_sidecar_path
+        ]
+    source = str(row.get("source") or "").strip()
+    if not source:
+        return []
+    return [
+        candidate
+        for candidate in followup_rows
+        if str(candidate.get("source") or "").strip() == source
+        and str(candidate.get("asset_id") or "").strip()
+    ]
+
+
+def _sort_calibration_followup_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    indexed_rows = list(enumerate(rows))
+
+    def _sort_key(item: tuple[int, dict[str, Any]]) -> tuple[float, float, int]:
+        index, row = item
+        absolute_delta = row.get("absolute_delta_iou")
+        if absolute_delta is None:
+            delta_value = row.get("delta_iou")
+            try:
+                absolute_delta = abs(float(delta_value))
+            except (TypeError, ValueError):
+                absolute_delta = -1.0
+        else:
+            try:
+                absolute_delta = float(absolute_delta)
+            except (TypeError, ValueError):
+                absolute_delta = -1.0
+        replay_created_at = str(row.get("replay_created_at") or "").strip()
+        replay_recency = 0.0
+        if replay_created_at:
+            try:
+                replay_recency = datetime.fromisoformat(replay_created_at).timestamp()
+            except ValueError:
+                replay_recency = 0.0
+        return (-absolute_delta, -replay_recency, index)
+
+    sorted_rows = sorted(indexed_rows, key=_sort_key, reverse=False)
+    return [row for _, row in sorted_rows]
+
+
+def _top_calibration_followup_payload(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not rows:
+        return None
+    top_row = rows[0]
+    return {
+        "review_record_path": top_row.get("review_record_path"),
+        "run_id": top_row.get("run_id"),
+        "runtime_sidecar_path": top_row.get("runtime_sidecar_path"),
+        "difference_summary": top_row.get("difference_summary"),
+        "delta_iou": top_row.get("delta_iou"),
+        "absolute_delta_iou": top_row.get("absolute_delta_iou"),
+        "primary_iou": top_row.get("primary_iou"),
+        "secondary_iou": top_row.get("secondary_iou"),
+        "primary_source": top_row.get("primary_source"),
+        "secondary_source": top_row.get("secondary_source"),
+        "primary_reference_crop": top_row.get("primary_reference_crop"),
+        "secondary_reference_crop": top_row.get("secondary_reference_crop"),
+        "primary_reference_source": top_row.get("primary_reference_source"),
+        "secondary_reference_source": top_row.get("secondary_reference_source"),
+    }
+
+
+def _render_calibration_followup_summary(
+    row: dict[str, Any],
+    *,
+    manifest_loaded: bool,
+    followup_rows: list[dict[str, Any]],
+) -> str:
+    if not manifest_loaded:
+        return "No calibration follow-up manifest loaded."
+    matched_rows = _match_calibration_followup_rows(
+        row,
+        manifest_loaded=manifest_loaded,
+        followup_rows=followup_rows,
+    )
+    matched_rows = _sort_calibration_followup_rows(matched_rows)
+    if not matched_rows:
+        return "No calibration follow-up rows for this record."
+    def _format_followup_row(matched_row: dict[str, Any]) -> str:
+        return "\n".join(
+            [
+                f"Replay run id: {matched_row.get('run_id') or 'n/a'}",
+                f"Candidate id: {matched_row.get('candidate_id') or 'n/a'}",
+                f"Asset id: {matched_row.get('asset_id') or 'n/a'}",
+                f"Difference summary: {matched_row.get('difference_summary') or 'n/a'}",
+                f"Primary source: {matched_row.get('primary_source') or 'n/a'}",
+                f"Secondary source: {matched_row.get('secondary_source') or 'n/a'}",
+                f"Primary IoU: {matched_row.get('primary_iou') if matched_row.get('primary_iou') is not None else 'n/a'}",
+                f"Secondary IoU: {matched_row.get('secondary_iou') if matched_row.get('secondary_iou') is not None else 'n/a'}",
+                f"Delta IoU: {matched_row.get('delta_iou') if matched_row.get('delta_iou') is not None else 'n/a'}",
+                f"Review record path: {matched_row.get('review_record_path') or 'n/a'}",
+            ]
+        )
+
+    sections: list[str] = [
+        "Top follow-up",
+        f"Top follow-up review record path: {matched_rows[0].get('review_record_path') or 'n/a'}",
+        f"Top follow-up replay run id: {matched_rows[0].get('run_id') or 'n/a'}",
+        f"Top follow-up runtime sidecar path: {matched_rows[0].get('runtime_sidecar_path') or 'n/a'}",
+        _format_followup_row(matched_rows[0]),
+    ]
+    if len(matched_rows) > 1:
+        additional_rows = "\n\n".join(_format_followup_row(matched_row) for matched_row in matched_rows[1:])
+        sections.extend(["Additional follow-ups", additional_rows])
+    return "\n\n".join(sections).strip()
+
+
+def _render_calibration_handoff_summary(viewer_payload: dict[str, Any] | None) -> str:
+    if not isinstance(viewer_payload, dict):
+        return ""
+    selected_item_id = str(viewer_payload.get("selected_item_id") or "").strip()
+    if not selected_item_id:
+        return "No detector calibration handoff available for this record."
+    handoffs = viewer_payload.get("detector_calibration_handoffs", {})
+    if not isinstance(handoffs, dict):
+        return "No detector calibration handoff available for this record."
+    row = handoffs.get("by_item_id", {}).get(selected_item_id, {}) if isinstance(handoffs.get("by_item_id"), dict) else {}
+    if not isinstance(row, dict) or not row.get("available"):
+        return "No detector calibration handoff available for this record."
+    comparison = row.get("template_comparison")
+    comparison_lines = ["Crop comparison: unavailable"]
+    if isinstance(comparison, dict):
+        if str(comparison.get("status") or "").strip() == "ok":
+            published = comparison.get("published_dimensions", {}) if isinstance(comparison.get("published_dimensions"), dict) else {}
+            revised = comparison.get("revised_dimensions", {}) if isinstance(comparison.get("revised_dimensions"), dict) else {}
+            delta = comparison.get("delta", {}) if isinstance(comparison.get("delta"), dict) else {}
+            comparison_lines = [
+                f"Crop comparison source: {row.get('template_comparison_source') or 'crop_candidate'}",
+                f"Crop comparison: published {published.get('width', 'n/a')}x{published.get('height', 'n/a')} -> revised {revised.get('width', 'n/a')}x{revised.get('height', 'n/a')}",
+                f"Crop comparison delta: {delta.get('width', 'n/a')}x / {delta.get('height', 'n/a')}y",
+                f"Crop comparison dimensions match: {bool(comparison.get('dimensions_match', False))}",
+            ]
+            overlap = comparison.get("spatial_overlap", {}) if isinstance(comparison.get("spatial_overlap"), dict) else {}
+            if overlap:
+                intersection = overlap.get("intersection", {}) if isinstance(overlap.get("intersection"), dict) else {}
+                comparison_lines.extend(
+                    [
+                        f"Spatial overlap reference: {overlap.get('reference_source', 'unknown')} {overlap.get('reference_crop', 'n/a')}",
+                        f"Spatial overlap intersection: {intersection.get('w', 0)}x{intersection.get('h', 0)} @ {intersection.get('x', 0)},{intersection.get('y', 0)}",
+                        f"Spatial overlap IoU: {overlap.get('iou', 'n/a')}",
+                        f"Spatial overlap revised coverage: {overlap.get('revised_coverage_ratio', 'n/a')}",
+                        f"Spatial overlap reference coverage: {overlap.get('reference_coverage_ratio', 'n/a')}",
+                    ]
+                )
+        else:
+            comparison_lines = [f"Crop comparison: {comparison.get('status') or 'unavailable'}"]
+    difference_summary = str(row.get("template_comparison_difference_summary") or "").strip()
+    if difference_summary:
+        comparison_lines.append(f"Difference summary: {difference_summary}")
+    secondary_comparison = row.get("template_comparison_secondary")
+    if isinstance(secondary_comparison, dict) and str(secondary_comparison.get("status") or "").strip() == "ok":
+        secondary_delta = secondary_comparison.get("delta", {}) if isinstance(secondary_comparison.get("delta"), dict) else {}
+        comparison_lines.append(f"Candidate-time baseline source: {row.get('template_comparison_secondary_source') or 'crop_candidate'}")
+        comparison_lines.append(
+            f"Candidate-time baseline delta: {secondary_delta.get('width', 'n/a')}x / {secondary_delta.get('height', 'n/a')}y"
+        )
+        secondary_overlap = secondary_comparison.get("spatial_overlap", {}) if isinstance(secondary_comparison.get("spatial_overlap"), dict) else {}
+        if secondary_overlap:
+            secondary_intersection = secondary_overlap.get("intersection", {}) if isinstance(secondary_overlap.get("intersection"), dict) else {}
+            comparison_lines.extend(
+                [
+                    f"Candidate-time baseline overlap reference: {secondary_overlap.get('reference_source', 'unknown')} {secondary_overlap.get('reference_crop', 'n/a')}",
+                    f"Candidate-time baseline IoU: {secondary_overlap.get('iou', 'n/a')}",
+                    f"Candidate-time baseline revised coverage: {secondary_overlap.get('revised_coverage_ratio', 'n/a')}",
+                    f"Candidate-time baseline reference coverage: {secondary_overlap.get('reference_coverage_ratio', 'n/a')}",
+                    f"Candidate-time baseline intersection: {secondary_intersection.get('w', 0)}x{secondary_intersection.get('h', 0)} @ {secondary_intersection.get('x', 0)},{secondary_intersection.get('y', 0)}",
+                ]
+            )
+    return "\n".join(
+        [
+            f"Asset id: {row.get('asset_id') or 'n/a'}",
+            f"ROI: {row.get('roi_ref') or 'n/a'}",
+            f"Timestamp: {row.get('timestamp_seconds') if row.get('timestamp_seconds') is not None else 'n/a'}",
+            f"Suggested judgment: {row.get('suggested_judgment') or 'n/a'}",
+            f"Suggested cause: {row.get('suggested_suspected_cause') or 'n/a'}",
+            f"Suggested crop: {row.get('suggested_crop') or row.get('suggested_crop_placeholder') or 'x,y,w,h'}",
+            f"Suggested crop source: {row.get('suggested_crop_source') or 'placeholder'}",
+            *comparison_lines,
+            "Workflow note: Run Init first. The session tool will return concrete Create Crop and Replay commands with the real session root.",
+            "",
+            "Init:",
+            str(row.get("init_command") or row.get("command") or ""),
+            "",
+            "Create Crop:",
+            str(row.get("create_crop_command_template") or ""),
+            "",
+            "Replay:",
+            str(row.get("replay_command_template") or ""),
+        ]
+    ).strip()
+
+
 def _record_summary(row: dict[str, Any]) -> str:
     if row.get("kind") == "proxy_review_session_item":
         transcript_status = "available" if row.get("transcript_available") else "missing"
@@ -432,6 +967,25 @@ def _record_summary(row: dict[str, Any]) -> str:
                 f"- Bridge sources: `{','.join(row.get('bridge_sources', [])) or 'n/a'}`",
                 f"- Bridge source families: `{','.join(row.get('bridge_source_families', [])) or 'n/a'}`",
                 f"- Transcript: `{transcript_status}`",
+                f"- Meta path: `{row.get('gpt_meta_path') or 'n/a'}`",
+            ]
+        )
+    if row.get("kind") == "fused_review_session_item":
+        return "\n".join(
+            [
+                f"## {row['label']}",
+                f"- Game: `{row.get('game') or 'unknown'}`",
+                f"- Review status: `{row.get('review_status') or 'unreviewed'}`",
+                f"- Session: `{row.get('session_id') or 'n/a'}`",
+                f"- Event id: `{row.get('event_id') or 'n/a'}`",
+                f"- Event type: `{row.get('event_type') or 'n/a'}`",
+                f"- Entity: `{row.get('entity_id') or 'n/a'}`",
+                f"- Review window: `{_format_review_window(row.get('suggested_start_timestamp'), row.get('suggested_end_timestamp'))}`",
+                f"- Final score: `{row.get('final_score') if row.get('final_score') is not None else 'n/a'}`",
+                f"- Recommended action: `{row.get('recommended_action') or 'n/a'}`",
+                f"- Gate status: `{row.get('gate_status') or 'n/a'}`",
+                f"- Synergy applied: `{bool(row.get('synergy_applied', False))}`",
+                f"- Sidecar path: `{row.get('fused_sidecar_path') or 'n/a'}`",
                 f"- Meta path: `{row.get('gpt_meta_path') or 'n/a'}`",
             ]
         )
@@ -555,15 +1109,78 @@ def _load_proxy_review_session_records(session_manifest_path: str | Path) -> lis
     return records
 
 
+def _load_fused_review_session_records(session_manifest_path: str | Path) -> list[dict[str, Any]]:
+    manifest_path = _resolve_path(session_manifest_path)
+    payload = _load_json(manifest_path)
+    if payload.get("schema_version") != FUSED_REVIEW_SESSION_SCHEMA_VERSION:
+        return []
+    game = str(payload.get("game", "")).strip() or None
+    session_id = str(payload.get("session_id", "")).strip() or None
+    gpt_repo_path = str(_resolve_path(str(payload.get("gpt_repo", "")).strip())) if str(payload.get("gpt_repo", "")).strip() else None
+    records: list[dict[str, Any]] = []
+    for index, item in enumerate(list(payload.get("items", []))):
+        if not isinstance(item, dict):
+            continue
+        gpt_meta_path_value = str(item.get("gpt_meta_path", "")).strip()
+        processed_clip_value = str(item.get("gpt_processed_path", "")).strip()
+        source_value = str(item.get("source", "")).strip()
+        if not gpt_meta_path_value or not processed_clip_value:
+            continue
+        gpt_meta_path = _resolve_path(gpt_meta_path_value)
+        meta_payload = _load_json(gpt_meta_path)
+        review_status = _normalized_review_status(meta_payload.get("review_status") or item.get("review_status"))
+        if review_status != "unreviewed":
+            continue
+        event_type = str(item.get("event_type", "")).strip() or "unknown_event"
+        source_label = Path(source_value).stem if source_value else Path(processed_clip_value).name
+        entity_label = str(item.get("entity_id", "")).strip() or "unknown_entity"
+        window_label = _format_review_window(item.get("suggested_start_timestamp"), item.get("suggested_end_timestamp"))
+        label = f"{source_label} | {entity_label} | {window_label}"
+        records.append(
+            {
+                "record_id": f"fused-session::{session_id or 'unknown'}::{index:03d}",
+                "label": label,
+                "kind": "fused_review_session_item",
+                "game": game,
+                "source": source_value or None,
+                "processed_clip_path": processed_clip_value,
+                "source_clip_path": source_value or None,
+                "fused_sidecar_path": str(item.get("sidecar_path", "")).strip() or None,
+                "session_manifest_path": str(manifest_path),
+                "gpt_repo_path": gpt_repo_path,
+                "gpt_meta_path": str(gpt_meta_path),
+                "gpt_processed_path": processed_clip_value,
+                "review_status": review_status,
+                "reviewed_at": meta_payload.get("reviewed_at"),
+                "session_id": session_id,
+                "event_id": str(item.get("event_id", "")).strip() or None,
+                "event_type": event_type,
+                "final_score": item.get("final_score"),
+                "recommended_action": str(item.get("recommended_action", "")).strip() or None,
+                "gate_status": str(item.get("gate_status", "")).strip() or None,
+                "synergy_applied": bool(item.get("synergy_applied", False)),
+                "suggested_start_timestamp": item.get("suggested_start_timestamp"),
+                "suggested_end_timestamp": item.get("suggested_end_timestamp"),
+                "entity_id": item.get("entity_id"),
+                "ability_id": item.get("ability_id"),
+                "equipment_id": item.get("equipment_id"),
+                "event_row_id": item.get("event_row_id"),
+                "gpt_meta_payload": meta_payload,
+            }
+        )
+    return records
+
+
 def _allowed_launch_paths(records: list[dict[str, Any]]) -> list[str]:
     allowed_dirs: set[str] = set()
     for row in records:
-        if row.get("kind") != "proxy_review_session_item":
+        if not _is_review_session_item(row):
             continue
         for key in (
             "processed_clip_path",
             "source_clip_path",
             "proxy_sidecar_path",
+            "fused_sidecar_path",
             "gpt_meta_path",
             "transcript_srt_path",
             "transcript_whisper_json_path",
@@ -587,6 +1204,15 @@ def _display_path(label: str, value: Any) -> str:
     if text:
         return f"{label}:\n{text}"
     return f"{label}:\nnot applicable"
+
+
+def _format_review_window(start_value: Any, end_value: Any) -> str:
+    try:
+        start = float(start_value or 0.0)
+        end = float(end_value or 0.0)
+    except (TypeError, ValueError):
+        return "n/a"
+    return f"{start:.1f}s-{end:.1f}s"
 
 
 def _discover_proxy_review_transcript_paths(
@@ -613,6 +1239,10 @@ def _normalized_review_status(value: Any) -> str:
     if text in {"approved", "rejected", "unreviewed"}:
         return text
     return "unreviewed"
+
+
+def _is_review_session_item(row: dict[str, Any]) -> bool:
+    return str(row.get("kind") or "") in {"proxy_review_session_item", "fused_review_session_item"}
 
 
 def _write_proxy_review_session_decision(gpt_meta_path: str | Path, decision: str) -> dict[str, Any]:
@@ -708,6 +1338,69 @@ def _finalize_proxy_review_session_decision(row: dict[str, Any], decision: str) 
     }
 
 
+def _finalize_fused_review_session_decision(row: dict[str, Any], decision: str) -> dict[str, Any]:
+    write_result = _write_proxy_review_session_decision(row["gpt_meta_path"], decision)
+    if not write_result.get("ok"):
+        return write_result
+    normalized = str(write_result.get("review_status") or "unreviewed")
+    if normalized == "unreviewed":
+        _update_fused_review_session_manifest_item(
+            row,
+            gpt_meta_path=str(row.get("gpt_meta_path") or ""),
+            review_status=normalized,
+            reviewed_at=write_result.get("reviewed_at"),
+            gpt_final_path=None,
+        )
+        return write_result
+
+    gpt_repo_path = str(row.get("gpt_repo_path") or "").strip()
+    game = str(row.get("game") or "").strip()
+    if not gpt_repo_path or not game:
+        return {
+            "ok": False,
+            "error": "fused review session row is missing gpt repo or game context",
+        }
+
+    bucket = "accepted" if normalized == "approved" else "rejected"
+    meta_payload = dict(write_result.get("gpt_meta_payload", {}))
+    clip_id = str(meta_payload.get("clip_id") or Path(str(row.get("gpt_processed_path") or "")).stem).strip()
+    source_meta_path = _resolve_path(str(row.get("gpt_meta_path") or ""))
+    processed_path = _resolve_path(str(row.get("gpt_processed_path") or ""))
+    destination_dir = _resolve_path(gpt_repo_path) / bucket / game
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    clip_suffix = processed_path.suffix or ".mp4"
+    final_clip_path = destination_dir / f"{clip_id}{clip_suffix}"
+    final_meta_path = destination_dir / f"{clip_id}.meta.json"
+
+    if final_clip_path.exists():
+        final_clip_path.unlink()
+    if processed_path.exists():
+        shutil.move(str(processed_path), str(final_clip_path))
+
+    meta_payload["final_path"] = str(final_clip_path)
+    meta_payload["meta_path"] = str(final_meta_path)
+    meta_payload["status"] = bucket
+    final_meta_path.write_text(json.dumps(meta_payload, indent=2), encoding="utf-8")
+    if source_meta_path.exists() and source_meta_path != final_meta_path:
+        source_meta_path.unlink()
+
+    _update_fused_review_session_manifest_item(
+        row,
+        gpt_meta_path=str(final_meta_path),
+        review_status=normalized,
+        reviewed_at=meta_payload.get("reviewed_at"),
+        gpt_final_path=str(final_clip_path),
+    )
+    return {
+        "ok": True,
+        "review_status": normalized,
+        "reviewed_at": meta_payload.get("reviewed_at"),
+        "gpt_meta_path": str(final_meta_path),
+        "gpt_final_path": str(final_clip_path),
+        "gpt_meta_payload": meta_payload,
+    }
+
+
 def _update_proxy_review_session_manifest_item(
     row: dict[str, Any],
     *,
@@ -744,6 +1437,48 @@ def _update_proxy_review_session_manifest_item(
     session_manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def _update_fused_review_session_manifest_item(
+    row: dict[str, Any],
+    *,
+    gpt_meta_path: str,
+    review_status: str,
+    reviewed_at: Any,
+    gpt_final_path: str | None,
+) -> None:
+    session_manifest_value = str(row.get("session_manifest_path") or "").strip()
+    if not session_manifest_value:
+        return
+    session_manifest_path = _resolve_path(session_manifest_value)
+    payload = _load_json(session_manifest_path)
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return
+    source_clip_id = None
+    source_event_id = str(row.get("event_id") or "").strip() or None
+    source_meta_payload = row.get("gpt_meta_payload")
+    if isinstance(source_meta_payload, dict):
+        source_clip_id = str(source_meta_payload.get("clip_id") or "").strip() or None
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        item_clip_id = str(item.get("clip_id") or "").strip() or None
+        item_event_id = str(item.get("event_id") or "").strip() or None
+        item_meta_path = str(item.get("gpt_meta_path") or "").strip()
+        if (
+            (source_clip_id and item_clip_id == source_clip_id)
+            or (source_event_id and item_event_id == source_event_id and item_meta_path == str(row.get("gpt_meta_path") or ""))
+            or item_meta_path == str(row.get("gpt_meta_path") or "")
+        ):
+            item["gpt_meta_path"] = gpt_meta_path
+            item["review_status"] = review_status
+            item["reviewed_at"] = reviewed_at
+            item["apply_status"] = "reviewed"
+            if gpt_final_path:
+                item["gpt_final_path"] = gpt_final_path
+            break
+    session_manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def _proxy_review_session_payload(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "kind": row.get("kind"),
@@ -759,6 +1494,32 @@ def _proxy_review_session_payload(row: dict[str, Any]) -> dict[str, Any]:
         "bridge_source_families": row.get("bridge_source_families", []),
         "transcript_srt_path": row.get("transcript_srt_path"),
         "transcript_whisper_json_path": row.get("transcript_whisper_json_path"),
+        "gpt_meta_payload": row.get("gpt_meta_payload", {}),
+    }
+
+
+def _fused_review_session_payload(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kind": row.get("kind"),
+        "session_id": row.get("session_id"),
+        "processed_clip_path": row.get("processed_clip_path"),
+        "source_clip_path": row.get("source_clip_path"),
+        "fused_sidecar_path": row.get("fused_sidecar_path"),
+        "gpt_meta_path": row.get("gpt_meta_path"),
+        "review_status": row.get("review_status"),
+        "reviewed_at": row.get("reviewed_at"),
+        "event_id": row.get("event_id"),
+        "event_type": row.get("event_type"),
+        "final_score": row.get("final_score"),
+        "recommended_action": row.get("recommended_action"),
+        "gate_status": row.get("gate_status"),
+        "synergy_applied": row.get("synergy_applied"),
+        "suggested_start_timestamp": row.get("suggested_start_timestamp"),
+        "suggested_end_timestamp": row.get("suggested_end_timestamp"),
+        "entity_id": row.get("entity_id"),
+        "ability_id": row.get("ability_id"),
+        "equipment_id": row.get("equipment_id"),
+        "event_row_id": row.get("event_row_id"),
         "gpt_meta_payload": row.get("gpt_meta_payload", {}),
     }
 

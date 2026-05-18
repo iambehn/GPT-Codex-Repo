@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import html
 import json
+import shlex
 from pathlib import Path
 from typing import Any
 
 from pipeline.clip_registry import load_candidate_lifecycle_details, load_hook_candidate_details
+from pipeline.detector_calibration_comparison import build_dual_layer_comparison_selection
 from pipeline import proxy_replay_viewer, replay_viewer
+from pipeline.roi_matcher import RoiMatcherError, load_published_runtime_pack
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -130,6 +133,7 @@ def render_unified_replay_viewer(
         "status": "ok",
         "schema_version": UNIFIED_REPLAY_VIEWER_SCHEMA_VERSION,
         "viewer_path": str(viewer_path),
+        "viewer_payload": derived,
         "proxy_sidecar_path": str(proxy_path) if proxy_path is not None else None,
         "runtime_sidecar_path": str(runtime_path) if runtime_path is not None else None,
         "fused_sidecar_path": str(fused_path) if fused_path is not None else None,
@@ -330,6 +334,23 @@ def _build_unified_payload(
         runtime_path=runtime_path,
         fused_path=fused_path,
     )
+    detector_diagnostics = _build_detector_diagnostics(
+        game=game,
+        runtime_payload=runtime_payload,
+        runtime_section=runtime_section,
+        fused_section=fused_section,
+        cross_links=cross_links,
+    )
+    detector_calibration_handoffs = _build_detector_calibration_handoffs(
+        game=game,
+        source=source,
+        proxy_path=proxy_path,
+        runtime_path=runtime_path,
+        fused_path=fused_path,
+        runtime_section=runtime_section,
+        fused_section=fused_section,
+        detector_diagnostics=detector_diagnostics,
+    )
     disagreements = _build_disagreements(
         proxy_section,
         runtime_section,
@@ -375,6 +396,8 @@ def _build_unified_payload(
         "fused": fused_section,
         "cross_links": cross_links,
         "provenance": provenance,
+        "detector_diagnostics": detector_diagnostics,
+        "detector_calibration_handoffs": detector_calibration_handoffs,
         "disagreements": disagreements,
         "lifecycle": lifecycle,
         "hooks": hooks,
@@ -786,6 +809,654 @@ def _build_provenance(
             "missing_evidence": not normalized_signals,
         }
     return provenance
+
+
+def _build_detector_diagnostics(
+    *,
+    game: str,
+    runtime_payload: dict[str, Any] | None,
+    runtime_section: dict[str, Any],
+    fused_section: dict[str, Any],
+    cross_links: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    if not runtime_section.get("available"):
+        return {"available": False, "by_item_id": {}, "template_lookup_status": "missing_runtime"}
+
+    template_lookup, runtime_rule_lookup, _, pack_status = _load_detector_lookup(game)
+    matcher_payload = runtime_payload.get("matcher", {}) if isinstance(runtime_payload, dict) and isinstance(runtime_payload.get("matcher"), dict) else {}
+    debug_root = _resolve_matcher_debug_root(matcher_payload)
+    by_item_id: dict[str, list[dict[str, Any]]] = {}
+
+    for runtime_event in runtime_section.get("events", []):
+        detections = _linked_detections_for_runtime_event(runtime_event, runtime_section)
+        rows = [
+            _build_detection_diagnostic_row(
+                detection=detection,
+                template_lookup=template_lookup,
+                runtime_rule_lookup=runtime_rule_lookup,
+                debug_root=debug_root,
+                runtime_signal=_best_runtime_signal_for_detection(detection, runtime_section),
+                runtime_event=runtime_event,
+                fused_event=None,
+            )
+            for detection in detections
+        ]
+        by_item_id[str(runtime_event["row_id"])] = rows
+
+    for fused_event in fused_section.get("events", []):
+        detections = _linked_detections_for_fused_event(fused_event, runtime_section, cross_links)
+        linked_runtime_event = _best_runtime_event_for_fused_event(fused_event, runtime_section, cross_links)
+        rows = [
+            _build_detection_diagnostic_row(
+                detection=detection,
+                template_lookup=template_lookup,
+                runtime_rule_lookup=runtime_rule_lookup,
+                debug_root=debug_root,
+                runtime_signal=_best_runtime_signal_for_detection(detection, runtime_section),
+                runtime_event=linked_runtime_event,
+                fused_event=fused_event,
+            )
+            for detection in detections
+        ]
+        by_item_id[str(fused_event["row_id"])] = rows
+
+    return {
+        "available": True,
+        "template_lookup_status": pack_status,
+        "debug_root": str(debug_root) if debug_root is not None else None,
+        "by_item_id": by_item_id,
+    }
+
+
+def _build_detector_calibration_handoffs(
+    *,
+    game: str,
+    source: str,
+    proxy_path: Path | None,
+    runtime_path: Path | None,
+    fused_path: Path | None,
+    runtime_section: dict[str, Any],
+    fused_section: dict[str, Any],
+    detector_diagnostics: dict[str, Any],
+) -> dict[str, Any]:
+    _, _, roi_lookup, _ = _load_detector_lookup(game)
+    calibration_session = _load_calibration_session_context(runtime_path=runtime_path, fused_path=fused_path)
+    by_item_id: dict[str, dict[str, Any]] = {}
+    diagnostics_by_item_id = detector_diagnostics.get("by_item_id", {}) if isinstance(detector_diagnostics, dict) else {}
+
+    for runtime_event in runtime_section.get("events", []):
+        row_id = str(runtime_event.get("row_id") or "").strip()
+        if not row_id:
+            continue
+        diagnostics = diagnostics_by_item_id.get(row_id, [])
+        handoff = _build_detector_calibration_handoff_row(
+            game=game,
+            source=source,
+            proxy_path=proxy_path,
+            runtime_path=runtime_path,
+            fused_path=fused_path,
+            item_kind="runtime_event",
+            item_row=runtime_event,
+            diagnostics=diagnostics,
+            roi_lookup=roi_lookup,
+            calibration_session=calibration_session,
+        )
+        by_item_id[row_id] = handoff
+
+    for fused_event in fused_section.get("events", []):
+        row_id = str(fused_event.get("row_id") or "").strip()
+        if not row_id:
+            continue
+        diagnostics = diagnostics_by_item_id.get(row_id, [])
+        handoff = _build_detector_calibration_handoff_row(
+            game=game,
+            source=source,
+            proxy_path=proxy_path,
+            runtime_path=runtime_path,
+            fused_path=fused_path,
+            item_kind="fused_event",
+            item_row=fused_event,
+            diagnostics=diagnostics,
+            roi_lookup=roi_lookup,
+            calibration_session=calibration_session,
+        )
+        by_item_id[row_id] = handoff
+
+    return {
+        "available": any(bool(row.get("available")) for row in by_item_id.values()),
+        "by_item_id": by_item_id,
+    }
+
+
+def _build_detector_calibration_handoff_row(
+    *,
+    game: str,
+    source: str,
+    proxy_path: Path | None,
+    runtime_path: Path | None,
+    fused_path: Path | None,
+    item_kind: str,
+    item_row: dict[str, Any],
+    diagnostics: list[dict[str, Any]],
+    roi_lookup: dict[str, Any],
+    calibration_session: dict[str, Any] | None,
+) -> dict[str, Any]:
+    primary = next((row for row in diagnostics if str(row.get("asset_id") or "").strip()), None)
+    if primary is None:
+        return {"available": False}
+    timestamp_seconds = _safe_float(primary.get("timestamp"))
+    if timestamp_seconds is None:
+        timestamp_seconds = _safe_float(item_row.get("start_timestamp"))
+    event_type = str(primary.get("event_type") or item_row.get("event_type") or "").strip() or None
+    event_row_id = str(primary.get("runtime_event_row_id") or item_row.get("event_row_id") or "").strip() or None
+    if not event_row_id and item_kind == "runtime_event":
+        event_row_id = str(item_row.get("event_id") or "").strip() or None
+    if not event_row_id and item_kind == "fused_event":
+        event_row_id = str(item_row.get("metadata", {}).get("event_row_id") or "").strip() if isinstance(item_row.get("metadata"), dict) else None
+
+    roi_ref = str(primary.get("roi_ref") or "").strip() or None
+    localized_crop = str(primary.get("localized_suggested_crop") or "").strip()
+    roi_fallback_crop = _build_roi_suggested_crop(roi_lookup.get(roi_ref) if roi_ref else None)
+    suggested_crop = localized_crop or roi_fallback_crop
+    suggested_crop_source = "localized_match" if localized_crop else ("roi_fallback" if roi_fallback_crop else "placeholder")
+    row = {
+        "available": True,
+        "asset_id": str(primary.get("asset_id") or "").strip() or None,
+        "roi_ref": roi_ref,
+        "source": source,
+        "timestamp_seconds": timestamp_seconds,
+        "event_type": event_type,
+        "event_row_id": event_row_id,
+        "runtime_sidecar_path": str(runtime_path) if runtime_path is not None else None,
+        "fused_sidecar_path": str(fused_path) if fused_path is not None else None,
+        "proxy_sidecar_path": str(proxy_path) if proxy_path is not None else None,
+        "suggested_judgment": "false_positive",
+        "suggested_suspected_cause": "template_crop_quality",
+        "suggested_crop": suggested_crop,
+        "suggested_crop_source": suggested_crop_source,
+        "suggested_crop_placeholder": "x,y,w,h",
+        "template_comparison": None,
+        "template_comparison_source": None,
+    }
+    comparison_selection = _select_calibration_template_comparison(
+            calibration_session=calibration_session,
+            asset_id=str(primary.get("asset_id") or "").strip() or None,
+            runtime_path=runtime_path,
+            fused_path=fused_path,
+        )
+    if isinstance(comparison_selection, dict):
+        row["template_comparison"] = comparison_selection.get("comparison")
+        row["template_comparison_source"] = comparison_selection.get("source")
+        row["template_comparison_secondary"] = comparison_selection.get("secondary_comparison")
+        row["template_comparison_secondary_source"] = comparison_selection.get("secondary_source")
+        row["template_comparison_difference_summary"] = comparison_selection.get("difference_summary")
+    row["init_command"] = _build_detector_calibration_handoff_init_command(game=game, row=row)
+    row["create_crop_command_template"] = _build_detector_calibration_handoff_create_crop_command(row=row)
+    row["replay_command_template"] = _build_detector_calibration_handoff_replay_command()
+    row["command"] = row["init_command"]
+    return row
+
+
+def _build_detector_calibration_handoff_init_command(*, game: str, row: dict[str, Any]) -> str:
+    parts = [
+        _preferred_detector_calibration_python(),
+        "tools/detector_calibration_session.py",
+        "init",
+        "--game",
+        game,
+        "--asset-id",
+        str(row.get("asset_id") or ""),
+        "--source",
+        str(row.get("source") or ""),
+        "--judgment",
+        str(row.get("suggested_judgment") or "false_positive"),
+        "--suspected-cause",
+        str(row.get("suggested_suspected_cause") or "template_crop_quality"),
+    ]
+    timestamp_seconds = row.get("timestamp_seconds")
+    if timestamp_seconds is not None:
+        parts.extend(["--timestamp-seconds", str(timestamp_seconds)])
+    for flag, key in (
+        ("--runtime-sidecar-path", "runtime_sidecar_path"),
+        ("--fused-sidecar-path", "fused_sidecar_path"),
+        ("--proxy-sidecar-path", "proxy_sidecar_path"),
+        ("--event-type", "event_type"),
+        ("--event-row-id", "event_row_id"),
+    ):
+        value = str(row.get(key) or "").strip()
+        if value:
+            parts.extend([flag, value])
+    return " ".join(shlex.quote(part) for part in parts if str(part).strip())
+
+
+def _build_detector_calibration_handoff_create_crop_command(*, row: dict[str, Any]) -> str:
+    crop_value = str(row.get("suggested_crop") or row.get("suggested_crop_placeholder") or "x,y,w,h")
+    return " ".join(
+        shlex.quote(part)
+        for part in [
+            _preferred_detector_calibration_python(),
+            "tools/detector_calibration_session.py",
+            "create-crop",
+            "--session-root",
+            "<SESSION_ROOT>",
+            "--crop",
+            crop_value,
+        ]
+    )
+
+
+def _build_detector_calibration_handoff_replay_command() -> str:
+    return " ".join(
+        shlex.quote(part)
+        for part in [
+            _preferred_detector_calibration_python(),
+            "tools/detector_calibration_session.py",
+            "replay",
+            "--session-root",
+            "<SESSION_ROOT>",
+        ]
+    )
+
+
+def _preferred_detector_calibration_python() -> str:
+    venv_python = REPO_ROOT / ".venv" / "bin" / "python"
+    if venv_python.exists() and venv_python.is_file():
+        return str(venv_python)
+    return "python"
+
+
+def _load_calibration_session_context(*, runtime_path: Path | None, fused_path: Path | None) -> dict[str, Any] | None:
+    review_record_path = _find_calibration_review_record_path(runtime_path, fused_path)
+    if review_record_path is None:
+        return None
+    try:
+        payload = _load_json(review_record_path)
+    except Exception:
+        return None
+    if str(payload.get("schema_version") or "").strip() != "detector_calibration_review_v1":
+        return None
+    return {
+        "review_record_path": str(review_record_path),
+        "review_record": payload,
+    }
+
+
+def _find_calibration_review_record_path(runtime_path: Path | None, fused_path: Path | None) -> Path | None:
+    for path in (runtime_path, fused_path):
+        if path is None:
+            continue
+        current = path.resolve().parent
+        for candidate in [current, *current.parents]:
+            review_record_path = candidate / "review_record.json"
+            if review_record_path.exists() and review_record_path.is_file():
+                return review_record_path.resolve()
+            if candidate == REPO_ROOT:
+                break
+    return None
+
+
+def _select_calibration_template_comparison(
+    *,
+    calibration_session: dict[str, Any] | None,
+    asset_id: str | None,
+    runtime_path: Path | None,
+    fused_path: Path | None,
+) -> dict[str, Any] | None:
+    if calibration_session is None or not asset_id:
+        return None
+    review_record = calibration_session.get("review_record", {})
+    if not isinstance(review_record, dict):
+        return None
+    target = review_record.get("target", {})
+    if not isinstance(target, dict) or str(target.get("asset_id") or "").strip() != asset_id:
+        return None
+    candidates = review_record.get("crop_candidates", [])
+    if not isinstance(candidates, list) or not candidates:
+        return None
+    candidate_by_id = {
+        str(row.get("candidate_id") or "").strip(): row
+        for row in candidates
+        if isinstance(row, dict) and str(row.get("candidate_id") or "").strip()
+    }
+    replay_runs = review_record.get("replay_runs", [])
+    if isinstance(replay_runs, list):
+        runtime_value = str(runtime_path.resolve()) if runtime_path is not None else None
+        fused_value = str(fused_path.resolve()) if fused_path is not None else None
+        for run in reversed(replay_runs):
+            if not isinstance(run, dict):
+                continue
+            if runtime_value and runtime_value in {
+                str(run.get("current_runtime_sidecar_path") or "").strip(),
+                str(run.get("trial_runtime_sidecar_path") or "").strip(),
+            }:
+                candidate = candidate_by_id.get(str(run.get("candidate_id") or "").strip())
+                if isinstance(candidate, dict):
+                    derived = run.get("derived_template_comparison")
+                    comparison = candidate.get("template_comparison")
+                    return build_dual_layer_comparison_selection(derived, comparison)
+            if fused_value and fused_value in {
+                str(run.get("current_fused_sidecar_path") or "").strip(),
+                str(run.get("trial_fused_sidecar_path") or "").strip(),
+            }:
+                candidate = candidate_by_id.get(str(run.get("candidate_id") or "").strip())
+                if isinstance(candidate, dict):
+                    derived = run.get("derived_template_comparison")
+                    comparison = candidate.get("template_comparison")
+                    return build_dual_layer_comparison_selection(derived, comparison)
+    latest = candidates[-1]
+    if isinstance(latest, dict):
+        comparison = latest.get("template_comparison")
+        if isinstance(comparison, dict):
+            return {"comparison": comparison, "source": "crop_candidate"}
+    return None
+
+
+def _load_detector_lookup(game: str) -> tuple[dict[str, dict[str, Any]], dict[str, Any], dict[str, Any], str]:
+    try:
+        runtime_pack = load_published_runtime_pack(game)
+    except (FileNotFoundError, RoiMatcherError):
+        return {}, {}, {}, "missing_pack"
+    template_lookup: dict[str, dict[str, Any]] = {}
+    for template in runtime_pack.templates:
+        rule = runtime_pack.runtime_rules.get(template.asset_family)
+        template_lookup[template.asset_id] = {
+            "asset_family": template.asset_family,
+            "template_path": str(template.template_path),
+            "template_uri": template.template_path.as_uri() if template.template_path.exists() else None,
+            "template_exists": template.template_path.exists(),
+            "threshold": template.threshold,
+            "temporal_window": template.temporal_window,
+            "event_row_id": template.event_row_id,
+            "display_name": template.display_name,
+            "signal_type": rule.signal_type if rule is not None else None,
+            "event_type": rule.event_type if rule is not None else None,
+        }
+    return template_lookup, runtime_pack.runtime_rules, getattr(runtime_pack, "rois", {}) or {}, "ok"
+
+
+def _build_roi_suggested_crop(roi_bounds: Any) -> str | None:
+    if roi_bounds is None:
+        return None
+    try:
+        x = int(roi_bounds.x)
+        y = int(roi_bounds.y)
+        width = int(roi_bounds.width)
+        height = int(roi_bounds.height)
+    except (AttributeError, TypeError, ValueError):
+        return None
+    if width <= 0 or height <= 0 or x < 0 or y < 0:
+        return None
+    return f"{x},{y},{width},{height}"
+
+
+def _build_localized_suggested_crop(detection: dict[str, Any]) -> str | None:
+    try:
+        x = int(detection.get("frame_match_x"))
+        y = int(detection.get("frame_match_y"))
+        width = int(detection.get("match_width"))
+        height = int(detection.get("match_height"))
+    except (TypeError, ValueError):
+        return None
+    if width <= 0 or height <= 0 or x < 0 or y < 0:
+        return None
+    return f"{x},{y},{width},{height}"
+
+
+def _resolve_matcher_debug_root(matcher_payload: dict[str, Any]) -> Path | None:
+    for key in ("debug_output_dir", "debug_root", "matcher_debug_root"):
+        value = matcher_payload.get(key)
+        if isinstance(value, str) and value.strip():
+            path = Path(value).expanduser()
+            if not path.is_absolute():
+                path = (Path.cwd() / path).resolve()
+            else:
+                path = path.resolve()
+            return path
+    return None
+
+
+def _linked_detections_for_runtime_event(runtime_event: dict[str, Any], runtime_section: dict[str, Any]) -> list[dict[str, Any]]:
+    overlapping = [
+        detection
+        for detection in runtime_section.get("detections", [])
+        if replay_viewer._rows_overlap(
+            float(runtime_event["start_timestamp"]),
+            float(runtime_event["end_timestamp"]),
+            float(detection["start_timestamp"]),
+            float(detection["end_timestamp"]),
+        )
+    ]
+    if not overlapping:
+        return []
+
+    event_asset_id = str(runtime_event.get("asset_id") or "").strip()
+    event_asset_family = str(runtime_event.get("asset_family") or "").strip()
+    event_roi_ref = str(runtime_event.get("roi_ref") or "").strip()
+    event_row_id = str(runtime_event.get("event_row_id") or "").strip()
+
+    exact_asset_matches = [row for row in overlapping if str(row.get("asset_id") or "").strip() == event_asset_id]
+    if exact_asset_matches:
+        detections = exact_asset_matches
+    else:
+        event_row_matches = [row for row in overlapping if str(row.get("event_row_id") or "").strip() == event_row_id and event_row_id]
+        if event_row_matches:
+            detections = event_row_matches
+        else:
+            family_roi_matches = [
+                row
+                for row in overlapping
+                if str(row.get("asset_family") or "").strip() == event_asset_family
+                and str(row.get("roi_ref") or "").strip() == event_roi_ref
+                and event_asset_family
+                and event_roi_ref
+            ]
+            detections = family_roi_matches or overlapping
+
+    detections.sort(key=lambda row: (-float(row.get("score") or 0.0), str(row.get("asset_id") or "")))
+    return detections
+
+
+def _linked_detections_for_fused_event(
+    fused_event: dict[str, Any],
+    runtime_section: dict[str, Any],
+    cross_links: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    detection_lookup = runtime_section.get("detection_lookup", {})
+    linked: list[dict[str, Any]] = []
+    for link in cross_links.get(str(fused_event["row_id"]), []):
+        if str(link.get("kind")) != "detection":
+            continue
+        detection = detection_lookup.get(str(link.get("id")))
+        if detection is not None:
+            linked.append(detection)
+    linked.sort(key=lambda row: (-float(row.get("score") or 0.0), str(row.get("asset_id") or "")))
+    return linked
+
+
+def _best_runtime_event_for_fused_event(
+    fused_event: dict[str, Any],
+    runtime_section: dict[str, Any],
+    cross_links: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any] | None:
+    event_lookup = runtime_section.get("event_lookup", {})
+    candidates: list[dict[str, Any]] = []
+    for link in cross_links.get(str(fused_event["row_id"]), []):
+        if str(link.get("kind")) != "runtime_event":
+            continue
+        event = event_lookup.get(str(link.get("id")))
+        if event is not None:
+            candidates.append(event)
+    if not candidates:
+        return None
+    return max(candidates, key=lambda row: float(row.get("score") or 0.0))
+
+
+def _best_runtime_signal_for_detection(detection: dict[str, Any], runtime_section: dict[str, Any]) -> dict[str, Any] | None:
+    candidates = [
+        signal
+        for signal in runtime_section.get("signals", [])
+        if replay_viewer._rows_overlap(
+            float(detection["start_timestamp"]),
+            float(detection["end_timestamp"]),
+            float(signal["start_timestamp"]),
+            float(signal["end_timestamp"]),
+        )
+        and (
+            str(signal.get("asset_id") or "").strip() == str(detection.get("asset_id") or "").strip()
+            or str(signal.get("roi_ref") or "").strip() == str(detection.get("roi_ref") or "").strip()
+        )
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda row: float(row.get("score") or 0.0))
+
+
+def _build_detection_diagnostic_row(
+    *,
+    detection: dict[str, Any],
+    template_lookup: dict[str, dict[str, Any]],
+    runtime_rule_lookup: dict[str, Any],
+    debug_root: Path | None,
+    runtime_signal: dict[str, Any] | None,
+    runtime_event: dict[str, Any] | None,
+    fused_event: dict[str, Any] | None,
+) -> dict[str, Any]:
+    asset_id = str(detection.get("asset_id") or "").strip()
+    template = template_lookup.get(asset_id, {})
+    threshold = template.get("threshold")
+    score = detection.get("score")
+    temporal_window = template.get("temporal_window")
+    confirmed_crop = _resolve_confirmed_roi_crop(detection, debug_root)
+    roi_preview = _resolve_optional_preview_path(detection)
+    signal_type = None
+    event_type = None
+    asset_family = str(detection.get("asset_family") or template.get("asset_family") or "").strip()
+    if asset_family and asset_family in runtime_rule_lookup:
+        rule = runtime_rule_lookup[asset_family]
+        signal_type = rule.signal_type
+        event_type = rule.event_type
+    signal_type = signal_type or template.get("signal_type") or (runtime_signal.get("signal_type") if runtime_signal else None)
+    event_type = event_type or template.get("event_type") or (runtime_event.get("event_type") if runtime_event else None)
+    threshold_cleared = None
+    try:
+        if threshold is not None and score is not None:
+            threshold_cleared = float(score) >= float(threshold)
+    except (TypeError, ValueError):
+        threshold_cleared = None
+    supporting_frames = detection.get("supporting_frames")
+    temporal_state = "missing_temporal_state"
+    try:
+        if supporting_frames is not None and temporal_window is not None:
+            temporal_state = "confirmed" if int(supporting_frames) >= int(temporal_window) else "insufficient"
+        elif temporal_window is not None:
+            temporal_state = "confirmed_cluster" if int(temporal_window) > 1 else "atomic"
+    except (TypeError, ValueError):
+        temporal_state = "invalid_temporal_state"
+    template_path = template.get("template_path")
+    template_uri = template.get("template_uri")
+    template_exists = bool(template.get("template_exists"))
+    confirmed_crop_exists = confirmed_crop is not None and confirmed_crop.exists()
+    roi_preview_exists = roi_preview is not None and roi_preview.exists()
+    localized_suggested_crop = _build_localized_suggested_crop(detection)
+    return {
+        "asset_id": asset_id or None,
+        "roi_ref": detection.get("roi_ref"),
+        "asset_family": asset_family or None,
+        "event_type": event_type,
+        "signal_type": signal_type,
+        "score": score,
+        "threshold": threshold,
+        "temporal_window": temporal_window,
+        "timestamp": detection.get("start_timestamp"),
+        "supporting_frames": supporting_frames,
+        "runtime_signal_id": runtime_signal.get("signal_id") if runtime_signal else None,
+        "runtime_event_row_id": runtime_event.get("event_id") if runtime_event and runtime_event.get("event_id") else (runtime_event.get("row_id") if runtime_event else None),
+        "fused_event_id": fused_event.get("event_id") if fused_event else None,
+        "localized_suggested_crop": localized_suggested_crop,
+        "template_image_path": template_path,
+        "template_image_uri": template_uri,
+        "confirmed_roi_crop_path": str(confirmed_crop) if confirmed_crop is not None else None,
+        "confirmed_roi_crop_uri": confirmed_crop.as_uri() if confirmed_crop_exists else None,
+        "roi_preview_path": str(roi_preview) if roi_preview is not None else None,
+        "roi_preview_uri": roi_preview.as_uri() if roi_preview_exists else None,
+        "template_image_available": template_exists,
+        "confirmed_roi_crop_available": confirmed_crop_exists,
+        "roi_preview_available": roi_preview_exists,
+        "threshold_cleared": threshold_cleared,
+        "temporal_confirmation_state": temporal_state,
+    }
+
+
+def _resolve_confirmed_roi_crop(detection: dict[str, Any], debug_root: Path | None) -> Path | None:
+    direct_path = detection.get("confirmed_roi_crop_path")
+    if isinstance(direct_path, str) and direct_path.strip():
+        path = Path(direct_path).expanduser()
+        if not path.is_absolute():
+            path = (Path.cwd() / path).resolve()
+        else:
+            path = path.resolve()
+        return path
+    if debug_root is None:
+        return None
+    crops_root = debug_root / "confirmed_roi_crops"
+    if not crops_root.exists():
+        return None
+    asset_id = str(detection.get("asset_id") or "").strip()
+    if not asset_id:
+        return None
+    safe_asset = asset_id.replace("/", "_").replace("\\", "_")
+    candidates = sorted(crops_root.glob(f"{safe_asset}-frame*-*.png"))
+    if not candidates:
+        return None
+    first_timestamp = _safe_float(detection.get("first_timestamp", detection.get("start_timestamp")))
+    last_timestamp = _safe_float(detection.get("last_timestamp", detection.get("end_timestamp")))
+    midpoint = None
+    if first_timestamp is not None and last_timestamp is not None:
+        midpoint = (first_timestamp + last_timestamp) / 2.0
+    scored_candidates: list[tuple[float, Path]] = []
+    for candidate in candidates:
+        timestamp = _timestamp_from_confirmed_crop_name(candidate)
+        if timestamp is None:
+            scored_candidates.append((float("inf"), candidate))
+            continue
+        if first_timestamp is not None and last_timestamp is not None and not (first_timestamp <= timestamp <= last_timestamp):
+            continue
+        distance = abs(timestamp - midpoint) if midpoint is not None else 0.0
+        scored_candidates.append((distance, candidate))
+    if scored_candidates:
+        scored_candidates.sort(key=lambda item: (item[0], str(item[1])))
+        return scored_candidates[0][1]
+    return candidates[0]
+
+
+def _resolve_optional_preview_path(detection: dict[str, Any]) -> Path | None:
+    for key in ("roi_preview_path", "preview_path"):
+        value = detection.get(key)
+        if isinstance(value, str) and value.strip():
+            path = Path(value).expanduser()
+            if not path.is_absolute():
+                path = (Path.cwd() / path).resolve()
+            else:
+                path = path.resolve()
+            return path
+    return None
+
+
+def _timestamp_from_confirmed_crop_name(path: Path) -> float | None:
+    stem = path.stem
+    if "-frame" not in stem or "-" not in stem:
+        return None
+    try:
+        return float(stem.rsplit("-", 1)[-1])
+    except ValueError:
+        return None
+
+
+def _safe_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _build_disagreements(
@@ -1262,6 +1933,11 @@ def _render_html(derived: dict[str, Any]) -> str:
     .timeline-bar.runtime_event {{ background: rgba(157,100,0,.18); border-color: rgba(157,100,0,.45); }}
     .timeline-bar.fused_event {{ background: rgba(124,58,237,.18); border-color: rgba(124,58,237,.45); }}
     .timeline-bar.active {{ opacity: 1; box-shadow: inset 0 0 0 1px rgba(17,102,204,.9); }}
+    .diagnostic-card {{ border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: #fbfcff; margin-bottom: 12px; }}
+    .evidence-grid {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }}
+    .evidence-card {{ border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #fff; }}
+    .evidence-card img {{ width: 100%; border-radius: 8px; border: 1px solid var(--border); background: #f4f6fb; }}
+    .evidence-label {{ font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }}
     details {{ border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #fff; }}
     summary {{ cursor: pointer; font-weight: 600; }}
   </style>
@@ -1392,6 +2068,14 @@ def _render_html(derived: dict[str, Any]) -> str:
 
     function currentHook(item) {{
       return (VIEWER_DATA.hooks && VIEWER_DATA.hooks.by_item_id && VIEWER_DATA.hooks.by_item_id[itemKey(item)]) || {{}};
+    }}
+
+    function currentDetectorDiagnostics(item) {{
+      return (VIEWER_DATA.detector_diagnostics && VIEWER_DATA.detector_diagnostics.by_item_id && VIEWER_DATA.detector_diagnostics.by_item_id[itemKey(item)]) || [];
+    }}
+
+    function currentDetectorCalibrationHandoff(item) {{
+      return (VIEWER_DATA.detector_calibration_handoffs && VIEWER_DATA.detector_calibration_handoffs.by_item_id && VIEWER_DATA.detector_calibration_handoffs.by_item_id[itemKey(item)]) || {{}};
     }}
 
     function renderTagList(values, className = "") {{
@@ -1588,6 +2272,143 @@ def _render_html(derived: dict[str, Any]) -> str:
       `;
     }}
 
+    function renderDetectorDiagnostics(item) {{
+      const rows = currentDetectorDiagnostics(item);
+      if (!rows.length) {{
+        return `<div class="kv"><div class="key">Detector diagnostics</div><div>No linked template-backed detections.</div></div>`;
+      }}
+      const cards = rows.map((row) => {{
+        const thresholdState = row.threshold_cleared === null || row.threshold_cleared === undefined
+          ? "unknown"
+          : row.threshold_cleared ? "cleared" : "not cleared";
+        const templateEvidence = row.template_image_available && row.template_image_uri
+          ? `<img src="${{escapeHtml(row.template_image_uri)}}" alt="Template image">`
+          : `<div>missing_template_image</div>`;
+        const cropEvidence = row.confirmed_roi_crop_available && row.confirmed_roi_crop_uri
+          ? `<img src="${{escapeHtml(row.confirmed_roi_crop_uri)}}" alt="Confirmed ROI crop">`
+          : `<div>missing_confirmed_roi_crop</div>`;
+        const previewEvidence = row.roi_preview_available && row.roi_preview_uri
+          ? `<img src="${{escapeHtml(row.roi_preview_uri)}}" alt="ROI preview">`
+          : `<div>missing_roi_preview</div>`;
+        return `
+          <div class="diagnostic-card">
+            <div class="kv"><div class="key">Asset id</div><div>${{escapeHtml(row.asset_id || "n/a")}}</div></div>
+            <div class="kv"><div class="key">ROI</div><div>${{escapeHtml(row.roi_ref || "n/a")}}</div></div>
+            <div class="kv"><div class="key">Signal / event</div><div>${{escapeHtml(row.signal_type || "n/a")}} -> ${{escapeHtml(row.event_type || "n/a")}}</div></div>
+            <div class="kv"><div class="key">Score / threshold</div><div>${{formatNumber(row.score)}} / ${{formatNumber(row.threshold)}}</div></div>
+            <div class="kv"><div class="key">Threshold state</div><div>${{escapeHtml(thresholdState)}}</div></div>
+            <div class="kv"><div class="key">Temporal window</div><div>${{formatNumber(row.temporal_window)}} (${{
+              escapeHtml(row.temporal_confirmation_state || "unknown")
+            }})</div></div>
+            <div class="kv"><div class="key">Timestamp</div><div>${{formatNumber(row.timestamp)}}s</div></div>
+            <div class="kv"><div class="key">Runtime signal id</div><div>${{escapeHtml(row.runtime_signal_id || "n/a")}}</div></div>
+            <div class="kv"><div class="key">Runtime event row id</div><div>${{escapeHtml(row.runtime_event_row_id || "n/a")}}</div></div>
+            <div class="kv"><div class="key">Fused event id</div><div>${{escapeHtml(row.fused_event_id || "n/a")}}</div></div>
+            <div class="evidence-grid">
+              <div class="evidence-card">
+                <div class="evidence-label">Template</div>
+                ${{templateEvidence}}
+              </div>
+              <div class="evidence-card">
+                <div class="evidence-label">Confirmed ROI Crop</div>
+                ${{cropEvidence}}
+              </div>
+              <div class="evidence-card">
+                <div class="evidence-label">ROI Preview</div>
+                ${{previewEvidence}}
+              </div>
+            </div>
+          </div>
+        `;
+      }}).join("");
+      return cards;
+    }}
+
+    function renderDetectorCalibrationHandoff(item) {{
+      const row = currentDetectorCalibrationHandoff(item);
+      if (!row.available) {{
+        return `<div class="kv"><div class="key">Calibration handoff</div><div>No detector calibration handoff available for this item.</div></div>`;
+      }}
+      const comparison = row.template_comparison && typeof row.template_comparison === "object" ? row.template_comparison : null;
+      const baselineComparison = row.template_comparison_secondary && typeof row.template_comparison_secondary === "object" ? row.template_comparison_secondary : null;
+      const differenceSummary = row.template_comparison_difference_summary ? String(row.template_comparison_difference_summary) : "";
+      let comparisonBlock = `<div class="kv"><div class="key">Crop comparison</div><div>No persisted crop comparison available.</div></div>`;
+      if (comparison) {{
+        if (comparison.status === "ok") {{
+          const overlap = comparison.spatial_overlap && typeof comparison.spatial_overlap === "object" ? comparison.spatial_overlap : null;
+          let overlapBlock = ``;
+          if (overlap) {{
+            const intersection = overlap.intersection && typeof overlap.intersection === "object" ? overlap.intersection : {{}};
+            overlapBlock = `
+              <div class="kv"><div class="key">Overlap reference</div><div>${{escapeHtml(String(overlap.reference_source || "unknown"))}}: ${{escapeHtml(String(overlap.reference_crop || "n/a"))}}</div></div>
+              <div class="kv"><div class="key">Intersection</div><div>${{escapeHtml(String((intersection.w || 0)))}}x${{escapeHtml(String((intersection.h || 0)))}} @ ${{escapeHtml(String((intersection.x || 0)))}} , ${{escapeHtml(String((intersection.y || 0)))}}</div></div>
+              <div class="kv"><div class="key">IoU</div><div>${{escapeHtml(String(overlap.iou ?? "n/a"))}}</div></div>
+              <div class="kv"><div class="key">Revised coverage</div><div>${{escapeHtml(String(overlap.revised_coverage_ratio ?? "n/a"))}}</div></div>
+              <div class="kv"><div class="key">Reference coverage</div><div>${{escapeHtml(String(overlap.reference_coverage_ratio ?? "n/a"))}}</div></div>
+            `;
+          }}
+          comparisonBlock = `
+            <div class="kv"><div class="key">Comparison source</div><div>${{escapeHtml(String(row.template_comparison_source || "crop_candidate"))}}</div></div>
+            <div class="kv"><div class="key">Crop comparison</div><div>published ${{escapeHtml(String((comparison.published_dimensions && comparison.published_dimensions.width) || "n/a"))}}x${{escapeHtml(String((comparison.published_dimensions && comparison.published_dimensions.height) || "n/a"))}} -> revised ${{escapeHtml(String((comparison.revised_dimensions && comparison.revised_dimensions.width) || "n/a"))}}x${{escapeHtml(String((comparison.revised_dimensions && comparison.revised_dimensions.height) || "n/a"))}}</div></div>
+            <div class="kv"><div class="key">Dimension delta</div><div>${{escapeHtml(String((comparison.delta && comparison.delta.width) || 0))}}x / ${{escapeHtml(String((comparison.delta && comparison.delta.height) || 0))}}y</div></div>
+            <div class="kv"><div class="key">Dimensions match</div><div>${{escapeHtml(String(Boolean(comparison.dimensions_match)))}}</div></div>
+            ${{overlapBlock}}
+          `;
+        }} else {{
+          comparisonBlock = `<div class="kv"><div class="key">Crop comparison</div><div>${{escapeHtml(comparison.status || "unavailable")}}</div></div>`;
+        }}
+      }}
+      let differenceSummaryBlock = ``;
+      if (differenceSummary) {{
+        differenceSummaryBlock = `<div class="kv"><div class="key">Difference summary</div><div>${{escapeHtml(differenceSummary)}}</div></div>`;
+      }}
+      let baselineBlock = ``;
+      if (baselineComparison && baselineComparison.status === "ok") {{
+        const baselineOverlap = baselineComparison.spatial_overlap && typeof baselineComparison.spatial_overlap === "object" ? baselineComparison.spatial_overlap : null;
+        let baselineOverlapBlock = ``;
+        if (baselineOverlap) {{
+          const intersection = baselineOverlap.intersection && typeof baselineOverlap.intersection === "object" ? baselineOverlap.intersection : {{}};
+          baselineOverlapBlock = `
+            <div class="kv"><div class="key">Baseline overlap reference</div><div>${{escapeHtml(String(baselineOverlap.reference_source || "unknown"))}}: ${{escapeHtml(String(baselineOverlap.reference_crop || "n/a"))}}</div></div>
+            <div class="kv"><div class="key">Baseline IoU</div><div>${{escapeHtml(String(baselineOverlap.iou ?? "n/a"))}}</div></div>
+            <div class="kv"><div class="key">Baseline revised coverage</div><div>${{escapeHtml(String(baselineOverlap.revised_coverage_ratio ?? "n/a"))}}</div></div>
+            <div class="kv"><div class="key">Baseline reference coverage</div><div>${{escapeHtml(String(baselineOverlap.reference_coverage_ratio ?? "n/a"))}}</div></div>
+            <div class="kv"><div class="key">Baseline intersection</div><div>${{escapeHtml(String((intersection.w || 0)))}}x${{escapeHtml(String((intersection.h || 0)))}} @ ${{escapeHtml(String((intersection.x || 0)))}} , ${{escapeHtml(String((intersection.y || 0)))}}</div></div>
+          `;
+        }}
+        baselineBlock = `
+          <div class="kv"><div class="key">Candidate-time baseline</div><div>${{escapeHtml(String(row.template_comparison_secondary_source || "crop_candidate"))}}</div></div>
+          <div class="kv"><div class="key">Baseline dimension delta</div><div>${{escapeHtml(String((baselineComparison.delta && baselineComparison.delta.width) || 0))}}x / ${{escapeHtml(String((baselineComparison.delta && baselineComparison.delta.height) || 0))}}y</div></div>
+          ${{baselineOverlapBlock}}
+        `;
+      }}
+      return `
+        <div class="kv"><div class="key">Asset id</div><div>${{escapeHtml(row.asset_id || "n/a")}}</div></div>
+        <div class="kv"><div class="key">ROI</div><div>${{escapeHtml(row.roi_ref || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Timestamp</div><div>${{formatNumber(row.timestamp_seconds)}}s</div></div>
+        <div class="kv"><div class="key">Suggested judgment</div><div>${{escapeHtml(row.suggested_judgment || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Suggested cause</div><div>${{escapeHtml(row.suggested_suspected_cause || "n/a")}}</div></div>
+        <div class="kv"><div class="key">Suggested crop</div><div>${{escapeHtml(row.suggested_crop || row.suggested_crop_placeholder || "x,y,w,h")}}</div></div>
+        <div class="kv"><div class="key">Suggested crop source</div><div>${{escapeHtml(row.suggested_crop_source || "placeholder")}}</div></div>
+        ${{comparisonBlock}}
+        ${{differenceSummaryBlock}}
+        ${{baselineBlock}}
+        <div class="kv"><div class="key">Workflow note</div><div>Run Init first. The session tool will return concrete Create Crop and Replay commands with the real session root.</div></div>
+        <div class="evidence-card">
+          <div class="evidence-label">Init</div>
+          <pre>${{escapeHtml(row.init_command || row.command || "")}}</pre>
+        </div>
+        <div class="evidence-card">
+          <div class="evidence-label">Create Crop</div>
+          <pre>${{escapeHtml(row.create_crop_command_template || "")}}</pre>
+        </div>
+        <div class="evidence-card">
+          <div class="evidence-label">Replay</div>
+          <pre>${{escapeHtml(row.replay_command_template || "")}}</pre>
+        </div>
+      `;
+    }}
+
     function currentItem() {{
       return ITEM_LOOKUP[viewerState.selectedItemId] || null;
     }}
@@ -1627,6 +2448,8 @@ def _render_html(derived: dict[str, Any]) -> str:
       const provenanceBlock = renderProvenanceBlock(item);
       const disagreementBlock = renderDisagreementBlock(item);
       const recommendationBlock = renderRecommendationSummary(item);
+      const detectorDiagnosticsBlock = renderDetectorDiagnostics(item);
+      const detectorCalibrationHandoffBlock = renderDetectorCalibrationHandoff(item);
       if (item.kind === "proxy_window") {{
         const hfDetails = VIEWER_DATA.proxy.hf_pipeline.window_details[row.window_id] || {{}};
         const reasonCodes = Array.isArray(hfDetails.rerank?.reason_codes) ? hfDetails.rerank.reason_codes.map((code) => `<span class="tag fused">${{escapeHtml(code)}}</span>`).join("") : "";
@@ -1653,6 +2476,10 @@ def _render_html(derived: dict[str, Any]) -> str:
           ${{disagreementBlock}}
           <h3>Recommendation Summary</h3>
           ${{recommendationBlock}}
+          <h3>ROI / Template Diagnostics</h3>
+          ${{detectorDiagnosticsBlock}}
+          <h3>Detector Calibration Handoff</h3>
+          ${{detectorCalibrationHandoffBlock}}
           <table>
             <thead><tr><th>Stage</th><th>Source</th><th>Strength</th><th>Confidence</th><th>Reason</th></tr></thead>
             <tbody>${{signals || '<tr><td colspan="5">No proxy signal rows.</td></tr>'}}</tbody>
@@ -1676,6 +2503,10 @@ def _render_html(derived: dict[str, Any]) -> str:
           ${{disagreementBlock}}
           <h3>Recommendation Summary</h3>
           ${{recommendationBlock}}
+          <h3>ROI / Template Diagnostics</h3>
+          ${{detectorDiagnosticsBlock}}
+          <h3>Detector Calibration Handoff</h3>
+          ${{detectorCalibrationHandoffBlock}}
           <table>
             <thead><tr><th>Supporting signal</th><th>Label</th><th>Score</th></tr></thead>
             <tbody>${{linkedSignalRows || '<tr><td colspan="3">No supporting runtime signals.</td></tr>'}}</tbody>
@@ -1704,6 +2535,10 @@ def _render_html(derived: dict[str, Any]) -> str:
         ${{disagreementBlock}}
         <h3>Recommendation Summary</h3>
         ${{recommendationBlock}}
+        <h3>ROI / Template Diagnostics</h3>
+        ${{detectorDiagnosticsBlock}}
+        <h3>Detector Calibration Handoff</h3>
+        ${{detectorCalibrationHandoffBlock}}
         <table>
           <thead><tr><th>Signal id</th><th>Producer</th><th>Label</th><th>Score</th></tr></thead>
           <tbody>${{contributingRows || '<tr><td colspan="4">No contributing normalized signals.</td></tr>'}}</tbody>

@@ -6,11 +6,13 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from pipeline.clip_registry import refresh_clip_registry
 from pipeline.highlight_selection_export import export_highlight_selection
 from pipeline.hook_candidate_export import derive_hook_candidates
+from pipeline.roi_matcher import RoiMatcherError, RuntimeCvRule, TemplateSpec
 from pipeline import unified_replay_viewer
 from run import main as run_main
 from run import run_render_unified_replay_viewer
@@ -101,10 +103,18 @@ def _runtime_sidecar(*, source: Path, game: str = "marvel_rivals", schema_versio
             "confirmed_detections": [
                 {
                     "asset_id": "marvel_rivals.punisher.hero_portrait",
+                    "asset_family": "hero_portrait",
                     "roi_ref": "hero_portrait",
                     "first_timestamp": 1.0,
                     "last_timestamp": 1.5,
                     "peak_score": 0.98,
+                    "supporting_frames": 2,
+                    "match_x": 4,
+                    "match_y": 6,
+                    "match_width": 22,
+                    "match_height": 18,
+                    "frame_match_x": 4,
+                    "frame_match_y": 6,
                 }
             ],
             "signals": [
@@ -368,6 +378,520 @@ def _fixture_trial_batch_manifest(comparison_report_path: Path) -> dict[str, obj
 
 
 class UnifiedReplayViewerTests(unittest.TestCase):
+    def test_build_unified_payload_derives_detector_diagnostics_for_runtime_and_fused_items(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            template_path = root / "templates" / "punisher.png"
+            template_path.parent.mkdir(parents=True, exist_ok=True)
+            template_path.write_bytes(b"png")
+            debug_root = root / "debug"
+            crops_root = debug_root / "confirmed_roi_crops"
+            crops_root.mkdir(parents=True, exist_ok=True)
+            crop_path = crops_root / "marvel_rivals.punisher.hero_portrait-frame00042-1.250.png"
+            crop_path.write_bytes(b"png")
+
+            runtime_payload = _runtime_sidecar(source=media)
+            runtime_payload["matcher"]["debug_output_dir"] = str(debug_root)
+            fused_payload = _fused_sidecar(source=media)
+
+            fake_pack = SimpleNamespace(
+                templates=[
+                    TemplateSpec(
+                        asset_id="marvel_rivals.punisher.hero_portrait",
+                        roi_ref="hero_portrait",
+                        template_path=template_path,
+                        mask_path=None,
+                        threshold=0.94,
+                        scale_set=[1.0],
+                        temporal_window=2,
+                        match_method="TM_CCOEFF_NORMED",
+                        asset_family="hero_portrait",
+                        display_name="Punisher Portrait",
+                        entity_id="punisher",
+                    )
+                ],
+                runtime_rules={
+                    "hero_portrait": RuntimeCvRule(
+                        asset_family="hero_portrait",
+                        signal_type="character_identity",
+                        event_type="pov_character_identified",
+                        target_field="entity_id",
+                        target_id_source="template",
+                        target_value_field="entity_id",
+                        collapse_strategy="latest_wins",
+                        identity_competition="entity",
+                        cluster_gap_seconds=0.25,
+                        event_timestamp_mode="start",
+                    )
+                },
+                rois={
+                    "hero_portrait": SimpleNamespace(x=0, y=0, width=100, height=40),
+                },
+            )
+
+            with patch.object(unified_replay_viewer, "load_published_runtime_pack", return_value=fake_pack):
+                derived = unified_replay_viewer._build_unified_payload(
+                    proxy_payload=None,
+                    runtime_payload=runtime_payload,
+                    fused_payload=fused_payload,
+                    proxy_path=None,
+                    runtime_path=root / "alpha.runtime_analysis.json",
+                    fused_path=root / "alpha.fused_analysis.json",
+                    media_path=media,
+                    media_exists=True,
+                    game="marvel_rivals",
+                    source=str(media),
+                    reports={},
+                    registry_path=None,
+                )
+
+            runtime_rows = derived["detector_diagnostics"]["by_item_id"]["runtime-event-0"]
+            fused_rows = derived["detector_diagnostics"]["by_item_id"]["fused-event-0"]
+            self.assertEqual(len(runtime_rows), 1)
+            self.assertEqual(len(fused_rows), 1)
+            runtime_row = runtime_rows[0]
+            fused_row = fused_rows[0]
+            self.assertEqual(runtime_row["asset_id"], "marvel_rivals.punisher.hero_portrait")
+            self.assertEqual(runtime_row["signal_type"], "character_identity")
+            self.assertEqual(runtime_row["event_type"], "pov_character_identified")
+            self.assertTrue(runtime_row["template_image_available"])
+            self.assertEqual(runtime_row["template_image_path"], str(template_path))
+            self.assertTrue(runtime_row["confirmed_roi_crop_available"])
+            self.assertEqual(Path(runtime_row["confirmed_roi_crop_path"]).resolve(), crop_path.resolve())
+            self.assertEqual(runtime_row["temporal_confirmation_state"], "confirmed")
+            self.assertEqual(runtime_row["runtime_signal_id"], "signal-1")
+            self.assertEqual(runtime_row["runtime_event_row_id"], "runtime-1")
+            self.assertEqual(fused_row["fused_event_id"], "fused-1")
+            self.assertEqual(fused_row["runtime_event_row_id"], "runtime-1")
+            runtime_handoff = derived["detector_calibration_handoffs"]["by_item_id"]["runtime-event-0"]
+            fused_handoff = derived["detector_calibration_handoffs"]["by_item_id"]["fused-event-0"]
+            self.assertTrue(runtime_handoff["available"])
+            self.assertEqual(runtime_handoff["asset_id"], "marvel_rivals.punisher.hero_portrait")
+            self.assertEqual(runtime_handoff["event_type"], "pov_character_identified")
+            self.assertEqual(runtime_handoff["event_row_id"], "runtime-1")
+            self.assertEqual(runtime_row["localized_suggested_crop"], "4,6,22,18")
+            self.assertEqual(runtime_handoff["suggested_crop"], "4,6,22,18")
+            self.assertEqual(runtime_handoff["suggested_crop_source"], "localized_match")
+            self.assertEqual(runtime_handoff["suggested_crop_placeholder"], "x,y,w,h")
+            self.assertIn("create-crop", runtime_handoff["create_crop_command_template"])
+            self.assertIn("<SESSION_ROOT>", runtime_handoff["create_crop_command_template"])
+            self.assertIn("4,6,22,18", runtime_handoff["create_crop_command_template"])
+            self.assertIn("replay", runtime_handoff["replay_command_template"])
+            self.assertIn("tools/detector_calibration_session.py init", runtime_handoff["command"])
+            self.assertIn(str((Path(__file__).resolve().parent.parent / ".venv" / "bin" / "python")), runtime_handoff["command"])
+            self.assertIn("--asset-id marvel_rivals.punisher.hero_portrait", runtime_handoff["command"])
+            self.assertTrue(fused_handoff["available"])
+            self.assertEqual(fused_handoff["asset_id"], "marvel_rivals.punisher.hero_portrait")
+            self.assertEqual(fused_handoff["event_type"], "pov_character_identified")
+            self.assertEqual(fused_handoff["event_row_id"], "runtime-1")
+
+    def test_render_unified_replay_viewer_detector_diagnostics_missing_states_are_explicit(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            runtime_path = root / "alpha.runtime_analysis.json"
+            fused_path = root / "alpha.fused_analysis.json"
+            runtime_path.write_text(json.dumps(_runtime_sidecar(source=media), indent=2), encoding="utf-8")
+            fused_path.write_text(json.dumps(_fused_sidecar(source=media), indent=2), encoding="utf-8")
+
+            with patch.object(unified_replay_viewer, "DEFAULT_OUTPUT_ROOT", root / "viewer"), patch.object(
+                unified_replay_viewer,
+                "load_published_runtime_pack",
+                side_effect=RoiMatcherError("missing_pack", "pack missing"),
+            ):
+                result = run_render_unified_replay_viewer(runtime_sidecar=runtime_path, fused_sidecar=fused_path)
+
+            self.assertTrue(result["ok"])
+            html_text = Path(result["viewer_path"]).read_text(encoding="utf-8")
+            self.assertIn("ROI / Template Diagnostics", html_text)
+            self.assertIn("Detector Calibration Handoff", html_text)
+            self.assertIn("missing_template_image", html_text)
+            self.assertIn("missing_confirmed_roi_crop", html_text)
+            self.assertIn("No linked template-backed detections.", html_text)
+            self.assertIn("No detector calibration handoff available for this item.", html_text)
+
+    def test_build_unified_payload_attaches_session_template_comparison_to_matching_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            template_path = root / "templates" / "punisher.png"
+            template_path.parent.mkdir(parents=True, exist_ok=True)
+            template_path.write_bytes(b"png")
+            session_root = root / "outputs" / "detector_calibration" / "marvel_rivals" / "session-001"
+            runtime_path = session_root / "replay_results" / "replay-001" / "trial" / "runtime_analysis.json"
+            runtime_path.parent.mkdir(parents=True, exist_ok=True)
+            runtime_payload = _runtime_sidecar(source=media)
+            runtime_path.write_text(json.dumps(runtime_payload, indent=2), encoding="utf-8")
+            review_record_path = session_root / "review_record.json"
+            review_record_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "detector_calibration_review_v1",
+                        "target": {"asset_id": "marvel_rivals.punisher.hero_portrait"},
+                        "crop_candidates": [
+                            {
+                                "candidate_id": "rev-001",
+                                "template_comparison": {
+                                    "status": "ok",
+                                    "published_dimensions": {"width": 100, "height": 40},
+                                    "revised_dimensions": {"width": 96, "height": 38},
+                                    "delta": {"width": -4, "height": -2},
+                                    "dimensions_match": False,
+                                    "spatial_overlap": {
+                                        "reference_crop": "0,0,100,40",
+                                        "reference_source": "roi_fallback",
+                                        "intersection": {"x": 5, "y": 5, "w": 90, "h": 30},
+                                        "intersection_area": 2700,
+                                        "revised_area": 2700,
+                                        "reference_area": 4000,
+                                        "iou": 0.675,
+                                        "revised_coverage_ratio": 1.0,
+                                        "reference_coverage_ratio": 0.675,
+                                    },
+                                },
+                            }
+                        ],
+                        "replay_runs": [
+                            {
+                                "candidate_id": "rev-001",
+                                "trial_runtime_sidecar_path": str(runtime_path.resolve()),
+                                "derived_template_comparison": {
+                                    "status": "ok",
+                                    "published_dimensions": {"width": 100, "height": 40},
+                                    "revised_dimensions": {"width": 96, "height": 38},
+                                    "delta": {"width": -4, "height": -2},
+                                    "dimensions_match": False,
+                                    "spatial_overlap": {
+                                        "reference_crop": "4,6,22,18",
+                                        "reference_source": "localized_match",
+                                        "intersection": {"x": 5, "y": 6, "w": 21, "h": 18},
+                                        "intersection_area": 378,
+                                        "revised_area": 2700,
+                                        "reference_area": 396,
+                                        "iou": 0.13913,
+                                        "revised_coverage_ratio": 0.14,
+                                        "reference_coverage_ratio": 0.954545,
+                                    },
+                                },
+                            }
+                        ],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            fake_pack = SimpleNamespace(
+                templates=[
+                    TemplateSpec(
+                        asset_id="marvel_rivals.punisher.hero_portrait",
+                        roi_ref="hero_portrait",
+                        template_path=template_path,
+                        mask_path=None,
+                        threshold=0.94,
+                        scale_set=[1.0],
+                        temporal_window=2,
+                        match_method="TM_CCOEFF_NORMED",
+                        asset_family="hero_portrait",
+                        display_name="Punisher Portrait",
+                        entity_id="punisher",
+                    )
+                ],
+                runtime_rules={
+                    "hero_portrait": RuntimeCvRule(
+                        asset_family="hero_portrait",
+                        signal_type="character_identity",
+                        event_type="pov_character_identified",
+                        target_field="entity_id",
+                        target_id_source="template",
+                        target_value_field="entity_id",
+                        collapse_strategy="latest_wins",
+                        identity_competition="entity",
+                        cluster_gap_seconds=0.25,
+                        event_timestamp_mode="start",
+                    )
+                },
+                rois={"hero_portrait": SimpleNamespace(x=0, y=0, width=100, height=40)},
+            )
+
+            with patch.object(unified_replay_viewer, "load_published_runtime_pack", return_value=fake_pack):
+                derived = unified_replay_viewer._build_unified_payload(
+                    proxy_payload=None,
+                    runtime_payload=runtime_payload,
+                    fused_payload=None,
+                    proxy_path=None,
+                    runtime_path=runtime_path,
+                    fused_path=None,
+                    media_path=media,
+                    media_exists=True,
+                    game="marvel_rivals",
+                    source=str(media),
+                    reports={},
+                    registry_path=None,
+                )
+
+            handoff = derived["detector_calibration_handoffs"]["by_item_id"]["runtime-event-0"]
+            self.assertEqual(
+                handoff["template_comparison"],
+                {
+                    "status": "ok",
+                    "published_dimensions": {"width": 100, "height": 40},
+                    "revised_dimensions": {"width": 96, "height": 38},
+                    "delta": {"width": -4, "height": -2},
+                    "dimensions_match": False,
+                    "spatial_overlap": {
+                        "reference_crop": "4,6,22,18",
+                        "reference_source": "localized_match",
+                        "intersection": {"x": 5, "y": 6, "w": 21, "h": 18},
+                        "intersection_area": 378,
+                        "revised_area": 2700,
+                        "reference_area": 396,
+                        "iou": 0.13913,
+                        "revised_coverage_ratio": 0.14,
+                        "reference_coverage_ratio": 0.954545,
+                    },
+                },
+            )
+            self.assertEqual(handoff["template_comparison_source"], "replay_run")
+            self.assertIsNotNone(handoff["template_comparison_secondary"])
+            self.assertEqual(handoff["template_comparison_secondary_source"], "crop_candidate")
+            self.assertEqual(
+                handoff["template_comparison_difference_summary"],
+                "Replay changed overlap source from roi_fallback to localized_match and changed IoU from 0.675 to 0.13913.",
+            )
+            self.assertEqual(
+                handoff["template_comparison_secondary"]["spatial_overlap"]["reference_source"],
+                "roi_fallback",
+            )
+
+    def test_render_unified_replay_viewer_renders_spatial_overlap_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            template_path = root / "templates" / "punisher.png"
+            template_path.parent.mkdir(parents=True, exist_ok=True)
+            template_path.write_bytes(b"png")
+            session_root = root / "outputs" / "detector_calibration" / "marvel_rivals" / "session-001"
+            runtime_path = session_root / "replay_results" / "replay-001" / "trial" / "runtime_analysis.json"
+            runtime_path.parent.mkdir(parents=True, exist_ok=True)
+            runtime_path.write_text(json.dumps(_runtime_sidecar(source=media), indent=2), encoding="utf-8")
+            (session_root / "review_record.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "detector_calibration_review_v1",
+                        "target": {"asset_id": "marvel_rivals.punisher.hero_portrait"},
+                        "crop_candidates": [
+                            {
+                                "candidate_id": "rev-001",
+                                "template_comparison": {
+                                    "status": "ok",
+                                    "published_dimensions": {"width": 100, "height": 40},
+                                    "revised_dimensions": {"width": 96, "height": 38},
+                                    "delta": {"width": -4, "height": -2},
+                                    "dimensions_match": False,
+                                    "spatial_overlap": {
+                                        "reference_crop": "0,0,100,40",
+                                        "reference_source": "roi_fallback",
+                                        "intersection": {"x": 5, "y": 5, "w": 90, "h": 30},
+                                        "intersection_area": 2700,
+                                        "revised_area": 2700,
+                                        "reference_area": 4000,
+                                        "iou": 0.675,
+                                        "revised_coverage_ratio": 1.0,
+                                        "reference_coverage_ratio": 0.675,
+                                    },
+                                },
+                            }
+                        ],
+                        "replay_runs": [
+                            {
+                                "candidate_id": "rev-001",
+                                "trial_runtime_sidecar_path": str(runtime_path.resolve()),
+                                "derived_template_comparison": {
+                                    "status": "ok",
+                                    "published_dimensions": {"width": 100, "height": 40},
+                                    "revised_dimensions": {"width": 96, "height": 38},
+                                    "delta": {"width": -4, "height": -2},
+                                    "dimensions_match": False,
+                                    "spatial_overlap": {
+                                        "reference_crop": "4,6,22,18",
+                                        "reference_source": "localized_match",
+                                        "intersection": {"x": 5, "y": 6, "w": 21, "h": 18},
+                                        "intersection_area": 378,
+                                        "revised_area": 2700,
+                                        "reference_area": 396,
+                                        "iou": 0.13913,
+                                        "revised_coverage_ratio": 0.14,
+                                        "reference_coverage_ratio": 0.954545,
+                                    },
+                                },
+                            }
+                        ],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            fake_pack = SimpleNamespace(
+                templates=[
+                    TemplateSpec(
+                        asset_id="marvel_rivals.punisher.hero_portrait",
+                        roi_ref="hero_portrait",
+                        template_path=template_path,
+                        mask_path=None,
+                        threshold=0.94,
+                        scale_set=[1.0],
+                        temporal_window=2,
+                        match_method="TM_CCOEFF_NORMED",
+                        asset_family="hero_portrait",
+                        display_name="Punisher Portrait",
+                        entity_id="punisher",
+                    )
+                ],
+                runtime_rules={
+                    "hero_portrait": RuntimeCvRule(
+                        asset_family="hero_portrait",
+                        signal_type="character_identity",
+                        event_type="pov_character_identified",
+                        target_field="entity_id",
+                        target_id_source="template",
+                        target_value_field="entity_id",
+                        collapse_strategy="latest_wins",
+                        identity_competition="entity",
+                        cluster_gap_seconds=0.25,
+                        event_timestamp_mode="start",
+                    )
+                },
+                rois={"hero_portrait": SimpleNamespace(x=0, y=0, width=100, height=40)},
+            )
+
+            with patch.object(unified_replay_viewer, "DEFAULT_OUTPUT_ROOT", root / "viewer"), patch.object(
+                unified_replay_viewer, "load_published_runtime_pack", return_value=fake_pack
+            ):
+                result = run_render_unified_replay_viewer(runtime_sidecar=runtime_path)
+
+            html_text = Path(result["viewer_path"]).read_text(encoding="utf-8")
+            self.assertIn('"template_comparison_source": "replay_run"', html_text)
+            self.assertIn('"template_comparison_secondary_source": "crop_candidate"', html_text)
+            self.assertIn('"template_comparison_difference_summary": "Replay changed overlap source from roi_fallback to localized_match and changed IoU from 0.675 to 0.13913."', html_text)
+            self.assertIn("Overlap reference", html_text)
+            self.assertIn('"reference_source": "localized_match"', html_text)
+            self.assertIn('"reference_crop": "4,6,22,18"', html_text)
+            self.assertIn("IoU", html_text)
+            self.assertIn("0.13913", html_text)
+            self.assertIn("Revised coverage", html_text)
+            self.assertIn("Reference coverage", html_text)
+
+    def test_build_unified_payload_suppresses_secondary_when_comparisons_match(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            template_path = root / "templates" / "punisher.png"
+            template_path.parent.mkdir(parents=True, exist_ok=True)
+            template_path.write_bytes(b"png")
+            session_root = root / "outputs" / "detector_calibration" / "marvel_rivals" / "session-001"
+            runtime_path = session_root / "replay_results" / "replay-001" / "trial" / "runtime_analysis.json"
+            runtime_path.parent.mkdir(parents=True, exist_ok=True)
+            runtime_payload = _runtime_sidecar(source=media)
+            runtime_path.write_text(json.dumps(runtime_payload, indent=2), encoding="utf-8")
+            comparison = {
+                "status": "ok",
+                "published_dimensions": {"width": 100, "height": 40},
+                "revised_dimensions": {"width": 96, "height": 38},
+                "delta": {"width": -4, "height": -2},
+                "dimensions_match": False,
+                "spatial_overlap": {
+                    "reference_crop": "4,6,22,18",
+                    "reference_source": "localized_match",
+                    "intersection": {"x": 5, "y": 6, "w": 21, "h": 18},
+                    "intersection_area": 378,
+                    "revised_area": 2700,
+                    "reference_area": 396,
+                    "iou": 0.13913,
+                    "revised_coverage_ratio": 0.14,
+                    "reference_coverage_ratio": 0.954545,
+                },
+            }
+            (session_root / "review_record.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "detector_calibration_review_v1",
+                        "target": {"asset_id": "marvel_rivals.punisher.hero_portrait"},
+                        "crop_candidates": [{"candidate_id": "rev-001", "template_comparison": comparison}],
+                        "replay_runs": [
+                            {
+                                "candidate_id": "rev-001",
+                                "trial_runtime_sidecar_path": str(runtime_path.resolve()),
+                                "derived_template_comparison": comparison,
+                            }
+                        ],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            fake_pack = SimpleNamespace(
+                templates=[
+                    TemplateSpec(
+                        asset_id="marvel_rivals.punisher.hero_portrait",
+                        roi_ref="hero_portrait",
+                        template_path=template_path,
+                        mask_path=None,
+                        threshold=0.94,
+                        scale_set=[1.0],
+                        temporal_window=2,
+                        match_method="TM_CCOEFF_NORMED",
+                        asset_family="hero_portrait",
+                        display_name="Punisher Portrait",
+                        entity_id="punisher",
+                    )
+                ],
+                runtime_rules={
+                    "hero_portrait": RuntimeCvRule(
+                        asset_family="hero_portrait",
+                        signal_type="character_identity",
+                        event_type="pov_character_identified",
+                        target_field="entity_id",
+                        target_id_source="template",
+                        target_value_field="entity_id",
+                        collapse_strategy="latest_wins",
+                        identity_competition="entity",
+                        cluster_gap_seconds=0.25,
+                        event_timestamp_mode="start",
+                    )
+                },
+                rois={"hero_portrait": SimpleNamespace(x=0, y=0, width=100, height=40)},
+            )
+            with patch.object(unified_replay_viewer, "load_published_runtime_pack", return_value=fake_pack):
+                derived = unified_replay_viewer._build_unified_payload(
+                    proxy_payload=None,
+                    runtime_payload=runtime_payload,
+                    fused_payload=None,
+                    proxy_path=None,
+                    runtime_path=runtime_path,
+                    fused_path=None,
+                    media_path=media,
+                    media_exists=True,
+                    game="marvel_rivals",
+                    source=str(media),
+                    reports={},
+                    registry_path=None,
+                )
+            handoff = derived["detector_calibration_handoffs"]["by_item_id"]["runtime-event-0"]
+            self.assertEqual(handoff["template_comparison_source"], "replay_run")
+            self.assertIsNone(handoff.get("template_comparison_secondary"))
+            self.assertIsNone(handoff.get("template_comparison_difference_summary"))
+
     def test_render_unified_replay_viewer_proxy_only(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
@@ -391,6 +915,8 @@ class UnifiedReplayViewerTests(unittest.TestCase):
             self.assertIn("clutch_moment", html_text)
             self.assertIn("Provenance", html_text)
             self.assertIn("Recommendation Summary", html_text)
+            self.assertIn("Detector Calibration Handoff", html_text)
+            self.assertIn("No detector calibration handoff available for this item.", html_text)
             self.assertIn("raw-proxy-sidecar", html_text)
 
     def test_render_unified_replay_viewer_runtime_and_fused(self) -> None:
@@ -419,6 +945,15 @@ class UnifiedReplayViewerTests(unittest.TestCase):
             self.assertIn("Disagreements", html_text)
             self.assertIn("Runtime: approved", html_text)
             self.assertIn("Fused: approved", html_text)
+            self.assertIn("Detector Calibration Handoff", html_text)
+            self.assertIn("Init", html_text)
+            self.assertIn("Create Crop", html_text)
+            self.assertIn("Replay", html_text)
+            self.assertIn("Run Init first. The session tool will return concrete Create Crop and Replay commands with the real session root.", html_text)
+            self.assertIn("tools/detector_calibration_session.py init", html_text)
+            self.assertIn("tools/detector_calibration_session.py create-crop", html_text)
+            self.assertIn("tools/detector_calibration_session.py replay", html_text)
+            self.assertIn("marvel_rivals.punisher.hero_portrait", html_text)
 
     def test_render_unified_replay_viewer_proxy_runtime_fused(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -586,6 +1121,44 @@ class UnifiedReplayViewerTests(unittest.TestCase):
 
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_proxy_sidecar")
+
+    def test_linked_detections_for_runtime_event_prefers_matching_asset_identity(self) -> None:
+        runtime_section = {
+            "detections": [
+                {
+                    "asset_id": "marvel_rivals.ace.team_wipe_announcement",
+                    "asset_family": "team_wipe_announcement",
+                    "roi_ref": "team_wipe_announcement",
+                    "event_row_id": "ace",
+                    "start_timestamp": 0.0,
+                    "end_timestamp": 1.25,
+                    "score": 0.99991,
+                },
+                {
+                    "asset_id": "marvel_rivals.human_torch.hero_portrait",
+                    "asset_family": "hero_portrait",
+                    "roi_ref": "hero_portrait",
+                    "start_timestamp": 0.0,
+                    "end_timestamp": 2.25,
+                    "score": 0.9742,
+                },
+            ]
+        }
+        runtime_event = {
+            "event_id": "marvel_rivals.team_wipe_seen.b3c10d31b0",
+            "event_type": "team_wipe_seen",
+            "asset_id": "marvel_rivals.ace.team_wipe_announcement",
+            "asset_family": "team_wipe_announcement",
+            "roi_ref": "team_wipe_announcement",
+            "event_row_id": "ace",
+            "start_timestamp": 0.0,
+            "end_timestamp": 1.25,
+        }
+
+        linked = unified_replay_viewer._linked_detections_for_runtime_event(runtime_event, runtime_section)
+
+        self.assertEqual(len(linked), 1)
+        self.assertEqual(linked[0]["asset_id"], "marvel_rivals.ace.team_wipe_announcement")
 
     def test_render_unified_replay_viewer_rejects_mismatched_sidecars(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

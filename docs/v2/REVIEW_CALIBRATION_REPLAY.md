@@ -40,6 +40,23 @@ This doc should stay focused on:
 - what recommendation states mean
 - how review outcomes feed later decisions
 
+## Detector Calibration Operator Note
+
+For detector-calibration follow-up generation, the tool-returned JSON is the operator contract.
+
+Use:
+- `output_path` as the canonical emitted artifact path
+- `emitted_manifest` from `tools/detector_calibration_followup_manifest.py`
+- `emitted_report` from `tools/detector_calibration_followup_report.py`
+
+Do not rediscover the latest follow-up manifest or report with shell globs or wildcard-based `ls` flows just to inspect the strongest generated row.
+
+Preferred operator pattern:
+1. run the tool
+2. read the returned `output_path`
+3. inspect the returned `emitted_*` summary block for the strongest row
+4. open the written artifact only when deeper row inspection is actually needed
+
 ## Release-Gate Role
 
 Replay, calibration, and review-backed comparison are V2 release gates, not just debugging helpers.
