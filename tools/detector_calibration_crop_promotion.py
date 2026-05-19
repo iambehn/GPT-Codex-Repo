@@ -13,6 +13,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from pipeline.artifact_paths import (
+    resolve_path as shared_resolve_path,
+    utc_timestamp_slug,
+    write_json as shared_write_json,
+)
 from pipeline.detector_calibration_comparison import build_dual_layer_comparison_selection
 from pipeline.roi_matcher import RoiMatcherError, load_published_runtime_pack
 
@@ -416,7 +421,7 @@ def _slugify(value: str) -> str:
 
 
 def _resolve_path(path: str | Path | None) -> Path:
-    return Path(path or "").expanduser().resolve()
+    return shared_resolve_path(path or "")
 
 
 def _load_json(path: str | Path) -> dict[str, Any]:
@@ -424,9 +429,7 @@ def _load_json(path: str | Path) -> dict[str, Any]:
 
 
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
-    resolved = Path(path)
-    resolved.parent.mkdir(parents=True, exist_ok=True)
-    resolved.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    shared_write_json(path, payload, trailing_newline=True)
 
 
 def _utc_now() -> str:
@@ -434,7 +437,7 @@ def _utc_now() -> str:
 
 
 def _utc_stamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return utc_timestamp_slug()
 
 
 def _build_parser() -> argparse.ArgumentParser:

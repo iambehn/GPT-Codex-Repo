@@ -13,6 +13,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from pipeline.artifact_paths import (
+    resolve_path as shared_resolve_path,
+    utc_timestamp_slug,
+    write_json as shared_write_json,
+)
 from pipeline.roi_matcher import RoiMatcherError, validate_published_pack
 from pipeline.simple_yaml import dump_yaml_file, load_yaml_file
 from tools.detector_calibration_crop_promotion import (
@@ -132,7 +137,7 @@ def promote_revised_crop_to_published_pack(
     template_row["calibration_promotion_promoted_at"] = promoted_at
     template_row["calibration_promotion_promoted_by"] = normalized_promoted_by
 
-    assets_manifest_path.write_text(json.dumps(assets_manifest, indent=2) + "\n", encoding="utf-8")
+    shared_write_json(assets_manifest_path, assets_manifest, trailing_newline=True)
     dump_yaml_file(cv_templates_path, cv_templates)
 
     post_validation = validate_published_calibration_promotion(
@@ -312,7 +317,7 @@ def rollback_revised_crop_published_pack_promotion(
     for key in TEMPLATE_PROMOTION_FIELDS:
         template_row.pop(key, None)
 
-    assets_manifest_path.write_text(json.dumps(assets_manifest, indent=2) + "\n", encoding="utf-8")
+    shared_write_json(assets_manifest_path, assets_manifest, trailing_newline=True)
     dump_yaml_file(cv_templates_path, cv_templates)
 
     post_validation = validate_rolled_back_calibration_promotion(
@@ -455,7 +460,7 @@ def _sha256_file(path: str | Path) -> str:
 
 
 def _resolve_path(path: str | Path | None) -> Path:
-    return Path(path or "").expanduser().resolve()
+    return shared_resolve_path(path or "")
 
 
 def _load_json(path: str | Path) -> dict[str, Any]:
@@ -467,7 +472,7 @@ def _utc_now() -> str:
 
 
 def _utc_stamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return utc_timestamp_slug()
 
 
 def _build_parser() -> argparse.ArgumentParser:
