@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from pipeline.artifact_paths import write_json
+from pipeline.artifact_paths import utc_now_iso, utc_timestamp_slug, write_json
 from tools.detector_calibration_next_action_apply import (
     apply_detector_calibration_next_action,
     _load_json,
@@ -124,9 +123,8 @@ def _record_batch_ledger(
             raise ValueError("game could not be resolved for batch apply ledger recording")
     if resolved_ledger_path is None:
         resolved_ledger_path = _default_ledger_path(game=resolved_game)
-    now = datetime.now(UTC)
-    run_id = now.strftime("%Y%m%dT%H%M%SZ")
-    recorded_at = now.isoformat().replace("+00:00", "Z")
+    run_id = utc_timestamp_slug()
+    recorded_at = utc_now_iso().replace("+00:00", "Z")
     ledger = _load_or_initialize_ledger(ledger_path=resolved_ledger_path, game=resolved_game)
     ledger["rows"].append(_build_ledger_row(run_id=run_id, recorded_at=recorded_at, batch_result=batch_result))
     ledger["updated_at"] = recorded_at
