@@ -8,6 +8,7 @@ from typing import Any
 
 from pipeline.clip_registry import load_candidate_lifecycle_details, load_hook_candidate_details
 from pipeline.detector_calibration_comparison import build_dual_layer_comparison_selection
+from pipeline.review_calibration import ui_support as review_calibration_ui_support
 from pipeline import proxy_replay_viewer, replay_viewer
 from pipeline.roi_matcher import RoiMatcherError, load_published_runtime_pack
 
@@ -150,52 +151,36 @@ def render_unified_replay_viewer(
 
 
 def _maybe_load_proxy(path: str | Path | None) -> tuple[Path | None, dict[str, Any] | bool | None]:
-    if path is None:
-        return None, None
-    resolved = _resolve_path(path)
-    payload = _load_json(resolved)
-    if payload.get("schema_version") != SUPPORTED_PROXY_SCAN_SCHEMA_VERSION:
-        return resolved, False
-    return resolved, payload
+    return review_calibration_ui_support.load_optional_sidecar_payload(
+        path,
+        schema_version=SUPPORTED_PROXY_SCAN_SCHEMA_VERSION,
+    )
 
 
 def _maybe_load_runtime(path: str | Path | None) -> tuple[Path | None, dict[str, Any] | bool | None]:
-    if path is None:
-        return None, None
-    resolved = _resolve_path(path)
-    payload = _load_json(resolved)
-    if payload.get("schema_version") != SUPPORTED_RUNTIME_ANALYSIS_SCHEMA_VERSION:
-        return resolved, False
-    return resolved, payload
+    return review_calibration_ui_support.load_optional_sidecar_payload(
+        path,
+        schema_version=SUPPORTED_RUNTIME_ANALYSIS_SCHEMA_VERSION,
+    )
 
 
 def _maybe_load_fused(path: str | Path | None) -> tuple[Path | None, dict[str, Any] | bool | None]:
-    if path is None:
-        return None, None
-    resolved = _resolve_path(path)
-    payload = _load_json(resolved)
-    if payload.get("schema_version") != SUPPORTED_FUSED_ANALYSIS_SCHEMA_VERSION:
-        return resolved, False
-    return resolved, payload
+    return review_calibration_ui_support.load_optional_sidecar_payload(
+        path,
+        schema_version=SUPPORTED_FUSED_ANALYSIS_SCHEMA_VERSION,
+    )
 
 
 def _resolve_path(path: str | Path) -> Path:
-    resolved = Path(path).expanduser()
-    if not resolved.is_absolute():
-        resolved = (Path.cwd() / resolved).resolve()
-    else:
-        resolved = resolved.resolve()
-    return resolved
+    return review_calibration_ui_support.resolve_review_path(path)
 
 
 def _load_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return review_calibration_ui_support.load_json_payload(path)
 
 
 def _load_report(path: str | Path | None) -> dict[str, Any] | None:
-    if path is None:
-        return None
-    return _load_json(_resolve_path(path))
+    return review_calibration_ui_support.load_optional_report(path)
 
 
 def _load_reports(
@@ -207,25 +192,22 @@ def _load_reports(
     runtime_calibration_report: str | Path | None,
     runtime_replay_report: str | Path | None,
 ) -> dict[str, Any]:
-    return {
-        "fixture_comparison": _load_report(fixture_comparison_report),
-        "fixture_trial_batch": _load_report(fixture_trial_batch_manifest),
-        "proxy_calibration": _load_report(proxy_calibration_report),
-        "proxy_replay": _load_report(proxy_replay_report),
-        "runtime_calibration": _load_report(runtime_calibration_report),
-        "runtime_replay": _load_report(runtime_replay_report),
-    }
+    return review_calibration_ui_support.load_report_bundle(
+        fixture_comparison_report=fixture_comparison_report,
+        fixture_trial_batch_manifest=fixture_trial_batch_manifest,
+        proxy_calibration_report=proxy_calibration_report,
+        proxy_replay_report=proxy_replay_report,
+        runtime_calibration_report=runtime_calibration_report,
+        runtime_replay_report=runtime_replay_report,
+    )
 
 
 def _payload_text(payload: dict[str, Any] | None, key: str) -> str:
-    return str(payload.get(key, "")).strip() if isinstance(payload, dict) else ""
+    return review_calibration_ui_support.payload_text(payload, key)
 
 
 def _first_nonempty(*values: str) -> str:
-    for value in values:
-        if str(value).strip():
-            return str(value).strip()
-    return ""
+    return review_calibration_ui_support.first_nonempty(*values)
 
 
 def _sidecar_mismatch(
@@ -233,25 +215,15 @@ def _sidecar_mismatch(
     runtime_payload: dict[str, Any] | None,
     fused_payload: dict[str, Any] | None,
 ) -> str | None:
-    games = {_payload_text(payload, "game") for payload in (proxy_payload, runtime_payload, fused_payload) if _payload_text(payload, "game")}
-    if len(games) > 1:
-        return "provided sidecars refer to different games"
-    sources = {_payload_text(payload, "source") for payload in (proxy_payload, runtime_payload, fused_payload) if _payload_text(payload, "source")}
-    if len(sources) > 1:
-        return "provided sidecars refer to different sources"
-    return None
+    return review_calibration_ui_support.sidecar_mismatch(
+        proxy_payload,
+        runtime_payload,
+        fused_payload,
+    )
 
 
 def _resolve_media_path(value: Any) -> Path | None:
-    source_text = str(value or "").strip()
-    if not source_text:
-        return None
-    path = Path(source_text).expanduser()
-    if not path.is_absolute():
-        path = (Path.cwd() / path).resolve()
-    else:
-        path = path.resolve()
-    return path
+    return review_calibration_ui_support.resolve_media_path(value)
 
 
 def _viewer_output_path(
