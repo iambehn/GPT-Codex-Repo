@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +11,12 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from pipeline.artifact_paths import (
+    resolve_path,
+    resolve_timestamped_output_path,
+    utc_now_iso,
+    write_json,
+)
 
 SCHEMA_VERSION = "detector_calibration_publish_decision_manifest_v1"
 TRIAGE_SCHEMA_VERSION = "detector_calibration_promotion_triage_manifest_v1"
@@ -223,10 +229,11 @@ def _validate_triage_manifest_payload(payload: dict[str, Any]) -> None:
 
 
 def _resolve_output_path(*, game: str, output_path: str | Path | None) -> Path:
-    if output_path is not None:
-        return _resolve_path(output_path)
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    return DEFAULT_OUTPUT_ROOT / game / "publish_decisions" / f"{timestamp}.detector_calibration_publish_decision_manifest.json"
+    return resolve_timestamped_output_path(
+        output_path=output_path,
+        default_dir=DEFAULT_OUTPUT_ROOT / game / "publish_decisions",
+        filename_suffix="detector_calibration_publish_decision_manifest.json",
+    )
 
 
 def _decision_sort_key(row: dict[str, Any]) -> tuple[int, float, float, str]:
@@ -253,12 +260,7 @@ def _parse_iso_datetime(value: str) -> datetime | None:
 
 
 def _resolve_path(path: str | Path) -> Path:
-    resolved = Path(path).expanduser()
-    if not resolved.is_absolute():
-        resolved = (Path.cwd() / resolved).resolve()
-    else:
-        resolved = resolved.resolve()
-    return resolved
+    return resolve_path(path)
 
 
 def _load_json(path: str | Path) -> dict[str, Any]:
@@ -273,9 +275,7 @@ def _load_json_safely(path: str | Path) -> dict[str, Any] | None:
 
 
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
-    target = _resolve_path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    write_json(path, payload)
 
 
 def _safe_float(value: Any) -> float | None:
@@ -288,7 +288,7 @@ def _safe_float(value: Any) -> float | None:
 
 
 def _utc_now() -> str:
-    return datetime.now(UTC).isoformat()
+    return utc_now_iso()
 
 
 def _parser() -> argparse.ArgumentParser:

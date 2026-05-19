@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from pipeline.artifact_paths import write_json
 from tools.detector_calibration_next_action_apply import (
     apply_detector_calibration_next_action,
     _load_json,
@@ -130,8 +131,7 @@ def _record_batch_ledger(
     ledger["rows"].append(_build_ledger_row(run_id=run_id, recorded_at=recorded_at, batch_result=batch_result))
     ledger["updated_at"] = recorded_at
     ledger["row_count"] = len(ledger["rows"])
-    resolved_ledger_path.parent.mkdir(parents=True, exist_ok=True)
-    resolved_ledger_path.write_text(json.dumps(ledger, indent=2), encoding="utf-8")
+    write_json(resolved_ledger_path, ledger)
     return resolved_ledger_path, run_id
 
 
