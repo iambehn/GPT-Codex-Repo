@@ -134,6 +134,10 @@ Recommended next task:
 
 - continue with bootstrap-proof stages that operate on existing artifacts
 - set aside Stage 2 media-backed generation until a canonical sample clip exists
+- once real media exists, resume with:
+  - `python run.py --analyze-roi-runtime <SOURCE> call_of_duty`
+  - `python run.py --prepare-runtime-review call_of_duty`
+  - `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty`
 
 ## Phase 2: Sidecar And Artifact Generation
 

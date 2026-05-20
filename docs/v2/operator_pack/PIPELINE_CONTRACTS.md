@@ -61,6 +61,16 @@ Current deferred gap:
 
 - no command-backed sidecar-generation proof is pinned yet because there is still no canonical real-media input
 
+## Planned Real-Media Command Mapping
+
+These commands are the current preferred continuation once a canonical `call_of_duty` sample clip exists.
+
+| Stage | Command | Expected artifact or output surface | Reason this is the preferred next proof |
+| --- | --- | --- | --- |
+| Sidecar generation | `python run.py --analyze-roi-runtime <SOURCE> call_of_duty` | `runtime_analysis_v1` sidecar under `outputs/runtime_analysis/call_of_duty/` unless overridden | narrowest existing media-to-sidecar runtime path |
+| Review path | `python run.py --prepare-runtime-review call_of_duty` | `runtime_review_session_v1` manifest under `outputs/runtime_review_sessions/call_of_duty/` | consumes the default runtime sidecar root directly |
+| Replay or calibration | `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty` | runtime calibration report over reviewed sidecars | first runtime proof that does not require a separate trial config |
+
 ## Phase 0 Ownership Snapshot
 
 | Surface | Current owner |

@@ -127,6 +127,20 @@ Deferred bootstrap gap:
 
 - there is still no canonical real-media input, so Stage 3 sidecar generation remains deferred
 
+## Planned Real-Media Continuation
+
+Once a canonical `call_of_duty` sample clip exists, the next narrow runtime path should be:
+
+1. `python run.py --analyze-roi-runtime <SOURCE> call_of_duty`
+2. `python run.py --prepare-runtime-review call_of_duty`
+3. `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty`
+
+Why this is the current preferred continuation:
+
+- `--analyze-roi-runtime` is the narrowest existing command that goes directly from media input to a `runtime_analysis_v1` sidecar
+- `--prepare-runtime-review` already defaults to `outputs/runtime_analysis/<game>` and consumes those sidecars without needing a parallel workflow
+- `--calibrate-runtime-review` is the first replay or calibration surface that uses reviewed runtime sidecars without requiring a separate trial config
+
 ## Happy-Path Stages
 
 1. Config load

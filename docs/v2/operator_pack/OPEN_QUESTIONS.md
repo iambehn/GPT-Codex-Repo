@@ -19,10 +19,13 @@ Resolved in current execution doctrine:
 
 | Question | Priority | Owner | Resolution path |
 | --- | --- | --- | --- |
-| Which exact sidecar-generation command should be the first runtime proof once real input exists? | `P1` | Codex | choose from the inventoried runtime command surfaces for the provisional first game |
 | Which real-media export surface should replace onboarding publish-readiness after the bootstrap path? | `P1` | Codex plus PM | promote from onboarding bootstrap summary to the final local export bundle contract |
-| Which exact review bridge or app surface should follow the first real sidecar command? | `P1` | Codex | map the first real-media artifact to the narrowest review surface that consumes it |
-| Which exact replay or calibration surface should follow the first real sidecar command? | `P1` | Codex | choose the narrowest real-media replay or calibration proof once runtime artifacts exist |
+
+Resolved in current execution doctrine:
+
+- first real-media sidecar command: `python run.py --analyze-roi-runtime <SOURCE> call_of_duty`
+- first real-media review surface after that: `python run.py --prepare-runtime-review call_of_duty`
+- first real-media calibration proof after that: `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty`
 
 ## Resolution Rules
 
