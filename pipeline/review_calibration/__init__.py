@@ -1,3 +1,4 @@
+from .record_loader import load_highlight_review_records
 from .ui_support import (
     active_review_records,
     calibration_followup_counts,
@@ -27,6 +28,7 @@ __all__ = [
     "calibration_followup_counts",
     "first_nonempty",
     "followup_toggle_label",
+    "load_highlight_review_records",
     "load_detector_calibration_followup_manifest",
     "load_json_payload",
     "load_json_payload_or_empty",
