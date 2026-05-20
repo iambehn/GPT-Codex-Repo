@@ -252,6 +252,8 @@ Current recommended hardening:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts remain non-exportable without fused selection
 - replace bootstrap GPT review labels with human review if canonical calibration or export artifacts are needed
+- use the canonicalization handoff:
+  - `docs/handoffs/2026-05-21-call-of-duty-canonical-human-review-handoff.md`
 
 Current stop rule:
 
