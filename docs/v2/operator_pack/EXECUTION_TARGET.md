@@ -1,7 +1,7 @@
 # Execution Target
 
 Status: active-draft
-Version: 0.5
+Version: 0.6
 Last updated: 2026-05-21
 
 ## Objective
@@ -19,13 +19,14 @@ Pin one concrete, runnable happy path for the gameplay highlight pipeline and pr
 
 ## Current Phase Gate
 
-Current phase: `Phase 7 - canonical local test path pinned and semantically hardened, human review still required for canonical outputs`
+Current phase: `Phase 7 - canonical local export path human-reviewed, runtime calibration still bootstrap-derived`
 
 Current execution rule:
 
 - use the bounded `call_of_duty` real-media path as the canonical operator sample for local pipeline testing
 - treat bootstrap GPT review decisions as test-only, not as human editorial approval
-- require human review before calibration or export artifacts from this path are treated as canonical
+- treat the current local export artifact as canonically human-reviewed after the adopted fused-review decisions were re-applied
+- still require human review before the runtime calibration artifact from this path is treated as canonical
 - keep the hardening regressions green:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts are not export-ready without fused selection
@@ -142,7 +143,7 @@ The current bounded real-media proof uses one downloaded public `call_of_duty` t
 | Runtime calibration | `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty` | `status: ok`, `reviewed_sidecar_count: 4`, `release_gate_summary.status: pass` | runtime calibration consumes reviewed sidecars successfully |
 | Fusion | `python run.py --fuse-clip-signals outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4 call_of_duty --runtime-sidecar outputs/runtime_analysis/call_of_duty/svbtc2azzyw-60s-70s-c40d17236088.runtime_analysis.json --output-path outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.fused_analysis.json` | `ok: true`, `status: ok`, `fused_event_count: 3` | fused candidate surface is produced from real media |
 | Fused review bridge | `python run.py --prepare-fused-review call_of_duty --sidecar-root outputs/fused_analysis/call_of_duty --action highlight_candidate --session-name bootstrap-real-cod-fused` plus `python run.py --apply-fused-review ...` | `approved_count: 1`, `rejected_count: 1` | fused review state propagates into candidate lifecycle |
-| Local export boundary | `python run.py --export-highlight-selection --fused-sidecar outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.fused_analysis.json --output-path outputs/highlight_selection_exports/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.highlight_selection.json` then `python run.py --create-workflow-run --workflow-type export_queue --registry-path outputs/happy_path/call_of_duty/bootstrap-real-cod.registry.sqlite --game call_of_duty --output-path outputs/workflow_runs/call_of_duty/bootstrap-real-cod.export_queue.workflow_run.json` then `python run.py --create-highlight-export-batch --registry-path outputs/happy_path/call_of_duty/bootstrap-real-cod.registry.sqlite --workflow-run-id workflow-11aea2937311834b --output-path outputs/highlight_exports/call_of_duty/bootstrap-real-cod.highlight_export_batch.json` | `highlight_export_batch_v1` created with `export_count: 1` | local export artifact exists without any posted-ledger mutation |
+| Local export boundary | `python run.py --export-highlight-selection --fused-sidecar outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.fused_analysis.json --output-path outputs/highlight_selection_exports/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.highlight_selection.json` then `python run.py --create-workflow-run --workflow-type export_queue --registry-path outputs/happy_path/call_of_duty/bootstrap-real-cod.registry.sqlite --game call_of_duty --output-path outputs/workflow_runs/call_of_duty/bootstrap-real-cod.export_queue.workflow_run.json` then `python run.py --create-highlight-export-batch --registry-path outputs/happy_path/call_of_duty/bootstrap-real-cod.registry.sqlite --workflow-run-id workflow-11aea2937311834b --output-path outputs/highlight_exports/call_of_duty/bootstrap-real-cod.highlight_export_batch.json` | `highlight_export_batch_v1` created with `export_count: 1` | local export artifact exists without any posted-ledger mutation and is now backed by user-adopted fused-review decisions |
 
 Why this is the current preferred continuation:
 
@@ -171,7 +172,7 @@ Current bootstrap stage status:
 | Sidecar and artifact generation | `proved for bounded real media` | runtime and fused sidecars were produced from one real clip segment |
 | Candidate and review surface | `proved for bounded real media` | runtime and fused review bridges both persisted review state |
 | Calibration and replay path | `proved for bounded real media` | runtime calibration passed on reviewed real-media sidecars |
-| Local export-readiness bundle | `proved for bounded real media` | `highlight_export_batch_v1` exists locally with one exported candidate and no post ledger |
+| Local export-readiness bundle | `canonically human-reviewed for local testing` | `highlight_export_batch_v1` exists locally with one exported candidate and no post ledger; fused-review provenance now reflects user-adopted decisions |
 | Repo-quality health gate | `proved` | known green from prior validation |
 
 ## Required Artifacts
@@ -204,9 +205,10 @@ The happy path is complete when all of the following are true:
 
 Current governance limit:
 
-- the current path is a canonical local test path on bounded public media with bootstrap GPT review labels
-- it is not a human-reviewed canonical output path yet
-- further autonomous code changes should not broaden scope past this path until human review is supplied for canonical calibration or export treatment
+- the current path is a canonical local test path on bounded public media
+- the local export artifact is now backed by user-adopted fused-review decisions
+- the runtime calibration artifact is still broader and depends on bootstrap runtime-review labels
+- further autonomous code changes should not broaden scope past this path until human review is supplied for canonical runtime calibration treatment
 
 ## Non-Goals
 

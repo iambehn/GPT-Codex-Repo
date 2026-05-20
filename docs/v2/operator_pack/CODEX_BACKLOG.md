@@ -1,7 +1,7 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 0.5
+Version: 0.6
 Last updated: 2026-05-21
 
 This backlog is phase-gated. Codex should work in order and stop when a phase blocker is hit.
@@ -204,7 +204,8 @@ Status:
 - current proof artifact: `outputs/highlight_exports/call_of_duty/bootstrap-real-cod.highlight_export_batch.json`
 - current proof result: `schema_version: highlight_export_batch_v1`, `export_count: 1`
 - isolated registry result after refresh: approved candidate advanced to `lifecycle_state: exported` with `post_ledger_path: null`
-- note: this is still a local-only export proof on bootstrap media, not external posting approval
+- canonical local-test decision state now comes from user-adopted fused-review decisions
+- note: this remains local-only and is not external posting approval
 
 Exit criteria:
 
@@ -238,7 +239,8 @@ Status:
 
 - semantic hardening added for the current bootstrap path
 - sample-governance decision is resolved
-- remaining blocker is human review for canonical output treatment, not missing pipeline behavior
+- local export canonicalization is resolved through user-adopted fused review
+- remaining blocker is human review for canonical runtime calibration, not missing pipeline behavior
 
 Allowed work:
 
@@ -251,13 +253,13 @@ Current recommended hardening:
 - keep the new local export-boundary regressions green:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts remain non-exportable without fused selection
-- replace bootstrap GPT review labels with human review if canonical calibration or export artifacts are needed
+- replace bootstrap GPT runtime-review labels with human review if canonical runtime calibration is needed
 - use the canonicalization handoff:
   - `docs/handoffs/2026-05-21-call-of-duty-canonical-human-review-handoff.md`
 
 Current stop rule:
 
-- do not broaden implementation beyond the canonical local test path until human review is supplied for canonical output treatment
+- do not broaden implementation beyond the canonical local test path until human review is supplied for canonical runtime calibration treatment
 
 Deferred until after the happy path:
 

@@ -2,6 +2,13 @@
 
 ## Purpose
 
+Status:
+
+- partially completed on 2026-05-21
+- fused-review decisions for the canonical `60s-70s` sample were adopted by the user and re-applied
+- local export is now canonically human-reviewed for local testing
+- runtime calibration is still broader and remains bootstrap-derived
+
 The `call_of_duty` bounded clip at:
 
 - `outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4`
@@ -101,6 +108,13 @@ If the immediate goal is to make the local export artifact canonical:
 1. Human-review the two fused-review meta files for the `60s-70s` sample.
 2. Re-apply the fused review session.
 3. Rebuild the downstream local export artifacts.
+
+Completion note:
+
+- this path is now complete for the current canonical sample
+- the fused sidecar review timestamps were updated to `2026-05-20T23:44:27Z`
+- the exported candidate remained in `lifecycle_state: exported`, so no new export-queue item was created
+- the existing local export artifact remains the canonical local export output
 
 If the immediate goal is to make the runtime calibration artifact canonical:
 

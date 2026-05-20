@@ -1,7 +1,7 @@
 # Open Questions
 
 Status: active
-Version: 0.4
+Version: 0.5
 Last updated: 2026-05-21
 
 ## P0 Questions
@@ -13,6 +13,11 @@ Resolved on 2026-05-21 by user decision:
 - the bounded public `call_of_duty` clip is the canonical operator sample for local pipeline testing
 - bootstrap GPT review labels remain test-only
 - human review is required before calibration or export artifacts from this path are treated as canonical
+
+Resolved later on 2026-05-21 by user-adopted fused-review decisions:
+
+- the local export artifact path for the canonical `60s-70s` sample is now backed by user-adopted fused-review decisions
+- the runtime calibration artifact is still not canonical because it depends on broader bootstrap runtime-review labels
 
 Resolved in current execution doctrine:
 
