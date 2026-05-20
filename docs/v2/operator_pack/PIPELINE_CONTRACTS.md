@@ -1,0 +1,68 @@
+# Pipeline Contracts
+
+Status: active-draft
+Version: 0.1
+Last updated: 2026-05-20
+
+This is the minimal contract layer for the first happy path. It does not replace subsystem docs under `docs/v2/`; it pins the minimum execution expectations needed to keep Codex work narrow and auditable.
+
+## Validation Levels
+
+- `L0`: file exists
+- `L1`: file parses
+- `L2`: required fields are present
+- `L3`: downstream stage can consume it
+- `L4`: artifact is human-inspectable and semantically meaningful
+
+## Cross-Stage Rules
+
+- Do not treat `L0` success as stage completion.
+- Every produced artifact should retain provenance when the owning surface supports it.
+- Status fields must be owned by an existing repo surface, not invented ad hoc in a task slice.
+- If an artifact can be produced but not consumed downstream, the stage is not complete.
+
+## Minimal Stage Contract Matrix
+
+| Stage | Inputs | Outputs | Minimum required fields or properties | Validation | Owning repo surface |
+| --- | --- | --- | --- | --- | --- |
+| Config load | `--config` path or default config root | validated config object or explicit error | parseable config, normalized values, explicit validation failure on bad input | `L1-L2` | `pipeline/config/` and `run.py` bootstrap |
+| Input resolution | chosen game, chosen input mode, chosen input path or fixture path | explicit resolved input context | game, input mode, source path or explicit blocker | `L1-L2` | Phase 0 inventory must pin owner |
+| Sidecar/artifact generation | input context plus runtime commands | stage artifact or sidecar | parseable payload, stage identity, enough fields for downstream review/replay consumption | `L1-L3` | Phase 0 inventory must pin exact surface per artifact |
+| Candidate/review surface | sidecar or stage artifact | inspectable review or candidate payload | status, evidence context, stable record identity, downstream-readable structure | `L1-L4` | review bridge and highlight review surfaces |
+| Calibration/replay | reviewable artifact plus calibration or replay command | replay or calibration result | parseable result, explicit success/failure, inspectable warnings or deltas | `L1-L4` | replay/calibration surfaces under `pipeline/` and `tools/` |
+| Local export-readiness | reviewed or chosen artifact state | local readiness bundle | blockers, review state, local output location, `platform_action_taken: false` | `L1-L4` | Phase 0 inventory must pin exact owner |
+| Repo-quality health | current repo state | health summary | maintenance result, decision regression result, overall gate result | `L1-L4` | `python run.py --run-repo-quality-health` |
+
+## Generic Artifact Expectations
+
+The exact schema is owned by the relevant repo surface. Until Phase 0 inventory pins each owner, the following generic expectations apply whenever the owning format permits them:
+
+- stable record or artifact identity
+- source or input provenance
+- explicit stage or artifact type
+- schema version or equivalent contract identifier
+- review, lifecycle, or decision status where applicable
+- timestamps when the stage is time-sensitive
+- enough evidence context for a human to understand what the artifact represents
+
+## Semantic Success Rule
+
+A stage counts as complete only when:
+
+- its command ran
+- its output exists
+- the output parses
+- required fields are present
+- the next stage can consume it
+- the output is inspectable enough to explain success or failure
+
+## Known Health Gate Contract
+
+The repo-quality health gate is already a known execution-control surface:
+
+- command: `python run.py --run-repo-quality-health`
+- current known meaning:
+  - maintenance must be healthy enough for the gate
+  - decision-regression suites must pass
+
+The deeper command-to-artifact mapping for other stages remains a Phase 0 inventory task.
