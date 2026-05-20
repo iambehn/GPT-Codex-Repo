@@ -1,7 +1,7 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 0.3
+Version: 0.4
 Last updated: 2026-05-21
 
 This backlog is phase-gated. Codex should work in order and stop when a phase blocker is hit.
@@ -235,6 +235,11 @@ Goal:
 
 - reduce known failure risk without broadening project scope
 
+Status:
+
+- semantic hardening added for the current bootstrap path
+- remaining blockers are governance decisions, not missing pipeline behavior
+
 Allowed work:
 
 - fix blockers discovered on the chosen path
@@ -243,9 +248,15 @@ Allowed work:
 
 Current recommended hardening:
 
+- keep the new local export-boundary regressions green:
+  - local export remains local-only until posting
+  - runtime-only reviewed artifacts remain non-exportable without fused selection
 - replace the downloaded public test clip with a canonical operator sample
 - replace bootstrap GPT review labels with human review if the sample becomes canonical
-- add one focused validation check for the isolated happy-path export chain if it becomes a repeated operator workflow
+
+Current stop rule:
+
+- do not broaden implementation beyond the bootstrap path until the sample and review-governance questions in `OPEN_QUESTIONS.md` are resolved
 
 Deferred until after the happy path:
 

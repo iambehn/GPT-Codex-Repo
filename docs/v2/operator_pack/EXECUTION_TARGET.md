@@ -1,7 +1,7 @@
 # Execution Target
 
 Status: active-draft
-Version: 0.3
+Version: 0.4
 Last updated: 2026-05-21
 
 ## Objective
@@ -19,13 +19,16 @@ Pin one concrete, runnable happy path for the gameplay highlight pipeline and pr
 
 ## Current Phase Gate
 
-Current phase: `Phase 5 - bounded real-media local export proved, canonical production sample still unresolved`
+Current phase: `Phase 7 - bounded real-media bootstrap path proved and semantically hardened, canonical production sample still unresolved`
 
 Current execution rule:
 
 - use the bounded `call_of_duty` real-media bootstrap path for pipeline proof
 - treat downloaded public test media as bootstrap validation input, not as a canonical production sample
 - do not treat bootstrap GPT review decisions as human editorial approval
+- keep the hardening regressions green:
+  - local export remains local-only until posting
+  - runtime-only reviewed artifacts are not export-ready without fused selection
 
 ## Phase 0 Inventory Snapshot
 
@@ -203,6 +206,7 @@ Bootstrap-only limitation:
 
 - the current path is a bounded execution proof on downloaded public test media with bootstrap GPT review labels
 - it is not a publish-cleared or human-approved production path yet
+- further autonomous code changes should not broaden scope past this bootstrap path until the sample and review-governance questions are resolved
 
 ## Non-Goals
 
