@@ -1,8 +1,8 @@
 # Execution Target
 
 Status: active-draft
-Version: 0.2
-Last updated: 2026-05-20
+Version: 0.3
+Last updated: 2026-05-21
 
 ## Objective
 
@@ -19,13 +19,13 @@ Pin one concrete, runnable happy path for the gameplay highlight pipeline and pr
 
 ## Current Phase Gate
 
-Current phase: `Phase 1 - fixture bootstrap pinned, real-media sidecar generation deferred`
+Current phase: `Phase 5 - bounded real-media local export proved, canonical production sample still unresolved`
 
 Current execution rule:
 
-- proceed on the documented `fixture_bootstrap` path
-- treat missing real sample media as a deferred blocker for final happy-path completion
-- do not claim sidecar-generation success until a canonical real sample exists
+- use the bounded `call_of_duty` real-media bootstrap path for pipeline proof
+- treat downloaded public test media as bootstrap validation input, not as a canonical production sample
+- do not treat bootstrap GPT review decisions as human editorial approval
 
 ## Phase 0 Inventory Snapshot
 
@@ -55,6 +55,7 @@ Current execution rule:
 | Input source | Status | Notes |
 | --- | --- | --- |
 | Real sample media under `assets/`, `tests/`, or `starter_assets/` | `missing` | no canonical local `.mp4` or equivalent sample was found in those repo surfaces |
+| Downloaded bounded public test media under `outputs/public_gameplay_mining/call_of_duty_test_sources/` | `available for bootstrap proof only` | used to prove media-backed runtime, fusion, review, calibration, and local export surfaces; not publish-cleared content |
 | Review, calibration, and readiness fixtures under `tests/fixtures/` | `available` | current fixture families cover onboarding review, publish readiness, review bridges, fusion boundaries, runtime promotion, and detector calibration |
 | Unrelated local media outside canonical repo surfaces | `ignore` | `.firecrawl/` and vendored `.venv/` media exist but are not approved happy-path inputs |
 
@@ -84,29 +85,28 @@ Allowed values:
 
 Current recommendation:
 
-- use `fixture_bootstrap` only to unblock Phase 1 setup if needed
-- keep real-sample proof as a hard requirement for final happy-path completion
+- use `real_sample` for the bounded public-test-media proof path
+- use `fixture_bootstrap` only where media is not required
+- keep a canonical gameplay clip as the stronger follow-up input
 
 Rules:
 
-- `fixture_bootstrap` may be used to unblock Phase 1 setup
+- `fixture_bootstrap` may be used to unblock non-media stages
 - `fixture_bootstrap` does not complete the happy path by itself
-- real input success is required for happy-path completion unless explicitly waived
+- downloaded public test media may prove execution, but it does not imply publish-cleared input or human approval
 
 ## Sample Input
 
 Status: bootstrap-pinned
 
-Current blocker:
+Current bootstrap real-sample path:
 
-- no approved real sample clip was found in canonical repo input surfaces
+- game: `call_of_duty`
+- input mode: `real_sample`
+- sample path: `outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4`
+- provenance: downloaded bounded public test media for local pipeline validation
 
-Current bootstrap options:
-
-- onboarding review and publish-readiness surfaces on `assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
-- decision-regression fixtures under `tests/fixtures/`
-
-Pinned bootstrap path:
+Fallback non-media bootstrap path:
 
 - game: `call_of_duty`
 - input mode: `fixture_bootstrap`
@@ -123,24 +123,30 @@ The current bootstrap path is intentionally artifact-driven. It proves the exist
 | Calibration and replay bootstrap | `python run.py --run-decision-regression-goldsets` | `suite_count: 9`, `total_tests: 18`, `ok: true` | current decision surfaces are regression-backed |
 | Local readiness bootstrap | `python run.py --validate-onboarding-publish assets/games/call_of_duty/drafts/onboarding/20260505T213332Z` | `phase_status: bindings_pending`, `readiness: needs_population_review`, `can_publish: false` | blockers are inspectable and local-only |
 
-Deferred bootstrap gap:
+Bootstrap limitation:
 
-- there is still no canonical real-media input, so Stage 3 sidecar generation remains deferred
+- there is still no canonical production sample under the approved repo input surfaces
+- the current real-media proof uses downloaded public test media and bootstrap review decisions
 
-## Planned Real-Media Continuation
+## Bounded Real-Media Proof Path
 
-Once a canonical `call_of_duty` sample clip exists, the next narrow runtime path should be:
+The current bounded real-media proof uses one downloaded public `call_of_duty` test clip segment and one isolated registry path. It is suitable for local pipeline validation only.
 
-1. `python run.py --analyze-roi-runtime <SOURCE> call_of_duty`
-2. `python run.py --prepare-runtime-review call_of_duty`
-3. `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty`
-4. `python run.py --create-highlight-export-batch ...` once a selected candidate path exists
+| Stage | Command | Current result | Meaning |
+| --- | --- | --- | --- |
+| Runtime sidecar generation | `python run.py --analyze-roi-runtime outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4 call_of_duty --sample-fps 1 --limit-frames 30` | `ok: true`, `status: ok`, `event_count: 3` | media-backed `runtime_analysis_v1` sidecar is produced |
+| Runtime review bridge | `python run.py --prepare-runtime-review call_of_duty --action all_non_skip --session-name bootstrap-real-cod` plus `python run.py --apply-runtime-review ...` | `approved_count: 2`, `rejected_count: 2` | reviewed runtime sidecars exist and persist review state |
+| Runtime calibration | `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty` | `status: ok`, `reviewed_sidecar_count: 4`, `release_gate_summary.status: pass` | runtime calibration consumes reviewed sidecars successfully |
+| Fusion | `python run.py --fuse-clip-signals outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4 call_of_duty --runtime-sidecar outputs/runtime_analysis/call_of_duty/svbtc2azzyw-60s-70s-c40d17236088.runtime_analysis.json --output-path outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.fused_analysis.json` | `ok: true`, `status: ok`, `fused_event_count: 3` | fused candidate surface is produced from real media |
+| Fused review bridge | `python run.py --prepare-fused-review call_of_duty --sidecar-root outputs/fused_analysis/call_of_duty --action highlight_candidate --session-name bootstrap-real-cod-fused` plus `python run.py --apply-fused-review ...` | `approved_count: 1`, `rejected_count: 1` | fused review state propagates into candidate lifecycle |
+| Local export boundary | `python run.py --export-highlight-selection --fused-sidecar outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.fused_analysis.json --output-path outputs/highlight_selection_exports/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.highlight_selection.json` then `python run.py --create-workflow-run --workflow-type export_queue --registry-path outputs/happy_path/call_of_duty/bootstrap-real-cod.registry.sqlite --game call_of_duty --output-path outputs/workflow_runs/call_of_duty/bootstrap-real-cod.export_queue.workflow_run.json` then `python run.py --create-highlight-export-batch --registry-path outputs/happy_path/call_of_duty/bootstrap-real-cod.registry.sqlite --workflow-run-id workflow-11aea2937311834b --output-path outputs/highlight_exports/call_of_duty/bootstrap-real-cod.highlight_export_batch.json` | `highlight_export_batch_v1` created with `export_count: 1` | local export artifact exists without any posted-ledger mutation |
 
 Why this is the current preferred continuation:
 
 - `--analyze-roi-runtime` is the narrowest existing command that goes directly from media input to a `runtime_analysis_v1` sidecar
 - `--prepare-runtime-review` already defaults to `outputs/runtime_analysis/<game>` and consumes those sidecars without needing a parallel workflow
 - `--calibrate-runtime-review` is the first replay or calibration surface that uses reviewed runtime sidecars without requiring a separate trial config
+- runtime analysis alone is not enough for the local export surface; the export path needs fused candidates plus lifecycle propagation
 - `--create-highlight-export-batch` is the current local export surface; publication starts later at `--record-post-ledger`
 
 ## Happy-Path Stages
@@ -158,11 +164,11 @@ Current bootstrap stage status:
 | Stage | Status | Notes |
 | --- | --- | --- |
 | Config load | `proved` | `--list-games --config config.yaml` succeeds |
-| Input resolution | `proved for bootstrap` | draft root is pinned; real sample still missing |
-| Sidecar and artifact generation | `deferred` | blocked on missing canonical real media |
-| Candidate and review surface | `proved for bootstrap` | derived-row review summary is inspectable and fully applied |
-| Calibration and replay path | `proved for bootstrap` | decision-regression goldsets are green |
-| Local export-readiness bundle | `proved for bootstrap summary only` | onboarding publish-readiness summary is inspectable and blocking correctly; final real-media bundle remains unresolved |
+| Input resolution | `proved for bounded real-media bootstrap` | bounded public test clip path is pinned; canonical production sample is still unresolved |
+| Sidecar and artifact generation | `proved for bounded real media` | runtime and fused sidecars were produced from one real clip segment |
+| Candidate and review surface | `proved for bounded real media` | runtime and fused review bridges both persisted review state |
+| Calibration and replay path | `proved for bounded real media` | runtime calibration passed on reviewed real-media sidecars |
+| Local export-readiness bundle | `proved for bounded real media` | `highlight_export_batch_v1` exists locally with one exported candidate and no post ledger |
 | Repo-quality health gate | `proved` | known green from prior validation |
 
 ## Required Artifacts
@@ -195,7 +201,8 @@ The happy path is complete when all of the following are true:
 
 Bootstrap-only limitation:
 
-- the current path does not satisfy full completion until a canonical real sample input exists and sidecar generation is proven on that input
+- the current path is a bounded execution proof on downloaded public test media with bootstrap GPT review labels
+- it is not a publish-cleared or human-approved production path yet
 
 ## Non-Goals
 

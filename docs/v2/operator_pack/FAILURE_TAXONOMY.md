@@ -1,8 +1,8 @@
 # Failure Taxonomy
 
 Status: active
-Version: 0.1
-Last updated: 2026-05-20
+Version: 0.2
+Last updated: 2026-05-21
 
 This file records the seed failures that should shape Phase 0 inventory and the first happy-path build loop.
 
@@ -96,6 +96,18 @@ Required response:
 - write the blocker into [OPEN_QUESTIONS.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/OPEN_QUESTIONS.md)
 - do not compensate by widening architecture scope
 
+## RISK-CODEX-009: Bootstrap proof mistaken for canonical approval
+
+Meaning:
+
+- downloaded public test media or bootstrap GPT review labels are treated as if they were canonical input or human approval
+
+Required response:
+
+- keep bootstrap provenance explicit in operator files and review notes
+- do not treat calibration or export artifacts from bootstrap media as publish-cleared
+- require explicit approval before promoting the sample or the review labels into canonical workflow inputs
+
 ## Named Failure Seeds
 
 Use these exact seed names when a compact label is useful:
@@ -108,3 +120,4 @@ Use these exact seed names when a compact label is useful:
 - `missing_required_game_asset`
 - `review_runs_on_empty_data`
 - `export_ready_not_publish_ready`
+- `bootstrap_proof_not_canonical`

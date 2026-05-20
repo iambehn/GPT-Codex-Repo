@@ -1,8 +1,8 @@
 # Pipeline Contracts
 
 Status: active-draft
-Version: 0.2
-Last updated: 2026-05-20
+Version: 0.3
+Last updated: 2026-05-21
 
 This is the minimal contract layer for the first happy path. It does not replace subsystem docs under `docs/v2/`; it pins the minimum execution expectations needed to keep Codex work narrow and auditable.
 
@@ -57,20 +57,30 @@ This is the current command-to-artifact contract for the bootstrap path. It does
 | Calibration/replay bootstrap | `python run.py --run-decision-regression-goldsets` | decision-regression summary | `suite_count`, `total_tests`, `ok`, per-suite status | `L1-L4` |
 | Local readiness bootstrap | `python run.py --validate-onboarding-publish assets/games/call_of_duty/drafts/onboarding/20260505T213332Z` | onboarding publish-readiness summary | `phase_status`, `can_publish`, `readiness`, `counts`, inspectable findings | `L1-L4` |
 
-Current deferred gap:
+Current bounded real-media proof:
 
-- no command-backed sidecar-generation proof is pinned yet because there is still no canonical real-media input
+- `runtime_analysis_v1`: `outputs/runtime_analysis/call_of_duty/svbtc2azzyw-60s-70s-c40d17236088.runtime_analysis.json`
+- `fused_analysis_v1`: `outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.fused_analysis.json`
+- `highlight_selection_v1`: `outputs/highlight_selection_exports/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.highlight_selection.json`
+- `workflow_run_v1`: `outputs/workflow_runs/call_of_duty/bootstrap-real-cod.export_queue.workflow_run.json`
+- `highlight_export_batch_v1`: `outputs/highlight_exports/call_of_duty/bootstrap-real-cod.highlight_export_batch.json`
+
+Current limitation:
+
+- this proof uses downloaded public test media and bootstrap GPT review labels; it is an execution proof, not a publish-cleared production contract
 
 ## Planned Real-Media Command Mapping
 
-These commands are the current preferred continuation once a canonical `call_of_duty` sample clip exists.
+These commands are the current preferred continuation and now have one bounded real-media proof.
 
-| Stage | Command | Expected artifact or output surface | Reason this is the preferred next proof |
+| Stage | Command | Expected artifact or output surface | Current execution truth |
 | --- | --- | --- | --- |
-| Sidecar generation | `python run.py --analyze-roi-runtime <SOURCE> call_of_duty` | `runtime_analysis_v1` sidecar under `outputs/runtime_analysis/call_of_duty/` unless overridden | narrowest existing media-to-sidecar runtime path |
-| Review path | `python run.py --prepare-runtime-review call_of_duty` | `runtime_review_session_v1` manifest under `outputs/runtime_review_sessions/call_of_duty/` | consumes the default runtime sidecar root directly |
-| Replay or calibration | `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty` | runtime calibration report over reviewed sidecars | first runtime proof that does not require a separate trial config |
-| Local export surface | `python run.py --create-highlight-export-batch ...` | `highlight_export_batch_v1` manifest under `outputs/highlight_exports/` unless overridden | local export artifact exists before any post ledger or posted metrics artifact is created |
+| Sidecar generation | `python run.py --analyze-roi-runtime <SOURCE> call_of_duty` | `runtime_analysis_v1` sidecar under `outputs/runtime_analysis/call_of_duty/` unless overridden | proved on bounded public test media |
+| Review path | `python run.py --prepare-runtime-review call_of_duty` plus `python run.py --apply-runtime-review <SESSION_MANIFEST>` | `runtime_review_session_v1` plus persisted `runtime_review` blocks on sidecars | proved on bounded public test media |
+| Replay or calibration | `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty` | runtime calibration report over reviewed sidecars | proved on bounded public test media |
+| Fusion path | `python run.py --fuse-clip-signals <SOURCE> call_of_duty --runtime-sidecar <RUNTIME_SIDECAR>` | `fused_analysis_v1` sidecar under `outputs/fused_analysis/call_of_duty/` unless overridden | required because runtime sidecars alone do not feed local export |
+| Fused review path | `python run.py --prepare-fused-review call_of_duty ...` plus `python run.py --apply-fused-review <SESSION_MANIFEST>` | `fused_review_session_v1` plus persisted `fused_review.events` | proved on bounded public test media and propagates lifecycle state |
+| Local export surface | `python run.py --export-highlight-selection --fused-sidecar <FUSED_SIDECAR>` then `python run.py --create-workflow-run --workflow-type export_queue ...` then `python run.py --create-highlight-export-batch ...` | `highlight_selection_v1`, `workflow_run_v1`, then `highlight_export_batch_v1` | proved on bounded public test media |
 
 ## Phase 0 Ownership Snapshot
 
@@ -94,7 +104,8 @@ Current ownership conclusion:
 - the local export boundary is `highlight_export_batch_v1`
 - the publication boundary begins at `posted_highlight_ledger_v1`
 - the repo does not currently expose an explicit `platform_action_taken: false` field; the operative contract is that a local export batch exists without any posted ledger yet
-- the remaining ambiguity is not artifact ownership; it is which exact candidate-selection path will feed the first real-media export batch
+- runtime analysis alone is not the local export boundary; the current export path requires fused selection plus lifecycle propagation
+- the remaining ambiguity is not artifact ownership; it is whether the current bootstrap sample and review labels should be promoted into a canonical operator sample
 
 ## Semantic Success Rule
 

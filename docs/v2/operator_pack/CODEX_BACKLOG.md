@@ -1,8 +1,8 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 0.2
-Last updated: 2026-05-20
+Version: 0.3
+Last updated: 2026-05-21
 
 This backlog is phase-gated. Codex should work in order and stop when a phase blocker is hit.
 
@@ -65,7 +65,7 @@ Status:
 
 - completed at the operator-pack level
 - no immediate schema ownership conflict was found for candidate, review-session, lifecycle, or export artifact families
-- local export-readiness completion semantics remain an open follow-up
+- local export boundary is now clarified as `highlight_export_batch_v1` without any posted-ledger artifact
 
 Objective:
 
@@ -110,10 +110,10 @@ Goal:
 
 Status:
 
-- completed for bootstrap execution
+- completed for bounded real-media bootstrap execution
 - pinned game: `call_of_duty`
-- pinned input mode: `fixture_bootstrap`
-- pinned bootstrap path: `assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
+- pinned bootstrap real-sample path: `outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4`
+- fallback non-media bootstrap path remains `assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
 
 Exit criteria:
 
@@ -121,23 +121,20 @@ Exit criteria:
 - chosen input path resolves or blocker is explicit
 - no new schemas are introduced
 
-Current blocker:
+Current limitation:
 
-- no canonical real sample input is available yet for media-backed sidecar generation or final happy-path completion
+- the proven sample is downloaded public test media, not yet a canonical production sample
 
 Current decision:
 
-- proceed on the documented bootstrap path
-- treat the missing real sample as deferred rather than as a stop-work blocker for review and readiness surfaces
+- use the bounded real-media path for execution proof
+- keep the fixture bootstrap path available for non-media fallback
+- do not treat bootstrap GPT review decisions as human approval
 
 Recommended next task:
 
-- continue with bootstrap-proof stages that operate on existing artifacts
-- set aside Stage 2 media-backed generation until a canonical sample clip exists
-- once real media exists, resume with:
-  - `python run.py --analyze-roi-runtime <SOURCE> call_of_duty`
-  - `python run.py --prepare-runtime-review call_of_duty`
-  - `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty`
+- replace or ratify the bootstrap sample with a user-approved gameplay clip
+- rerun the same path with human review labels if the result needs to become canonical
 
 ## Phase 2: Sidecar And Artifact Generation
 
@@ -147,9 +144,10 @@ Goal:
 
 Status:
 
-- deferred
-- blocker: no canonical real-media input is available yet
-- do not substitute fixture-backed review artifacts for sidecar-generation proof
+- completed for bounded real-media bootstrap
+- proof artifacts:
+  - `runtime_analysis_v1` at `outputs/runtime_analysis/call_of_duty/svbtc2azzyw-60s-70s-c40d17236088.runtime_analysis.json`
+  - `fused_analysis_v1` at `outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.fused_analysis.json`
 
 Exit criteria:
 
@@ -166,9 +164,10 @@ Goal:
 
 Status:
 
-- completed for bootstrap execution
-- current proof command: `python run.py --summarize-derived-row-review assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
-- current proof result: `review_file_count: 122`, `pending_count: 0`, `decision_ready_count: 122`, `applied_count: 122`
+- completed for bounded real-media bootstrap execution
+- runtime review proof: one session applied with `approved_count: 2`, `rejected_count: 2`
+- fused review proof: one session applied with `approved_count: 1`, `rejected_count: 1`
+- resulting lifecycle state includes one `selected_for_export` candidate in the isolated registry
 
 Exit criteria:
 
@@ -184,9 +183,9 @@ Goal:
 
 Status:
 
-- completed for bootstrap execution
-- current proof command: `python run.py --run-decision-regression-goldsets`
-- current proof result: `suite_count: 9`, `total_tests: 18`, `ok: true`
+- completed for bounded real-media bootstrap execution
+- runtime calibration proof artifact: `outputs/runtime_calibration/call_of_duty/bootstrap-real-cod.runtime_calibration.json`
+- current proof result: `status: ok`, `reviewed_sidecar_count: 4`, `approved_count: 2`, `rejected_count: 2`, `release_gate_summary.status: pass`
 
 Exit criteria:
 
@@ -202,11 +201,11 @@ Goal:
 
 Status:
 
-- completed for bootstrap execution
-- current proof command: `python run.py --validate-onboarding-publish assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
-- current proof result: `phase_status: bindings_pending`, `readiness: needs_population_review`, `can_publish: false`
-- note: this is a bootstrap readiness summary, not yet the final real-media local export bundle
-- final real-media local export surface should promote to `highlight_export_batch_v1` via `python run.py --create-highlight-export-batch ...`
+- completed for bounded real-media bootstrap execution
+- current proof artifact: `outputs/highlight_exports/call_of_duty/bootstrap-real-cod.highlight_export_batch.json`
+- current proof result: `schema_version: highlight_export_batch_v1`, `export_count: 1`
+- isolated registry result after refresh: approved candidate advanced to `lifecycle_state: exported` with `post_ledger_path: null`
+- note: this is still a local-only export proof on bootstrap media, not external posting approval
 
 Exit criteria:
 
@@ -241,6 +240,12 @@ Allowed work:
 - fix blockers discovered on the chosen path
 - improve validation where false passes are likely
 - document new execution truths in the operator pack
+
+Current recommended hardening:
+
+- replace the downloaded public test clip with a canonical operator sample
+- replace bootstrap GPT review labels with human review if the sample becomes canonical
+- add one focused validation check for the isolated happy-path export chain if it becomes a repeated operator workflow
 
 Deferred until after the happy path:
 
