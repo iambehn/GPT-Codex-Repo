@@ -106,6 +106,68 @@ class HighlightExportBatchTests(unittest.TestCase):
             self.assertTrue(str(row["hook_mode"]))
             self.assertTrue(Path(row["otio_path"]).exists())
 
+    def test_local_export_boundary_keeps_post_ledger_unset_until_posting(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="call_of_duty", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+            export_highlight_selection(
+                fused_sidecar=fused_path,
+                output_path=root / "selection" / "alpha.highlight_selection.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            derive_hook_candidates(
+                fused_path,
+                registry_path=registry_path,
+                output_path=root / "hooks" / "alpha.hook_candidates.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            workflow = create_workflow_run(
+                "export_queue",
+                registry_path=registry_path,
+                output_path=root / "workflow" / "export.workflow_run.json",
+            )
+
+            export_batch = create_highlight_export_batch(
+                registry_path=registry_path,
+                workflow_run_id=workflow["workflow_run_id"],
+                output_path=root / "exports" / "batch.highlight_export_batch.json",
+            )
+            refresh_result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(export_batch["ok"])
+            self.assertTrue(refresh_result["ok"])
+            manifest = json.loads(Path(export_batch["manifest_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(manifest["schema_version"], "highlight_export_batch_v1")
+            self.assertEqual(manifest["export_count"], 1)
+            candidate_id = manifest["exports"][0]["candidate_id"]
+
+            exported = query_clip_registry(
+                mode="candidate-lifecycles",
+                lifecycle_state="exported",
+                candidate_id=candidate_id,
+                registry_path=registry_path,
+            )
+            self.assertEqual(exported["row_count"], 1)
+            self.assertEqual(exported["rows"][0]["lifecycle_state"], "exported")
+            self.assertTrue(exported["rows"][0]["export_artifact_path"].endswith(".otio.json"))
+            self.assertIsNone(exported["rows"][0]["post_ledger_path"])
+
+            export_query = query_clip_registry(
+                mode="highlight-exports",
+                workflow_run_id=workflow["workflow_run_id"],
+                export_status="exported",
+                candidate_id=candidate_id,
+                registry_path=registry_path,
+            )
+            self.assertEqual(export_query["row_count"], 1)
+            self.assertEqual(export_query["rows"][0]["candidate_id"], candidate_id)
+
     def test_record_post_ledger_writes_generic_posted_records(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
