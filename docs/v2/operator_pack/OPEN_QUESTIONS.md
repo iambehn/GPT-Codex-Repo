@@ -8,16 +8,14 @@ Last updated: 2026-05-20
 
 | Question | Priority | Owner | Resolution path |
 | --- | --- | --- | --- |
-| What is the first supported game? | `P0` | user or Codex recommendation | inventory current game support, then choose one |
-| What sample input should be used? | `P0` | user or PM | provide local clip path or approve fixture bootstrap |
-| What runnable command surfaces already exist for each stage? | `P0` | Codex | inventory config, scanning, fusion, review, calibration, export, and health surfaces |
-| What artifacts and sidecars already exist for the chosen path? | `P0` | Codex | artifact inventory with stage ownership |
-| What schemas and status enums own candidate, review, and export state? | `P0` | Codex | schema and status ownership audit |
+| What real sample input should be used for final happy-path proof? | `P0` | user or PM | provide a canonical local clip path for the provisional first game |
+| If no real sample is available immediately, should Phase 1 proceed on documented `fixture_bootstrap` while media-backed stages remain blocked? | `P0` | operator or PM | explicitly accept bootstrap-only interim progress or hold for real media |
 
 ## P1 Questions
 
 | Question | Priority | Owner | Resolution path |
 | --- | --- | --- | --- |
+| Which exact sidecar-generation command should be the first runtime proof once real input exists? | `P1` | Codex | choose from the inventoried runtime command surfaces for the provisional first game |
 | What does local export-readiness mean in current repo code? | `P1` | Codex plus PM | define the local-only bundle and blocker semantics |
 | Which review path is the minimal required one for the chosen happy path? | `P1` | Codex | map review bridge or app surface to the chosen input path |
 | Which calibration or replay surface should be the first required proof? | `P1` | Codex | choose the narrowest stage that produces a meaningful inspectable result |

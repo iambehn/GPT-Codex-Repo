@@ -10,6 +10,10 @@ This backlog is phase-gated. Codex should work in order and stop when a phase bl
 
 ### Task 0.1: Inventory runnable repo surfaces
 
+Status:
+
+- completed
+
 Objective:
 
 - identify existing commands and surfaces for config, onboarding, scanning, fusion, review bridge, calibration/replay, export-readiness, and repo health
@@ -23,6 +27,11 @@ Acceptance criteria:
 
 ### Task 0.2: Inventory game support and recommend first game
 
+Status:
+
+- completed
+- current recommendation: `call_of_duty`
+
 Objective:
 
 - determine which game has the most complete current support
@@ -34,6 +43,11 @@ Acceptance criteria:
 - recommended first game or blocker is stated
 
 ### Task 0.3: Inventory sample inputs and fixtures
+
+Status:
+
+- completed
+- result: no canonical real sample media found; fixture bootstrap remains available but insufficient for final proof
 
 Objective:
 
@@ -47,6 +61,12 @@ Acceptance criteria:
 
 ### Task 0.4: Inventory artifact, schema, and status ownership
 
+Status:
+
+- completed at the operator-pack level
+- no immediate schema ownership conflict was found for candidate, review-session, lifecycle, or export artifact families
+- local export-readiness completion semantics remain an open follow-up
+
 Objective:
 
 - identify existing artifacts, sidecars, candidate/review schemas, status enums, and ownership conflicts
@@ -59,6 +79,10 @@ Acceptance criteria:
 - no new schema is introduced in this task
 
 ### Task 0.5: Draft operator pack v0.1
+
+Status:
+
+- completed
 
 Objective:
 
@@ -89,6 +113,15 @@ Exit criteria:
 - chosen config path loads
 - chosen input path resolves or blocker is explicit
 - no new schemas are introduced
+
+Current blocker:
+
+- no canonical real sample input is available yet
+
+Recommended next Phase 1 task:
+
+- either provide a real `call_of_duty` sample clip path
+- or explicitly proceed with a documented `fixture_bootstrap` step while keeping media-backed sidecar generation blocked
 
 ## Phase 2: Sidecar And Artifact Generation
 

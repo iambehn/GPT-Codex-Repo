@@ -45,6 +45,27 @@ The exact schema is owned by the relevant repo surface. Until Phase 0 inventory 
 - timestamps when the stage is time-sensitive
 - enough evidence context for a human to understand what the artifact represents
 
+## Phase 0 Ownership Snapshot
+
+| Surface | Current owner |
+| --- | --- |
+| Published game-pack manifests and completeness rules | [docs/v2/MANIFEST_CONTRACTS.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/MANIFEST_CONTRACTS.md), `pipeline/game_pack.py`, `assets/games/<game>/manifests/` |
+| Candidate lifecycle, export status, post status, and queryable cross-workflow state | [docs/v2/REGISTRY_ORCHESTRATION_STATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/REGISTRY_ORCHESTRATION_STATE.md), `pipeline/clip_registry.py` |
+| Proxy review session schema `proxy_review_session_v1` | `pipeline/proxy_review_bridge.py` |
+| Runtime review session schema `runtime_review_session_v1` | `pipeline/runtime_review_bridge.py` |
+| Fused review session schema `fused_review_session_v1` | `pipeline/fused_review_bridge.py` |
+| Onboarding identity review session schema `onboarding_identity_review_session_v1` | `pipeline/onboarding_identity_review_bridge.py` |
+| Derived row review schema `derived_row_review_v1` | `pipeline/derived_row_review.py` |
+| Local export batch schema `highlight_export_batch_v1` | `pipeline/highlight_export_batch.py` |
+| Local posted-ledger schema `posted_highlight_ledger_v1` | `pipeline/highlight_export_batch.py` |
+| Local posted-metrics schema `posted_highlight_metrics_snapshot_v1` | `pipeline/highlight_export_batch.py` |
+| Onboarding publish-readiness semantics | `pipeline/onboarding_publish_readiness.py` and onboarding draft manifests |
+
+Current ownership conclusion:
+
+- no immediate cross-surface schema conflict was found in the candidate, review-session, lifecycle, or export artifact families reviewed in Phase 0
+- the remaining ambiguity is not schema naming; it is which local export-readiness surface should count as the Phase 5 completion artifact for the first happy path
+
 ## Semantic Success Rule
 
 A stage counts as complete only when:
