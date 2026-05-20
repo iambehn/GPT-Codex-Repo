@@ -70,6 +70,7 @@ These commands are the current preferred continuation once a canonical `call_of_
 | Sidecar generation | `python run.py --analyze-roi-runtime <SOURCE> call_of_duty` | `runtime_analysis_v1` sidecar under `outputs/runtime_analysis/call_of_duty/` unless overridden | narrowest existing media-to-sidecar runtime path |
 | Review path | `python run.py --prepare-runtime-review call_of_duty` | `runtime_review_session_v1` manifest under `outputs/runtime_review_sessions/call_of_duty/` | consumes the default runtime sidecar root directly |
 | Replay or calibration | `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty` | runtime calibration report over reviewed sidecars | first runtime proof that does not require a separate trial config |
+| Local export surface | `python run.py --create-highlight-export-batch ...` | `highlight_export_batch_v1` manifest under `outputs/highlight_exports/` unless overridden | local export artifact exists before any post ledger or posted metrics artifact is created |
 
 ## Phase 0 Ownership Snapshot
 
@@ -90,7 +91,10 @@ These commands are the current preferred continuation once a canonical `call_of_
 Current ownership conclusion:
 
 - no immediate cross-surface schema conflict was found in the candidate, review-session, lifecycle, or export artifact families reviewed in Phase 0
-- the remaining ambiguity is not schema naming; it is which real-media export surface should replace onboarding publish-readiness as the final Phase 5 completion artifact
+- the local export boundary is `highlight_export_batch_v1`
+- the publication boundary begins at `posted_highlight_ledger_v1`
+- the repo does not currently expose an explicit `platform_action_taken: false` field; the operative contract is that a local export batch exists without any posted ledger yet
+- the remaining ambiguity is not artifact ownership; it is which exact candidate-selection path will feed the first real-media export batch
 
 ## Semantic Success Rule
 

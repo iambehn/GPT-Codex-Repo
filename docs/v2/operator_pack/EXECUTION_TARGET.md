@@ -134,12 +134,14 @@ Once a canonical `call_of_duty` sample clip exists, the next narrow runtime path
 1. `python run.py --analyze-roi-runtime <SOURCE> call_of_duty`
 2. `python run.py --prepare-runtime-review call_of_duty`
 3. `python run.py --calibrate-runtime-review outputs/runtime_analysis/call_of_duty --game call_of_duty`
+4. `python run.py --create-highlight-export-batch ...` once a selected candidate path exists
 
 Why this is the current preferred continuation:
 
 - `--analyze-roi-runtime` is the narrowest existing command that goes directly from media input to a `runtime_analysis_v1` sidecar
 - `--prepare-runtime-review` already defaults to `outputs/runtime_analysis/<game>` and consumes those sidecars without needing a parallel workflow
 - `--calibrate-runtime-review` is the first replay or calibration surface that uses reviewed runtime sidecars without requiring a separate trial config
+- `--create-highlight-export-batch` is the current local export surface; publication starts later at `--record-post-ledger`
 
 ## Happy-Path Stages
 

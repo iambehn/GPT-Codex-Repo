@@ -206,6 +206,7 @@ Status:
 - current proof command: `python run.py --validate-onboarding-publish assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
 - current proof result: `phase_status: bindings_pending`, `readiness: needs_population_review`, `can_publish: false`
 - note: this is a bootstrap readiness summary, not yet the final real-media local export bundle
+- final real-media local export surface should promote to `highlight_export_batch_v1` via `python run.py --create-highlight-export-batch ...`
 
 Exit criteria:
 
