@@ -1,25 +1,28 @@
 # Open Questions
 
 Status: active
-Version: 0.3
+Version: 0.4
 Last updated: 2026-05-21
 
 ## P0 Questions
 
-| Question | Priority | Owner | Resolution path |
-| --- | --- | --- | --- |
-| Should the bounded public `call_of_duty` test clip be promoted to a canonical operator sample, or replaced with a user-approved local gameplay clip? | `P0` | user or PM | either ratify the current bootstrap sample explicitly or replace it with a canonical gameplay clip |
-| Are bootstrap GPT review decisions acceptable only for local execution proof, or should human review be required before treating calibration and export artifacts as canonical? | `P0` | user or PM | decide whether the current bootstrap labels remain test-only or need to be replaced by human review |
+No active P0 questions remain for the bounded `call_of_duty` local test path.
+
+Resolved on 2026-05-21 by user decision:
+
+- the bounded public `call_of_duty` clip is the canonical operator sample for local pipeline testing
+- bootstrap GPT review labels remain test-only
+- human review is required before calibration or export artifacts from this path are treated as canonical
 
 Resolved in current execution doctrine:
 
 - media-backed stages are no longer blocked on this branch
-- the current bounded real-media path is an execution proof only
-- do not treat bootstrap GPT review or downloaded public test media as publish-cleared or canonical without explicit approval
+- the current bounded real-media path is now the canonical local test path
+- do not treat bootstrap GPT review or downloaded public test media as publish-cleared for external posting
 
 ## P1 Questions
 
-No active P1 questions are blocking the current bounded bootstrap path.
+No active P1 questions are blocking the current bounded local test path.
 
 Resolved in current execution doctrine:
 

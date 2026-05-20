@@ -1,7 +1,7 @@
 # Execution Target
 
 Status: active-draft
-Version: 0.4
+Version: 0.5
 Last updated: 2026-05-21
 
 ## Objective
@@ -19,13 +19,13 @@ Pin one concrete, runnable happy path for the gameplay highlight pipeline and pr
 
 ## Current Phase Gate
 
-Current phase: `Phase 7 - bounded real-media bootstrap path proved and semantically hardened, canonical production sample still unresolved`
+Current phase: `Phase 7 - canonical local test path pinned and semantically hardened, human review still required for canonical outputs`
 
 Current execution rule:
 
-- use the bounded `call_of_duty` real-media bootstrap path for pipeline proof
-- treat downloaded public test media as bootstrap validation input, not as a canonical production sample
-- do not treat bootstrap GPT review decisions as human editorial approval
+- use the bounded `call_of_duty` real-media path as the canonical operator sample for local pipeline testing
+- treat bootstrap GPT review decisions as test-only, not as human editorial approval
+- require human review before calibration or export artifacts from this path are treated as canonical
 - keep the hardening regressions green:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts are not export-ready without fused selection
@@ -58,13 +58,13 @@ Current execution rule:
 | Input source | Status | Notes |
 | --- | --- | --- |
 | Real sample media under `assets/`, `tests/`, or `starter_assets/` | `missing` | no canonical local `.mp4` or equivalent sample was found in those repo surfaces |
-| Downloaded bounded public test media under `outputs/public_gameplay_mining/call_of_duty_test_sources/` | `available for bootstrap proof only` | used to prove media-backed runtime, fusion, review, calibration, and local export surfaces; not publish-cleared content |
+| Downloaded bounded public test media under `outputs/public_gameplay_mining/call_of_duty_test_sources/` | `canonical for local testing only` | ratified as the operator sample for local pipeline validation; still not publish-cleared content |
 | Review, calibration, and readiness fixtures under `tests/fixtures/` | `available` | current fixture families cover onboarding review, publish readiness, review bridges, fusion boundaries, runtime promotion, and detector calibration |
 | Unrelated local media outside canonical repo surfaces | `ignore` | `.firecrawl/` and vendored `.venv/` media exist but are not approved happy-path inputs |
 
 ## First Supported Game
 
-Status: bootstrap-pinned
+Status: local-test-pinned
 
 Current recommendation:
 
@@ -107,7 +107,7 @@ Current bootstrap real-sample path:
 - game: `call_of_duty`
 - input mode: `real_sample`
 - sample path: `outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4`
-- provenance: downloaded bounded public test media for local pipeline validation
+- provenance: downloaded bounded public test media ratified as the canonical local operator sample
 
 Fallback non-media bootstrap path:
 
@@ -126,10 +126,10 @@ The current bootstrap path is intentionally artifact-driven. It proves the exist
 | Calibration and replay bootstrap | `python run.py --run-decision-regression-goldsets` | `suite_count: 9`, `total_tests: 18`, `ok: true` | current decision surfaces are regression-backed |
 | Local readiness bootstrap | `python run.py --validate-onboarding-publish assets/games/call_of_duty/drafts/onboarding/20260505T213332Z` | `phase_status: bindings_pending`, `readiness: needs_population_review`, `can_publish: false` | blockers are inspectable and local-only |
 
-Bootstrap limitation:
+Current limitation:
 
-- there is still no canonical production sample under the approved repo input surfaces
-- the current real-media proof uses downloaded public test media and bootstrap review decisions
+- the current local test sample is canonical for operator validation, not for external publishing
+- the current real-media path still uses bootstrap GPT review decisions until human review replaces them
 
 ## Bounded Real-Media Proof Path
 
@@ -202,11 +202,11 @@ The happy path is complete when all of the following are true:
 - one local export-readiness result is inspectable
 - `python run.py --run-repo-quality-health` returns green
 
-Bootstrap-only limitation:
+Current governance limit:
 
-- the current path is a bounded execution proof on downloaded public test media with bootstrap GPT review labels
-- it is not a publish-cleared or human-approved production path yet
-- further autonomous code changes should not broaden scope past this bootstrap path until the sample and review-governance questions are resolved
+- the current path is a canonical local test path on bounded public media with bootstrap GPT review labels
+- it is not a human-reviewed canonical output path yet
+- further autonomous code changes should not broaden scope past this path until human review is supplied for canonical calibration or export treatment
 
 ## Non-Goals
 

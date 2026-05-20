@@ -1,7 +1,7 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 0.4
+Version: 0.5
 Last updated: 2026-05-21
 
 This backlog is phase-gated. Codex should work in order and stop when a phase blocker is hit.
@@ -123,18 +123,17 @@ Exit criteria:
 
 Current limitation:
 
-- the proven sample is downloaded public test media, not yet a canonical production sample
+- the pinned sample is canonical for local testing only, not for external publishing
 
 Current decision:
 
-- use the bounded real-media path for execution proof
+- use the bounded real-media path as the canonical local test sample
 - keep the fixture bootstrap path available for non-media fallback
 - do not treat bootstrap GPT review decisions as human approval
 
 Recommended next task:
 
-- replace or ratify the bootstrap sample with a user-approved gameplay clip
-- rerun the same path with human review labels if the result needs to become canonical
+- rerun or re-annotate the same path with human review labels if the resulting calibration or export artifacts need canonical status
 
 ## Phase 2: Sidecar And Artifact Generation
 
@@ -238,7 +237,8 @@ Goal:
 Status:
 
 - semantic hardening added for the current bootstrap path
-- remaining blockers are governance decisions, not missing pipeline behavior
+- sample-governance decision is resolved
+- remaining blocker is human review for canonical output treatment, not missing pipeline behavior
 
 Allowed work:
 
@@ -251,12 +251,11 @@ Current recommended hardening:
 - keep the new local export-boundary regressions green:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts remain non-exportable without fused selection
-- replace the downloaded public test clip with a canonical operator sample
-- replace bootstrap GPT review labels with human review if the sample becomes canonical
+- replace bootstrap GPT review labels with human review if canonical calibration or export artifacts are needed
 
 Current stop rule:
 
-- do not broaden implementation beyond the bootstrap path until the sample and review-governance questions in `OPEN_QUESTIONS.md` are resolved
+- do not broaden implementation beyond the canonical local test path until human review is supplied for canonical output treatment
 
 Deferred until after the happy path:
 
