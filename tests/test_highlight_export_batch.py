@@ -12,7 +12,7 @@ from pipeline.clip_registry import query_clip_registry, refresh_clip_registry
 from pipeline.highlight_export_batch import create_highlight_export_batch, materialize_synthetic_post_coverage, record_post_ledger
 from pipeline.highlight_selection_export import export_highlight_selection
 from pipeline.hook_candidate_export import derive_hook_candidates
-from pipeline.workflow_run_state import create_workflow_run
+from pipeline.workflow_run_state import create_workflow_run, query_workflow_queue
 from run import main as run_main
 
 
@@ -57,6 +57,53 @@ def _fused_sidecar(path: Path, *, game: str, source: Path, review_status: str = 
                 "session_id": "fused-session-1",
                 "reviewed_event_count": 1,
                 "events": {"fused-event-1": {"review_status": review_status}},
+            },
+            "sidecar_path": str(path.resolve()),
+        },
+    )
+
+
+def _runtime_sidecar(path: Path, *, game: str, source: Path, review_status: str = "approved") -> None:
+    _write_json(
+        path,
+        {
+            "schema_version": "runtime_analysis_v1",
+            "analysis_id": f"runtime-{path.stem}",
+            "ok": True,
+            "status": "ok",
+            "game": game,
+            "source": str(source.resolve()),
+            "matcher": {
+                "frame_count": 24,
+                "confirmed_detections": [
+                    {
+                        "asset_id": f"{game}.hero_portrait",
+                        "roi_ref": "hero_portrait",
+                        "entity_id": "operator-test-entity",
+                        "first_timestamp": 1.0,
+                        "last_timestamp": 1.5,
+                        "peak_score": 0.98,
+                    }
+                ],
+            },
+            "events": {
+                "event_count": 1,
+                "rows": [
+                    {
+                        "event_id": f"{path.stem}-event-1",
+                        "event_type": "pov_character_identified",
+                        "confidence": 0.98,
+                        "start_timestamp": 1.0,
+                        "end_timestamp": 1.5,
+                        "entity_id": "operator-test-entity",
+                    }
+                ],
+            },
+            "runtime_review": {
+                "session_id": "runtime-session-1",
+                "review_status": review_status,
+                "recommended_action": "highlight_candidate",
+                "highlight_score": 0.88,
             },
             "sidecar_path": str(path.resolve()),
         },
@@ -167,6 +214,32 @@ class HighlightExportBatchTests(unittest.TestCase):
             )
             self.assertEqual(export_query["row_count"], 1)
             self.assertEqual(export_query["rows"][0]["candidate_id"], candidate_id)
+
+    def test_runtime_only_reviewed_artifacts_are_not_export_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            runtime_path = root / "runtime" / "alpha.runtime_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _runtime_sidecar(runtime_path, game="call_of_duty", source=media)
+
+            refresh_result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(refresh_result["ok"])
+            selected = query_clip_registry(
+                mode="candidate-lifecycles",
+                lifecycle_state="selected_for_export",
+                registry_path=registry_path,
+            )
+            export_queue = query_workflow_queue("export_queue", registry_path=registry_path)
+            export_batch = create_highlight_export_batch(registry_path=registry_path)
+
+            self.assertEqual(selected["row_count"], 0)
+            self.assertEqual(export_queue["row_count"], 0)
+            self.assertFalse(export_batch["ok"])
+            self.assertEqual(export_batch["status"], "no_selected_candidates")
 
     def test_record_post_ledger_writes_generic_posted_records(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
