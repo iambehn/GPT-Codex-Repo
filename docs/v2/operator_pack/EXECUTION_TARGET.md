@@ -1,7 +1,7 @@
 # Execution Target
 
 Status: active-draft
-Version: 0.6
+Version: 0.7
 Last updated: 2026-05-21
 
 ## Objective
@@ -19,14 +19,15 @@ Pin one concrete, runnable happy path for the gameplay highlight pipeline and pr
 
 ## Current Phase Gate
 
-Current phase: `Phase 7 - canonical local export path human-reviewed, runtime calibration still bootstrap-derived`
+Current phase: `Phase 7 - canonical local runtime calibration and local export path authorized for local testing`
 
 Current execution rule:
 
 - use the bounded `call_of_duty` real-media path as the canonical operator sample for local pipeline testing
 - treat bootstrap GPT review decisions as test-only, not as human editorial approval
-- treat the current local export artifact as canonically human-reviewed after the adopted fused-review decisions were re-applied
-- still require human review before the runtime calibration artifact from this path is treated as canonical
+- treat the current local export artifact as canonically user-authorized for local testing after the adopted fused-review decisions were re-applied
+- treat the current runtime calibration artifact as canonically user-authorized for local testing after the adopted runtime-review decisions were re-applied
+- do not treat any artifact from this path as publish-cleared external approval
 - keep the hardening regressions green:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts are not export-ready without fused selection
@@ -171,8 +172,8 @@ Current bootstrap stage status:
 | Input resolution | `proved for bounded real-media bootstrap` | bounded public test clip path is pinned; canonical production sample is still unresolved |
 | Sidecar and artifact generation | `proved for bounded real media` | runtime and fused sidecars were produced from one real clip segment |
 | Candidate and review surface | `proved for bounded real media` | runtime and fused review bridges both persisted review state |
-| Calibration and replay path | `proved for bounded real media` | runtime calibration passed on reviewed real-media sidecars |
-| Local export-readiness bundle | `canonically human-reviewed for local testing` | `highlight_export_batch_v1` exists locally with one exported candidate and no post ledger; fused-review provenance now reflects user-adopted decisions |
+| Calibration and replay path | `canonically user-authorized for local testing` | runtime calibration passed on user-authorized reviewed real-media sidecars |
+| Local export-readiness bundle | `canonically user-authorized for local testing` | `highlight_export_batch_v1` exists locally with one exported candidate and no post ledger; fused-review provenance now reflects user-adopted decisions |
 | Repo-quality health gate | `proved` | known green from prior validation |
 
 ## Required Artifacts
@@ -206,9 +207,9 @@ The happy path is complete when all of the following are true:
 Current governance limit:
 
 - the current path is a canonical local test path on bounded public media
-- the local export artifact is now backed by user-adopted fused-review decisions
-- the runtime calibration artifact is still broader and depends on bootstrap runtime-review labels
-- further autonomous code changes should not broaden scope past this path until human review is supplied for canonical runtime calibration treatment
+- the local export artifact is backed by user-adopted fused-review decisions
+- the runtime calibration artifact is backed by user-adopted runtime-review decisions across its four reviewed runtime sidecars
+- further autonomous code changes should not broaden scope past this path until a new execution target is explicitly chosen
 
 ## Non-Goals
 

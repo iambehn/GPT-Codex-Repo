@@ -1,7 +1,7 @@
 # Open Questions
 
 Status: active
-Version: 0.5
+Version: 0.6
 Last updated: 2026-05-21
 
 ## P0 Questions
@@ -17,7 +17,11 @@ Resolved on 2026-05-21 by user decision:
 Resolved later on 2026-05-21 by user-adopted fused-review decisions:
 
 - the local export artifact path for the canonical `60s-70s` sample is now backed by user-adopted fused-review decisions
-- the runtime calibration artifact is still not canonical because it depends on broader bootstrap runtime-review labels
+
+Resolved later on 2026-05-21 by user-adopted runtime-review decisions:
+
+- the runtime calibration artifact is now backed by user-adopted runtime-review decisions across its four reviewed runtime sidecars
+- the bounded `call_of_duty` local test path now has no unresolved review-governance blocker
 
 Resolved in current execution doctrine:
 

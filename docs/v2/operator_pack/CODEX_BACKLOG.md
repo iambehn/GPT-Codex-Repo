@@ -1,7 +1,7 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 0.6
+Version: 0.7
 Last updated: 2026-05-21
 
 This backlog is phase-gated. Codex should work in order and stop when a phase blocker is hit.
@@ -129,7 +129,7 @@ Current decision:
 
 - use the bounded real-media path as the canonical local test sample
 - keep the fixture bootstrap path available for non-media fallback
-- do not treat bootstrap GPT review decisions as human approval
+- do not treat bootstrap GPT review decisions as human approval unless the user explicitly adopts them for local testing
 
 Recommended next task:
 
@@ -182,9 +182,10 @@ Goal:
 
 Status:
 
-- completed for bounded real-media bootstrap execution
+- completed for bounded real-media canonical local testing
 - runtime calibration proof artifact: `outputs/runtime_calibration/call_of_duty/bootstrap-real-cod.runtime_calibration.json`
 - current proof result: `status: ok`, `reviewed_sidecar_count: 4`, `approved_count: 2`, `rejected_count: 2`, `release_gate_summary.status: pass`
+- current decision provenance: user-adopted runtime-review decisions re-applied on `2026-05-20T23:53:19Z`
 
 Exit criteria:
 
@@ -240,7 +241,8 @@ Status:
 - semantic hardening added for the current bootstrap path
 - sample-governance decision is resolved
 - local export canonicalization is resolved through user-adopted fused review
-- remaining blocker is human review for canonical runtime calibration, not missing pipeline behavior
+- runtime calibration canonicalization is resolved through user-adopted runtime review
+- no active blocker remains for the bounded local test path
 
 Allowed work:
 
@@ -253,13 +255,12 @@ Current recommended hardening:
 - keep the new local export-boundary regressions green:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts remain non-exportable without fused selection
-- replace bootstrap GPT runtime-review labels with human review if canonical runtime calibration is needed
 - use the canonicalization handoff:
   - `docs/handoffs/2026-05-21-call-of-duty-canonical-human-review-handoff.md`
 
 Current stop rule:
 
-- do not broaden implementation beyond the canonical local test path until human review is supplied for canonical runtime calibration treatment
+- do not broaden implementation beyond the canonical local test path until a new execution target is explicitly chosen
 
 Deferred until after the happy path:
 

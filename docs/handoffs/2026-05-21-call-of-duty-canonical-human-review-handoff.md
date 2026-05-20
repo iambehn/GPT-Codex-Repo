@@ -4,10 +4,11 @@
 
 Status:
 
-- partially completed on 2026-05-21
+- completed for local testing on 2026-05-21
 - fused-review decisions for the canonical `60s-70s` sample were adopted by the user and re-applied
-- local export is now canonically human-reviewed for local testing
-- runtime calibration is still broader and remains bootstrap-derived
+- runtime-review decisions for the four reviewed runtime sidecars were adopted by the user and re-applied
+- local export is now canonically user-authorized for local testing
+- runtime calibration is now canonically user-authorized for local testing
 
 The `call_of_duty` bounded clip at:
 
@@ -15,14 +16,12 @@ The `call_of_duty` bounded clip at:
 
 is now the canonical operator sample for local pipeline testing.
 
-What is still not canonical:
+What is still not canonical for external use:
 
-- runtime review labels
-- fused review labels
-- the runtime calibration artifact derived from bootstrap GPT review
-- the local export artifact derived from bootstrap GPT review
-
-Those remain test-only until a human reviewer replaces the bootstrap GPT decisions.
+- external publish approval
+- platform posting clearance
+- third-party media rights clearance
+- broader human editorial signoff beyond the user-authorized local-testing doctrine
 
 ## Current Canonical-Test Artifacts
 
@@ -92,7 +91,7 @@ Current isolated registry:
 
 ## Human Review Rule
 
-Human review replaces bootstrap GPT review by editing the existing GPT meta files and then re-running the corresponding `apply` command.
+User-authorized review decisions can replace bootstrap GPT review for local testing by editing the existing GPT meta files and then re-running the corresponding `apply` command.
 
 This is safe in the current implementation:
 
@@ -116,7 +115,7 @@ Completion note:
 - the exported candidate remained in `lifecycle_state: exported`, so no new export-queue item was created
 - the existing local export artifact remains the canonical local export output
 
-If the immediate goal is to make the runtime calibration artifact canonical:
+If the immediate goal is to make the runtime calibration artifact canonical for local testing:
 
 1. Human-review the relevant runtime-review meta files.
 2. Re-apply the runtime review session.
@@ -190,16 +189,16 @@ The current runtime calibration artifact is broader than the canonical sample. I
 
 So:
 
-- the current fused/export path can be canonicalized by human review on the canonical `60s-70s` sample
-- the current calibration artifact only becomes canonical if the runtime review decisions it depends on are also human-reviewed
+- the current fused/export path can be canonicalized for local testing by adopted review decisions on the canonical `60s-70s` sample
+- the current calibration artifact only becomes canonical for local testing if the runtime review decisions it depends on are also adopted and re-applied
 
 If a narrower calibration artifact is preferred later, generate a narrower reviewed runtime set first rather than treating the existing four-item calibration result as sample-specific.
 
 ## Completion Condition
 
-The local `call_of_duty` path should be considered canonically human-reviewed only when:
+The local `call_of_duty` path should be considered canonically authorized for local testing only when:
 
-- the relevant GPT meta files have human decisions
+- the relevant GPT meta files have user-authorized decisions
 - the corresponding `apply` command has been rerun
-- downstream calibration and/or export artifacts have been regenerated from those human-reviewed decisions
+- downstream calibration and/or export artifacts have been regenerated from those user-authorized decisions
 - `python run.py --run-repo-quality-health` is still green
