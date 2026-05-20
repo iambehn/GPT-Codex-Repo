@@ -1,7 +1,7 @@
 # Pipeline Contracts
 
 Status: active-draft
-Version: 0.1
+Version: 0.2
 Last updated: 2026-05-20
 
 This is the minimal contract layer for the first happy path. It does not replace subsystem docs under `docs/v2/`; it pins the minimum execution expectations needed to keep Codex work narrow and auditable.
@@ -45,6 +45,22 @@ The exact schema is owned by the relevant repo surface. Until Phase 0 inventory 
 - timestamps when the stage is time-sensitive
 - enough evidence context for a human to understand what the artifact represents
 
+## Current Bootstrap Command Mapping
+
+This is the current command-to-artifact contract for the bootstrap path. It does not replace the final real-media happy path.
+
+| Stage | Command | Artifact or output surface | Required fields or properties now verified | Validation level |
+| --- | --- | --- | --- | --- |
+| Config load | `python run.py --list-games --config config.yaml` | CLI JSON result with game list | `ok`, non-empty `games` list | `L1-L2` |
+| Input resolution | pinned draft root `assets/games/call_of_duty/drafts/onboarding/20260505T213332Z` | explicit bootstrap source path | chosen game, input mode, source path | `L1-L2` |
+| Candidate/review bootstrap | `python run.py --summarize-derived-row-review assets/games/call_of_duty/drafts/onboarding/20260505T213332Z` | derived-row review summary | `status`, `review_file_count`, `pending_count`, `decision_ready_count`, `applied_count` | `L1-L4` |
+| Calibration/replay bootstrap | `python run.py --run-decision-regression-goldsets` | decision-regression summary | `suite_count`, `total_tests`, `ok`, per-suite status | `L1-L4` |
+| Local readiness bootstrap | `python run.py --validate-onboarding-publish assets/games/call_of_duty/drafts/onboarding/20260505T213332Z` | onboarding publish-readiness summary | `phase_status`, `can_publish`, `readiness`, `counts`, inspectable findings | `L1-L4` |
+
+Current deferred gap:
+
+- no command-backed sidecar-generation proof is pinned yet because there is still no canonical real-media input
+
 ## Phase 0 Ownership Snapshot
 
 | Surface | Current owner |
@@ -64,7 +80,7 @@ The exact schema is owned by the relevant repo surface. Until Phase 0 inventory 
 Current ownership conclusion:
 
 - no immediate cross-surface schema conflict was found in the candidate, review-session, lifecycle, or export artifact families reviewed in Phase 0
-- the remaining ambiguity is not schema naming; it is which local export-readiness surface should count as the Phase 5 completion artifact for the first happy path
+- the remaining ambiguity is not schema naming; it is which real-media export surface should replace onboarding publish-readiness as the final Phase 5 completion artifact
 
 ## Semantic Success Rule
 
@@ -85,5 +101,3 @@ The repo-quality health gate is already a known execution-control surface:
 - current known meaning:
   - maintenance must be healthy enough for the gate
   - decision-regression suites must pass
-
-The deeper command-to-artifact mapping for other stages remains a Phase 0 inventory task.

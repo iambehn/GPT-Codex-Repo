@@ -1,7 +1,7 @@
 # Execution Target
 
 Status: active-draft
-Version: 0.1
+Version: 0.2
 Last updated: 2026-05-20
 
 ## Objective
@@ -19,9 +19,13 @@ Pin one concrete, runnable happy path for the gameplay highlight pipeline and pr
 
 ## Current Phase Gate
 
-Current phase: `Phase 0 - inventory complete, blocked on canonical sample input`
+Current phase: `Phase 1 - fixture bootstrap pinned, real-media sidecar generation deferred`
 
-Phase 1 implementation work should not start until the P0 blockers in [OPEN_QUESTIONS.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/OPEN_QUESTIONS.md) are either resolved or explicitly deferred.
+Current execution rule:
+
+- proceed on the documented `fixture_bootstrap` path
+- treat missing real sample media as a deferred blocker for final happy-path completion
+- do not claim sidecar-generation success until a canonical real sample exists
 
 ## Phase 0 Inventory Snapshot
 
@@ -56,7 +60,7 @@ Phase 1 implementation work should not start until the P0 blockers in [OPEN_QUES
 
 ## First Supported Game
 
-Status: provisional
+Status: bootstrap-pinned
 
 Current recommendation:
 
@@ -71,7 +75,7 @@ Rationale:
 
 ## Input Mode
 
-Status: provisional
+Status: bootstrap-pinned
 
 Allowed values:
 
@@ -91,7 +95,7 @@ Rules:
 
 ## Sample Input
 
-Status: unresolved
+Status: bootstrap-pinned
 
 Current blocker:
 
@@ -102,6 +106,27 @@ Current bootstrap options:
 - onboarding review and publish-readiness surfaces on `assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
 - decision-regression fixtures under `tests/fixtures/`
 
+Pinned bootstrap path:
+
+- game: `call_of_duty`
+- input mode: `fixture_bootstrap`
+- sample path: `assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
+
+## Current Bootstrap Command Path
+
+The current bootstrap path is intentionally artifact-driven. It proves the existing review and readiness surfaces without pretending that media-backed sidecar generation is already working.
+
+| Stage | Command | Current result | Meaning |
+| --- | --- | --- | --- |
+| Config load bootstrap | `python run.py --list-games --config config.yaml` | `ok: true` with `call_of_duty`, `marvel_rivals`, `valorant` | config path loads and CLI bootstraps |
+| Candidate and review bootstrap | `python run.py --summarize-derived-row-review assets/games/call_of_duty/drafts/onboarding/20260505T213332Z` | `review_file_count: 122`, `pending_count: 0`, `decision_ready_count: 122`, `applied_count: 122` | review payloads are present, applied, and inspectable |
+| Calibration and replay bootstrap | `python run.py --run-decision-regression-goldsets` | `suite_count: 9`, `total_tests: 18`, `ok: true` | current decision surfaces are regression-backed |
+| Local readiness bootstrap | `python run.py --validate-onboarding-publish assets/games/call_of_duty/drafts/onboarding/20260505T213332Z` | `phase_status: bindings_pending`, `readiness: needs_population_review`, `can_publish: false` | blockers are inspectable and local-only |
+
+Deferred bootstrap gap:
+
+- there is still no canonical real-media input, so Stage 3 sidecar generation remains deferred
+
 ## Happy-Path Stages
 
 1. Config load
@@ -111,6 +136,18 @@ Current bootstrap options:
 5. Calibration and replay path
 6. Local export-readiness bundle
 7. Repo-quality health gate
+
+Current bootstrap stage status:
+
+| Stage | Status | Notes |
+| --- | --- | --- |
+| Config load | `proved` | `--list-games --config config.yaml` succeeds |
+| Input resolution | `proved for bootstrap` | draft root is pinned; real sample still missing |
+| Sidecar and artifact generation | `deferred` | blocked on missing canonical real media |
+| Candidate and review surface | `proved for bootstrap` | derived-row review summary is inspectable and fully applied |
+| Calibration and replay path | `proved for bootstrap` | decision-regression goldsets are green |
+| Local export-readiness bundle | `proved for bootstrap summary only` | onboarding publish-readiness summary is inspectable and blocking correctly; final real-media bundle remains unresolved |
+| Repo-quality health gate | `proved` | known green from prior validation |
 
 ## Required Artifacts
 
@@ -139,6 +176,10 @@ The happy path is complete when all of the following are true:
 - one calibration/replay path is executable
 - one local export-readiness result is inspectable
 - `python run.py --run-repo-quality-health` returns green
+
+Bootstrap-only limitation:
+
+- the current path does not satisfy full completion until a canonical real sample input exists and sidecar generation is proven on that input
 
 ## Non-Goals
 

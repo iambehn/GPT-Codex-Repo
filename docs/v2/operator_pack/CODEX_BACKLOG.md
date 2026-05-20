@@ -1,7 +1,7 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 0.1
+Version: 0.2
 Last updated: 2026-05-20
 
 This backlog is phase-gated. Codex should work in order and stop when a phase blocker is hit.
@@ -108,6 +108,13 @@ Goal:
 
 - pin one game, one input mode, and one sample input path
 
+Status:
+
+- completed for bootstrap execution
+- pinned game: `call_of_duty`
+- pinned input mode: `fixture_bootstrap`
+- pinned bootstrap path: `assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
+
 Exit criteria:
 
 - chosen config path loads
@@ -116,18 +123,29 @@ Exit criteria:
 
 Current blocker:
 
-- no canonical real sample input is available yet
+- no canonical real sample input is available yet for media-backed sidecar generation or final happy-path completion
 
-Recommended next Phase 1 task:
+Current decision:
 
-- either provide a real `call_of_duty` sample clip path
-- or explicitly proceed with a documented `fixture_bootstrap` step while keeping media-backed sidecar generation blocked
+- proceed on the documented bootstrap path
+- treat the missing real sample as deferred rather than as a stop-work blocker for review and readiness surfaces
+
+Recommended next task:
+
+- continue with bootstrap-proof stages that operate on existing artifacts
+- set aside Stage 2 media-backed generation until a canonical sample clip exists
 
 ## Phase 2: Sidecar And Artifact Generation
 
 Goal:
 
 - produce the minimum stage artifacts required to move into review
+
+Status:
+
+- deferred
+- blocker: no canonical real-media input is available yet
+- do not substitute fixture-backed review artifacts for sidecar-generation proof
 
 Exit criteria:
 
@@ -142,6 +160,12 @@ Goal:
 
 - make one inspectable candidate or review path executable for the chosen happy path
 
+Status:
+
+- completed for bootstrap execution
+- current proof command: `python run.py --summarize-derived-row-review assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
+- current proof result: `review_file_count: 122`, `pending_count: 0`, `decision_ready_count: 122`, `applied_count: 122`
+
 Exit criteria:
 
 - evidence and status are inspectable
@@ -153,6 +177,12 @@ Exit criteria:
 Goal:
 
 - make one calibration or replay path executable for the chosen happy path
+
+Status:
+
+- completed for bootstrap execution
+- current proof command: `python run.py --run-decision-regression-goldsets`
+- current proof result: `suite_count: 9`, `total_tests: 18`, `ok: true`
 
 Exit criteria:
 
@@ -166,6 +196,13 @@ Goal:
 
 - produce a local inspectable export-readiness result
 
+Status:
+
+- completed for bootstrap execution
+- current proof command: `python run.py --validate-onboarding-publish assets/games/call_of_duty/drafts/onboarding/20260505T213332Z`
+- current proof result: `phase_status: bindings_pending`, `readiness: needs_population_review`, `can_publish: false`
+- note: this is a bootstrap readiness summary, not yet the final real-media local export bundle
+
 Exit criteria:
 
 - bundle exists locally
@@ -177,6 +214,11 @@ Exit criteria:
 Goal:
 
 - prove the chosen path does not break the enforced quality surfaces
+
+Status:
+
+- already green on the current branch
+- keep rerunning after any behavior change that touches the happy path or its governing surfaces
 
 Exit criteria:
 
