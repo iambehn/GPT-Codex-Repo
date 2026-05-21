@@ -38,6 +38,131 @@ Minimum downstream concepts:
 - experiment linkage
 - destination-aware routing once candidate trust is high enough
 
+## How To Think About The Downstream Layer
+
+This layer exists because “we exported a clip” is not the same thing as “we posted it” and not the same thing as “we learned anything from its performance.”
+
+Downstream is trying to answer three different kinds of question:
+
+1. export state
+- what local artifact did we create?
+
+2. posting state
+- what was actually sent to an external platform?
+
+3. performance state
+- what happened after posting?
+
+Those distinctions matter because external action, platform-side state, and post-performance evidence should not redefine upstream event truth.
+
+## What The Post Ledger Is Actually Doing
+
+The post ledger is the first explicit record that something moved from local pipeline state into an external platform action.
+
+That means the post ledger is not just another export artifact.
+
+It answers:
+
+- what export was posted?
+- to which platform or account?
+- when was it posted?
+- what external record should we treat as the downstream source of truth?
+
+Without that boundary, the system can accidentally treat local export as if it were already published.
+
+## What Metrics Are Actually Doing
+
+Metrics are not approval signals for event truth.
+
+They are downstream observations about how a posted piece of content performed after the fact.
+
+Metrics can help answer:
+
+- did this packaging strategy tend to work?
+- did this hook mode underperform?
+- do certain event types travel well to a platform?
+
+But metrics should not be allowed to silently rewrite:
+
+- what happened in the clip
+- whether the review decision was correct
+- whether a candidate was truthfully represented
+
+That is why analytics are downstream learning surfaces rather than upstream evidence surfaces.
+
+## Current Concrete Example
+
+The bounded `call_of_duty` local-test path proved the boundary cleanly:
+
+- a local export batch exists
+- the candidate lifecycle can reach `exported`
+- `post_ledger_path` remains `null`
+
+That is the important local-only state.
+
+It proves:
+
+- the system can materialize a local output artifact
+- but no external-action record exists yet
+
+This is exactly why the downstream layer needs its own explicit artifacts instead of letting export state stand in for posting state.
+
+## Where Complex Problems Usually Hide Here
+
+### 1. Export and posting get conflated
+
+Symptoms:
+
+- a clip is treated as posted when only a local export exists
+- downstream reporting appears populated without any true external action
+
+Typical cause:
+
+- the post-ledger boundary was not kept explicit enough
+
+### 2. Performance evidence gets overtrusted
+
+Symptoms:
+
+- strong or weak metrics start getting treated as if they proved upstream event quality
+
+Typical cause:
+
+- the learning surface is being confused with the evidence surface
+
+### 3. One candidate maps to multiple downstream artifacts and lineage becomes unclear
+
+Symptoms:
+
+- exports, posts, and metrics exist
+- but it is hard to tell which downstream rows belong to which upstream candidate or hook treatment
+
+Typical cause:
+
+- lineage joins are incomplete
+- downstream records are not preserving the right export or candidate references
+
+### 4. Real-world platform state leaks backward into workflow assumptions
+
+Symptoms:
+
+- a moderation issue, posting failure, or platform-specific quirk starts changing how upstream evidence is interpreted
+
+Typical cause:
+
+- downstream operational problems are being allowed to redefine upstream truth instead of being recorded as downstream state
+
+## Practical Mental Model
+
+Use this short model:
+
+- export artifacts say what we created locally
+- post ledgers say what we actually sent outward
+- metrics say what happened afterward
+- analytics should teach later strategy without rewriting earlier evidence
+
+If those functions stay separate, the project can learn from downstream performance without corrupting upstream decision logic.
+
 ## Canonical Downstream Chain
 
 The current downstream artifact sequence is:
