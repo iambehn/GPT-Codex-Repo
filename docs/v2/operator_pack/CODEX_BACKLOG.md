@@ -1,7 +1,7 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 0.7
+Version: 0.8
 Last updated: 2026-05-21
 
 This backlog is phase-gated. Codex should work in order and stop when a phase blocker is hit.
@@ -255,6 +255,7 @@ Current recommended hardening:
 - keep the new local export-boundary regressions green:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts remain non-exportable without fused selection
+  - the combined bounded local-test regression keeps runtime calibration pass and local export in the same isolated workspace
 - use the canonicalization handoff:
   - `docs/handoffs/2026-05-21-call-of-duty-canonical-human-review-handoff.md`
 

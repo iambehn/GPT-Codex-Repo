@@ -1,7 +1,7 @@
 # Execution Target
 
 Status: active-draft
-Version: 0.7
+Version: 0.8
 Last updated: 2026-05-21
 
 ## Objective
@@ -31,6 +31,7 @@ Current execution rule:
 - keep the hardening regressions green:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts are not export-ready without fused selection
+  - a synthetic bounded local-test regression proves runtime calibration pass and local export can coexist in one isolated workspace
 
 ## Phase 0 Inventory Snapshot
 

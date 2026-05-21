@@ -14,6 +14,7 @@ from pipeline.highlight_selection_export import export_highlight_selection
 from pipeline.hook_candidate_export import derive_hook_candidates
 from pipeline.workflow_run_state import create_workflow_run, query_workflow_queue
 from run import main as run_main
+from run import run_calibrate_runtime_review
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -64,6 +65,58 @@ def _fused_sidecar(path: Path, *, game: str, source: Path, review_status: str = 
 
 
 def _runtime_sidecar(path: Path, *, game: str, source: Path, review_status: str = "approved") -> None:
+    _runtime_sidecar_with_rows(path, game=game, source=source, review_status=review_status)
+
+
+def _runtime_event(event_type: str, *, confidence: float = 0.95) -> dict[str, object]:
+    return {
+        "event_id": f"{event_type}-event",
+        "event_type": event_type,
+        "timestamp": 1.0,
+        "start_timestamp": 1.0,
+        "end_timestamp": 1.5,
+        "asset_id": f"{event_type}-asset",
+        "roi_ref": "hero_portrait",
+        "confidence": confidence,
+        "evidence": {"peak_score": confidence},
+        "source_detection_count": 3,
+    }
+
+
+def _runtime_detection(*, roi_ref: str = "hero_portrait", asset_family: str = "hero_portrait") -> dict[str, object]:
+    return {
+        "asset_id": f"{asset_family}-asset",
+        "roi_ref": roi_ref,
+        "asset_family": asset_family,
+        "first_timestamp": 1.0,
+        "last_timestamp": 1.5,
+        "peak_score": 0.98,
+        "supporting_frames": 4,
+        "temporal_window": 3,
+    }
+
+
+def _runtime_sidecar_with_rows(
+    path: Path,
+    *,
+    game: str,
+    source: Path,
+    review_status: str = "approved",
+    events: list[dict[str, object]] | None = None,
+    detections: list[dict[str, object]] | None = None,
+) -> None:
+    event_rows = events if events is not None else [_runtime_event("pov_character_identified")]
+    detection_rows = detections if detections is not None else [_runtime_detection()]
+    detection_rois: dict[str, int] = {}
+    detection_asset_families: dict[str, int] = {}
+    for row in detection_rows:
+        roi_ref = str(row.get("roi_ref") or "").strip()
+        asset_family = str(row.get("asset_family") or "").strip()
+        if roi_ref:
+            detection_rois[roi_ref] = detection_rois.get(roi_ref, 0) + 1
+        if asset_family:
+            detection_asset_families[asset_family] = detection_asset_families.get(asset_family, 0) + 1
+
     _write_json(
         path,
         {
@@ -75,29 +128,16 @@ def _runtime_sidecar(path: Path, *, game: str, source: Path, review_status: str 
             "source": str(source.resolve()),
             "matcher": {
                 "frame_count": 24,
-                "confirmed_detections": [
-                    {
-                        "asset_id": f"{game}.hero_portrait",
-                        "roi_ref": "hero_portrait",
-                        "entity_id": "operator-test-entity",
-                        "first_timestamp": 1.0,
-                        "last_timestamp": 1.5,
-                        "peak_score": 0.98,
-                    }
-                ],
+                "confirmed_detections": detection_rows,
+                "summary": {
+                    "total_confirmed_detections": len(detection_rows),
+                    "detections_by_roi": detection_rois,
+                    "detections_by_asset_family": detection_asset_families,
+                },
             },
             "events": {
-                "event_count": 1,
-                "rows": [
-                    {
-                        "event_id": f"{path.stem}-event-1",
-                        "event_type": "pov_character_identified",
-                        "confidence": 0.98,
-                        "start_timestamp": 1.0,
-                        "end_timestamp": 1.5,
-                        "entity_id": "operator-test-entity",
-                    }
-                ],
+                "event_count": len(event_rows),
+                "rows": event_rows,
             },
             "runtime_review": {
                 "session_id": "runtime-session-1",
@@ -240,6 +280,100 @@ class HighlightExportBatchTests(unittest.TestCase):
             self.assertEqual(export_queue["row_count"], 0)
             self.assertFalse(export_batch["ok"])
             self.assertEqual(export_batch["status"], "no_selected_candidates")
+
+    def test_bounded_local_test_workspace_supports_runtime_calibration_and_local_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+
+            runtime_root = root / "runtime"
+            registry_path = root / "registry.sqlite"
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+
+            _runtime_sidecar_with_rows(
+                runtime_root / "approved-a.runtime_analysis.json",
+                game="call_of_duty",
+                source=media,
+                review_status="approved",
+                events=[_runtime_event("medal_seen"), _runtime_event("ability_seen")],
+                detections=[_runtime_detection(roi_ref="medal_area", asset_family="medal_icon")],
+            )
+            _runtime_sidecar_with_rows(
+                runtime_root / "approved-b.runtime_analysis.json",
+                game="call_of_duty",
+                source=media,
+                review_status="approved",
+                events=[_runtime_event("medal_seen"), _runtime_event("ability_seen")],
+                detections=[_runtime_detection(roi_ref="medal_area", asset_family="medal_icon")],
+            )
+            _runtime_sidecar_with_rows(
+                runtime_root / "rejected-a.runtime_analysis.json",
+                game="call_of_duty",
+                source=media,
+                review_status="rejected",
+                events=[_runtime_event("pov_character_identified")],
+                detections=[_runtime_detection()],
+            )
+            _runtime_sidecar_with_rows(
+                runtime_root / "rejected-b.runtime_analysis.json",
+                game="call_of_duty",
+                source=media,
+                review_status="rejected",
+                events=[_runtime_event("pov_character_identified")],
+                detections=[_runtime_detection()],
+            )
+
+            calibration = run_calibrate_runtime_review(runtime_root, game="call_of_duty", min_reviewed=4)
+            _fused_sidecar(fused_path, game="call_of_duty", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+            export_highlight_selection(
+                fused_sidecar=fused_path,
+                output_path=root / "selection" / "alpha.highlight_selection.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            derive_hook_candidates(
+                fused_path,
+                registry_path=registry_path,
+                output_path=root / "hooks" / "alpha.hook_candidates.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            workflow = create_workflow_run(
+                "export_queue",
+                registry_path=registry_path,
+                output_path=root / "workflow" / "export.workflow_run.json",
+            )
+            export_batch = create_highlight_export_batch(
+                registry_path=registry_path,
+                workflow_run_id=workflow["workflow_run_id"],
+                output_path=root / "exports" / "batch.highlight_export_batch.json",
+            )
+            refresh_result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(calibration["ok"])
+            self.assertEqual(calibration["status"], "ok")
+            self.assertEqual(calibration["reviewed_sidecar_count"], 4)
+            self.assertEqual(calibration["approved_count"], 2)
+            self.assertEqual(calibration["rejected_count"], 2)
+            self.assertEqual(calibration["release_gate_summary"]["status"], "pass")
+
+            self.assertTrue(export_batch["ok"])
+            self.assertTrue(refresh_result["ok"])
+            manifest = json.loads(Path(export_batch["manifest_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(manifest["schema_version"], "highlight_export_batch_v1")
+            self.assertEqual(manifest["export_count"], 1)
+            candidate_id = manifest["exports"][0]["candidate_id"]
+
+            exported = query_clip_registry(
+                mode="candidate-lifecycles",
+                lifecycle_state="exported",
+                candidate_id=candidate_id,
+                registry_path=registry_path,
+            )
+            self.assertEqual(exported["row_count"], 1)
+            self.assertTrue(exported["rows"][0]["export_artifact_path"].endswith(".otio.json"))
+            self.assertIsNone(exported["rows"][0]["post_ledger_path"])
 
     def test_record_post_ledger_writes_generic_posted_records(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
