@@ -40,6 +40,140 @@ This doc should stay focused on:
 - what recommendation states mean
 - how review outcomes feed later decisions
 
+## How To Think About Review, Calibration, And Replay
+
+This layer exists because a scoring pipeline can be internally consistent and still be wrong.
+
+Detection, runtime scoring, fusion, and packaging all produce candidate claims. Review, calibration, and replay answer a different class of question:
+
+- did the system make a defensible decision?
+- can we explain why that decision happened?
+- if we change the system, did the decision quality improve or regress?
+
+That makes this layer a decision-checking surface, not a content-generation surface.
+
+Use this mental split:
+
+- sidecars say what the system observed
+- review says whether a human or authorized operator accepts the decision implied by that evidence
+- calibration says whether the scoring behavior aligns with reviewed outcomes
+- replay says whether a proposed change behaves better, worse, or differently on the same evidence
+
+## What Review Is Actually Doing
+
+Review is not just a UI step or a manual approval ritual.
+
+It has three jobs:
+
+1. convert ambiguous or high-impact machine outcomes into explicit decisions
+2. preserve those decisions in reusable artifact form
+3. create the evidence base that later calibration, replay, and promotion decisions depend on
+
+Without review, the pipeline can still emit scores. What it cannot do reliably is distinguish:
+
+- a strong decision from a merely high score
+- a detector failure from a policy failure
+- a useful threshold from an accidental one
+
+That is why review-backed artifacts matter more than one-off observations in chat or shell output.
+
+## What Calibration Is Actually Doing
+
+Calibration does not create highlight candidates.
+
+It asks whether the current scoring rules behave sensibly against reviewed examples.
+
+In the current bounded `call_of_duty` path, runtime calibration answers a question like:
+
+- given a small reviewed set of runtime sidecars, do approved items land on the approved side of the decision boundary and rejected items land on the rejected side?
+
+That makes calibration a quality check on decision behavior, not an execution step that directly produces publishable content.
+
+The practical implication is important:
+
+- a passing calibration report does not mean the export path works
+- a working export path does not mean the calibration logic is trustworthy
+
+Those are adjacent but different proofs.
+
+## What Replay Is Actually Doing
+
+Replay is how the repo answers "what would change if we changed this rule or model?" without guessing.
+
+Replay matters whenever:
+
+- a threshold is adjusted
+- a scoring weight changes
+- a detector is replaced
+- a fusion policy is modified
+- a packaging rule starts selecting different candidates
+
+Without replay, changes get judged by memory and intuition. With replay, they get judged against the same reviewed evidence.
+
+That is the core discipline:
+
+- same evidence
+- old behavior vs new behavior
+- explicit recommendation artifact
+- human-readable difference, not just a new score
+
+## Current Concrete Example
+
+The bounded `call_of_duty` local-test path now shows the intended separation clearly:
+
+1. runtime analysis sidecars were produced from media
+2. runtime review decisions were applied
+3. runtime calibration passed on a reviewed `2 approved / 2 rejected` set
+4. fused review decisions were applied separately
+5. local export succeeded separately
+
+That sequence matters because it proves:
+
+- runtime review and calibration are about decision quality on runtime evidence
+- fused review and export are about candidate advancement through the highlight workflow
+
+The same clip can touch both surfaces, but the surfaces do different conceptual work.
+
+## Where Complex Problems Usually Hide Here
+
+The hardest failures in this layer are usually not parsing failures. They are meaning failures.
+
+### 1. Review looks correct, but calibration is misleading
+
+Typical cause:
+- too few reviewed examples
+- class imbalance
+- reviewed set not representative of the actual candidate mix
+
+### 2. Calibration passes, but downstream candidate quality is still bad
+
+Typical cause:
+- runtime scoring is acceptable, but fusion or packaging is the real problem
+- approved runtime evidence does not automatically imply good fused candidate behavior
+
+### 3. Replay shows difference, but the meaning of the difference is unclear
+
+Typical cause:
+- metrics moved, but the changed examples are not inspectable enough
+- artifact comparison exists, but the decision rationale is too opaque
+
+### 4. Review outcomes are not reusable
+
+Typical cause:
+- review state was applied, but not preserved in a form calibration or replay can consume later
+- the system treated review as a one-time approval instead of reusable evidence
+
+## Practical Mental Model
+
+Use this short model:
+
+- review decides whether evidence-backed outcomes are acceptable
+- calibration checks whether scoring aligns with those reviewed outcomes
+- replay checks how proposed changes behave against the same evidence
+- promotion should happen only after those surfaces agree strongly enough
+
+If those functions get blurred together, the pipeline becomes much harder to diagnose.
+
 ## Detector Calibration Operator Note
 
 For detector-calibration follow-up generation, the tool-returned JSON is the operator contract.

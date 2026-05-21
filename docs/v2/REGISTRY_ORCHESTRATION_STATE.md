@@ -43,6 +43,144 @@ Registry-first expectations:
 - preserve provenance back to source sidecars
 - avoid hidden or implicit workflow state
 
+## How To Think About The Registry
+
+The registry is not the evidence layer. It is the workflow-state layer.
+
+That distinction is the key to understanding this part of the system:
+
+- sidecars and manifests hold detailed evidence
+- the registry answers workflow questions across those artifacts
+
+Examples of workflow questions are:
+
+- what is waiting for review?
+- what was approved?
+- what became exportable?
+- what was exported?
+- what was posted?
+- which artifacts support that state?
+
+If sidecars answer "what did we see?", the registry answers "where is this candidate in the workflow right now?"
+
+## What The Registry Is Protecting Us From
+
+Without an explicit registry, the repo would have to infer state from file presence and directory scans.
+
+That fails quickly in a system like this because:
+
+- multiple artifacts can exist for the same source clip
+- review outcomes and lifecycle state are not the same thing
+- exported is not the same as posted
+- old workflow runs should not re-own current queue state
+
+So the registry protects against a common class of silent failure:
+
+- the files exist
+- the state looks plausible
+- but the workflow meaning is wrong
+
+## Current Concrete Example
+
+The bounded `call_of_duty` local-test path is a clean example.
+
+By the time the path reaches local export, several different truths coexist:
+
+- runtime review has already happened
+- fused review has already happened
+- a highlight-selection manifest exists
+- an export batch exists
+- no posted ledger exists yet
+
+Those statements should not be guessed from "what files are around."
+
+The registry makes them queryable as workflow state:
+
+- a candidate can be `selected_for_export`
+- then `exported`
+- but still have `post_ledger_path = null`
+
+That is the important local-only boundary. The export artifact exists, but no external-action record exists yet.
+
+## Why Lifecycle State And Review State Must Stay Separate
+
+This is one of the easiest conceptual mistakes in the project.
+
+Review state answers:
+
+- did someone approve or reject this evidence-backed candidate?
+
+Lifecycle state answers:
+
+- what workflow stage has this candidate reached?
+
+Those are related, but not interchangeable.
+
+For example:
+
+- a fused event may be approved in review
+- yet still not be exported if selection, hook packaging, or queue generation never advances it
+
+Or:
+
+- an exported candidate may still not be posted
+- because posting is a different state transition with different artifacts
+
+If those concepts get collapsed together, debugging becomes much harder.
+
+## Where Complex Problems Usually Hide Here
+
+### 1. Artifact state and workflow state drift apart
+
+Example:
+- a manifest exists
+- but the candidate lifecycle never advanced
+
+Typical causes:
+- registry refresh logic
+- missing linkage fields
+- stale workflow-run assumptions
+
+### 2. Review decisions exist, but queue state is wrong
+
+Example:
+- review says approved
+- export queue is empty
+
+Typical causes:
+- selection manifest not generated
+- lifecycle transition not propagated
+- queue query filtered on the wrong state
+
+### 3. Export happened, but posting assumptions leak backward
+
+Example:
+- local export artifact exists
+- downstream logic accidentally treats it as externally posted
+
+Typical cause:
+- export and posting boundaries were not kept explicit enough
+
+### 4. Historical artifacts get mistaken for current intent
+
+Example:
+- an old workflow manifest exists
+- but current queue ownership should come from lifecycle state, not that historical file
+
+This is why lifecycle-first queue semantics matter.
+
+## Practical Mental Model
+
+Use this short model:
+
+- sidecars are detailed evidence
+- manifests are explicit artifact outputs
+- the registry is the queryable join layer across those artifacts
+- lifecycle state tells you what should happen next
+- workflow runs record batch provenance, not absolute truth by themselves
+
+If that separation stays clear, the orchestration layer remains understandable even as the repo accumulates more artifact types.
+
 ## Current Artifact Chain
 
 The current operational chain should be treated as explicit and queryable:
