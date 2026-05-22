@@ -1,8 +1,8 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 0.8
-Last updated: 2026-05-21
+Version: 0.9
+Last updated: 2026-05-22
 
 This backlog is phase-gated. Codex should work in order and stop when a phase blocker is hit.
 
@@ -243,6 +243,7 @@ Status:
 - local export canonicalization is resolved through user-adopted fused review
 - runtime calibration canonicalization is resolved through user-adopted runtime review
 - no active blocker remains for the bounded local test path
+- current exported sample is still editorially weak under the hook layer
 
 Allowed work:
 
@@ -258,6 +259,9 @@ Current recommended hardening:
   - the combined bounded local-test regression keeps runtime calibration pass and local export in the same isolated workspace
 - use the canonicalization handoff:
   - `docs/handoffs/2026-05-21-call-of-duty-canonical-human-review-handoff.md`
+- use the current hook artifact as the next execution clue:
+  - the exported `call_of_duty` sample currently lands at `hook_mode: reject`
+  - the clean next target is editorial viability on the same sample, not a broader new game path
 
 Current stop rule:
 

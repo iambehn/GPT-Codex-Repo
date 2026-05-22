@@ -119,13 +119,26 @@ That path proved:
 - fused candidate claims can be reviewed
 - a local export artifact can be created
 
-What it did **not** prove is:
+The current concrete hook artifact for that sample currently says:
+
+- `hook_mode: reject`
+- `rejection_reason: authenticity_risk_too_high`
+- `hook_strength: 0.4168`
+- `authenticity_risk_score: 0.7688`
+
+So what the path did **not** prove is:
 
 - that the exported clip has a strong short-form opening
 - that the opener is the best available opener
 - that the packaging is the most compelling editorial treatment
 
 That is why the hook layer exists as a separate concern even after a candidate is already exportable.
+
+The important V1 nuance is:
+
+- the candidate is mechanically exportable
+- but the current hook artifact still judges it editorially weak
+- this is allowed right now because hook artifacts are still advisory rather than lifecycle-gating
 
 ## Where Complex Problems Usually Hide Here
 

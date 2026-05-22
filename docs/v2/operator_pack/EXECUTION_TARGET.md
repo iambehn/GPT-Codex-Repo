@@ -1,8 +1,8 @@
 # Execution Target
 
 Status: active-draft
-Version: 0.8
-Last updated: 2026-05-21
+Version: 0.9
+Last updated: 2026-05-22
 
 ## Objective
 
@@ -32,6 +32,9 @@ Current execution rule:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts are not export-ready without fused selection
   - a synthetic bounded local-test regression proves runtime calibration pass and local export can coexist in one isolated workspace
+- treat the current `call_of_duty` sample as mechanically proven but editorially weak:
+  - the hook artifact currently lands at `hook_mode: reject`
+  - hook artifacts remain advisory in V1, so this does not block local export
 
 ## Phase 0 Inventory Snapshot
 
@@ -175,6 +178,7 @@ Current bootstrap stage status:
 | Candidate and review surface | `proved for bounded real media` | runtime and fused review bridges both persisted review state |
 | Calibration and replay path | `canonically user-authorized for local testing` | runtime calibration passed on user-authorized reviewed real-media sidecars |
 | Local export-readiness bundle | `canonically user-authorized for local testing` | `highlight_export_batch_v1` exists locally with one exported candidate and no post ledger; fused-review provenance now reflects user-adopted decisions |
+| Editorial hook viability | `proved weak on current sample` | current hook artifact for the exported candidate lands at `hook_mode: reject`, so the sample proves mechanics more than strong short-form packaging |
 | Repo-quality health gate | `proved` | known green from prior validation |
 
 ## Required Artifacts
@@ -210,6 +214,7 @@ Current governance limit:
 - the current path is a canonical local test path on bounded public media
 - the local export artifact is backed by user-adopted fused-review decisions
 - the runtime calibration artifact is backed by user-adopted runtime-review decisions across its four reviewed runtime sidecars
+- the current exported candidate is still editorially weak by hook-layer standards
 - further autonomous code changes should not broaden scope past this path until a new execution target is explicitly chosen
 
 ## Non-Goals
