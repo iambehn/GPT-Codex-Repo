@@ -90,7 +90,13 @@ def _hook_manifest(
     )
 
 
-def _export_batch_manifest(path: Path, *, candidate_id: str = "candidate-123") -> None:
+def _export_batch_manifest(
+    path: Path,
+    *,
+    candidate_id: str = "candidate-123",
+    hook_mode: str = "natural",
+    packaging_strategy: str | None = "tight_context_then_payoff",
+) -> None:
     _write_json(
         path,
         {
@@ -119,8 +125,8 @@ def _export_batch_manifest(path: Path, *, candidate_id: str = "candidate-123") -
                     "end_seconds": 3.0,
                     "final_score": 0.91,
                     "hook_archetype": "clutch",
-                    "hook_mode": "natural",
-                    "packaging_strategy": "tight_context_then_payoff",
+                    "hook_mode": hook_mode,
+                    "packaging_strategy": packaging_strategy,
                     "export_status": "exported",
                     "export_artifact_path": "/tmp/export-1.mp4",
                     "otio_path": "/tmp/export-1.otio",
@@ -173,6 +179,53 @@ class HookEvaluationReportTests(unittest.TestCase):
             self.assertEqual(result["candidate_rollups"]["exported"]["candidate_count"], 1)
             self.assertEqual(result["fused_hook_disagreement"]["reject_to_synthetic_count"], 1)
             self.assertTrue(report_path.exists())
+
+    def test_report_hook_evaluation_surfaces_exported_hook_reject_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            fixture_manifest = root / "fixtures.json"
+            baseline_root = root / "baseline"
+            trial_root = root / "trial"
+            registry_source = root / "registry_source"
+            registry_path = root / "registry.sqlite"
+            report_path = root / "reports" / "hooks.hook_evaluation_report.json"
+
+            _fixture_manifest(fixture_manifest)
+            _hook_manifest(baseline_root / "alpha.hook_candidates.json", hook_mode="reject", hook_strength=0.38)
+            _hook_manifest(trial_root / "alpha.hook_candidates.json", hook_mode="reject", hook_strength=0.41)
+            _hook_manifest(
+                registry_source / "selected.hook_candidates.json",
+                hook_mode="reject",
+                hook_strength=0.41,
+                hook_archetype="other",
+                candidate_id="candidate-123",
+                lifecycle_state="exported",
+            )
+            _export_batch_manifest(
+                registry_source / "exports" / "batch.highlight_export_batch.json",
+                hook_mode="reject",
+                packaging_strategy=None,
+            )
+            refresh_clip_registry(registry_source, registry_path=registry_path)
+
+            result = report_hook_evaluation(
+                fixture_manifest,
+                baseline_sidecar_root=baseline_root,
+                trial_sidecar_root=trial_root,
+                registry_path=registry_path,
+                game="marvel_rivals",
+                output_path=report_path,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["policy"]["hook_artifacts_policy"], "advisory")
+            self.assertEqual(
+                result["candidate_rollups"]["selected_or_approved"]["hook_mode_counts"]["reject"],
+                1,
+            )
+            self.assertEqual(result["candidate_rollups"]["exported"]["hook_mode_counts"]["reject"], 1)
+            self.assertEqual(result["candidate_rollups"]["exported"]["candidate_count"], 1)
+            self.assertEqual(result["policy"]["future_gate_readiness"], "insufficient_evidence")
 
     def test_registry_refresh_ingests_hook_evaluation_report_and_rollups(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
