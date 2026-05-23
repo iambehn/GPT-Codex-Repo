@@ -1,12 +1,12 @@
 # Execution Target
 
 Status: active-draft
-Version: 0.9
-Last updated: 2026-05-22
+Version: 1.0
+Last updated: 2026-05-24
 
 ## Objective
 
-Pin one concrete, runnable happy path for the gameplay highlight pipeline and prevent broad architecture drift while that path is being proven.
+Pin one concrete, runnable happy path for the gameplay highlight pipeline, then allow broad local-only autonomy to continue improving the pipeline without drifting into external-risk or out-of-scope work.
 
 ## Current Execution Doctrine
 
@@ -16,10 +16,11 @@ Pin one concrete, runnable happy path for the gameplay highlight pipeline and pr
 - Use existing repo surfaces before inventing new schemas or artifacts.
 - Treat fixture-only success as bootstrap, not final proof, unless explicitly approved.
 - Stop on explicit blockers instead of patching around them.
+- Once a local-only path is proven, Codex may choose the next local-only target without waiting for explicit user selection.
 
 ## Current Phase Gate
 
-Current phase: `Phase 7 - canonical local runtime calibration and local export path authorized for local testing`
+Current phase: `Phase 7 - broad local autonomy on canonical local test path`
 
 Current execution rule:
 
@@ -36,6 +37,14 @@ Current execution rule:
 - treat the current `call_of_duty` sample as mechanically proven but editorially weak:
   - the hook artifact currently lands at `hook_mode: reject`
   - hook artifacts remain advisory in V1, so this does not block local export
+- allow Codex to choose the next local-only target without waiting for explicit user selection when the work stays inside the gameplay highlight pipeline mission
+- do not require a user approval checkpoint for small local-only changes such as regressions, docs clarifications, focused refactors, workflow hardening, quality or inspection improvements, or narrow behavior fixes inside existing contracts
+- use milestone-style reporting by default:
+  - report meaningful milestone completion
+  - report real blockers
+  - report material contract decisions
+  - report branch or commit boundaries worth surfacing
+  - do not stop for routine next-step permission
 
 ## Phase 0 Inventory Snapshot
 
@@ -216,7 +225,13 @@ Current governance limit:
 - the local export artifact is backed by user-adopted fused-review decisions
 - the runtime calibration artifact is backed by user-adopted runtime-review decisions across its four reviewed runtime sidecars
 - the current exported candidate is still editorially weak by hook-layer standards
-- further autonomous code changes should not broaden scope past this path until a new execution target is explicitly chosen
+- Codex may autonomously choose the next local-only target, including pipeline quality hardening, editorial or hook-layer improvement, new local test samples, additional local-only execution targets within the existing pipeline mission, docs clarification, and focused refactors that improve inspectability, validation, or workflow clarity
+- Codex must stop only when a hard-stop category is active:
+  - the action would affect external systems
+  - the action is destructive or hard to reverse
+  - a real source-of-truth conflict exists
+  - the requested change would materially expand project scope
+  - local truth is too weak to continue responsibly
 
 ## Non-Goals
 
@@ -229,18 +244,31 @@ Current governance limit:
 - major schema rewrites
 - learned ranking or large-scale model-selection work
 
-## Escalation Triggers
+## Hard-Stop Categories
 
 Stop and escalate if any of these are true:
 
-- first supported game cannot be determined
-- sample input cannot be determined
-- required assets are missing for the chosen game
-- schema or status ownership is ambiguous
-- the health gate does not exist or cannot be explained
-- a stage only works on fixtures and fails on real input
-- artifacts exist but are semantically unusable downstream
-- local export-readiness is confused with external publish approval
+- the action would affect external systems:
+  - posting
+  - scheduling
+  - external accounts
+  - purchases or paid APIs
+- the action is destructive or hard to reverse:
+  - deleting source media
+  - wiping state
+  - irreversible migrations
+- a real source-of-truth conflict exists:
+  - code versus canonical docs
+  - two competing schemas
+  - conflicting lifecycle or status ownership
+- the requested change would materially expand project scope:
+  - a new product surface outside the gameplay highlight pipeline
+  - a new external platform workflow
+  - a new long-horizon subsystem not justified by the current pipeline mission
+- local truth is too weak to continue responsibly:
+  - artifact meaning is ambiguous
+  - test behavior contradicts docs and code
+  - multiple plausible contracts exist and none clearly governs
 
 ## Known Repo Fact
 

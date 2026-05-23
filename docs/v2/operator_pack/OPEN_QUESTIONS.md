@@ -1,12 +1,13 @@
 # Open Questions
 
 Status: active
-Version: 0.6
-Last updated: 2026-05-21
+Version: 0.7
+Last updated: 2026-05-24
 
 ## P0 Questions
 
 No active P0 questions remain for the bounded `call_of_duty` local test path.
+No active autonomy-governance blocker remains for local-only pipeline work.
 
 Resolved on 2026-05-21 by user decision:
 
@@ -28,6 +29,9 @@ Resolved in current execution doctrine:
 - media-backed stages are no longer blocked on this branch
 - the current bounded real-media path is now the canonical local test path
 - do not treat bootstrap GPT review or downloaded public test media as publish-cleared for external posting
+- Codex may choose the next local-only execution target without waiting for explicit user selection as long as the work stays inside the gameplay highlight pipeline mission
+- small local-only changes do not require a user approval checkpoint when they are regressions, docs clarifications, focused refactors, workflow hardening, quality or inspection improvements, or narrow behavior fixes inside existing contracts
+- default reporting style is blockers and milestones rather than routine next-step permission
 
 ## P1 Questions
 
@@ -43,6 +47,28 @@ Resolved in current execution doctrine:
 
 ## Resolution Rules
 
-- P0 questions block final happy-path completion when they affect real input choice, game choice, or schema ownership.
-- If Codex cannot resolve a P0 question from repo state, it should stop and escalate instead of guessing.
-- P1 questions may be deferred only if the current phase does not require the answer yet.
+Autonomous local-only work should stop only when one of these categories is active:
+
+- the action would affect external systems:
+  - posting
+  - scheduling
+  - external accounts
+  - purchases or paid APIs
+- the action is destructive or hard to reverse:
+  - deleting source media
+  - wiping state
+  - irreversible migrations
+- a real source-of-truth conflict exists:
+  - code versus canonical docs
+  - two competing schemas
+  - conflicting lifecycle or status ownership
+- the requested change would materially expand project scope:
+  - a new product surface outside the gameplay highlight pipeline
+  - a new external platform workflow
+  - a new long-horizon subsystem not justified by the current pipeline mission
+- local truth is too weak to continue responsibly:
+  - artifact meaning is ambiguous
+  - test behavior contradicts docs and code
+  - multiple plausible contracts exist and none clearly governs
+
+Everything else should proceed autonomously.

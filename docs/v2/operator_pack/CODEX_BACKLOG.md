@@ -1,10 +1,10 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 0.9
-Last updated: 2026-05-22
+Version: 1.0
+Last updated: 2026-05-24
 
-This backlog is phase-gated. Codex should work in order and stop when a phase blocker is hit.
+This backlog is phase-gated. Codex should work in order when useful, but once a local-only phase target is complete it may choose the next local-only target without waiting for explicit user selection. Stop only when a real hard-stop category is active.
 
 ## Phase 0: Repo Inventory And Operator Pack
 
@@ -266,7 +266,25 @@ Current recommended hardening:
 
 Current stop rule:
 
-- do not broaden implementation beyond the canonical local test path until a new execution target is explicitly chosen
+- do not stop for routine next-step permission once the current local-only target is complete
+- Codex may autonomously choose the next local-only target when it remains inside the gameplay highlight pipeline mission
+- preferred next local-only targets include:
+  - editorial or hook-layer improvement on the same `call_of_duty` sample
+  - stronger regressions around editorial viability versus mechanical exportability
+  - new local test samples that improve understanding without external posting
+  - focused docs, refactors, or quality work that improve inspectability, validation, or workflow clarity
+- stop only when a hard-stop category is active:
+  - an action would affect external systems
+  - an action is destructive or hard to reverse
+  - a real source-of-truth conflict exists
+  - the requested change would materially expand project scope
+  - local truth is too weak to continue responsibly
+
+Default reporting style:
+
+- blockers and milestones
+- report milestone completion, real blockers, material contract decisions, or branch or commit boundaries worth surfacing
+- routine local-only progress should stay silent unless it changes the plan
 
 Deferred until after the happy path:
 
