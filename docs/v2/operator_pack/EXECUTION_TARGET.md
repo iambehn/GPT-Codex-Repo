@@ -32,6 +32,7 @@ Current execution rule:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts are not export-ready without fused selection
   - a synthetic bounded local-test regression proves runtime calibration pass and local export can coexist in one isolated workspace
+  - a hook or export regression proves hook-rejected candidates can still export while hook remains advisory in V1
 - treat the current `call_of_duty` sample as mechanically proven but editorially weak:
   - the hook artifact currently lands at `hook_mode: reject`
   - hook artifacts remain advisory in V1, so this does not block local export

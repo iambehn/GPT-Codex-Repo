@@ -257,6 +257,7 @@ Current recommended hardening:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts remain non-exportable without fused selection
   - the combined bounded local-test regression keeps runtime calibration pass and local export in the same isolated workspace
+  - the hook advisory regression keeps the current V1 boundary explicit: hook-rejected candidates may still export until hook becomes lifecycle-gating
 - use the canonicalization handoff:
   - `docs/handoffs/2026-05-21-call-of-duty-canonical-human-review-handoff.md`
 - use the current hook artifact as the next execution clue:

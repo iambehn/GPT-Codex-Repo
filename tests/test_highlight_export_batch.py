@@ -64,6 +64,51 @@ def _fused_sidecar(path: Path, *, game: str, source: Path, review_status: str = 
     )
 
 
+def _hook_reject_fused_sidecar(path: Path, *, game: str, source: Path, review_status: str = "approved") -> None:
+    _write_json(
+        path,
+        {
+            "schema_version": "fused_analysis_v1",
+            "fusion_id": f"fusion-{path.stem}",
+            "ok": True,
+            "status": "ok",
+            "game": game,
+            "source": str(source.resolve()),
+            "normalized_signals": [
+                {
+                    "signal_id": "signal-1",
+                    "signal_type": "equipment_visibility",
+                    "producer_family": "runtime",
+                }
+            ],
+            "fused_events": [
+                {
+                    "event_id": "fused-event-1",
+                    "event_type": "ability_seen",
+                    "confidence": 0.97369,
+                    "final_score": 0.97369,
+                    "gate_status": "not_applicable",
+                    "synergy_applied": False,
+                    "minimum_required_signals_met": True,
+                    "suggested_start_timestamp": 2.0,
+                    "suggested_end_timestamp": 2.0,
+                    "contributing_signals": ["signal-1"],
+                    "metadata": {
+                        "equipment_id": "redeploy_extraction_token",
+                        "matched_signal_types": ["equipment_visibility"],
+                    },
+                }
+            ],
+            "fused_review": {
+                "session_id": "fused-session-1",
+                "reviewed_event_count": 1,
+                "events": {"fused-event-1": {"review_status": review_status}},
+            },
+            "sidecar_path": str(path.resolve()),
+        },
+    )
+
+
 def _runtime_sidecar(path: Path, *, game: str, source: Path, review_status: str = "approved") -> None:
     _runtime_sidecar_with_rows(path, game=game, source=source, review_status=review_status)
 
@@ -254,6 +299,56 @@ class HighlightExportBatchTests(unittest.TestCase):
             )
             self.assertEqual(export_query["row_count"], 1)
             self.assertEqual(export_query["rows"][0]["candidate_id"], candidate_id)
+
+    def test_export_batch_can_include_hook_rejected_candidate_when_hook_is_advisory(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _hook_reject_fused_sidecar(fused_path, game="call_of_duty", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+            export_highlight_selection(
+                fused_sidecar=fused_path,
+                output_path=root / "selection" / "alpha.highlight_selection.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            hook_result = derive_hook_candidates(
+                fused_path,
+                registry_path=registry_path,
+                output_path=root / "hooks" / "alpha.hook_candidates.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            workflow = create_workflow_run(
+                "export_queue",
+                registry_path=registry_path,
+                output_path=root / "workflow" / "export.workflow_run.json",
+            )
+            export_batch = create_highlight_export_batch(
+                registry_path=registry_path,
+                workflow_run_id=workflow["workflow_run_id"],
+                output_path=root / "exports" / "batch.highlight_export_batch.json",
+            )
+
+            self.assertTrue(hook_result["ok"])
+            hook_manifest = json.loads(Path(hook_result["manifest_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(hook_manifest["hook_candidate_count"], 1)
+            hook_row = hook_manifest["hook_candidates"][0]
+            self.assertEqual(hook_row["lifecycle_state"], "selected_for_export")
+            self.assertEqual(hook_row["hook_mode"], "reject")
+            self.assertEqual(hook_row["rejection_reason"], "authenticity_risk_too_high")
+            self.assertGreaterEqual(hook_row["authenticity_risk_score"], 0.6)
+            self.assertIsNone(hook_row["packaging_strategy"])
+
+            self.assertTrue(export_batch["ok"])
+            manifest = json.loads(Path(export_batch["manifest_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(manifest["export_count"], 1)
+            export_row = manifest["exports"][0]
+            self.assertEqual(export_row["hook_mode"], "reject")
+            self.assertIsNone(export_row["packaging_strategy"])
+            self.assertEqual(export_row["export_status"], "exported")
 
     def test_runtime_only_reviewed_artifacts_are_not_export_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
