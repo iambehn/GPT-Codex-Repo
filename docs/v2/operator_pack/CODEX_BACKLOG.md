@@ -261,15 +261,22 @@ Current recommended hardening:
 - current next target:
   - stop prioritizing more `call_of_duty` sample scouting alone
   - use the existing scout findings to target the published-pack coverage gap instead
-  - highest-leverage local-only direction is promoting medal coverage from existing `call_of_duty` draft wiki assets into the published pack so runtime can emit `medal_visibility` and fusion can produce richer candidate shapes
-  - immediate workflow constraint: the current medal assets live in `drafts/wiki/...` shape, and the existing onboarding publish surfaces reject that draft directly, so the next implementation target is likely a bridge into onboarding-draft or equivalent publishable shape
+  - the wiki-to-onboarding bridge is now implemented and proven on the real `call_of_duty` draft
+  - highest-leverage local-only direction is no longer bridge mechanics; it is medal-source curation so the bridged onboarding draft contains true HUD medals rather than contracts, calling cards, blueprints, logos, and map or season branding
+  - current real-draft evidence:
+    - bridged draft: `assets/games/call_of_duty/drafts/onboarding/20260524T225117Z`
+    - structurally valid with `readiness: needs_binding_review`
+    - `medal_icon` derived rows: `265`
+    - derived rows with candidate bindings: `121`
+    - derived rows with no candidates: `144`
+    - `manual_crop_required` QA rows: `250`
   - the hook advisory regression keeps the current V1 boundary explicit: hook-rejected candidates may still export until hook becomes lifecycle-gating
 - use the canonicalization handoff:
   - `docs/handoffs/2026-05-21-call-of-duty-canonical-human-review-handoff.md`
 - use the current hook artifact as the next execution clue:
   - the exported `call_of_duty` sample currently lands at `hook_mode: reject`
   - the live operator query `--query-clip-registry --mode hook-quality-rollups --registry-path outputs/happy_path/call_of_duty/bootstrap-real-cod.registry.sqlite --game call_of_duty` currently returns `editorial_viability_status: mechanics_only`
-  - the clean next target is editorial viability on the same sample, not a broader new game path
+  - the clean next target is still editorial viability on the same sample, but the upstream prerequisite is now clearer: better medal-source curation inside the `call_of_duty` wiki draft
 
 Current stop rule:
 

@@ -41,6 +41,10 @@ Resolved in current execution doctrine:
 
 No active P1 questions are blocking the current bounded local test path.
 
+Active P1 question for the next `call_of_duty` pack-coverage cycle:
+
+- which subset of the bridged wiki `medal_icon` rows are true gameplay HUD medals worth promoting first, and which should be excluded as contracts, calling cards, blueprints, logos, or map or season branding
+
 Resolved in current execution doctrine:
 
 - first real-media sidecar command: `python run.py --analyze-roi-runtime <SOURCE> call_of_duty`

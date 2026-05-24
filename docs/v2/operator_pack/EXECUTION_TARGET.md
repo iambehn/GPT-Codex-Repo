@@ -236,6 +236,8 @@ Current governance limit:
   - published asset families are currently `99` `hero_portrait` plus `13` `equipment_icon`
   - published `medals.yaml` is empty
   - draft wiki assets already contain `250` `medal_icon` candidates that are not yet promoted
+  - the new bridge now proves those wiki assets can enter canonical onboarding shape, but the real bridged draft at `assets/games/call_of_duty/drafts/onboarding/20260524T225117Z` shows that the current source bundle is materially polluted by contracts, calling cards, blueprints, logos, and map or season branding
+  - the next blocker is source curation quality, not onboarding workflow shape
 - the standing user delegation authorizes longer autonomous local-only work blocks inside the existing pipeline mission
 - Codex may autonomously choose the next local-only target, including pipeline quality hardening, editorial or hook-layer improvement, new local test samples, additional local-only execution targets within the existing pipeline mission, docs clarification, and focused refactors that improve inspectability, validation, or workflow clarity
 - Codex must stop only when a hard-stop category is active:
