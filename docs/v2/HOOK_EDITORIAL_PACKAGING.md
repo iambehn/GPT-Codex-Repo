@@ -145,6 +145,18 @@ The important V1 nuance is:
 - but the current hook artifact still judges it editorially weak
 - this is allowed right now because hook artifacts are still advisory rather than lifecycle-gating
 
+A later `call_of_duty` scout path tightened that diagnosis further:
+
+- the issue is not only that the current canonical sample is weak
+- the active published `call_of_duty` pack currently has no promoted medal coverage
+- the published pack therefore tends to collapse candidate claims into equipment-only events
+- that creates a lower editorial ceiling before hook logic even starts
+
+So the current `call_of_duty` hook weakness should be read as:
+
+- weak sample quality in the canonical local test path
+- plus a published-pack coverage ceiling that limits richer opener candidates
+
 ## Where Complex Problems Usually Hide Here
 
 ### 1. The event is real, but the clip still feels weak
@@ -179,6 +191,17 @@ Typical cause:
 
 - hook artifacts exist, but they are not connected clearly enough to the lifecycle or review evidence
 - hook quality is being measured, but not in a way that later decisions can inspect
+
+### 5. Hook logic is blamed for an upstream coverage ceiling
+
+Typical cause:
+
+- the published pack cannot emit the richer signal family the editor expects
+- hook logic is then asked to salvage thin upstream evidence into a compelling opener
+
+This is the wrong diagnosis.
+
+If upstream can only produce equipment-only atomic events, hook quality will often plateau at `mechanics_only` regardless of whether the clip itself felt exciting to a human viewer.
 
 ## Practical Mental Model
 

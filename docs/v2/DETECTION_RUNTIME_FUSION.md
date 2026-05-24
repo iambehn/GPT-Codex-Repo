@@ -134,6 +134,15 @@ The conceptual point is:
 
 That is why runtime success alone was not enough for local export. The pipeline needed a fused candidate layer, not just runtime evidence.
 
+There is a second important lesson from the later `call_of_duty` editorial scout path:
+
+- upstream quality is bounded by published pack coverage, not just by clip choice
+- the active published `call_of_duty` pack currently exposes `99` `hero_portrait` assets and `13` `equipment_icon` assets
+- the active published pack exposes no medal assets because `assets/games/call_of_duty/medals.yaml` is empty
+- the active runtime rules therefore emit `equipment_visibility` and `character_identity`, but not `medal_visibility`
+
+That means some “find a better clip” failures are really “the published pack cannot see the richer event family yet” failures.
+
 ## Where Complex Problems Usually Hide Here
 
 ### 1. Proposal generation is too broad or too narrow
@@ -189,6 +198,22 @@ Typical causes:
 - but the evidence they contain is not meaningful enough for later stages
 
 That is why upstream validation has to be semantic, not just file-based.
+
+### 5. The clip looks richer than the published pack can represent
+
+Symptoms:
+
+- the source clip visibly contains medals, streaks, or strong payoff moments
+- runtime still emits only equipment or identity signals
+- fusion keeps collapsing into atomic single-signal events
+
+Typical causes:
+
+- the published pack lacks promoted assets for the richer event family
+- draft-only assets exist, but were never promoted into the active pack
+- fusion rules mention an event family that runtime can never currently emit
+
+This is a pack-coverage problem, not a sample-selection problem.
 
 ## Practical Mental Model
 

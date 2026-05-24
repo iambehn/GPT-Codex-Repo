@@ -2,7 +2,7 @@
 
 Status: active-draft
 Version: 1.0
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 ## Objective
 
@@ -38,6 +38,7 @@ Current execution rule:
   - the hook artifact currently lands at `hook_mode: reject`
   - the registry hook-quality rollup currently lands at `editorial_viability_status: mechanics_only`
   - hook artifacts remain advisory in V1, so this does not block local export
+  - later editorial scouting showed the active published `call_of_duty` pack currently has no promoted medal coverage, so further sample scouting alone is not the highest-leverage next step
 - allow Codex to choose the next local-only target without waiting for explicit user selection when the work stays inside the gameplay highlight pipeline mission
 - do not require a user approval checkpoint for small local-only changes such as regressions, docs clarifications, focused refactors, workflow hardening, quality or inspection improvements, or narrow behavior fixes inside existing contracts
 - use milestone-style reporting by default:
@@ -226,6 +227,10 @@ Current governance limit:
 - the local export artifact is backed by user-adopted fused-review decisions
 - the runtime calibration artifact is backed by user-adopted runtime-review decisions across its four reviewed runtime sidecars
 - the current exported candidate is still editorially weak by hook-layer standards
+- the current `call_of_duty` published pack has a known coverage ceiling for richer editorial candidates:
+  - published asset families are currently `99` `hero_portrait` plus `13` `equipment_icon`
+  - published `medals.yaml` is empty
+  - draft wiki assets already contain `250` `medal_icon` candidates that are not yet promoted
 - Codex may autonomously choose the next local-only target, including pipeline quality hardening, editorial or hook-layer improvement, new local test samples, additional local-only execution targets within the existing pipeline mission, docs clarification, and focused refactors that improve inspectability, validation, or workflow clarity
 - Codex must stop only when a hard-stop category is active:
   - the action would affect external systems

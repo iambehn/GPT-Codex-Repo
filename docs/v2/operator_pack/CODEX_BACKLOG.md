@@ -2,7 +2,7 @@
 
 Status: active-draft
 Version: 1.0
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 This backlog is phase-gated. Codex should work in order when useful, but once a local-only phase target is complete it may choose the next local-only target without waiting for explicit user selection. Stop only when a real hard-stop category is active.
 
@@ -258,6 +258,11 @@ Current recommended hardening:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts remain non-exportable without fused selection
   - the combined bounded local-test regression keeps runtime calibration pass and local export in the same isolated workspace
+- current next target:
+  - stop prioritizing more `call_of_duty` sample scouting alone
+  - use the existing scout findings to target the published-pack coverage gap instead
+  - highest-leverage local-only direction is promoting medal coverage from existing `call_of_duty` draft wiki assets into the published pack so runtime can emit `medal_visibility` and fusion can produce richer candidate shapes
+  - immediate workflow constraint: the current medal assets live in `drafts/wiki/...` shape, and the existing onboarding publish surfaces reject that draft directly, so the next implementation target is likely a bridge into onboarding-draft or equivalent publishable shape
   - the hook advisory regression keeps the current V1 boundary explicit: hook-rejected candidates may still export until hook becomes lifecycle-gating
 - use the canonicalization handoff:
   - `docs/handoffs/2026-05-21-call-of-duty-canonical-human-review-handoff.md`
