@@ -25,6 +25,7 @@ _BINDING_QA_TYPES = {
     "missing_binding",
     "unbound_candidate",
     "low_quality_candidate",
+    "manual_crop_required",
     "image_kind_mismatch",
     "duplicate_candidate_cluster",
     "weak_name_match",

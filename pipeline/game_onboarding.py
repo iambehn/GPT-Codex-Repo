@@ -233,6 +233,255 @@ def onboard_game_from_sources(
     return build_onboarding_draft(draft_root, repo_root=repo_root)
 
 
+def bridge_wiki_draft_to_onboarding(
+    wiki_draft_root: str | Path,
+    *,
+    output_path: str | Path | None = None,
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    repo_root = (repo_root or REPO_ROOT).resolve()
+    resolved_wiki_root = Path(wiki_draft_root).expanduser().resolve()
+    wiki_manifest_path = resolved_wiki_root / "assets_manifest.json"
+    if not wiki_manifest_path.exists():
+        raise FileNotFoundError(f"wiki draft does not contain assets manifest: {wiki_manifest_path}")
+
+    wiki_manifest = _load_json_mapping_file(wiki_manifest_path, label="wiki draft assets manifest")
+    game = str(wiki_manifest.get("game_id", "")).strip()
+    if not game:
+        raise ValueError("wiki draft assets manifest must include game_id")
+
+    published_root = repo_root / "assets" / "games" / game
+    published_assets_manifest_path = published_root / "manifests" / "assets_manifest.json"
+    published_detection_manifest_path = published_root / "manifests" / "detection_manifest.yaml"
+    if not published_assets_manifest_path.exists():
+        raise FileNotFoundError(f"published pack does not contain assets manifest: {published_assets_manifest_path}")
+    if not published_detection_manifest_path.exists():
+        raise FileNotFoundError(f"published pack does not contain detection manifest: {published_detection_manifest_path}")
+
+    published_game = load_yaml_file(published_root / "game.yaml")
+    published_entities = load_yaml_file(published_root / "entities.yaml")
+    published_hud = load_yaml_file(published_root / "hud.yaml")
+    published_weights = load_yaml_file(published_root / "weights.yaml")
+    published_detection_manifest = load_yaml_file(published_detection_manifest_path)
+    if not isinstance(published_game, dict):
+        raise ValueError(f"published game.yaml must be a mapping: {published_root / 'game.yaml'}")
+    if not isinstance(published_entities, dict):
+        raise ValueError(f"published entities.yaml must be a mapping: {published_root / 'entities.yaml'}")
+    if not isinstance(published_hud, dict):
+        raise ValueError(f"published hud.yaml must be a mapping: {published_root / 'hud.yaml'}")
+    if not isinstance(published_weights, dict):
+        raise ValueError(f"published weights.yaml must be a mapping: {published_root / 'weights.yaml'}")
+    if not isinstance(published_detection_manifest, dict):
+        raise ValueError(f"published detection manifest must be a mapping: {published_detection_manifest_path}")
+
+    published_assets_manifest = _load_json_mapping_file(
+        published_assets_manifest_path,
+        label="published assets manifest",
+    )
+    published_candidates = list(published_assets_manifest.get("candidates", []))
+    published_bindings = list(published_assets_manifest.get("bindings", []))
+    published_assets = list(published_assets_manifest.get("published_assets", []))
+    if not isinstance(published_candidates, list):
+        raise ValueError("published assets manifest candidates must be a list")
+    if not isinstance(published_bindings, list):
+        raise ValueError("published assets manifest bindings must be a list")
+    if not isinstance(published_assets, list):
+        raise ValueError("published assets manifest published_assets must be a list")
+
+    adapter = get_onboarding_adapter(game)
+    game_schema = _adapt_detection_schema(game, _load_runtime_detection_schema(repo_root=repo_root), repo_root=repo_root)
+    merged_ontology = {
+        "heroes": _coerce_mapping_list(published_entities.get("heroes", []), label="published heroes"),
+        "abilities": _coerce_mapping_list(published_entities.get("abilities", []), label="published abilities"),
+        "events": _merge_event_rows(
+            _coerce_mapping_list(published_entities.get("events", []), label="published events"),
+            _bridge_wiki_event_rows(resolved_wiki_root, game=game, adapter=adapter),
+        ),
+    }
+    medal_rows = _derive_detection_manifest(
+        game,
+        {
+            "heroes": [],
+            "abilities": [],
+            "events": merged_ontology["events"],
+        },
+        game_schema,
+        adapter=adapter,
+    ).get("rows", [])
+    if not isinstance(medal_rows, list):
+        raise ValueError("derived medal detection rows must be a list")
+    medal_rows = [row for row in medal_rows if str(row.get("asset_family", "")).strip() == "medal_icon"]
+
+    draft_root = _resolve_bridge_output_root(game, output_path=output_path, repo_root=repo_root)
+    drafts_parent = draft_root.parent
+    drafts_parent.mkdir(parents=True, exist_ok=True)
+    timestamp = _timestamp_slug()
+    stage_root = Path(tempfile.mkdtemp(prefix=f".{timestamp}.", dir=drafts_parent))
+    catalog_root = stage_root / "catalog"
+    masters_root = stage_root / "masters"
+    review_root = stage_root / "review"
+    manifests_root = stage_root / "manifests"
+    for path in (catalog_root, masters_root, review_root, manifests_root):
+        path.mkdir(parents=True, exist_ok=True)
+
+    try:
+        rebased_published_candidates = _rebase_published_candidates_for_bridge(
+            published_candidates,
+            published_assets,
+            masters_root=masters_root,
+            published_root=published_root,
+        )
+        wiki_candidates = _bridge_wiki_asset_candidates(
+            resolved_wiki_root,
+            masters_root=masters_root,
+            adapter=adapter,
+        )
+        combined_candidates = _merge_candidates_by_id(rebased_published_candidates, wiki_candidates)
+
+        published_rows = published_detection_manifest.get("rows", [])
+        if not isinstance(published_rows, list):
+            raise ValueError("published detection manifest rows must be a list")
+        combined_detection_rows = [dict(row) for row in published_rows if isinstance(row, dict)] + medal_rows
+        detection_manifest = {
+            "schema_version": str(published_detection_manifest.get("schema_version", "game_detection_manifest_v1")),
+            "baseline_schema_version": str(
+                published_detection_manifest.get(
+                    "baseline_schema_version",
+                    game_schema.get("baseline_schema_version", game_schema.get("schema_version", "runtime_detection_schema_v1")),
+                )
+            ),
+            "game_id": game,
+            "row_count": len(combined_detection_rows),
+            "required_row_count": sum(1 for row in combined_detection_rows if bool(row.get("requires_asset", True))),
+            "ready_row_count": len(combined_detection_rows),
+            "rows_needing_assets": 0,
+            "rows": combined_detection_rows,
+        }
+
+        medal_bindings = _build_binding_candidates(game, medal_rows, wiki_candidates, adapter=adapter)
+        combined_bindings = [dict(row) for row in published_bindings if isinstance(row, dict)] + medal_bindings
+        manual_crop_rows = _bridge_wiki_manual_crop_rows(resolved_wiki_root)
+        qa_queue = _build_qa_queue(
+            combined_detection_rows,
+            combined_candidates,
+            combined_bindings,
+        ) + manual_crop_rows
+        source_fetch_log = _read_csv_rows(resolved_wiki_root / "catalog" / "source_fetch_log.csv")
+        manifest_payload = {
+            "game_id": game,
+            "generated_at": datetime.now(UTC).isoformat(),
+            "phase_status": "bindings_pending",
+            "schema_path": "manifests/game_detection_schema.yaml",
+            "source_count": len(source_fetch_log),
+            "source_fetch_log": source_fetch_log,
+            "detection_manifest": {
+                "schema_version": detection_manifest["schema_version"],
+                "row_count": detection_manifest["row_count"],
+                "required_row_count": detection_manifest["required_row_count"],
+                "ready_row_count": detection_manifest["ready_row_count"],
+                "rows_needing_assets": detection_manifest["rows_needing_assets"],
+            },
+            "candidates": combined_candidates,
+            "bindings": combined_bindings,
+            "population_findings": [],
+            "source_failures": [],
+        }
+        state_payload = _build_onboarding_state(
+            game,
+            phase_status="bindings_pending",
+            source_count=len(source_fetch_log),
+            schema_path="manifests/game_detection_schema.yaml",
+        )
+
+        dump_yaml_file(stage_root / "game.yaml", published_game)
+        dump_yaml_file(stage_root / "entities.yaml", merged_ontology)
+        dump_yaml_file(stage_root / "hud.yaml", published_hud)
+        dump_yaml_file(stage_root / "weights.yaml", published_weights)
+        dump_yaml_file(manifests_root / "game_detection_schema.yaml", game_schema)
+        _write_binding_review_artifacts(
+            stage_root,
+            ontology=merged_ontology,
+            detection_manifest=detection_manifest,
+            candidates=combined_candidates,
+            bindings=combined_bindings,
+            qa_queue=qa_queue,
+            manifest_payload=manifest_payload,
+            state_payload=state_payload,
+        )
+        phase_status = _refresh_phase_status_from_publish_readiness(
+            stage_root,
+            ontology=merged_ontology,
+            detection_manifest=detection_manifest,
+            candidates=combined_candidates,
+            bindings=combined_bindings,
+            qa_queue=qa_queue,
+            manifest_payload=manifest_payload,
+            state_payload=state_payload,
+            repo_root=repo_root,
+        )
+
+        if draft_root.exists():
+            shutil.rmtree(draft_root)
+        stage_root.rename(draft_root)
+        _rewrite_candidate_master_paths_for_final_draft(
+            combined_candidates,
+            stage_root=stage_root,
+            draft_root=draft_root,
+        )
+        _write_binding_review_artifacts(
+            draft_root,
+            ontology=merged_ontology,
+            detection_manifest=detection_manifest,
+            candidates=combined_candidates,
+            bindings=combined_bindings,
+            qa_queue=qa_queue,
+            manifest_payload=manifest_payload,
+            state_payload=state_payload,
+        )
+    except Exception:
+        shutil.rmtree(stage_root, ignore_errors=True)
+        raise
+
+    return {
+        "ok": True,
+        "status": phase_status,
+        "game": game,
+        "wiki_draft_root": str(resolved_wiki_root),
+        "draft_root": str(draft_root),
+        "catalog_root": str(draft_root / "catalog"),
+        "masters_root": str(draft_root / "masters"),
+        "review_root": str(draft_root / "review"),
+        "source_count": len(source_fetch_log),
+        "counts": {
+            "heroes": len(merged_ontology["heroes"]),
+            "abilities": len(merged_ontology["abilities"]),
+            "events": len(merged_ontology["events"]),
+            "detection_rows": int(detection_manifest["row_count"]),
+            "candidate_assets": len(combined_candidates),
+            "binding_candidates": len(combined_bindings),
+            "qa_queue": len(qa_queue),
+            "manual_crop_required": len(manual_crop_rows),
+            "published_baseline_candidates": len(rebased_published_candidates),
+            "wiki_medal_candidates": len(wiki_candidates),
+        },
+        "artifacts": {
+            "game": str(draft_root / "game.yaml"),
+            "entities": str(draft_root / "entities.yaml"),
+            "hud": str(draft_root / "hud.yaml"),
+            "weights": str(draft_root / "weights.yaml"),
+            "game_detection_schema": str(draft_root / "manifests" / "game_detection_schema.yaml"),
+            "assets_manifest": str(draft_root / "manifests" / "assets_manifest.json"),
+            "onboarding_state": str(draft_root / "manifests" / "onboarding_state.json"),
+            "detection_manifest": str(draft_root / "manifests" / "detection_manifest.yaml"),
+            "bindings_csv": str(draft_root / "catalog" / "bindings.csv"),
+            "detection_rows_csv": str(draft_root / "catalog" / "detection_rows.csv"),
+            "asset_candidates_csv": str(draft_root / "catalog" / "asset_candidates.csv"),
+            "qa_queue_csv": str(draft_root / "catalog" / "qa_queue.csv"),
+            "source_fetch_log_csv": str(draft_root / "catalog" / "source_fetch_log.csv"),
+        },
+    }
+
+
 def ingest_onboarding_sources(
     schema_draft_or_game: str | Path,
     sources: list[OnboardingSource],
@@ -3658,3 +3907,251 @@ def _merge_source_fetch_log_rows(
         seen_keys.add(key)
         merged.append(row)
     return merged
+
+
+def _resolve_bridge_output_root(
+    game: str,
+    *,
+    output_path: str | Path | None,
+    repo_root: Path,
+) -> Path:
+    if output_path is not None:
+        return Path(output_path).expanduser().resolve()
+    drafts_parent = repo_root / "assets" / "games" / game / "drafts" / "onboarding"
+    return drafts_parent / _timestamp_slug()
+
+
+def _load_json_mapping_file(path: Path, *, label: str) -> dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError(f"missing {label}: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"{label} must be a mapping: {path}")
+    return payload
+
+
+def _coerce_mapping_list(value: Any, *, label: str) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        raise ValueError(f"{label} must be a list")
+    rows: list[dict[str, Any]] = []
+    for row in value:
+        if not isinstance(row, dict):
+            raise ValueError(f"{label} entries must be mappings")
+        rows.append(dict(row))
+    return rows
+
+
+def _merge_event_rows(
+    existing_rows: list[dict[str, Any]],
+    new_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    ordered_ids: list[str] = []
+    for row in [*existing_rows, *new_rows]:
+        event_id = str(row.get("event_id", "")).strip()
+        if not event_id:
+            continue
+        if event_id not in merged:
+            ordered_ids.append(event_id)
+        merged[event_id] = row
+    return [merged[event_id] for event_id in ordered_ids]
+
+
+def _bridge_wiki_event_rows(
+    wiki_draft_root: Path,
+    *,
+    game: str,
+    adapter: GameOnboardingAdapter,
+) -> list[dict[str, Any]]:
+    events_csv = wiki_draft_root / "catalog" / "events_or_medals.csv"
+    rows = _read_csv_rows(events_csv)
+    bridged_rows: list[dict[str, Any]] = []
+    for row in rows:
+        display_name = _normalize_schema_name(str(row.get("display_name", "")).strip(), adapter=adapter)
+        if not display_name:
+            continue
+        raw_event_id = str(row.get("event_id", "")).strip()
+        event_id = _strip_game_prefix(raw_event_id, game=game) or _canonical_id(display_name)
+        bridged_rows.append(
+            {
+                "event_id": event_id,
+                "display_name": display_name,
+                "entity_type": "event_badge_or_medal",
+                "category": "unknown",
+                "category_source": "",
+                "aliases": [],
+                "aliases_source": "",
+                "source_page_url": str(row.get("source_page_url", "")).strip(),
+                "source_role": str(row.get("source_role", "")).strip() or "events",
+                "starter_seed_applied": False,
+                "starter_seed_source": "",
+                "canonical_display_name_source": "source",
+                "canonical_id_source": "source",
+                "canonical_identity_basis": "source_initial",
+            }
+        )
+    return bridged_rows
+
+
+def _strip_game_prefix(value: str, *, game: str) -> str:
+    prefix = f"{game}."
+    return value[len(prefix):] if value.startswith(prefix) else value
+
+
+def _rebase_published_candidates_for_bridge(
+    published_candidates: list[dict[str, Any]],
+    published_assets: list[dict[str, Any]],
+    *,
+    masters_root: Path,
+    published_root: Path,
+) -> list[dict[str, Any]]:
+    asset_rows_by_candidate = {
+        str(row.get("candidate_id", "")).strip(): row
+        for row in published_assets
+        if isinstance(row, dict) and str(row.get("candidate_id", "")).strip()
+    }
+    rebased: list[dict[str, Any]] = []
+    for row in published_candidates:
+        if not isinstance(row, dict):
+            continue
+        candidate = json.loads(json.dumps(row))
+        source_path = _resolve_published_candidate_source_path(
+            candidate,
+            published_root=published_root,
+            published_asset_row=asset_rows_by_candidate.get(str(candidate.get("candidate_id", "")).strip()),
+        )
+        if source_path is None or not source_path.exists():
+            raise FileNotFoundError(
+                f"published candidate does not have a readable source asset: {candidate.get('candidate_id', '')}"
+            )
+        family_dir = _template_family_dir(str(candidate.get("asset_family", "")).strip())
+        filename = source_path.name
+        target_path = masters_root / family_dir / filename
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source_path, target_path)
+        candidate["master_path"] = str(target_path)
+        candidate["fetch_status"] = "downloaded"
+        rebased.append(candidate)
+    return rebased
+
+
+def _resolve_published_candidate_source_path(
+    candidate: dict[str, Any],
+    *,
+    published_root: Path,
+    published_asset_row: dict[str, Any] | None,
+) -> Path | None:
+    candidate_master_path = str(candidate.get("master_path", "")).strip()
+    if candidate_master_path:
+        path = Path(candidate_master_path)
+        if path.exists():
+            return path
+    if published_asset_row is None:
+        return None
+    published_master_relative = str(published_asset_row.get("master_path", "")).strip()
+    if not published_master_relative:
+        return None
+    path = published_root / published_master_relative
+    return path if path.exists() else None
+
+
+def _bridge_wiki_asset_candidates(
+    wiki_draft_root: Path,
+    *,
+    masters_root: Path,
+    adapter: GameOnboardingAdapter,
+) -> list[dict[str, Any]]:
+    assets_csv = wiki_draft_root / "catalog" / "assets.csv"
+    if assets_csv.exists():
+        assets = _read_csv_rows(assets_csv)
+    else:
+        wiki_manifest = _load_json_mapping_file(wiki_draft_root / "assets_manifest.json", label="wiki draft assets manifest")
+        assets = wiki_manifest.get("assets", [])
+        if not isinstance(assets, list):
+            raise ValueError("wiki draft assets manifest assets must be a list")
+    candidates: list[dict[str, Any]] = []
+    for row in assets:
+        if not isinstance(row, dict):
+            continue
+        source = {
+            "url": str(row.get("source_page_url", "")).strip(),
+            "role": str(row.get("source_role", "")).strip() or "events",
+            "title": str(row.get("source_title", "")).strip(),
+            "notes": str(row.get("license_note", "")).strip(),
+        }
+        candidate = _build_candidate_row(
+            source=source,
+            image_url=str(row.get("source_url", "")).strip(),
+            display_name=str(row.get("display_name", "")).strip(),
+            source_kind="page_image",
+            adapter=adapter,
+            section_heading="Wiki Draft",
+            raw_label=str(row.get("display_name", "")).strip(),
+        )
+        draft_local_path = str(row.get("draft_local_path", "")).strip()
+        if draft_local_path:
+            local_path = Path(draft_local_path)
+            if local_path.exists():
+                candidate = _copy_candidate_from_local_path(candidate, local_path, masters_root)
+            else:
+                candidate = _download_candidate(candidate, masters_root)
+        else:
+            candidate = _download_candidate(candidate, masters_root)
+        candidates.append(candidate)
+    return candidates
+
+
+def _copy_candidate_from_local_path(candidate: dict[str, Any], source_path: Path, masters_root: Path) -> dict[str, Any]:
+    extension = source_path.suffix.lower() or ".png"
+    family_dir = _template_family_dir(str(candidate.get("asset_family", "")).strip())
+    filename = f"{candidate['normalized_name']}-{candidate['candidate_id'][-6:]}{extension}"
+    target_path = masters_root / family_dir / filename
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source_path, target_path)
+    candidate["fetch_status"] = "downloaded"
+    candidate["master_path"] = str(target_path)
+    return candidate
+
+
+def _rewrite_candidate_master_paths_for_final_draft(
+    candidates: list[dict[str, Any]],
+    *,
+    stage_root: Path,
+    draft_root: Path,
+) -> None:
+    stage_root = stage_root.resolve()
+    draft_root = draft_root.resolve()
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        master_path = str(candidate.get("master_path", "")).strip()
+        if not master_path:
+            continue
+        resolved_path = Path(master_path).expanduser()
+        try:
+            relative_path = resolved_path.resolve().relative_to(stage_root)
+        except Exception:
+            continue
+        candidate["master_path"] = str(draft_root / relative_path)
+
+
+def _bridge_wiki_manual_crop_rows(wiki_draft_root: Path) -> list[dict[str, Any]]:
+    qa_rows = _read_csv_rows(wiki_draft_root / "catalog" / "qa_queue.csv")
+    bridged_rows: list[dict[str, Any]] = []
+    for row in qa_rows:
+        if str(row.get("qa_status", "")).strip() != "needs_manual_crop":
+            continue
+        bridged_rows.append(
+            {
+                "item_type": "manual_crop_required",
+                "detection_id": "",
+                "target_id": "",
+                "display_name": str(row.get("display_name", "")).strip(),
+                "status": "needs_binding_review",
+                "reason": (
+                    "candidate requires manual crop before safe publication"
+                    f": {str(row.get('asset_id', '')).strip()}"
+                ).strip(),
+            }
+        )
+    return bridged_rows

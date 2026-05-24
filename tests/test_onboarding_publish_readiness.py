@@ -172,6 +172,18 @@ class OnboardingPublishReadinessTests(unittest.TestCase):
             self.assertEqual(result["readiness"], "needs_binding_review")
             self.assertTrue(any(row["type"] == "missing_accepted_binding" for row in result["findings"]))
 
+    def test_validate_onboarding_publish_treats_manual_crop_as_binding_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            draft_root = self._write_draft(
+                Path(tempdir),
+                accepted=True,
+                qa_rows=[{"item_type": "manual_crop_required", "reason": "candidate still requires manual crop"}],
+            )
+            result = validate_onboarding_publish(draft_root)
+            self.assertFalse(result["can_publish"])
+            self.assertEqual(result["readiness"], "needs_binding_review")
+            self.assertTrue(any(row["type"] == "manual_crop_required" for row in result["findings"]))
+
     def test_validate_onboarding_publish_reports_structural_conflicts(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             draft_root = self._write_draft(Path(tempdir), accepted=True, duplicate_accept=True)

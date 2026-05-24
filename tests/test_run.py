@@ -26,6 +26,7 @@ from run import (
     main as run_main,
     run_adapt_game_schema,
     run_build_onboarding_draft,
+    run_bridge_wiki_draft_to_onboarding,
     run_derive_game_detection_manifest,
     run_fill_derived_detection_rows,
     run_ingest_game_sources,
@@ -236,6 +237,12 @@ class RunTests(unittest.TestCase):
             result = run_build_onboarding_draft(Path(tempdir))
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_onboarding_draft_build")
+
+    def test_run_bridge_wiki_draft_to_onboarding_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_bridge_wiki_draft_to_onboarding(Path(tempdir))
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_wiki_draft_bridge")
 
     def test_run_report_unresolved_derived_rows_returns_invalid_status_for_missing_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -4289,6 +4296,30 @@ class RunTests(unittest.TestCase):
                     exit_code = run_main()
             self.assertEqual(exit_code, 0)
             mock_run.assert_called_once_with("/tmp/draft", output_path="/tmp/derived.yaml")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_bridge_wiki_draft_to_onboarding(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--bridge-wiki-draft-to-onboarding",
+                "/tmp/wiki",
+                "--output-path",
+                "/tmp/onboarding",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_bridge_wiki_draft_to_onboarding",
+                return_value={"ok": True, "draft_root": "/tmp/onboarding"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/wiki", output_path="/tmp/onboarding")
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
         finally:
