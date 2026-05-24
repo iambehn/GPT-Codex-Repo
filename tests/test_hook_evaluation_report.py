@@ -174,6 +174,7 @@ class HookEvaluationReportTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(result["schema_version"], "hook_evaluation_report_v1")
             self.assertEqual(result["policy"]["hook_artifacts_policy"], "advisory")
+            self.assertEqual(result["editorial_viability"]["status"], "editorially_viable")
             self.assertEqual(result["trial_comparison"]["recommendation"]["decision"], "prefer_trial")
             self.assertEqual(result["candidate_rollups"]["selected_or_approved"]["candidate_count"], 1)
             self.assertEqual(result["candidate_rollups"]["exported"]["candidate_count"], 1)
@@ -225,6 +226,7 @@ class HookEvaluationReportTests(unittest.TestCase):
             )
             self.assertEqual(result["candidate_rollups"]["exported"]["hook_mode_counts"]["reject"], 1)
             self.assertEqual(result["candidate_rollups"]["exported"]["candidate_count"], 1)
+            self.assertEqual(result["editorial_viability"]["status"], "mechanics_only")
             self.assertEqual(result["policy"]["future_gate_readiness"], "insufficient_evidence")
 
     def test_registry_refresh_ingests_hook_evaluation_report_and_rollups(self) -> None:
@@ -285,6 +287,7 @@ class HookEvaluationReportTests(unittest.TestCase):
             row = rollups["rows"][0]
             self.assertEqual(row["selected_candidate_count"], 1)
             self.assertEqual(row["exported_candidate_count"], 1)
+            self.assertEqual(row["editorial_viability_status"], "editorially_viable")
             self.assertEqual(row["reject_to_synthetic_count"], 1)
             self.assertEqual(json.loads(row["selected_hook_mode_counts_json"])["natural"], 1)
 

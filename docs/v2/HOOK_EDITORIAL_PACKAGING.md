@@ -197,6 +197,12 @@ It combines:
 - fixture/trial hook comparisons
 - approved or export-selected candidate rollups from the registry
 - fused-vs-hook disagreement counts
+- editorial viability classification for the current evaluated state:
+  - `editorially_viable`
+  - `mixed`
+  - `mechanics_only`
+  - `not_exported`
+  - `no_candidates`
 - explicit advisory policy and future gate readiness status
 
 Primary operator entrypoint:

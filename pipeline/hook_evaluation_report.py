@@ -49,6 +49,7 @@ def report_hook_evaluation(
 
     disagreement_summary = _comparison_disagreement_summary(comparison)
     future_gate_readiness = _future_gate_readiness(comparison, rollups, disagreement_summary)
+    editorial_viability = _editorial_viability(rollups)
     report = {
         "ok": True,
         "status": "ok",
@@ -67,6 +68,7 @@ def report_hook_evaluation(
             "warning_count": len(comparison.get("warnings", [])),
         },
         "candidate_rollups": rollups["rollups"],
+        "editorial_viability": editorial_viability,
         "fused_hook_disagreement": disagreement_summary,
         "policy": {
             "hook_artifacts_policy": "advisory",
@@ -164,6 +166,46 @@ def _future_gate_readiness(
     if int(disagreement_summary.get("approved_reject_hook_count", 0) or 0) > 0:
         return "candidate_for_gate_review"
     return "not_evaluated"
+
+
+def _editorial_viability(rollups: dict[str, Any]) -> dict[str, Any]:
+    selected = dict(rollups.get("rollups", {}).get("selected_or_approved", {}))
+    exported = dict(rollups.get("rollups", {}).get("exported", {}))
+    selected_count = int(selected.get("candidate_count", 0) or 0)
+    exported_count = int(exported.get("candidate_count", 0) or 0)
+    exported_hook_mode_counts = dict(exported.get("hook_mode_counts", {}))
+    exported_reject_count = int(exported_hook_mode_counts.get("reject", 0) or 0)
+    exported_non_reject_count = max(0, exported_count - exported_reject_count)
+
+    if selected_count <= 0:
+        return {
+            "status": "no_candidates",
+            "reason": "no selected, approved, exported, or posted hook candidates were available to judge editorial viability",
+        }
+    if exported_count <= 0:
+        return {
+            "status": "not_exported",
+            "reason": "selected or approved hook candidates exist, but no exported candidates were available for editorial viability classification",
+        }
+    if exported_reject_count >= exported_count:
+        return {
+            "status": "mechanics_only",
+            "reason": "exported candidates exist, but every exported candidate still has hook_mode=reject",
+        }
+    if exported_reject_count > 0:
+        return {
+            "status": "mixed",
+            "reason": "some exported candidates are editorially viable, but at least one exported candidate still has hook_mode=reject",
+        }
+    if exported_non_reject_count == exported_count:
+        return {
+            "status": "editorially_viable",
+            "reason": "all exported candidates have non-reject hook modes",
+        }
+    return {
+        "status": "unknown",
+        "reason": "exported hook state could not be classified cleanly",
+    }
 
 
 def _count_by_field(rows: list[dict[str, Any]], field: str) -> dict[str, int]:

@@ -5943,6 +5943,10 @@ def _query_hook_quality_rollups(
         for row in export_rows
         if str(row.get("candidate_id") or "").strip()
     }
+    editorial_viability_status, editorial_viability_reason = _editorial_viability_status(
+        selected_rows=selected_rows,
+        export_rows=export_rows,
+    )
     return [
         {
             "selected_candidate_count": len(selected_candidate_ids),
@@ -5952,12 +5956,62 @@ def _query_hook_quality_rollups(
             "selected_dimension_averages_json": json.dumps(_average_numeric_fields(selected_rows), sort_keys=True),
             "exported_hook_mode_counts_json": json.dumps(_count_rows_by_field(export_rows, "hook_mode"), sort_keys=True),
             "exported_hook_archetype_counts_json": json.dumps(_count_rows_by_field(export_rows, "hook_archetype"), sort_keys=True),
+            "editorial_viability_status": editorial_viability_status,
+            "editorial_viability_reason": editorial_viability_reason,
             "strong_fused_weak_hook_count": sum(int(bool(row.get("strong_fused_weak_hook"))) for row in comparison_rows) or int(report_disagreement["strong_fused_weak_hook_count"]),
             "approved_reject_hook_count": sum(int(bool(row.get("approved_reject_hook"))) for row in comparison_rows) or int(report_disagreement["approved_reject_hook_count"]),
             "reject_to_synthetic_count": sum(int(bool(row.get("reject_to_synthetic"))) for row in comparison_rows) or int(report_disagreement["reject_to_synthetic_count"]),
             "natural_to_synthetic_count": sum(int(bool(row.get("natural_to_synthetic"))) for row in comparison_rows) or int(report_disagreement["natural_to_synthetic_count"]),
         }
     ]
+
+
+def _editorial_viability_status(*, selected_rows: list[dict[str, Any]], export_rows: list[dict[str, Any]]) -> tuple[str, str]:
+    selected_candidate_ids = {
+        str(row.get("candidate_id") or "").strip()
+        for row in selected_rows
+        if str(row.get("candidate_id") or "").strip()
+    }
+    exported_candidate_ids = {
+        str(row.get("candidate_id") or "").strip()
+        for row in export_rows
+        if str(row.get("candidate_id") or "").strip()
+    }
+    selected_count = len(selected_candidate_ids)
+    exported_count = len(exported_candidate_ids)
+    export_mode_counts = _count_rows_by_field(export_rows, "hook_mode")
+    exported_reject_count = int(export_mode_counts.get("reject", 0) or 0)
+    exported_non_reject_count = max(0, exported_count - exported_reject_count)
+
+    if selected_count <= 0:
+        return (
+            "no_candidates",
+            "no selected, approved, exported, or posted hook candidates were available to judge editorial viability",
+        )
+    if exported_count <= 0:
+        return (
+            "not_exported",
+            "selected or approved hook candidates exist, but no exported candidates were available for editorial viability classification",
+        )
+    if exported_reject_count >= exported_count:
+        return (
+            "mechanics_only",
+            "exported candidates exist, but every exported candidate still has hook_mode=reject",
+        )
+    if exported_reject_count > 0:
+        return (
+            "mixed",
+            "some exported candidates are editorially viable, but at least one exported candidate still has hook_mode=reject",
+        )
+    if exported_non_reject_count == exported_count:
+        return (
+            "editorially_viable",
+            "all exported candidates have non-reject hook modes",
+        )
+    return (
+        "unknown",
+        "exported hook state could not be classified cleanly",
+    )
 
 
 def _count_rows_by_field(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
