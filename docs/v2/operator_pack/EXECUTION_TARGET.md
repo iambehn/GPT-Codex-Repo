@@ -36,6 +36,7 @@ Current execution rule:
   - a hook or export regression proves hook-rejected candidates can still export while hook remains advisory in V1
 - treat the current `call_of_duty` sample as mechanically proven but editorially weak:
   - the hook artifact currently lands at `hook_mode: reject`
+  - the registry hook-quality rollup currently lands at `editorial_viability_status: mechanics_only`
   - hook artifacts remain advisory in V1, so this does not block local export
 - allow Codex to choose the next local-only target without waiting for explicit user selection when the work stays inside the gameplay highlight pipeline mission
 - do not require a user approval checkpoint for small local-only changes such as regressions, docs clarifications, focused refactors, workflow hardening, quality or inspection improvements, or narrow behavior fixes inside existing contracts
@@ -188,7 +189,7 @@ Current bootstrap stage status:
 | Candidate and review surface | `proved for bounded real media` | runtime and fused review bridges both persisted review state |
 | Calibration and replay path | `canonically user-authorized for local testing` | runtime calibration passed on user-authorized reviewed real-media sidecars |
 | Local export-readiness bundle | `canonically user-authorized for local testing` | `highlight_export_batch_v1` exists locally with one exported candidate and no post ledger; fused-review provenance now reflects user-adopted decisions |
-| Editorial hook viability | `proved weak on current sample` | current hook artifact for the exported candidate lands at `hook_mode: reject`, so the sample proves mechanics more than strong short-form packaging |
+| Editorial hook viability | `proved mechanics_only on current sample` | current hook artifact lands at `hook_mode: reject`, and current `hook-quality-rollups` query lands at `editorial_viability_status: mechanics_only` |
 | Repo-quality health gate | `proved` | known green from prior validation |
 
 ## Required Artifacts

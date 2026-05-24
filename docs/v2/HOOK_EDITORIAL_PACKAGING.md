@@ -126,6 +126,11 @@ The current concrete hook artifact for that sample currently says:
 - `hook_strength: 0.4168`
 - `authenticity_risk_score: 0.7688`
 
+The current registry-backed rollup for that same sample now says:
+
+- `editorial_viability_status: mechanics_only`
+- `editorial_viability_reason: exported candidates exist, but every exported candidate still has hook_mode=reject`
+
 So what the path did **not** prove is:
 
 - that the exported clip has a strong short-form opening
@@ -220,6 +225,22 @@ Registry-backed query surfaces:
 
 - `hook-evaluation-reports`
 - `hook-quality-rollups`
+
+Current live operator query for the canonical `call_of_duty` sample:
+
+```bash
+python run.py \
+  --query-clip-registry \
+  --mode hook-quality-rollups \
+  --registry-path outputs/happy_path/call_of_duty/bootstrap-real-cod.registry.sqlite \
+  --game call_of_duty
+```
+
+Current result:
+
+- `editorial_viability_status: mechanics_only`
+- `selected_hook_mode_counts_json: {"reject": 1}`
+- `exported_hook_mode_counts_json: {"reject": 1}`
 
 These exist to answer two separate questions:
 

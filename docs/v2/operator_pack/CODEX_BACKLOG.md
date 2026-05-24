@@ -244,6 +244,7 @@ Status:
 - runtime calibration canonicalization is resolved through user-adopted runtime review
 - no active blocker remains for the bounded local test path
 - current exported sample is still editorially weak under the hook layer
+- current registry-backed hook rollup now classifies that weakness explicitly as `editorial_viability_status: mechanics_only`
 
 Allowed work:
 
@@ -262,6 +263,7 @@ Current recommended hardening:
   - `docs/handoffs/2026-05-21-call-of-duty-canonical-human-review-handoff.md`
 - use the current hook artifact as the next execution clue:
   - the exported `call_of_duty` sample currently lands at `hook_mode: reject`
+  - the live operator query `--query-clip-registry --mode hook-quality-rollups --registry-path outputs/happy_path/call_of_duty/bootstrap-real-cod.registry.sqlite --game call_of_duty` currently returns `editorial_viability_status: mechanics_only`
   - the clean next target is editorial viability on the same sample, not a broader new game path
 
 Current stop rule:
