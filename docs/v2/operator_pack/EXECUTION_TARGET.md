@@ -17,6 +17,7 @@ Pin one concrete, runnable happy path for the gameplay highlight pipeline, then 
 - Treat fixture-only success as bootstrap, not final proof, unless explicitly approved.
 - Stop on explicit blockers instead of patching around them.
 - Once a local-only path is proven, Codex may choose the next local-only target without waiting for explicit user selection.
+- The standing user delegation authorizes long-running local-only execution without routine approval checkpoints.
 
 ## Current Phase Gate
 
@@ -40,6 +41,10 @@ Current execution rule:
   - hook artifacts remain advisory in V1, so this does not block local export
   - later editorial scouting showed the active published `call_of_duty` pack currently has no promoted medal coverage, so further sample scouting alone is not the highest-leverage next step
 - allow Codex to choose the next local-only target without waiting for explicit user selection when the work stays inside the gameplay highlight pipeline mission
+- apply the standing user delegation:
+  - choose and execute next local-only tasks without asking first
+  - batch multiple milestones into one work block
+  - treat docs, tests, regressions, refactors, workflow hardening, pack-coverage work, and narrow behavior fixes inside existing workflow families as pre-approved
 - do not require a user approval checkpoint for small local-only changes such as regressions, docs clarifications, focused refactors, workflow hardening, quality or inspection improvements, or narrow behavior fixes inside existing contracts
 - use milestone-style reporting by default:
   - report meaningful milestone completion
@@ -231,6 +236,7 @@ Current governance limit:
   - published asset families are currently `99` `hero_portrait` plus `13` `equipment_icon`
   - published `medals.yaml` is empty
   - draft wiki assets already contain `250` `medal_icon` candidates that are not yet promoted
+- the standing user delegation authorizes longer autonomous local-only work blocks inside the existing pipeline mission
 - Codex may autonomously choose the next local-only target, including pipeline quality hardening, editorial or hook-layer improvement, new local test samples, additional local-only execution targets within the existing pipeline mission, docs clarification, and focused refactors that improve inspectability, validation, or workflow clarity
 - Codex must stop only when a hard-stop category is active:
   - the action would affect external systems

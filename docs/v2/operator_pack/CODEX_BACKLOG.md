@@ -4,7 +4,7 @@ Status: active-draft
 Version: 1.0
 Last updated: 2026-05-25
 
-This backlog is phase-gated. Codex should work in order when useful, but once a local-only phase target is complete it may choose the next local-only target without waiting for explicit user selection. Stop only when a real hard-stop category is active.
+This backlog is phase-gated. Codex should work in order when useful, but once a local-only phase target is complete it may choose the next local-only target without waiting for explicit user selection. The standing user delegation authorizes long-running local-only execution. Stop only when a real hard-stop category is active.
 
 ## Phase 0: Repo Inventory And Operator Pack
 
@@ -275,6 +275,9 @@ Current stop rule:
 
 - do not stop for routine next-step permission once the current local-only target is complete
 - Codex may autonomously choose the next local-only target when it remains inside the gameplay highlight pipeline mission
+- the standing user delegation also authorizes:
+  - batching multiple milestones into one work block
+  - proceeding without separate approval on docs, tests, regressions, refactors, workflow hardening, pack-coverage work, and narrow behavior fixes inside existing workflow families
 - preferred next local-only targets include:
   - editorial or hook-layer improvement on the same `call_of_duty` sample
   - stronger regressions around editorial viability versus mechanical exportability

@@ -2,7 +2,7 @@
 
 Status: active
 Version: 0.2
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 This directory is the active execution-control pack for the first runnable happy path.
 
@@ -23,6 +23,10 @@ Rules:
 - Prefer explicit blockers over silent assumptions.
 - If repo behavior changes, update the relevant operator file in the same slice.
 - Do not stop for routine next-step permission once a local-only target is complete.
+- Apply the standing user delegation for this repo:
+  - Codex may choose and execute the next local-only tasks inside this gameplay highlight pipeline without asking first.
+  - Codex may batch multiple milestones into one work block.
+  - Codex may do docs, tests, regressions, refactors, workflow hardening, pack-coverage work, and narrow behavior fixes inside existing workflow families without separate approval.
 - Stop only for hard-stop categories:
   - external-risk actions
   - destructive or hard-to-reverse actions

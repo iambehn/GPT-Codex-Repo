@@ -2,7 +2,7 @@
 
 Status: active
 Version: 0.7
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 ## P0 Questions
 
@@ -32,6 +32,10 @@ Resolved in current execution doctrine:
 - Codex may choose the next local-only execution target without waiting for explicit user selection as long as the work stays inside the gameplay highlight pipeline mission
 - small local-only changes do not require a user approval checkpoint when they are regressions, docs clarifications, focused refactors, workflow hardening, quality or inspection improvements, or narrow behavior fixes inside existing contracts
 - default reporting style is blockers and milestones rather than routine next-step permission
+- standing delegation now applies to this repo:
+  - Codex may choose and execute the next local-only tasks inside this gameplay highlight pipeline without asking first
+  - Codex may batch multiple milestones into one work block
+  - Codex may do docs, tests, regressions, refactors, workflow hardening, pack-coverage work, and narrow behavior fixes inside existing workflow families without separate approval
 
 ## P1 Questions
 
