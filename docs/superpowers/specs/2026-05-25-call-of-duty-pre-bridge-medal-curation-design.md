@@ -1,95 +1,70 @@
-# `call_of_duty` Pre-Bridge Medal Curation Design
+# Call Of Duty Pre-Bridge Medal Curation
 
 Date: 2026-05-25
-Status: approved-design
+Status: proposed
+Scope: `call_of_duty` local-only onboarding support
 
-## Summary
+## Objective
 
-Add one explicit pre-bridge curation step for `call_of_duty` wiki medal sources.
+Add a pre-bridge curation step for the noisy `call_of_duty` wiki medal draft so that obvious non-HUD source material is removed before rows become onboarding targets.
 
-The current real `call_of_duty` wiki-to-onboarding bridge works structurally, but the source bundle is polluted by contracts, intel mission prose, calling cards, weapon blueprints, logos, and map or season branding. That pollution creates a large onboarding review queue that is not a good operator target.
-
-The chosen approach is:
-
-- keep the raw wiki draft unchanged
-- add a new curation step that writes a sibling curated wiki draft bundle
-- keep the existing wiki-to-onboarding bridge focused on shape conversion
-- use the curated bundle as the bridge input
-
-This keeps the workflow auditable and isolates source triage policy from onboarding conversion.
-
-## Objectives
-
-- reduce obvious non-HUD medal noise before rows become onboarding targets
-- preserve the raw wiki draft bundle for auditability
-- keep the existing onboarding and publish workflow unchanged after the bridge boundary
-- make curation decisions inspectable and reversible
-- narrow the first curation slice to a multikill-medal subset
-
-## Non-Goals
-
-- no direct publish from wiki draft shape
-- no change to `publish_onboarding_draft(...)`
-- no change to the published-pack folder layout
-- no change to runtime thresholds or fusion heuristics
-- no attempt to fully solve all `call_of_duty` medal curation in one pass
-- no multi-game generalization beyond what falls out naturally from the command shape
+The immediate goal is not to solve all medal coverage for `call_of_duty`. The immediate goal is to produce a smaller, cleaner wiki-derived source bundle that the existing wiki-to-onboarding bridge can consume without flooding onboarding review with contracts, calling cards, blueprints, logos, and map or season branding.
 
 ## Current Problem
 
-The real bridged draft at:
+The real wiki-to-onboarding bridge now works on the live `call_of_duty` draft:
 
-- `assets/games/call_of_duty/drafts/onboarding/20260524T225117Z`
+- raw wiki draft: `assets/games/call_of_duty/drafts/wiki/20260430T015758Z`
+- bridged onboarding draft: `assets/games/call_of_duty/drafts/onboarding/20260524T225117Z`
 
-is structurally valid, but source quality is poor.
+That proved the workflow gap is closed, but it also exposed a source-quality problem:
 
-Observed results:
+- raw wiki asset rows: `250`
+- bridged derived `medal_icon` rows: `265`
+- derived rows with candidate bindings: `121`
+- derived rows with no candidates: `144`
+- manual crop blockers: `250`
 
-- `medal_icon` derived rows: `265`
-- rows with candidate bindings: `121`
-- rows without candidates: `144`
-- `manual_crop_required` QA rows: `250`
+The bridged draft is structurally valid, but a large part of its derived medal surface is polluted by non-HUD material such as:
 
-Observed noise classes:
-
-- contract descriptions
+- contracts and contract descriptions
 - intel mission prose
 - calling cards
 - weapon blueprints
-- logos
+- franchise logos
 - map and season branding
 
-This means the next blocker is no longer onboarding workflow shape. It is upstream source curation quality.
+That means the next high-value boundary is source curation, not more bridge work.
 
-## Chosen Architecture
+## Non-Goals
 
-### Boundary
+- do not change `bridge_wiki_draft_to_onboarding(...)` semantics in this slice
+- do not change the onboarding draft contract
+- do not publish directly from `drafts/wiki/...`
+- do not attempt full `call_of_duty` medal coverage in one pass
+- do not introduce new runtime thresholds or fusion rules
+- do not broaden beyond `call_of_duty`
 
-Add a new sibling-draft workflow:
+## Design Summary
 
-1. raw wiki draft bundle
-2. curated wiki draft bundle
-3. existing wiki-to-onboarding bridge
-4. existing onboarding review and publish flow
+Add a new pre-bridge curation command that reads a raw wiki draft and writes a sibling curated wiki bundle.
 
-The bridge remains unchanged in purpose:
+The curated wiki bundle remains draft state. It is not published truth. It becomes a cleaner input to the existing bridge.
 
-- it converts a wiki-style bundle into canonical onboarding-draft shape
+The first curation profile is intentionally narrow:
 
-The new curation layer takes responsibility for:
+- game: `call_of_duty`
+- curation strategy: hybrid
+- default retention policy: keep by default at the general policy level
+- first active promotion subset: multikill medals
 
-- deciding which wiki medal or event rows are plausible HUD medals worth promoting into onboarding review
+In practice, because the first profile is intentionally narrow, the first implementation keeps rows that look like likely multikill medals and drops obvious non-medal noise unless override rules say otherwise.
 
-### Why This Boundary
+## Architecture
 
-- raw scrape output stays preserved
-- curation becomes independently inspectable
-- bridge semantics remain focused and easier to reason about
-- operator debugging becomes simpler because “source noise” and “workflow shape” stop being mixed together
+### New API
 
-## New Command Surface
-
-### Python API
+Add a new API surface:
 
 ```python
 curate_wiki_medal_draft(
@@ -102,21 +77,36 @@ curate_wiki_medal_draft(
 ) -> dict
 ```
 
-### CLI
+### New CLI Surface
+
+Add a new CLI command:
 
 ```bash
 python run.py --curate-wiki-medal-draft <wiki_draft_root> [--output-path <draft_root>] [--curation-profile multikill]
 ```
 
-### Default Behavior
+### Workflow Placement
 
-- infer `game` from the wiki draft bundle
-- default profile is `multikill`
-- write a sibling bundle under `assets/games/<game>/drafts/wiki_curated/<timestamp>/` unless `--output-path` is provided
+The intended operator flow becomes:
+
+1. `python run.py --curate-wiki-medal-draft <raw_wiki_draft_root>`
+2. `python run.py --bridge-wiki-draft-to-onboarding <curated_wiki_draft_root>`
+3. `python run.py --derive-game-detection-manifest <bridged_draft_root>`
+4. existing derived-row review and apply flow
+5. existing publish-readiness and publish flow
+
+### Why A Sibling Curated Wiki Bundle
+
+This boundary is preferred over integrating curation directly into the bridge because it:
+
+- preserves the raw wiki draft for auditability
+- keeps source triage policy separate from onboarding shape conversion
+- makes curation inspectable on its own
+- allows raw vs curated comparisons before bridge execution
 
 ## Input Surfaces
 
-The curation command reads the existing stable wiki-bundle surfaces:
+The curation command reads the same stable wiki-bundle surfaces as the bridge:
 
 - `assets_manifest.json`
 - `catalog/assets.csv`
@@ -124,43 +114,44 @@ The curation command reads the existing stable wiki-bundle surfaces:
 - `catalog/source_fetch_log.csv`
 - `catalog/qa_queue.csv`
 
-It should not depend on raw `.draft.yaml` files.
+The curation command should not depend on raw `.draft.yaml` files.
 
 ## Output Bundle Shape
 
-The curated output remains a wiki-style draft bundle, not an onboarding draft.
+The curated bundle should live under:
 
-Recommended output files:
+- `assets/games/call_of_duty/drafts/wiki_curated/<timestamp>/`
+
+unless `--output-path` is explicitly provided.
+
+The output should preserve the same practical wiki-bundle surfaces:
 
 - `assets_manifest.json`
 - `catalog/assets.csv`
 - `catalog/events_or_medals.csv`
 - `catalog/source_fetch_log.csv`
 - `catalog/qa_queue.csv`
+
+Add curation-specific audit artifacts:
+
 - `catalog/curation_decisions.csv`
 - `catalog/curation_summary.json`
 
-The curated bundle must remain consumable by:
+## Curation Decision Contract
 
-- `bridge_wiki_draft_to_onboarding(...)`
-
-without requiring a second bridge contract.
-
-## Curation Metadata
-
-Each evaluated row should have a decision outcome:
+Each source row evaluated by curation should resolve to:
 
 - `kept`
 - `dropped`
 
-Each decision should carry a basis:
+Each decision should record a basis:
 
 - `heuristic_keep`
 - `heuristic_drop`
 - `override_keep`
 - `override_drop`
 
-Dropped rows should record one explicit reason, for example:
+Each dropped row should record a short reason category such as:
 
 - `contract_text`
 - `intel_mission_text`
@@ -169,204 +160,188 @@ Dropped rows should record one explicit reason, for example:
 - `logo_or_branding`
 - `map_or_season_label`
 - `weak_medal_signal`
-- `outside_profile_scope`
+- `outside_profile`
 
-## Source-Of-Truth Strategy
+## First-Pass Profile
 
-Chosen strategy: `hybrid`
+### Profile Name
 
-The curation layer uses:
+- `multikill`
 
-- repo heuristics as the default filter
-- optional override lists for keep or drop exceptions
+### Purpose
 
-Overrides should win over heuristics.
+Reduce the first `call_of_duty` medal-promotion slice to the rows most likely to improve highlight quality quickly.
 
-## First-Pass Policy
+### Why Multikill First
 
-Chosen policy:
+Multikill medals are the clearest first editorial target because they are:
 
-- `keep by default`
+- more likely to correlate with actual highlight payoff
+- easier to reason about than broad victory or contract-style event families
+- less ambiguous than encyclopedia-derived text rows
 
-But the first slice is intentionally scoped to a:
+## Hybrid Curation Model
 
-- `multikill` profile
+The first pass uses a hybrid model:
 
-So the effective first-pass behavior is:
+1. repo heuristic filter
+2. optional override keeps
+3. optional override drops
 
-- keep rows that look like likely multikill medals
-- drop obvious non-medal or out-of-profile rows
-- allow overrides to rescue or suppress exceptions
+Overrides always win over heuristics.
 
-## First Curation Profile: `multikill`
+## Heuristic Rules
 
 ### Keep Signals
 
-Rows are strong keep candidates when they show one or more of:
+Keep rows when they strongly resemble multikill medal material, for example:
 
-- display names with multikill vocabulary such as:
+- display name contains strong multikill vocabulary such as:
   - `double kill`
   - `triple kill`
   - `quad kill`
   - `multi kill`
   - `collateral`
   - `fury kill`
-- compact badge-like names instead of sentence-like prose
-- section headings that look medal-like rather than encyclopedic
-- asset rows whose display names plausibly refer to streak or multikill rewards
+- row appears compact and badge-like rather than sentence-like
+- paired asset naming and event naming both support a likely HUD medal interpretation
 
 ### Drop Signals
 
-Rows are strong drop candidates when they show one or more of:
+Drop rows when they strongly resemble non-medal material, for example:
 
 - section headings such as:
   - `Contracts[]`
   - `Intel Missions[]`
-- display names indicating non-HUD content such as:
+- display names containing:
   - `Calling Card`
   - `Weapon Blueprint`
   - `Logo`
-- map, season, or franchise branding terms
-- long descriptive sentence-like prose rather than badge-like labels
-- rows clearly outside the first `multikill` profile
+- obvious franchise, map, or season labels
+- long sentence-style prose that reads like encyclopedia explanation instead of HUD medal naming
+- rows outside the active `multikill` profile unless rescued by overrides
 
-### Overrides
+## Override Inputs
 
-Optional override files may match on:
+The first implementation may support optional override files colocated with the curated run or passed later through a narrow extension.
+
+Override keys may include:
 
 - exact `event_id`
 - exact `asset_id`
 - normalized display name
 
-Two override sets are supported:
+The design does not require a complicated override schema in the first slice, only a stable path for exact keep or drop exceptions.
 
-- keep overrides
-- drop overrides
+## Data Flow
 
-Overrides win over heuristics.
+1. Load raw wiki draft surfaces.
+2. Normalize row identities needed for comparison.
+3. Evaluate heuristic keep/drop decision for each wiki event and asset row.
+4. Apply override decisions if present.
+5. Emit curated row sets.
+6. Emit curation decision ledger and summary.
+7. Write a sibling curated wiki bundle.
+8. Allow the existing bridge to consume that bundle unchanged.
 
-## Expected Artifacts
+## Failure Handling
 
-The curated bundle should:
+### Hard Failures
 
-- contain materially fewer retained rows than the raw wiki bundle
-- preserve the original fetch-log context
-- preserve QA rows for retained candidate assets
-- expose clear kept/dropped counts and reasons
+The command should fail when:
 
-The bridge output created from the curated bundle should:
+- the input wiki draft does not exist
+- required CSV or JSON surfaces are missing
+- required surfaces are malformed
+- the game cannot be determined safely
 
-- remain structurally valid
-- produce a materially smaller onboarding review queue
-- contain a more realistic set of medal-derived detection rows
+### Soft Failures
 
-## Downstream Workflow
+The command should still write a curated bundle when:
 
-The intended operator flow becomes:
+- some rows are ambiguous but safely droppable
+- some rows have weak evidence but remain inside keep-by-default logic
+- overrides are absent
 
-1. `python run.py --curate-wiki-medal-draft <wiki_draft_root>`
-2. `python run.py --bridge-wiki-draft-to-onboarding <curated_wiki_draft_root>`
-3. existing onboarding review and publish commands
+### Summary Reporting
 
-No change is required to:
+The return payload should include at minimum:
 
-- `build_onboarding_draft(...)`
-- `derive_game_detection_manifest(...)`
-- `publish_onboarding_draft(...)`
+- `ok`
+- `status`
+- `game`
+- `profile`
+- `raw_asset_count`
+- `raw_event_count`
+- `kept_asset_count`
+- `kept_event_count`
+- `dropped_asset_count`
+- `dropped_event_count`
+- `output_root`
+- artifact paths for the curated bundle and curation ledgers
 
-## Tests
+## Validation
 
-### 1. Curation Contract Test
-
-Prove that:
-
-- raw wiki bundle in
-- curated sibling bundle out
-- decision logs exist
-- kept and dropped counts are explicit
-
-### 2. Heuristic Classification Test
-
-Prove that obvious noise classes drop:
-
-- contracts
-- intel mission prose
-- calling cards
-- weapon blueprints
-- logos
-
-And plausible multikill medal rows keep.
-
-### 3. Override Test
+### Contract Test
 
 Prove that:
 
-- keep override rescues an otherwise dropped row
-- drop override removes an otherwise kept row
+- a raw wiki draft goes in
+- a sibling curated wiki bundle comes out
+- decision logs and summary artifacts exist
 
-### 4. Bridge Compatibility Test
-
-Prove that:
-
-- the curated bundle remains consumable by `bridge_wiki_draft_to_onboarding(...)`
-
-### 5. End-To-End Reduction Proof
-
-Start from a minimal wiki fixture containing both good medal rows and noisy rows.
+### Heuristic Test
 
 Prove that:
 
-- the curated bundle is smaller
-- the bridged onboarding draft contains fewer medal rows than the raw-bridge version
-- the retained rows align with the curation profile
+- contracts drop
+- intel mission prose drops
+- calling cards drop
+- weapon blueprints drop
+- logos drop
+- likely multikill medal rows keep
+
+### Override Test
+
+Prove that:
+
+- override keep rescues an otherwise dropped row
+- override drop removes an otherwise kept row
+
+### Bridge Compatibility Test
+
+Prove that the curated bundle is consumable by:
+
+- `bridge_wiki_draft_to_onboarding(...)`
+
+without modifying bridge semantics.
+
+### Reduction Proof
+
+Prove that a representative fixture produces fewer onboarding targets after curation than before curation.
 
 ## Rollout Plan
 
-1. implement the curation command and decision logs
-2. add focused tests for heuristics and overrides
-3. run the curation command on the real `call_of_duty` wiki draft
-4. compare raw vs curated row counts
-5. bridge the curated bundle into onboarding
-6. inspect whether the resulting onboarding draft is a realistic review target
+1. implement the curation command and tests
+2. run it on the real `call_of_duty` wiki draft
+3. compare raw vs curated counts
+4. bridge the curated bundle
+5. inspect whether the resulting onboarding draft becomes a realistic review target
 
-## Risks
+## Expected Outcome
 
-### False Drops
+Success for this slice means:
 
-A strict first-pass profile may remove real medals that matter later.
+- raw wiki source preservation remains intact
+- curated wiki output is inspectable and auditable
+- the bridge consumes the curated output without workflow changes
+- the first `call_of_duty` medal review queue becomes materially smaller and cleaner than the current raw-bridge result
 
-Mitigation:
+## Open Follow-On Work
 
-- keep overrides
-- narrow first scope only to multikill medals
-- preserve the raw wiki bundle untouched
+This design intentionally leaves later questions open for later slices:
 
-### False Keeps
-
-Weak heuristics may still allow non-HUD rows through.
-
-Mitigation:
-
-- explicit decision logs
-- drop overrides
-- inspect bridged onboarding counts before treating the curated bundle as successful
-
-### Scope Drift
-
-Curation could become a second onboarding workflow.
-
-Mitigation:
-
-- keep the curated output in wiki-style draft shape
-- keep the bridge as the only shape-conversion step
-- do not add direct publish semantics to the curated bundle
-
-## Success Criteria
-
-This design is successful when:
-
-- the raw wiki draft remains unchanged
-- the curated wiki bundle is inspectable and reproducible
-- the bridge can consume the curated bundle without contract changes
-- the resulting onboarding draft is materially smaller and less noisy
-- the next review target becomes plausible for human or operator review rather than being dominated by obvious non-medal rows
+- broader `call_of_duty` medal families beyond multikill
+- whether curation should eventually support more than one profile
+- whether curated wiki bundles should later become a standard operator surface across games
+- whether some of the heuristics should later be driven by researcher packets rather than repo-only rules
