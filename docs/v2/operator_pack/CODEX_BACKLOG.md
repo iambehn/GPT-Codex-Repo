@@ -268,6 +268,7 @@ Current next pack-coverage target:
 
 - obtain or derive a better `call_of_duty` medal source packet that contains true HUD medal names and crops
 - then rerun pre-bridge curation and onboarding bridge on that narrower, higher-signal source set
+- avoid spending more slices on broader heuristics against the current raw wiki bundle until a medal-specific source packet exists
 - current next target:
   - stop prioritizing more `call_of_duty` sample scouting alone
   - use the existing scout findings to target the published-pack coverage gap instead

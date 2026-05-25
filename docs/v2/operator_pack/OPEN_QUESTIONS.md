@@ -51,6 +51,7 @@ Current execution truth:
 - the first `multikill` curation profile keeps `0` rows from the real bundle
 - bridging that curated output yields a structurally valid onboarding draft with only the published hero and equipment baseline
 - the next blocker is source quality, not onboarding contract shape
+- the raw bundle also appears to lack common gameplay medal terms entirely, so the next researcher packet should target a different source family rather than a broader filter on the same input
 
 Resolved in current execution doctrine:
 
