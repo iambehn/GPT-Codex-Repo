@@ -52,6 +52,10 @@ Current execution truth:
 - bridging that curated output yields a structurally valid onboarding draft with only the published hero and equipment baseline
 - the next blocker is source quality, not onboarding contract shape
 - the raw bundle also appears to lack common gameplay medal terms entirely, so the next researcher packet should target a different source family rather than a broader filter on the same input
+- cross-clip measurement on four real public samples now shows the same structural ceiling:
+  - `2 / 4` samples produced no runtime events
+  - `2 / 4` samples produced equipment-only events
+  - `0 / 4` samples produced medal-driven or hook-ready outcomes
 
 Resolved in current execution doctrine:
 
