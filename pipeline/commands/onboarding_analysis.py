@@ -13,6 +13,7 @@ def dispatch_onboarding_analysis_commands(
     run_enrich_game_from_wiki_fn: Callable[..., dict[str, Any]],
     run_adapt_game_schema_fn: Callable[..., dict[str, Any]],
     run_ingest_game_sources_fn: Callable[..., dict[str, Any]],
+    run_curate_wiki_medal_draft_fn: Callable[..., dict[str, Any]],
     run_bridge_wiki_draft_to_onboarding_fn: Callable[..., dict[str, Any]],
     run_build_onboarding_draft_fn: Callable[..., dict[str, Any]],
     run_report_unresolved_derived_rows_fn: Callable[..., dict[str, Any]],
@@ -49,6 +50,14 @@ def dispatch_onboarding_analysis_commands(
         if not args.source_manifest:
             parser.error("--ingest-game-sources requires --source-manifest")
         result = run_ingest_game_sources_fn(args.ingest_game_sources, args.source_manifest)
+        return _json_exit(result)
+
+    if args.curate_wiki_medal_draft:
+        result = run_curate_wiki_medal_draft_fn(
+            args.curate_wiki_medal_draft,
+            output_path=args.output_path,
+            profile=args.curation_profile,
+        )
         return _json_exit(result)
 
     if args.bridge_wiki_draft_to_onboarding:

@@ -66,6 +66,7 @@ from pipeline.game_onboarding import (
     adapt_game_schema,
     build_onboarding_draft,
     bridge_wiki_draft_to_onboarding,
+    curate_wiki_medal_draft,
     fill_derived_detection_rows,
     ingest_onboarding_sources,
     report_unresolved_derived_rows,
@@ -2622,6 +2623,23 @@ def run_bridge_wiki_draft_to_onboarding(
         }
 
 
+def run_curate_wiki_medal_draft(
+    wiki_draft_root: str | Path,
+    *,
+    output_path: str | Path | None = None,
+    profile: str = "multikill",
+) -> dict[str, Any]:
+    try:
+        return curate_wiki_medal_draft(wiki_draft_root, output_path=output_path, profile=profile)
+    except (ValueError, KeyError, TypeError, FileNotFoundError, json.JSONDecodeError) as exc:
+        return {
+            "ok": False,
+            "status": "invalid_wiki_medal_curation",
+            "wiki_draft_root": str(wiki_draft_root),
+            "error": str(exc),
+        }
+
+
 def run_report_unresolved_derived_rows(
     draft_root: str | Path,
     *,
@@ -4898,6 +4916,16 @@ def main() -> int:
         help="Populate an onboarding draft from explicit source inputs using a saved or newly created schema draft.",
     )
     parser.add_argument(
+        "--curate-wiki-medal-draft",
+        metavar="WIKI_DRAFT_ROOT",
+        help="Create a curated wiki medal draft bundle before bridging into canonical onboarding flow.",
+    )
+    parser.add_argument(
+        "--curation-profile",
+        default="multikill",
+        help="Curated wiki medal profile to apply. Defaults to 'multikill'.",
+    )
+    parser.add_argument(
         "--bridge-wiki-draft-to-onboarding",
         metavar="WIKI_DRAFT_ROOT",
         help="Convert one wiki draft bundle into a canonical onboarding draft seeded from the current published pack.",
@@ -5721,6 +5749,7 @@ def main() -> int:
         run_enrich_game_from_wiki_fn=run_enrich_game_from_wiki,
         run_adapt_game_schema_fn=run_adapt_game_schema,
         run_ingest_game_sources_fn=run_ingest_game_sources,
+        run_curate_wiki_medal_draft_fn=run_curate_wiki_medal_draft,
         run_bridge_wiki_draft_to_onboarding_fn=run_bridge_wiki_draft_to_onboarding,
         run_build_onboarding_draft_fn=run_build_onboarding_draft,
         run_report_unresolved_derived_rows_fn=run_report_unresolved_derived_rows,

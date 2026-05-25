@@ -40,6 +40,11 @@ Current execution rule:
   - the registry hook-quality rollup currently lands at `editorial_viability_status: mechanics_only`
   - hook artifacts remain advisory in V1, so this does not block local export
   - later editorial scouting showed the active published `call_of_duty` pack currently has no promoted medal coverage, so further sample scouting alone is not the highest-leverage next step
+- treat the current `call_of_duty` medal-coverage blocker as a source-quality problem, not a bridge problem:
+  - the new pre-bridge wiki curation step works mechanically
+  - the first `multikill` curation profile keeps `0` rows from the real raw wiki bundle
+  - bridging that curated bundle yields a structurally valid baseline-only onboarding draft with `wiki_medal_candidates: 0`
+  - the next useful improvement depends on better upstream medal-source research rather than more onboarding-shape changes
 - allow Codex to choose the next local-only target without waiting for explicit user selection when the work stays inside the gameplay highlight pipeline mission
 - apply the standing user delegation:
   - choose and execute next local-only tasks without asking first

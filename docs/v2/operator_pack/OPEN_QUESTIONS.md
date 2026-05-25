@@ -43,7 +43,14 @@ No active P1 questions are blocking the current bounded local test path.
 
 Active P1 question for the next `call_of_duty` pack-coverage cycle:
 
-- which subset of the bridged wiki `medal_icon` rows are true gameplay HUD medals worth promoting first, and which should be excluded as contracts, calling cards, blueprints, logos, or map or season branding
+- which upstream `call_of_duty` medal source packet actually contains true gameplay HUD medals worth promoting first
+
+Current execution truth:
+
+- the raw wiki bundle can now be bridged safely after pre-bridge curation
+- the first `multikill` curation profile keeps `0` rows from the real bundle
+- bridging that curated output yields a structurally valid onboarding draft with only the published hero and equipment baseline
+- the next blocker is source quality, not onboarding contract shape
 
 Resolved in current execution doctrine:
 

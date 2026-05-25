@@ -482,6 +482,146 @@ def bridge_wiki_draft_to_onboarding(
     }
 
 
+def curate_wiki_medal_draft(
+    wiki_draft_root: str | Path,
+    *,
+    output_path: str | Path | None = None,
+    game: str | None = None,
+    profile: str = "multikill",
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    repo_root = (repo_root or REPO_ROOT).resolve()
+    resolved_wiki_root = Path(wiki_draft_root).expanduser().resolve()
+    if profile != "multikill":
+        raise ValueError(f"unsupported curation profile: {profile}")
+    wiki_manifest_path = resolved_wiki_root / "assets_manifest.json"
+    if not wiki_manifest_path.exists():
+        raise FileNotFoundError(f"wiki draft does not contain assets manifest: {wiki_manifest_path}")
+
+    wiki_manifest = _load_json_mapping_file(wiki_manifest_path, label="wiki draft assets manifest")
+    manifest_game = str(wiki_manifest.get("game_id", "")).strip()
+    resolved_game = str(game or manifest_game).strip()
+    if not resolved_game:
+        raise ValueError("wiki draft assets manifest must include game_id")
+    if manifest_game and manifest_game != resolved_game:
+        raise ValueError(f"wiki draft game '{manifest_game}' does not match requested game '{resolved_game}'")
+    if resolved_game != "call_of_duty":
+        raise ValueError("wiki medal curation is currently supported only for call_of_duty")
+
+    raw_assets = _coerce_mapping_list(_load_wiki_bundle_asset_rows(resolved_wiki_root, wiki_manifest), label="wiki asset rows")
+    raw_events = _coerce_mapping_list(_read_csv_rows(resolved_wiki_root / "catalog" / "events_or_medals.csv"), label="wiki event rows")
+    source_fetch_log = _read_csv_rows(resolved_wiki_root / "catalog" / "source_fetch_log.csv")
+    qa_rows = _read_csv_rows(resolved_wiki_root / "catalog" / "qa_queue.csv")
+
+    curated_root = _resolve_curated_wiki_output_root(
+        resolved_game,
+        output_path=output_path,
+        repo_root=repo_root,
+    )
+    curated_parent = curated_root.parent
+    curated_parent.mkdir(parents=True, exist_ok=True)
+    timestamp = _timestamp_slug()
+    stage_root = Path(tempfile.mkdtemp(prefix=f".wiki-curated-{timestamp}.", dir=curated_parent))
+    catalog_root = stage_root / "catalog"
+    catalog_root.mkdir(parents=True, exist_ok=True)
+
+    try:
+        kept_event_ids, event_decisions = _curate_wiki_event_rows(
+            raw_events,
+            game=resolved_game,
+            profile=profile,
+        )
+        kept_assets, asset_decisions = _curate_wiki_asset_rows(
+            raw_assets,
+            kept_event_ids=kept_event_ids,
+            game=resolved_game,
+            profile=profile,
+        )
+        kept_asset_ids = {
+            str(row.get("asset_id", "")).strip()
+            for row in kept_assets
+            if str(row.get("asset_id", "")).strip()
+        }
+        curated_events = [row for row in raw_events if str(row.get("event_id", "")).strip() in kept_event_ids]
+        curated_qa_rows = [
+            row for row in qa_rows
+            if str(row.get("asset_id", "")).strip() in kept_asset_ids
+        ]
+        curation_decisions = event_decisions + asset_decisions
+        summary_payload = _build_wiki_curation_summary(
+            game=resolved_game,
+            profile=profile,
+            raw_assets=raw_assets,
+            raw_events=raw_events,
+            kept_assets=kept_assets,
+            kept_events=curated_events,
+            decisions=curation_decisions,
+        )
+        curated_manifest = dict(wiki_manifest)
+        curated_manifest["game_id"] = resolved_game
+        curated_manifest["source_count"] = len(source_fetch_log)
+        curated_manifest["assets"] = kept_assets
+        curated_manifest["qa_queue"] = curated_qa_rows
+        curated_manifest["curation"] = {
+            "status": "curated",
+            "profile": profile,
+            "raw_asset_count": len(raw_assets),
+            "raw_event_count": len(raw_events),
+            "kept_asset_count": len(kept_assets),
+            "kept_event_count": len(curated_events),
+            "dropped_asset_count": len(raw_assets) - len(kept_assets),
+            "dropped_event_count": len(raw_events) - len(curated_events),
+        }
+
+        (stage_root / "assets_manifest.json").write_text(
+            json.dumps(curated_manifest, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        _write_csv(catalog_root / "assets.csv", kept_assets)
+        _write_csv(catalog_root / "events_or_medals.csv", curated_events)
+        _write_csv(catalog_root / "source_fetch_log.csv", source_fetch_log)
+        _write_csv(catalog_root / "qa_queue.csv", curated_qa_rows)
+        _write_csv(catalog_root / "curation_decisions.csv", curation_decisions)
+        (catalog_root / "curation_summary.json").write_text(
+            json.dumps(summary_payload, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
+        if curated_root.exists():
+            shutil.rmtree(curated_root)
+        stage_root.rename(curated_root)
+    except Exception:
+        shutil.rmtree(stage_root, ignore_errors=True)
+        raise
+
+    return {
+        "ok": True,
+        "status": "curated",
+        "game": resolved_game,
+        "profile": profile,
+        "wiki_draft_root": str(resolved_wiki_root),
+        "curated_root": str(curated_root),
+        "counts": {
+            "raw_asset_count": len(raw_assets),
+            "raw_event_count": len(raw_events),
+            "kept_asset_count": len(kept_assets),
+            "kept_event_count": len(curated_events),
+            "dropped_asset_count": len(raw_assets) - len(kept_assets),
+            "dropped_event_count": len(raw_events) - len(curated_events),
+            "qa_row_count": len(curated_qa_rows),
+        },
+        "artifacts": {
+            "assets_manifest": str(curated_root / "assets_manifest.json"),
+            "assets_csv": str(curated_root / "catalog" / "assets.csv"),
+            "events_csv": str(curated_root / "catalog" / "events_or_medals.csv"),
+            "source_fetch_log_csv": str(curated_root / "catalog" / "source_fetch_log.csv"),
+            "qa_queue_csv": str(curated_root / "catalog" / "qa_queue.csv"),
+            "curation_decisions_csv": str(curated_root / "catalog" / "curation_decisions.csv"),
+            "curation_summary_json": str(curated_root / "catalog" / "curation_summary.json"),
+        },
+    }
+
+
 def ingest_onboarding_sources(
     schema_draft_or_game: str | Path,
     sources: list[OnboardingSource],
@@ -3921,6 +4061,18 @@ def _resolve_bridge_output_root(
     return drafts_parent / _timestamp_slug()
 
 
+def _resolve_curated_wiki_output_root(
+    game: str,
+    *,
+    output_path: str | Path | None,
+    repo_root: Path,
+) -> Path:
+    if output_path is not None:
+        return Path(output_path).expanduser().resolve()
+    drafts_parent = repo_root / "assets" / "games" / game / "drafts" / "wiki_curated"
+    return drafts_parent / _timestamp_slug()
+
+
 def _load_json_mapping_file(path: Path, *, label: str) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"missing {label}: {path}")
@@ -3991,6 +4143,174 @@ def _bridge_wiki_event_rows(
             }
         )
     return bridged_rows
+
+
+def _load_wiki_bundle_asset_rows(
+    wiki_draft_root: Path,
+    wiki_manifest: dict[str, Any],
+) -> list[dict[str, Any]]:
+    assets_csv = wiki_draft_root / "catalog" / "assets.csv"
+    if assets_csv.exists():
+        return _read_csv_rows(assets_csv)
+    assets = wiki_manifest.get("assets", [])
+    if not isinstance(assets, list):
+        raise ValueError("wiki draft assets manifest assets must be a list")
+    return [dict(row) for row in assets if isinstance(row, dict)]
+
+
+def _curate_wiki_event_rows(
+    raw_events: list[dict[str, Any]],
+    *,
+    game: str,
+    profile: str,
+) -> tuple[set[str], list[dict[str, Any]]]:
+    kept_event_ids: set[str] = set()
+    decisions: list[dict[str, Any]] = []
+    for row in raw_events:
+        event_id = str(row.get("event_id", "")).strip()
+        display_name = str(row.get("display_name", "")).strip()
+        section_heading = str(row.get("section_heading", "")).strip()
+        keep, basis, reason = _evaluate_wiki_row_curation(
+            display_name=display_name,
+            section_heading=section_heading,
+            profile=profile,
+        )
+        if keep and event_id:
+            kept_event_ids.add(event_id)
+        decisions.append(
+            {
+                "row_kind": "event",
+                "row_id": event_id,
+                "game_id": game,
+                "display_name": display_name,
+                "section_heading": section_heading,
+                "status": "kept" if keep else "dropped",
+                "basis": basis,
+                "reason": reason,
+            }
+        )
+    return kept_event_ids, decisions
+
+
+def _curate_wiki_asset_rows(
+    raw_assets: list[dict[str, Any]],
+    *,
+    kept_event_ids: set[str],
+    game: str,
+    profile: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    kept_assets: list[dict[str, Any]] = []
+    decisions: list[dict[str, Any]] = []
+    kept_event_entities = {
+        _strip_game_prefix(event_id, game=game)
+        for event_id in kept_event_ids
+    }
+    for row in raw_assets:
+        asset_id = str(row.get("asset_id", "")).strip()
+        display_name = str(row.get("display_name", "")).strip()
+        entity_id = str(row.get("entity_id", "")).strip()
+        entity_suffix = _strip_game_prefix(entity_id, game=game) if entity_id else ""
+        keep, basis, reason = _evaluate_wiki_row_curation(
+            display_name=display_name,
+            section_heading="",
+            profile=profile,
+        )
+        if not keep and entity_suffix and entity_suffix in kept_event_entities:
+            keep = True
+            basis = "heuristic_keep"
+            reason = "paired_kept_event"
+        if keep:
+            kept_assets.append(dict(row))
+        decisions.append(
+            {
+                "row_kind": "asset",
+                "row_id": asset_id,
+                "game_id": game,
+                "display_name": display_name,
+                "section_heading": "",
+                "status": "kept" if keep else "dropped",
+                "basis": basis,
+                "reason": reason,
+            }
+        )
+    return kept_assets, decisions
+
+
+def _evaluate_wiki_row_curation(
+    *,
+    display_name: str,
+    section_heading: str,
+    profile: str,
+) -> tuple[bool, str, str]:
+    normalized_name = clean_text(display_name)
+    normalized_heading = clean_text(section_heading)
+    name_casefold = normalized_name.casefold()
+    heading_casefold = normalized_heading.casefold()
+
+    if "contract" in heading_casefold:
+        return False, "heuristic_drop", "contract_text"
+    if "intel mission" in heading_casefold:
+        return False, "heuristic_drop", "intel_mission_text"
+    if any(token in name_casefold for token in ("calling card", "weapon blueprint", "blueprint")):
+        return False, "heuristic_drop", "weapon_blueprint" if "blueprint" in name_casefold else "calling_card"
+    if "logo" in name_casefold:
+        return False, "heuristic_drop", "logo_or_branding"
+    if any(token in name_casefold for token in ("verdansk", "caldera", "season ", "black ops cold war", "modern warfare", "vanguard")):
+        return False, "heuristic_drop", "map_or_season_label"
+    if profile == "multikill":
+        if _is_likely_multikill_medal_name(name_casefold):
+            return True, "heuristic_keep", "multikill_signal"
+        return False, "heuristic_drop", "outside_profile"
+    return True, "heuristic_keep", "default_keep"
+
+
+def _is_likely_multikill_medal_name(name_casefold: str) -> bool:
+    compact_tokens = (
+        "double kill",
+        "triple kill",
+        "quad kill",
+        "multi kill",
+        "multikill",
+        "collateral",
+        "fury kill",
+    )
+    if any(token in name_casefold for token in compact_tokens):
+        return True
+    return bool(re.fullmatch(r"(double|triple|quad|multi)\s+kill", name_casefold))
+
+
+def _build_wiki_curation_summary(
+    *,
+    game: str,
+    profile: str,
+    raw_assets: list[dict[str, Any]],
+    raw_events: list[dict[str, Any]],
+    kept_assets: list[dict[str, Any]],
+    kept_events: list[dict[str, Any]],
+    decisions: list[dict[str, Any]],
+) -> dict[str, Any]:
+    status_counts: dict[str, int] = {}
+    reason_counts: dict[str, int] = {}
+    for row in decisions:
+        status = str(row.get("status", "")).strip()
+        reason = str(row.get("reason", "")).strip()
+        if status:
+            status_counts[status] = status_counts.get(status, 0) + 1
+        if reason:
+            reason_counts[reason] = reason_counts.get(reason, 0) + 1
+    return {
+        "game_id": game,
+        "profile": profile,
+        "status": "curated",
+        "raw_asset_count": len(raw_assets),
+        "raw_event_count": len(raw_events),
+        "kept_asset_count": len(kept_assets),
+        "kept_event_count": len(kept_events),
+        "dropped_asset_count": len(raw_assets) - len(kept_assets),
+        "dropped_event_count": len(raw_events) - len(kept_events),
+        "decision_status_counts": status_counts,
+        "decision_reason_counts": reason_counts,
+    }
 
 
 def _strip_game_prefix(value: str, *, game: str) -> str:

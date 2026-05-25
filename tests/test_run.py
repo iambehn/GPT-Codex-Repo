@@ -27,6 +27,7 @@ from run import (
     run_adapt_game_schema,
     run_build_onboarding_draft,
     run_bridge_wiki_draft_to_onboarding,
+    run_curate_wiki_medal_draft,
     run_derive_game_detection_manifest,
     run_fill_derived_detection_rows,
     run_ingest_game_sources,
@@ -243,6 +244,12 @@ class RunTests(unittest.TestCase):
             result = run_bridge_wiki_draft_to_onboarding(Path(tempdir))
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_wiki_draft_bridge")
+
+    def test_run_curate_wiki_medal_draft_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_curate_wiki_medal_draft(Path(tempdir))
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_wiki_medal_curation")
 
     def test_run_report_unresolved_derived_rows_returns_invalid_status_for_missing_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -4320,6 +4327,32 @@ class RunTests(unittest.TestCase):
                     exit_code = run_main()
             self.assertEqual(exit_code, 0)
             mock_run.assert_called_once_with("/tmp/wiki", output_path="/tmp/onboarding")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_curate_wiki_medal_draft(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--curate-wiki-medal-draft",
+                "/tmp/wiki",
+                "--curation-profile",
+                "multikill",
+                "--output-path",
+                "/tmp/wiki_curated",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_curate_wiki_medal_draft",
+                return_value={"ok": True, "curated_root": "/tmp/wiki_curated"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/wiki", output_path="/tmp/wiki_curated", profile="multikill")
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
         finally:

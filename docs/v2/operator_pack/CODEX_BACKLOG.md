@@ -258,6 +258,16 @@ Current recommended hardening:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts remain non-exportable without fused selection
   - the combined bounded local-test regression keeps runtime calibration pass and local export in the same isolated workspace
+- keep the new wiki-to-onboarding bridge and pre-bridge curation surfaces green:
+  - raw wiki drafts can bridge into canonical onboarding shape without replacing published baseline coverage
+  - wiki `needs_manual_crop` statuses still block publish through onboarding readiness
+  - pre-bridge curation can safely reduce noisy source bundles before onboarding import
+  - the current `multikill` profile result is explicitly known to collapse to baseline-only on the real `call_of_duty` wiki bundle
+
+Current next pack-coverage target:
+
+- obtain or derive a better `call_of_duty` medal source packet that contains true HUD medal names and crops
+- then rerun pre-bridge curation and onboarding bridge on that narrower, higher-signal source set
 - current next target:
   - stop prioritizing more `call_of_duty` sample scouting alone
   - use the existing scout findings to target the published-pack coverage gap instead
