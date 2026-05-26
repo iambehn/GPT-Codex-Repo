@@ -19,6 +19,10 @@ Current repo truth:
   - `2 / 4` samples produced no runtime events
   - `2 / 4` samples produced equipment-only events
   - `0 / 4` samples produced medal-driven outcomes
+- a follow-up sample-family audit showed the current sample set is mixed:
+  - three samples look Warzone-family
+  - one sample looks multiplayer-style
+  - therefore any first medal source title should be treated as a strong candidate seed, not settled title truth
 
 This means the current bottleneck is upstream medal source quality, not pipeline routing or onboarding shape.
 
@@ -114,6 +118,7 @@ Prefer:
 - medal-specific pages
 - screenshot collections with medal-only focus
 - gameplay HUD captures
+- title-specific medal sources that can be cross-checked visually against the current samples
 
 Avoid:
 
@@ -135,6 +140,7 @@ Current repo truth:
 - pre-bridge curation works
 - current raw wiki source family is dominated by contracts, calling cards, blueprints, watches, logos, and map/season imagery
 - cross-clip measurement on four public samples produced either no events or equipment-only events, with zero medal-driven outcomes
+- current sample-family audit shows the clip set is mixed rather than title-pure, so treat any first medal title seed as a strong candidate rather than final title truth
 
 Required scope:
 - true gameplay HUD medals only

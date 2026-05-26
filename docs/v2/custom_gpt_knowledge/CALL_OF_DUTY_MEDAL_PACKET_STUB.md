@@ -49,6 +49,13 @@ Current measured behavior:
   - `0 / 4` samples produced medal-driven outcomes
   - `0 / 4` samples produced hook candidates
 
+Current sample-family truth:
+
+- the current local sample set is mixed rather than title-pure
+- three sampled clips look Warzone-family
+- one sampled clip looks multiplayer-style
+- therefore the first medal title seed should be treated as a strong candidate, not final title truth, until visual comparison is done
+
 Relevant repo evidence:
 
 - `docs/handoffs/2026-05-25-call-of-duty-wiki-source-audit.md`
@@ -115,6 +122,7 @@ payoff_or_victory:
 ### Source Quality Notes
 
 - 
+- note explicitly whether the proposed title-specific medal family is authoritative or only a strong candidate visual seed for the current samples
 
 ## 5. Recommendation
 
