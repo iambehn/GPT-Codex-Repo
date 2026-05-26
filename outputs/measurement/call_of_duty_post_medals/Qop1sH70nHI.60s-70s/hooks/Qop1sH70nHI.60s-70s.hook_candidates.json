@@ -1,0 +1,8 @@
+{
+  "schema_version": "hook_candidate_v1",
+  "game": "call_of_duty",
+  "source": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/public_gameplay_mining/call_of_duty_measurement_sources/Qop1sH70nHI.60s-70s.mp4",
+  "fused_sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/measurement/call_of_duty_post_medals/Qop1sH70nHI.60s-70s/fused/Qop1sH70nHI.60s-70s.fused_analysis.json",
+  "hook_candidate_count": 0,
+  "hook_candidates": []
+}

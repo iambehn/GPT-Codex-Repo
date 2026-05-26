@@ -1,0 +1,188 @@
+{
+  "OTIO_SCHEMA": "Timeline.1",
+  "name": "_PL_5qWwKtY.mp4",
+  "metadata": {
+    "schema_version": "highlight_selection_v1",
+    "game": "call_of_duty",
+    "selection_basis": "fused",
+    "proxy_sidecar_path": null,
+    "fused_sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/measurement/call_of_duty_post_medals/_PL_5qWwKtY/fused/_PL_5qWwKtY.fused_analysis.json"
+  },
+  "tracks": {
+    "OTIO_SCHEMA": "Stack.1",
+    "children": [
+      {
+        "OTIO_SCHEMA": "Track.1",
+        "name": "highlights",
+        "kind": "Video",
+        "children": [
+          {
+            "OTIO_SCHEMA": "Clip.2",
+            "name": "highlight-4",
+            "source_range": {
+              "OTIO_SCHEMA": "TimeRange.1",
+              "start_time": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 18.0,
+                "rate": 1
+              },
+              "duration": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 0.0,
+                "rate": 1
+              }
+            },
+            "metadata": {
+              "recommended_action": "highlight_candidate",
+              "selection_basis": "fused",
+              "candidate_id": "candidate-670d2b12918a08d3",
+              "fusion_id": "call_of_duty-fusion-e3c2e8bfdc86",
+              "event_id": "equipment_visibility_atomic-c1488ea25b2e",
+              "final_score": 0.9788,
+              "gate_status": "not_applicable",
+              "contributing_signal_ids": [
+                "call_of_duty.equipment_visibility.1904fd9743"
+              ],
+              "contributing_producer_families": [
+                "runtime"
+              ],
+              "event_type": "ability_seen"
+            }
+          },
+          {
+            "OTIO_SCHEMA": "Clip.2",
+            "name": "highlight-1",
+            "source_range": {
+              "OTIO_SCHEMA": "TimeRange.1",
+              "start_time": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 10.0,
+                "rate": 1
+              },
+              "duration": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 0.0,
+                "rate": 1
+              }
+            },
+            "metadata": {
+              "recommended_action": "highlight_candidate",
+              "selection_basis": "fused",
+              "candidate_id": "candidate-28f0ff7d7084ec3e",
+              "fusion_id": "call_of_duty-fusion-e3c2e8bfdc86",
+              "event_id": "equipment_visibility_atomic-1d5ec79731ab",
+              "final_score": 0.9759,
+              "gate_status": "not_applicable",
+              "contributing_signal_ids": [
+                "call_of_duty.equipment_visibility.7b1fc91de8"
+              ],
+              "contributing_producer_families": [
+                "runtime"
+              ],
+              "event_type": "ability_seen"
+            }
+          },
+          {
+            "OTIO_SCHEMA": "Clip.2",
+            "name": "highlight-3",
+            "source_range": {
+              "OTIO_SCHEMA": "TimeRange.1",
+              "start_time": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 18.0,
+                "rate": 1
+              },
+              "duration": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 0.0,
+                "rate": 1
+              }
+            },
+            "metadata": {
+              "recommended_action": "highlight_candidate",
+              "selection_basis": "fused",
+              "candidate_id": "candidate-75b0e8b0fc7867a7",
+              "fusion_id": "call_of_duty-fusion-e3c2e8bfdc86",
+              "event_id": "equipment_visibility_atomic-a3dcbb7e82d6",
+              "final_score": 0.9751,
+              "gate_status": "not_applicable",
+              "contributing_signal_ids": [
+                "call_of_duty.equipment_visibility.a26b6b0bec"
+              ],
+              "contributing_producer_families": [
+                "runtime"
+              ],
+              "event_type": "ability_seen"
+            }
+          },
+          {
+            "OTIO_SCHEMA": "Clip.2",
+            "name": "highlight-0",
+            "source_range": {
+              "OTIO_SCHEMA": "TimeRange.1",
+              "start_time": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 10.0,
+                "rate": 1
+              },
+              "duration": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 0.0,
+                "rate": 1
+              }
+            },
+            "metadata": {
+              "recommended_action": "highlight_candidate",
+              "selection_basis": "fused",
+              "candidate_id": "candidate-6eace57186f1e4c2",
+              "fusion_id": "call_of_duty-fusion-e3c2e8bfdc86",
+              "event_id": "equipment_visibility_atomic-11b6ddbd1013",
+              "final_score": 0.9739,
+              "gate_status": "not_applicable",
+              "contributing_signal_ids": [
+                "call_of_duty.equipment_visibility.63f104f968"
+              ],
+              "contributing_producer_families": [
+                "runtime"
+              ],
+              "event_type": "ability_seen"
+            }
+          },
+          {
+            "OTIO_SCHEMA": "Clip.2",
+            "name": "highlight-2",
+            "source_range": {
+              "OTIO_SCHEMA": "TimeRange.1",
+              "start_time": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 18.0,
+                "rate": 1
+              },
+              "duration": {
+                "OTIO_SCHEMA": "RationalTime.1",
+                "value": 0.0,
+                "rate": 1
+              }
+            },
+            "metadata": {
+              "recommended_action": "highlight_candidate",
+              "selection_basis": "fused",
+              "candidate_id": "candidate-e70eeb7349a9a97c",
+              "fusion_id": "call_of_duty-fusion-e3c2e8bfdc86",
+              "event_id": "equipment_visibility_atomic-461655974865",
+              "final_score": 0.9525,
+              "gate_status": "not_applicable",
+              "contributing_signal_ids": [
+                "call_of_duty.equipment_visibility.bc45bf3eea"
+              ],
+              "contributing_producer_families": [
+                "runtime"
+              ],
+              "event_type": "ability_seen"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

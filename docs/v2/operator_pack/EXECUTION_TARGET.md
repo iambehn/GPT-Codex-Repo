@@ -1,8 +1,8 @@
 # Execution Target
 
 Status: active-draft
-Version: 1.0
-Last updated: 2026-05-25
+Version: 1.1
+Last updated: 2026-05-27
 
 ## Objective
 
@@ -40,11 +40,14 @@ Current execution rule:
   - the registry hook-quality rollup currently lands at `editorial_viability_status: mechanics_only`
   - hook artifacts remain advisory in V1, so this does not block local export
   - later editorial scouting showed the active published `call_of_duty` pack currently has no promoted medal coverage, so further sample scouting alone is not the highest-leverage next step
-- treat the current `call_of_duty` medal-coverage blocker as a source-quality problem, not a bridge problem:
-  - the new pre-bridge wiki curation step works mechanically
-  - the first `multikill` curation profile keeps `0` rows from the real raw wiki bundle
-  - bridging that curated bundle yields a structurally valid baseline-only onboarding draft with `wiki_medal_candidates: 0`
-  - the next useful improvement depends on better upstream medal-source research rather than more onboarding-shape changes
+- treat the current `call_of_duty` medal slice as structurally promoted but not yet clip-validated:
+  - the filled medal packet was strong enough to produce a manual curated source bundle at `assets/games/call_of_duty/drafts/wiki_curated/20260526T233955Z`
+  - that bundle bridged into onboarding draft `assets/games/call_of_duty/drafts/onboarding/20260526T234014Z`
+  - all `15` promoted medal rows were accepted and published into the canonical `call_of_duty` pack
+  - the published pack now contains `15` medals, `15` compatibility events, `127` templates, `3` runtime rules, and `4` fusion rules
+  - post-promotion rerun on the same four-sample measurement set still produced `0 / 4` medal-driven outcomes and `0 / 4` hook candidates
+  - frame probes show that at least one multiplayer-style sample exposes text or reward-banner signals such as `UAV`, `DOUBLE KI`, and `7TH KO` more clearly than native medal badge icons
+  - the next useful improvement now depends on deciding whether the current clip family should be targeted through medal-icon detection, text or banner detection, or a medal-visible replacement sample set
 - allow Codex to choose the next local-only target without waiting for explicit user selection when the work stays inside the gameplay highlight pipeline mission
 - apply the standing user delegation:
   - choose and execute next local-only tasks without asking first
@@ -237,12 +240,12 @@ Current governance limit:
 - the local export artifact is backed by user-adopted fused-review decisions
 - the runtime calibration artifact is backed by user-adopted runtime-review decisions across its four reviewed runtime sidecars
 - the current exported candidate is still editorially weak by hook-layer standards
-- the current `call_of_duty` published pack has a known coverage ceiling for richer editorial candidates:
-  - published asset families are currently `99` `hero_portrait` plus `13` `equipment_icon`
-  - published `medals.yaml` is empty
-  - draft wiki assets already contain `250` `medal_icon` candidates that are not yet promoted
-  - the new bridge now proves those wiki assets can enter canonical onboarding shape, but the real bridged draft at `assets/games/call_of_duty/drafts/onboarding/20260524T225117Z` shows that the current source bundle is materially polluted by contracts, calling cards, blueprints, logos, and map or season branding
-  - the next blocker is source curation quality, not onboarding workflow shape
+- the current `call_of_duty` published pack has moved past the original medal-coverage gap, but not past the current clip-side signal gap:
+  - published asset families now include `99` `hero_portrait`, `13` `equipment_icon`, and `15` `medal_icon`
+  - the packet-derived medal slice has been published canonically
+  - the current blocker is no longer onboarding workflow shape or medal-source promotion mechanics
+  - the current blocker is that the measured clip set does not yet show clear medal-icon-driven runtime evidence even after promotion
+  - the next useful discriminator is whether the intended clip family actually contains native medal badges or mostly text or reward-banner surfaces
 - the standing user delegation authorizes longer autonomous local-only work blocks inside the existing pipeline mission
 - Codex may autonomously choose the next local-only target, including pipeline quality hardening, editorial or hook-layer improvement, new local test samples, additional local-only execution targets within the existing pipeline mission, docs clarification, and focused refactors that improve inspectability, validation, or workflow clarity
 - Codex must stop only when a hard-stop category is active:

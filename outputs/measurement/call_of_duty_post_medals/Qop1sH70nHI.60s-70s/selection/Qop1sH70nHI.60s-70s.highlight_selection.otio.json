@@ -1,0 +1,22 @@
+{
+  "OTIO_SCHEMA": "Timeline.1",
+  "name": "Qop1sH70nHI.60s-70s.mp4",
+  "metadata": {
+    "schema_version": "highlight_selection_v1",
+    "game": "call_of_duty",
+    "selection_basis": "fused",
+    "proxy_sidecar_path": null,
+    "fused_sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/measurement/call_of_duty_post_medals/Qop1sH70nHI.60s-70s/fused/Qop1sH70nHI.60s-70s.fused_analysis.json"
+  },
+  "tracks": {
+    "OTIO_SCHEMA": "Stack.1",
+    "children": [
+      {
+        "OTIO_SCHEMA": "Track.1",
+        "name": "highlights",
+        "kind": "Video",
+        "children": []
+      }
+    ]
+  }
+}

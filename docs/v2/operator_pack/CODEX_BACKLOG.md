@@ -1,8 +1,8 @@
 # Codex Backlog
 
 Status: active-draft
-Version: 1.0
-Last updated: 2026-05-25
+Version: 1.1
+Last updated: 2026-05-27
 
 This backlog is phase-gated. Codex should work in order when useful, but once a local-only phase target is complete it may choose the next local-only target without waiting for explicit user selection. The standing user delegation authorizes long-running local-only execution. Stop only when a real hard-stop category is active.
 
@@ -258,6 +258,40 @@ Current recommended hardening:
   - local export remains local-only until posting
   - runtime-only reviewed artifacts remain non-exportable without fused selection
   - the combined bounded local-test regression keeps runtime calibration pass and local export in the same isolated workspace
+ - keep the new `call_of_duty` medal promotion result explicit:
+   - packet-derived medal promotion now works mechanically end to end
+   - post-promotion measurement still shows no medal-driven outcomes on the current four-sample set
+   - do not treat more medal-icon promotion alone as the next highest-value step until clip-side signal visibility is clearer
+
+## Phase 8: Post-Promotion Signal Targeting
+
+Goal:
+
+- determine whether the next `call_of_duty` improvement should target native medal badges, text or banner signals, or a new sample set
+
+Status:
+
+- active
+- medal packet promotion is complete and published
+- current blocker is no longer medal-source onboarding mechanics
+- current blocker is signal-surface mismatch on the measured clip set
+
+Ready now:
+
+- document and preserve the post-promotion measurement result
+- inspect measured sample frames for visible medal, text, or reward-banner evidence
+- narrow the next researcher packet toward the actually visible signal surface
+
+Needs researcher packet:
+
+- a `call_of_duty` text or banner signal packet if the current sample family is the intended target
+- or a medal-visible sample packet if native badge-icon detection is still the intended first-class path
+
+Avoid:
+
+- promoting more medal icons blindly without confirming clip-side visibility
+- broadening back into noisy raw wiki bundles
+- downloading more random clips without deciding whether the goal is icon ROI validation or text-banner validation
 - keep the new wiki-to-onboarding bridge and pre-bridge curation surfaces green:
   - raw wiki drafts can bridge into canonical onboarding shape without replacing published baseline coverage
   - wiki `needs_manual_crop` statuses still block publish through onboarding readiness

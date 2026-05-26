@@ -12,3 +12,9 @@ event_mappings:
     target_id_source: template_field
     target_value_field: entity_id
     identity_competition: strongest_overlap
+  medal_icon:
+    signal_type: medal_visibility
+    event_type: medal_seen
+    target_field: event_row_id
+    target_id_source: template_field
+    target_value_field: event_row_id

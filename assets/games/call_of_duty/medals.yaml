@@ -1,1 +1,196 @@
-medals: []
+medals:
+  - medal_id: double_kill
+    display_name: Double Kill
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Double_Kill_Medal_BO3.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: triple_kill
+    display_name: Triple Kill
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Triple_Kill_Medal_BO3.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: fury_kill
+    display_name: Fury Kill
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Fury_Kill_Medal_BO3.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: frenzy_kill
+    display_name: Frenzy Kill
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Frenzy_Kill_Medal_BO3.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: mega_kill
+    display_name: Mega Kill
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Mega_Kill_Medal_BO3.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: ultra_kill
+    display_name: Ultra Kill
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Ultra_Kill_Medal_BO3.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: kill_chain
+    display_name: Kill Chain
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Kill_Chain_Medal_BO3.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: bloodthirsty
+    display_name: Bloodthirsty
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Bloodthirsty_Medal_BOCW.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: merciless
+    display_name: Merciless
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Merciless_Medal_BOCW.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: ruthless
+    display_name: Ruthless
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Ruthless_Medal_BOCW.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: relentless
+    display_name: Relentless
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Relentless_Medal_BOCW.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: brutal
+    display_name: Brutal
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Brutal_Medal_BOCW.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: nuclear
+    display_name: Nuclear
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Nuclear_Medal_BOCW.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: unstoppable
+    display_name: Unstoppable
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Unstoppable_Medal_BOCW.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null
+  - medal_id: victor
+    display_name: Victor
+    aliases: []
+    medal_class: unknown
+    category: unknown
+    category_source: null
+    source_page_url: "https://callofduty.fandom.com/wiki/File:Victor_Medal_BOCW.png"
+    source_role: events
+    canonical_display_name_source: source
+    canonical_id_source: source
+    canonical_identity_basis: source_initial
+    starter_seed_applied: false
+    starter_seed_source: null

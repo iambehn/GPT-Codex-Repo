@@ -1,0 +1,85 @@
+{
+  "schema_version": "highlight_selection_v1",
+  "game": "call_of_duty",
+  "source": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4",
+  "selection_basis": "fused",
+  "fused_sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/measurement/call_of_duty_post_medals/SVbTc2AZzYw.60s-70s/fused/SVbTc2AZzYw.60s-70s.fused_analysis.json",
+  "selected_highlight_count": 3,
+  "selected_highlights": [
+    {
+      "highlight_id": "highlight-2",
+      "candidate_id": "candidate-84a8693371b89744",
+      "fusion_id": "call_of_duty-fusion-acbabf51b88f",
+      "event_id": "equipment_visibility_atomic-e57f5f737fcb",
+      "start_seconds": 2.0,
+      "end_seconds": 2.0,
+      "final_score": 0.9737,
+      "recommended_action": "highlight_candidate",
+      "gate_status": "not_applicable",
+      "contributing_signal_ids": [
+        "call_of_duty.equipment_visibility.a7473b229e"
+      ],
+      "contributing_producer_families": [
+        "runtime"
+      ],
+      "event_type": "ability_seen",
+      "entity_id": null,
+      "metadata_summary": {
+        "equipment_id": "redeploy_extraction_token",
+        "matched_signal_types": [
+          "equipment_visibility"
+        ]
+      }
+    },
+    {
+      "highlight_id": "highlight-0",
+      "candidate_id": "candidate-17ebbd3d4df5915e",
+      "fusion_id": "call_of_duty-fusion-acbabf51b88f",
+      "event_id": "equipment_visibility_atomic-363ba2756b53",
+      "start_seconds": 0.0,
+      "end_seconds": 0.0,
+      "final_score": 0.9622,
+      "recommended_action": "highlight_candidate",
+      "gate_status": "not_applicable",
+      "contributing_signal_ids": [
+        "call_of_duty.equipment_visibility.78501c9786"
+      ],
+      "contributing_producer_families": [
+        "runtime"
+      ],
+      "event_type": "ability_seen",
+      "entity_id": null,
+      "metadata_summary": {
+        "equipment_id": "armor_satchel",
+        "matched_signal_types": [
+          "equipment_visibility"
+        ]
+      }
+    },
+    {
+      "highlight_id": "highlight-1",
+      "candidate_id": "candidate-acdb480c0bb311de",
+      "fusion_id": "call_of_duty-fusion-acbabf51b88f",
+      "event_id": "equipment_visibility_atomic-0f47af4bd183",
+      "start_seconds": 2.0,
+      "end_seconds": 2.0,
+      "final_score": 0.9275,
+      "recommended_action": "highlight_candidate",
+      "gate_status": "not_applicable",
+      "contributing_signal_ids": [
+        "call_of_duty.equipment_visibility.3a433ec982"
+      ],
+      "contributing_producer_families": [
+        "runtime"
+      ],
+      "event_type": "ability_seen",
+      "entity_id": null,
+      "metadata_summary": {
+        "equipment_id": "armor_plates",
+        "matched_signal_types": [
+          "equipment_visibility"
+        ]
+      }
+    }
+  ]
+}

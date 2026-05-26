@@ -1,8 +1,8 @@
 # Open Questions
 
 Status: active
-Version: 0.7
-Last updated: 2026-05-25
+Version: 0.8
+Last updated: 2026-05-27
 
 ## P0 Questions
 
@@ -41,21 +41,32 @@ Resolved in current execution doctrine:
 
 No active P1 questions are blocking the current bounded local test path.
 
-Active P1 question for the next `call_of_duty` pack-coverage cycle:
+Active P1 questions for the next `call_of_duty` pack-coverage cycle:
 
-- which upstream `call_of_duty` medal source packet actually contains true gameplay HUD medals worth promoting first
+- does the current canonical `call_of_duty` sample set actually contain native medal badge icons in the ROI expected by the promoted `medal_icon` pack
+- should the next `call_of_duty` coverage slice target text or banner signals rather than more medal icons for the current sample family
 
 Current execution truth:
 
 - the raw wiki bundle can now be bridged safely after pre-bridge curation
 - the first `multikill` curation profile keeps `0` rows from the real bundle
-- bridging that curated output yields a structurally valid onboarding draft with only the published hero and equipment baseline
-- the next blocker is source quality, not onboarding contract shape
-- the raw bundle also appears to lack common gameplay medal terms entirely, so the next researcher packet should target a different source family rather than a broader filter on the same input
-- cross-clip measurement on four real public samples now shows the same structural ceiling:
+- the filled medal packet was strong enough to create a manual curated medal bundle at `assets/games/call_of_duty/drafts/wiki_curated/20260526T233955Z`
+- that bundle bridged into onboarding draft `assets/games/call_of_duty/drafts/onboarding/20260526T234014Z`
+- all `15` medal rows were accepted through the standard derived-row review flow and published into the canonical pack
+- the published pack now contains:
+  - `medal_count: 15`
+  - `event_count: 15`
+  - `template_count: 127`
+  - `runtime_rule_count: 3`
+  - `fusion_rule_count: 4`
+- post-promotion cross-clip measurement on the same four real public samples still shows the same practical ceiling:
   - `2 / 4` samples produced no runtime events
   - `2 / 4` samples produced equipment-only events
-  - `0 / 4` samples produced medal-driven or hook-ready outcomes
+  - `0 / 4` samples produced medal-driven outcomes
+  - `0 / 4` samples produced hook candidates
+- frame probes now suggest the current sample set may expose text or banner signals more clearly than native medal badge icons:
+  - `_PL_5qWwKtY` visibly shows `UAV`, `DOUBLE KI`, and `7TH KO`
+  - the same sample does not show a clear medal badge icon in the probed frames
 
 Resolved in current execution doctrine:
 

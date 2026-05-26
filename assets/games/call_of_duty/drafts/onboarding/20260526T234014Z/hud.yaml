@@ -1,0 +1,25 @@
+rois:
+  hero_portrait:
+    anchor: top_left
+    x_pct: 0.02
+    y_pct: 0.02
+    w_pct: 0.12
+    h_pct: 0.12
+  ability_hud:
+    anchor: bottom_center
+    x_pct: 0.32
+    y_pct: 0.8
+    w_pct: 0.36
+    h_pct: 0.16
+  medal_area:
+    anchor: center
+    x_pct: 0.4
+    y_pct: 0.18
+    w_pct: 0.2
+    h_pct: 0.18
+  kill_feed:
+    anchor: top_right
+    x_pct: 0.74
+    y_pct: 0.05
+    w_pct: 0.22
+    h_pct: 0.22

@@ -1,0 +1,200 @@
+{
+  "schema_version": "fused_analysis_v1",
+  "fusion_id": "call_of_duty-fusion-01a4cbadc05c",
+  "ok": true,
+  "status": "no_fused_events",
+  "game": "call_of_duty",
+  "source": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/public_gameplay_mining/call_of_duty_measurement_sources/Qop1sH70nHI.60s-70s.mp4",
+  "sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/measurement/call_of_duty_post_medals/Qop1sH70nHI.60s-70s/fused/Qop1sH70nHI.60s-70s.fused_analysis.json",
+  "proxy": {
+    "schema_version": "proxy_scan_v1",
+    "scan_id": "call_of_duty-01a4cbadc05c",
+    "sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/proxy_scans/call_of_duty/qop1sh70nhi-60s-70s-41c271a5e3bb.proxy_scan.json",
+    "signal_count": 1,
+    "window_count": 1,
+    "source_results": {
+      "playlist_hls": {
+        "status": "skipped",
+        "signal_count": 0,
+        "reason": "source is not a playlist"
+      },
+      "audio_prepass": {
+        "status": "ok",
+        "signal_count": 1
+      },
+      "visual_prepass": {
+        "status": "ok",
+        "signal_count": 0
+      },
+      "hf_multimodal": {
+        "status": "skipped",
+        "signal_count": 0,
+        "reason": "disabled by config"
+      },
+      "chat_velocity": {
+        "status": "skipped",
+        "signal_count": 0,
+        "reason": "no chat log provided"
+      }
+    }
+  },
+  "runtime": {
+    "schema_version": "runtime_analysis_v1",
+    "analysis_id": "call_of_duty-runtime-01a4cbadc05c",
+    "sidecar_path": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/measurement/call_of_duty_post_medals/Qop1sH70nHI.60s-70s/runtime/Qop1sH70nHI.60s-70s.runtime_analysis.json",
+    "signal_count": 0,
+    "event_count": 0,
+    "matcher_status": "ok",
+    "events_status": "no_events"
+  },
+  "normalized_signals": [
+    {
+      "signal_id": "call_of_duty-01a4cbadc05c:proxy:0",
+      "producer_family": "proxy",
+      "producer": "audio_prepass",
+      "signal_type": "audio_spike",
+      "timestamp": 5.875,
+      "start_timestamp": 5.875,
+      "end_timestamp": 5.875,
+      "confidence": 0.72,
+      "strength": 1.0,
+      "source_ref": "/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/public_gameplay_mining/call_of_duty_measurement_sources/Qop1sH70nHI.60s-70s.mp4",
+      "source_family": "audio_prepass",
+      "evidence": {
+        "reason": "audio energy spike z=6.52 ratio=4.12",
+        "matching_windows": [
+          {
+            "window_index": 0,
+            "recommended_action": "inspect",
+            "proxy_score": 0.72
+          }
+        ]
+      }
+    }
+  ],
+  "fused_events": [],
+  "fusion_summary": {
+    "normalized_signal_count": 1,
+    "fused_event_count": 0,
+    "signals_by_producer_family": {
+      "proxy": 1
+    },
+    "signals_by_type": {
+      "audio_spike": 1
+    },
+    "events_by_type": {},
+    "gate_status_counts": {},
+    "synergy_applied_count": 0,
+    "synergy_rule_counts": {},
+    "average_synergy_multiplier": 1.0,
+    "contract_summary": {
+      "status": "canonical",
+      "active_legacy_modes": [],
+      "canonical_contracts": {
+        "detection_manifest": "game_detection_manifest_v1",
+        "cv_templates_present": true,
+        "runtime_cv_rules_present": true,
+        "fusion_rules_present": true,
+        "runtime_analysis": "runtime_analysis_v1",
+        "fused_analysis": "fused_analysis_v1",
+        "fusion_gold_manifest": "fusion_goldset_clip_v1"
+      },
+      "ontology_version": "runtime_signal_event_ontology_v1",
+      "ontology_status": "ok"
+    },
+    "rule_count": 4,
+    "rule_ids": [
+      "ability_or_equipment_plus_medal_combo",
+      "character_identity_atomic",
+      "equipment_visibility_atomic",
+      "medal_visibility_atomic"
+    ],
+    "rule_parameters_by_id": {
+      "ability_or_equipment_plus_medal_combo": {
+        "rule_id": "ability_or_equipment_plus_medal_combo",
+        "window_seconds": 0.5,
+        "min_signal_count": 2,
+        "confidence_method": "mean",
+        "required_signal_types": [
+          "medal_visibility"
+        ],
+        "anchor_signal_types": [],
+        "dependent_signal_types": [],
+        "lag_window_seconds": null,
+        "require_for_confirm": true,
+        "confirm_multiplier": 1.0,
+        "ambiguous_confidence_multiplier": 1.0,
+        "clip_start_lead_seconds": 0.0,
+        "clip_end_lag_seconds": 0.0,
+        "low_confidence_threshold": 0.5,
+        "low_confidence_penalty": 0.0,
+        "synergy_enabled": false,
+        "synergy_minimum_required_signals": 0
+      },
+      "character_identity_atomic": {
+        "rule_id": "character_identity_atomic",
+        "window_seconds": 0.5,
+        "min_signal_count": 1,
+        "confidence_method": "max",
+        "required_signal_types": [
+          "character_identity"
+        ],
+        "anchor_signal_types": [],
+        "dependent_signal_types": [],
+        "lag_window_seconds": null,
+        "require_for_confirm": true,
+        "confirm_multiplier": 1.0,
+        "ambiguous_confidence_multiplier": 1.0,
+        "clip_start_lead_seconds": 0.0,
+        "clip_end_lag_seconds": 0.0,
+        "low_confidence_threshold": 0.5,
+        "low_confidence_penalty": 0.0,
+        "synergy_enabled": false,
+        "synergy_minimum_required_signals": 0
+      },
+      "equipment_visibility_atomic": {
+        "rule_id": "equipment_visibility_atomic",
+        "window_seconds": 0.5,
+        "min_signal_count": 1,
+        "confidence_method": "max",
+        "required_signal_types": [
+          "equipment_visibility"
+        ],
+        "anchor_signal_types": [],
+        "dependent_signal_types": [],
+        "lag_window_seconds": null,
+        "require_for_confirm": true,
+        "confirm_multiplier": 1.0,
+        "ambiguous_confidence_multiplier": 1.0,
+        "clip_start_lead_seconds": 0.0,
+        "clip_end_lag_seconds": 0.0,
+        "low_confidence_threshold": 0.5,
+        "low_confidence_penalty": 0.0,
+        "synergy_enabled": false,
+        "synergy_minimum_required_signals": 0
+      },
+      "medal_visibility_atomic": {
+        "rule_id": "medal_visibility_atomic",
+        "window_seconds": 0.5,
+        "min_signal_count": 1,
+        "confidence_method": "max",
+        "required_signal_types": [
+          "medal_visibility"
+        ],
+        "anchor_signal_types": [],
+        "dependent_signal_types": [],
+        "lag_window_seconds": null,
+        "require_for_confirm": true,
+        "confirm_multiplier": 1.0,
+        "ambiguous_confidence_multiplier": 1.0,
+        "clip_start_lead_seconds": 0.0,
+        "clip_end_lag_seconds": 0.0,
+        "low_confidence_threshold": 0.5,
+        "low_confidence_penalty": 0.0,
+        "synergy_enabled": false,
+        "synergy_minimum_required_signals": 0
+      }
+    }
+  },
+  "rule_matches": []
+}

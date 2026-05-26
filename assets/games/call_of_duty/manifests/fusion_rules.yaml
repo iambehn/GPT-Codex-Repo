@@ -35,3 +35,14 @@ rules:
     confidence_method: max
     group_by:
       - equipment_id
+  - rule_id: medal_visibility_atomic
+    event_type: medal_seen
+    signal_types:
+      - medal_visibility
+    required_signal_types:
+      - medal_visibility
+    window_seconds: 0.5
+    min_signal_count: 1
+    confidence_method: max
+    group_by:
+      - event_row_id
