@@ -29,6 +29,13 @@ Current frame-level truth:
   - `DOUBLE KI`
   - `7TH KO`
 - the probed frames do not show a clear native medal badge icon in the expected ROI
+- local starter evidence now exists at:
+  - `outputs/measurement/call_of_duty_text_banner_probes/uav_11.0_full.png`
+  - `outputs/measurement/call_of_duty_text_banner_probes/uav_banner_11.0_crop.png`
+  - `outputs/measurement/call_of_duty_text_banner_probes/killcount_4th_11.0_crop.png`
+  - `outputs/measurement/call_of_duty_text_banner_probes/doubleki_20.5_full.png`
+  - `outputs/measurement/call_of_duty_text_banner_probes/doublekill_20.5_crop.png`
+  - `outputs/measurement/call_of_duty_text_banner_probes/killcount_7th_20.5_crop.png`
 
 This means the current blocker is no longer medal onboarding mechanics. It is clip-side signal mismatch.
 
@@ -66,6 +73,10 @@ Avoid broad research into:
 - post-production subtitles unrelated to game HUD
 - generic scoreboard text
 - killfeed names unless the signal is explicitly killfeed-driven
+
+Use this handoff as the local starting point before gathering outside references:
+
+- `docs/handoffs/2026-05-27-call-of-duty-text-banner-frame-probes.md`
 
 ## What The Packet Must Contain
 

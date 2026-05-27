@@ -52,36 +52,78 @@ Relevant repo evidence:
 
 - `docs/handoffs/2026-05-27-call-of-duty-medal-packet-promotion-results.md`
 - `docs/handoffs/2026-05-27-call-of-duty-sample-family-audit.md`
+- `docs/handoffs/2026-05-27-call-of-duty-text-banner-frame-probes.md`
 
 ## 3. Evidence Bundle
 
-Add one entry per source item.
+Starter local evidence:
 
 ```yaml
-- evidence_id:
-  type: screenshot | crop | source_page | clip_timestamp | table | note
-  path_or_url:
-  why_it_matters:
-  trust_level: authoritative | strong_candidate | exploratory
+- evidence_id: EV-COD-TEXT-001
+  type: clip_timestamp
+  path_or_url: outputs/public_gameplay_mining/call_of_duty_editorial_candidates/_PL_5qWwKtY.mp4 @ 11.0s
+  why_it_matters: Multiplayer-style frame with a clear UAV reward banner and visible 4TH KILL text.
+  trust_level: strong_candidate
+- evidence_id: EV-COD-TEXT-002
+  type: screenshot
+  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/uav_11.0_full.png
+  why_it_matters: Full frame showing live gameplay context for the UAV banner and kill-count text.
+  trust_level: strong_candidate
+- evidence_id: EV-COD-TEXT-003
+  type: crop
+  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/uav_banner_11.0_crop.png
+  why_it_matters: Tight crop of the UAV reward banner with readable supporting text.
+  trust_level: strong_candidate
+- evidence_id: EV-COD-TEXT-004
+  type: crop
+  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/killcount_4th_11.0_crop.png
+  why_it_matters: Tight crop of the 4TH KILL counter in the same frame as the UAV reward banner.
+  trust_level: strong_candidate
+- evidence_id: EV-COD-TEXT-005
+  type: clip_timestamp
+  path_or_url: outputs/public_gameplay_mining/call_of_duty_editorial_candidates/_PL_5qWwKtY.mp4 @ 20.5s
+  why_it_matters: Multiplayer-style frame with visible yellow multikill text and a red kill-count counter.
+  trust_level: strong_candidate
+- evidence_id: EV-COD-TEXT-006
+  type: screenshot
+  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/doubleki_20.5_full.png
+  why_it_matters: Full frame showing live gameplay context for the yellow multikill text and red kill-count counter.
+  trust_level: strong_candidate
+- evidence_id: EV-COD-TEXT-007
+  type: crop
+  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/doublekill_20.5_crop.png
+  why_it_matters: Tight crop of the visible DOUBLE KI multikill text; useful as a partial-read local seed.
+  trust_level: exploratory
+- evidence_id: EV-COD-TEXT-008
+  type: crop
+  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/killcount_7th_20.5_crop.png
+  why_it_matters: Tight crop of the visible 7TH KO kill-count text; useful as a partial-read local seed.
+  trust_level: exploratory
 ```
 
 ## 4. Structured Findings
 
 ### Target Signals To Keep
 
-- 
+- `UAV`
+- `4TH KILL`
+- `DOUBLE KILL` or visible truncated variant `DOUBLE KI`
+- `7TH KILL` or visible truncated variant `7TH KO`
 
 ### Category Mapping
 
 ```text
 multikill_text:
-- 
+- DOUBLE KILL
+- visible local seed: DOUBLE KI
 
 kill_count_text:
-- 
+- 4TH KILL
+- 7TH KILL
+- visible local seed: 7TH KO
 
 reward_banner:
-- 
+- UAV
 ```
 
 ### Explicit Exclusions
@@ -93,15 +135,20 @@ reward_banner:
 
 ### Ambiguous Candidates
 
-- 
+- `DOUBLE KI`: likely a truncated live `DOUBLE KILL` read, but not yet a clean full-string capture
+- `7TH KO`: likely a truncated or stylized kill-count read, but not yet a clean title-verified full-string capture
 
 ### Negative Examples / False Positives
 
-- 
+- `medal.tv` watermark and branding in the clip frame
+- post-production overlays that might mimic in-game text
+- generic scoreboard or location labels such as `PLAZA` and `TOWER`
 
 ### Source Quality Notes
 
-- 
+- current local evidence is strong enough to justify a text/banner packet
+- current local evidence is not strong enough to settle title-family truth or native-versus-overlay status on its own
+- outside packet work should focus on validating the visible signal family, not re-proving that the text exists in the local clip
 
 ## 5. Recommendation
 
@@ -109,7 +156,9 @@ State the exact action Codex should take next.
 
 Recommendation:
 
-- 
+- start with a narrow `reward_banner + kill_count_text` packet using `UAV`, `4TH KILL`, and `7TH KILL` as the cleanest visible local seeds
+- treat `DOUBLE KILL` as a secondary `multikill_text` candidate until a cleaner full-string frame is found
+- require the researcher to classify each signal as native UI, post-production overlay, or unresolved
 
 ## 6. Acceptance Target
 
@@ -121,14 +170,22 @@ The packet is good enough when Codex can use it to:
 
 Concrete expected outcome:
 
-- 
+- Codex can choose whether the next implementation slice should target `reward_banner`, `kill_count_text`, or `multikill_text`
+- the next packet contains at least one clip-backed candidate for each promoted family
+- the packet explicitly resolves or escalates the native-versus-overlay ambiguity
 
 ## 7. Open Uncertainties
 
 ```yaml
-- question:
-  blocks_implementation: true | false
-  recommended_next_step:
+- question: Are the visible `_PL_5qWwKtY` text surfaces native game UI or post-production overlays added by medal.tv?
+  blocks_implementation: true
+  recommended_next_step: Validate against outside gameplay references or a second local clip showing the same signal family without branded post-production.
+- question: Is `7TH KO` a truncated `7TH KILL`, a title-specific abbreviation, or a different overlay surface?
+  blocks_implementation: false
+  recommended_next_step: Find adjacent frames or outside references with a cleaner full-string read.
+- question: Does the current sample set contain enough clean `multikill_text` evidence to prioritize OCR or template work next?
+  blocks_implementation: false
+  recommended_next_step: Prefer `UAV` and `kill_count_text` as the first validation slice unless the researcher finds better clean multikill frames.
 ```
 
 ## Researcher Reminder
