@@ -1,5 +1,7 @@
 # Backlog Operating Model
 
+For the upstream researcher-input contract that feeds this backlog, use [RESEARCHER_INPUT_CONTRACT.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCHER_INPUT_CONTRACT.md).
+
 This document defines how to keep a healthy queue of work for Codex in this repo.
 
 The goal is not to estimate hours. The goal is to keep enough decision-ready tasks available that local work does not stall waiting for clarification.

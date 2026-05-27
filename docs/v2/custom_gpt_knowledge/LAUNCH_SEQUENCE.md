@@ -76,10 +76,10 @@ If it fails:
 
 Take one real messy note or browser finding set and ask GPT 1 to normalize it using the draft-note template.
 
-Recommended default prompt when the current blocker is `call_of_duty` medal coverage:
+Recommended default prompt when the current blocker is `call_of_duty` text or reward-banner visibility:
 
 ```text
-Fill out the call_of_duty medal packet stub using the medal packet brief and the supporting repo evidence.
+Fill out the call_of_duty text banner packet stub using the text banner packet brief and the supporting repo evidence.
 
 Return a complete research packet with:
 - decision target
@@ -90,8 +90,8 @@ Return a complete research packet with:
 - acceptance target
 - open uncertainties
 
-Focus only on true gameplay HUD medals.
-Exclude contracts, intel missions, calling cards, weapon blueprints, watches, logos, operator skins, and map/season/game-mode imagery.
+Focus only on true visible in-clip text or reward-banner signals.
+Include exact timestamps, crops, extraction-method candidates, false positives, and whether each signal is native UI or overlay.
 ```
 
 Fallback generic prompt:

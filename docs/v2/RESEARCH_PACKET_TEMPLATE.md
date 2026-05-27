@@ -1,5 +1,9 @@
 # Research Packet Template
 
+This file defines the exact packet envelope.
+
+For the broader operating contract between the researcher GPT and Codex, use [RESEARCHER_INPUT_CONTRACT.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCHER_INPUT_CONTRACT.md).
+
 Use this template when a researcher is gathering information for the gameplay highlight pipeline.
 
 The goal is not to produce a long note dump. The goal is to produce a packet that is decision-complete enough to drive the next repo change.

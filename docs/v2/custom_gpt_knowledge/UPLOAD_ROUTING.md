@@ -13,6 +13,7 @@ Best inputs:
 - repo/paper/tool comparisons
 - external docs and references
 - [PIPELINE_PROJECT_BRIEF.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/PIPELINE_PROJECT_BRIEF.md)
+- [RESEARCHER_INPUT_CONTRACT.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCHER_INPUT_CONTRACT.md)
 - [RESEARCH_DRAFT_NOTE_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/RESEARCH_DRAFT_NOTE_TEMPLATE.md)
 - [CALL_OF_DUTY_MEDAL_PACKET_BRIEF.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/CALL_OF_DUTY_MEDAL_PACKET_BRIEF.md) when the current blocker is `call_of_duty` medal coverage
 - [CALL_OF_DUTY_TEXT_BANNER_PACKET_BRIEF.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/CALL_OF_DUTY_TEXT_BANNER_PACKET_BRIEF.md) when the current blocker is text or reward-banner visibility on the measured `call_of_duty` clips
@@ -22,6 +23,11 @@ Do not overload it with:
 - every repo doc
 - raw runtime code dumps
 - stale planning files with overlapping authority
+
+Default expectation:
+
+- GPT 1 should return one decision-ready packet that supports one next repo action.
+- If a packet is broad, mixed-layer, or missing exclusions and acceptance targets, it is not ready for Codex.
 
 ### Pipeline Architecture and Troubleshooting
 
@@ -45,7 +51,7 @@ Do not rely on:
 
 ## Handoff Rule
 
-The research GPT should hand off structured draft notes only.
+The research GPT should hand off structured draft notes or structured research packets only.
 
 Required sections:
 
@@ -56,6 +62,11 @@ Required sections:
 - `recommended_implications`
 - `uncertainties`
 - `follow_up_questions`
+
+When the task is meant to directly drive Codex implementation, prefer the packet shape from:
+
+- [RESEARCHER_INPUT_CONTRACT.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCHER_INPUT_CONTRACT.md)
+- [RESEARCH_PACKET_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_PACKET_TEMPLATE.md)
 
 The architecture/troubleshooting GPT should:
 
