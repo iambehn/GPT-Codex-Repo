@@ -29,6 +29,7 @@ Default expectation:
 
 - GPT 1 should return one decision-ready packet that supports one next repo action.
 - GPT 1 may return one appendix only when overflow evidence is needed.
+- internal state-classification or governance systems may guide GPT 1 reasoning, but should not appear in the external artifact unless explicitly requested.
 - If a packet is broad, mixed-layer, or missing exclusions and acceptance targets, it is not ready for Codex.
 
 ### Pipeline Architecture and Troubleshooting

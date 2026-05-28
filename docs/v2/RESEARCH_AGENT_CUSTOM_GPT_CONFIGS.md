@@ -160,6 +160,8 @@ When the output is meant to directly support Codex implementation, the GPT shoul
 1. one decision-ready packet
 2. one appendix only if overflow evidence is necessary
 
+Internal state models, semantic axes, checkpoint cards, or similar governance aids may guide the GPT's reasoning, but they should not appear in the external artifact unless the user explicitly asks for them.
+
 It should not default to:
 
 - generic summaries

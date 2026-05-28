@@ -44,6 +44,7 @@ The appendix exists only for:
 - secondary examples
 
 It should never replace the primary packet handoff.
+Internal classification frameworks may guide researcher reasoning, but they should not leak into Codex-facing artifacts unless explicitly requested.
 
 ## Required Metadata
 
