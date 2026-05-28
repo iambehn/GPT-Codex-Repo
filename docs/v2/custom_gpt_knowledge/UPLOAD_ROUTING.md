@@ -15,6 +15,7 @@ Best inputs:
 - [PIPELINE_PROJECT_BRIEF.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/PIPELINE_PROJECT_BRIEF.md)
 - [RESEARCHER_INPUT_CONTRACT.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCHER_INPUT_CONTRACT.md)
 - [RESEARCH_DRAFT_NOTE_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/RESEARCH_DRAFT_NOTE_TEMPLATE.md)
+- [RESEARCH_PACKET_APPENDIX_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/RESEARCH_PACKET_APPENDIX_TEMPLATE.md)
 - [CALL_OF_DUTY_MEDAL_PACKET_BRIEF.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/CALL_OF_DUTY_MEDAL_PACKET_BRIEF.md) when the current blocker is `call_of_duty` medal coverage
 - [CALL_OF_DUTY_TEXT_BANNER_PACKET_BRIEF.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/CALL_OF_DUTY_TEXT_BANNER_PACKET_BRIEF.md) when the current blocker is text or reward-banner visibility on the measured `call_of_duty` clips
 
@@ -27,6 +28,7 @@ Do not overload it with:
 Default expectation:
 
 - GPT 1 should return one decision-ready packet that supports one next repo action.
+- GPT 1 may return one appendix only when overflow evidence is needed.
 - If a packet is broad, mixed-layer, or missing exclusions and acceptance targets, it is not ready for Codex.
 
 ### Pipeline Architecture and Troubleshooting
@@ -51,9 +53,19 @@ Do not rely on:
 
 ## Handoff Rule
 
-The research GPT should hand off structured draft notes or structured research packets only.
+The research GPT should hand off structured research packets by default when the work is meant to change the repo.
 
-Required sections:
+Required packet sections:
+
+- `Decision Target`
+- `Current Repo Truth`
+- `Evidence Bundle`
+- `Structured Findings`
+- `Recommendation`
+- `Acceptance Target`
+- `Open Uncertainties`
+
+Required draft-note sections are still:
 
 - `topic`
 - `source_set`
@@ -63,10 +75,14 @@ Required sections:
 - `uncertainties`
 - `follow_up_questions`
 
-When the task is meant to directly drive Codex implementation, prefer the packet shape from:
+When the task is meant to directly drive Codex implementation, use the packet shape from:
 
 - [RESEARCHER_INPUT_CONTRACT.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCHER_INPUT_CONTRACT.md)
 - [RESEARCH_PACKET_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_PACKET_TEMPLATE.md)
+
+Use the appendix template only for overflow support:
+
+- [RESEARCH_PACKET_APPENDIX_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/RESEARCH_PACKET_APPENDIX_TEMPLATE.md)
 
 The architecture/troubleshooting GPT should:
 

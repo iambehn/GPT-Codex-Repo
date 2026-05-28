@@ -18,8 +18,8 @@ End the session with:
 
 1. `Pipeline Research and Development` created and passing its smoke test
 2. `Pipeline Architecture and Troubleshooting` created and passing its smoke test
-3. one real reviewed draft note from GPT 1
-4. one real Codex-ready handoff from GPT 2 based on that reviewed note
+3. one real reviewed packet from GPT 1
+4. one real Codex-ready handoff from GPT 2 based on that reviewed artifact
 
 ## Session Order
 
@@ -33,10 +33,10 @@ Use this order:
 4. review and tighten GPT 1 if needed
 5. build GPT 2
 6. smoke test GPT 2
-7. feed the reviewed GPT 1 note into GPT 2
+7. feed the reviewed GPT 1 artifact into GPT 2
 8. review the first Codex-ready handoff
 
-This order matters because GPT 2 should be validated against a real reviewed draft note, not only against synthetic test text.
+This order matters because GPT 2 should be validated against a real reviewed artifact, not only against synthetic test text.
 
 ## Phase 1: Build GPT 1
 
@@ -66,6 +66,10 @@ Pass criteria:
 - it separates findings from implications
 - it stays draft-first
 
+Then confirm packet-first behavior for implementation-facing work with the packet check in:
+
+- [BUILDER_CHECKLIST.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/BUILDER_CHECKLIST.md)
+
 If it fails:
 
 1. tighten the GPT instructions
@@ -74,7 +78,12 @@ If it fails:
 
 ## Phase 3: First Real GPT 1 Task
 
-Take one real messy note or browser finding set and ask GPT 1 to normalize it using the draft-note template.
+Take one real messy note or browser finding set and ask GPT 1 to produce the correct artifact type.
+
+Default rule:
+
+- if the task is meant to drive the next repo action, ask for one decision-ready packet
+- if the task is exploratory only, use the draft-note template
 
 Recommended default prompt when the current blocker is `call_of_duty` text or reward-banner visibility:
 
@@ -120,18 +129,19 @@ Checklist:
 - did it invent repo-local truth?
 - are uncertainties explicit?
 - if this is the medal task, did it actually fill the packet stub instead of returning a generic summary?
+- if this is implementation-facing, did it return a packet instead of a broad memo?
 
-If the note fails that review, tighten GPT 1 before continuing.
+If the artifact fails that review, tighten GPT 1 before continuing.
 
 ## Phase 4: Build GPT 2
 
-Only build GPT 2 after GPT 1 can produce one acceptable reviewed draft note.
+Only build GPT 2 after GPT 1 can produce one acceptable reviewed artifact.
 
 Follow:
 
 - the GPT 2 section in [BUILDER_CHECKLIST.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/BUILDER_CHECKLIST.md)
 
-Use the reviewed GPT 1 note as part of GPT 2’s first upload set if practical.
+Use the reviewed GPT 1 artifact as part of GPT 2’s first upload set if practical.
 
 Required outcome:
 
@@ -151,7 +161,7 @@ Pass criteria:
 
 - it produces an implementation-oriented response
 - it references repo-context verification
-- it does not merely restate the draft note
+- it does not merely restate the reviewed artifact
 
 If it fails:
 
@@ -164,8 +174,8 @@ If it fails:
 Run this actual sequence:
 
 1. use GPT 1 on one real research problem
-2. review the resulting draft note
-3. pass that reviewed note to GPT 2
+2. review the resulting packet or note
+3. pass that reviewed artifact to GPT 2
 4. ask GPT 2 for one Codex-ready handoff
 5. compare that handoff against:
    - [CODEX_HANDOFF_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/CODEX_HANDOFF_TEMPLATE.md)
@@ -173,7 +183,7 @@ Run this actual sequence:
 Recommended GPT 2 prompt:
 
 ```text
-Use this reviewed draft note and produce one Codex-ready handoff.
+Use this reviewed artifact and produce one Codex-ready handoff.
 
 Follow the handoff shape:
 - title
@@ -192,8 +202,8 @@ Treat the note as useful input, not canonical truth. Verify implications against
 
 The launch is successful when:
 
-- GPT 1 produces a usable draft note from real messy input
-- GPT 2 turns that note into a usable Codex-ready handoff
+- GPT 1 produces the correct artifact type from real messy input
+- GPT 2 turns that artifact into a usable Codex-ready handoff
 - neither GPT drifts into acting like the full pipeline backend
 - the boundary between external research truth and repo-local truth remains explicit
 

@@ -52,6 +52,9 @@ The research agent exists to support high-level design and investigation work fo
 - governance, drift, and lifecycle analysis
 - implementation planning grounded in repo reality
 
+Its default external interface to Codex should be a decision-ready packet, not a broad research summary.
+Optional appendices may carry overflow evidence, but the packet should remain the primary handoff artifact.
+
 Its posture should be:
 
 - skeptical

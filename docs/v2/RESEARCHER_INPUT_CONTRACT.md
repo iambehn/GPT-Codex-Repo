@@ -23,6 +23,28 @@ Every researcher packet should:
 
 The important constraint is not volume. It is decision completeness.
 
+## External Output Contract
+
+The researcher should produce exactly two external artifact types:
+
+1. `decision_ready_packet`
+2. `appendix`
+
+Default rule:
+
+- if the work is meant to change the repo, the final artifact should be a packet
+- not a summary
+- not a memo
+- not a long narrative report
+
+The appendix exists only for:
+
+- overflow evidence
+- long source excerpts
+- secondary examples
+
+It should never replace the primary packet handoff.
+
 ## Required Metadata
 
 Every packet should include:
@@ -52,6 +74,16 @@ Every packet should fill these sections:
 7. `Open Uncertainties`
 
 If any of those sections are missing, the packet is usually not implementation-ready.
+
+## Mandatory Recommendation Standard
+
+Every packet recommendation should answer:
+
+- what Codex should do next
+- what Codex should not do next
+- how the repo will know it worked
+
+A recommendation without an acceptance target is incomplete.
 
 ## Information That Maximizes Codex Autonomy
 
@@ -195,6 +227,62 @@ Must include:
 - title-family caveats
 - recommendation on whether to keep or replace the sample family
 
+## Readiness Rubric
+
+Before handing a packet to Codex, score it against this checklist.
+
+A packet is `ready` only if all seven pass:
+
+1. `Decision Completeness`
+- one exact decision
+- no broad topic framing
+
+2. `Repo Truth Quality`
+- current repo state is described with paths and the current blocker
+- no invented repo truth
+
+3. `Evidence Sufficiency`
+- enough concrete evidence exists to support implementation
+- not just source links or prose
+
+4. `Recommendation Clarity`
+- the next repo action is obvious
+- no “maybe do something with this”
+
+5. `Acceptance Target Quality`
+- success is observable in repo behavior, artifacts, tests, or outputs
+
+6. `Uncertainty Hygiene`
+- blocking vs non-blocking uncertainty is explicit
+- uncertainties do not leak into the recommendation
+
+7. `Layer Purity`
+- the packet stays in one main layer or one explicit boundary
+
+Default pass or fail rule:
+
+- if any category materially fails, mark the packet `draft`, not `ready`
+
+## Packet Routing Matrix
+
+Choose the packet type by blocker type:
+
+- source ambiguity or asset promotion need:
+  - `Asset Promotion Packet`
+- wrong or unknown sample family:
+  - `Sample Validation Packet`
+- visible signal exists but extraction path is unclear:
+  - `Runtime Signal Packet`
+- signal exists but combined event meaning is unclear:
+  - `Fusion Packet`
+- signal works mechanically but output quality is unclear:
+  - `Editorial Packet`
+
+Default routing rule:
+
+- choose the earliest layer that still contains the real blocker
+- do not jump to fusion or editorial while runtime ambiguity is unresolved
+
 ## What The Researcher Should Not Hand To Codex
 
 These inputs slow implementation down:
@@ -207,6 +295,16 @@ These inputs slow implementation down:
 - recommendations with no acceptance target
 - mixed packets that combine onboarding, runtime, fusion, and editorial in one blob
 - “possible ideas” lists with no ranking or next action
+
+Do not build yet:
+
+- packet lifecycle governance
+- packet lineage tracking as a first-class system
+- stale-packet governance
+- semantic-governance integration for packets
+- large packet analytics systems
+
+Those may be valid later, but they are not current throughput bottlenecks.
 
 ## Queue Shape That Keeps Codex Autonomous
 
@@ -225,6 +323,24 @@ A healthy steady-state queue for Codex is:
 - each `needs_research_packet` item naming the exact packet required
 
 When `ready_now` reaches zero, progress stalls. When packet needs are vague, progress becomes noisy.
+
+Do not maintain a large abstract research backlog for Codex. Maintain a small, live, execution-facing queue.
+
+## Stop Conditions And Escalation
+
+Stop research when:
+
+- the next repo action is obvious
+- evidence is sufficient for implementation
+- acceptance criteria are measurable
+- remaining uncertainty does not block execution
+
+Escalate to another packet when:
+
+- the current sample family looks wrong
+- the extraction method is still unclear
+- the signal seems mechanically valid but not semantically meaningful
+- the output may be mechanically valid but editorially weak
 
 ## Current Highest-Value Packets
 
@@ -325,6 +441,25 @@ Use this loop:
 6. keep one fallback packet in reserve
 
 That is the simplest way to keep Codex autonomous for the longest time without guesswork.
+
+## Self-Test Before Handoff
+
+Before handing a packet to Codex, ask:
+
+1. `Could Codex act immediately?`
+- if not, the packet is not ready
+
+2. `Could Codex validate immediately?`
+- if not, the acceptance target is weak
+
+3. `Would Codex ask a clarification question first?`
+- if yes, the packet still contains interpretation burden
+
+4. `Is there one exact next repo action?`
+- if not, the packet is too broad
+
+5. `Are exclusions and false positives explicit?`
+- if not, the packet will create downstream ambiguity
 
 ## Current Defaults
 
