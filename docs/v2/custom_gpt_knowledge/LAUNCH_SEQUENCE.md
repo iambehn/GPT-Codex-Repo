@@ -84,6 +84,7 @@ Default rule:
 
 - if the task is meant to drive the next repo action, ask for one decision-ready packet
 - if the task is exploratory only, use the draft-note template
+- if the task is implementation-facing but still needs boundary stabilization, use the implementation-ticket template before asking for a direct Codex handoff
 
 Recommended default prompt when the current blocker is `call_of_duty` text or reward-banner visibility:
 
@@ -130,6 +131,7 @@ Checklist:
 - are uncertainties explicit?
 - if this is the medal task, did it actually fill the packet stub instead of returning a generic summary?
 - if this is implementation-facing, did it return a packet instead of a broad memo?
+- if the work is implementation-facing but not yet a direct handoff, did it return an implementation ticket instead of skipping straight to a Codex handoff?
 
 If the artifact fails that review, tighten GPT 1 before continuing.
 

@@ -131,3 +131,20 @@ verification:
 
 notes:
 - this closes the gap where `implementation_ticket` was allowed by the routing contract but had no knowledge-pack template
+
+## 2026-05-30T11:42Z
+
+target:
+- custom GPT launch-flow artifact consistency
+
+status:
+- completed
+
+result:
+- aligned the launch runbook with the implementation-ticket route from interaction routing v1
+
+verification:
+- pending
+
+notes:
+- this keeps GPT 1 artifact selection aligned across the contract, the upload pack, and the launch workflow
