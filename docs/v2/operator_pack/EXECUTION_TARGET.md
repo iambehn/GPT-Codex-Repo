@@ -59,6 +59,7 @@ Current execution rule:
   - report real blockers
   - report material contract decisions
   - report branch or commit boundaries worth surfacing
+  - record routine in-progress execution notes in `docs/v2/operator_pack/CODEX_RUN_LOG.md`
   - do not stop for routine next-step permission
 
 ## Phase 0 Inventory Snapshot
