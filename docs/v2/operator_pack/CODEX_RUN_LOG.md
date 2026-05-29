@@ -148,3 +148,20 @@ verification:
 
 notes:
 - this keeps GPT 1 artifact selection aligned across the contract, the upload pack, and the launch workflow
+
+## 2026-05-30T11:51Z
+
+target:
+- project-brief artifact-contract alignment
+
+status:
+- completed
+
+result:
+- updated the compact project brief so it reflects the full routed artifact set, including implementation tickets as an intermediate output
+
+verification:
+- pending
+
+notes:
+- this keeps the highest-level upload brief aligned with the lower-level researcher contract and knowledge-pack templates

@@ -69,13 +69,15 @@ They are the control-room layer:
 - `Pipeline Research and Development`
   - gathers external information
   - restructures messy findings
-  - produces decision-ready packets for repo-changing work
+  - produces decision-ready packets for repo-changing work by default
   - may produce exploratory draft notes when a packet is not yet warranted
+  - may produce implementation tickets when the work is implementation-facing but not yet ready for a direct Codex handoff
 
 - `Pipeline Architecture and Troubleshooting`
   - uses repo truth plus reviewed draft notes
   - designs modules and workflow boundaries
   - interprets failures and produces executable handoffs
+  - may receive implementation tickets as an intermediate artifact before a direct Codex handoff
 
 ## What The GPTs Should Not Pretend To Do
 
@@ -101,6 +103,7 @@ They should prefer:
 - explicit schemas
 - reusable notes
 - one-packet-one-decision when the work is meant to drive implementation
+- implementation tickets when boundary stabilization is still needed before a direct handoff
 - implementation-ready handoffs
 
 They should avoid:
