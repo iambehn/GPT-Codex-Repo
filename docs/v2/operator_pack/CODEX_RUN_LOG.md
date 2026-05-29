@@ -182,3 +182,21 @@ verification:
 
 notes:
 - this reduces naming drift between file labels and the interaction-routing contract
+
+## 2026-05-30T12:08Z
+
+target:
+- GPT 2 instruction-file durability
+
+status:
+- completed
+
+result:
+- promoted the referenced architecture/troubleshooting instruction file into version control
+- aligned it with the current artifact flow so it can accept implementation tickets as intermediate inputs before final handoff generation
+
+verification:
+- pending
+
+notes:
+- this fixes a real durability gap because the builder checklist already pointed at this file path
