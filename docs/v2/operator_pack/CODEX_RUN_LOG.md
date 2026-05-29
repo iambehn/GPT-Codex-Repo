@@ -113,3 +113,21 @@ verification:
 
 notes:
 - this keeps the new reporting surface discoverable from the canonical doc-routing layer
+
+## 2026-05-30T11:34Z
+
+target:
+- custom GPT knowledge-pack artifact coverage
+
+status:
+- completed
+
+result:
+- added an upload-ready implementation-ticket template
+- aligned knowledge-pack docs and builder checklist with the routed artifact set from interaction routing v1
+
+verification:
+- pending
+
+notes:
+- this closes the gap where `implementation_ticket` was allowed by the routing contract but had no knowledge-pack template
