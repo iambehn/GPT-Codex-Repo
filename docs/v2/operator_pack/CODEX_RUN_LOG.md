@@ -165,3 +165,20 @@ verification:
 
 notes:
 - this keeps the highest-level upload brief aligned with the lower-level researcher contract and knowledge-pack templates
+
+## 2026-05-30T11:58Z
+
+target:
+- artifact-template naming consistency
+
+status:
+- completed
+
+result:
+- clarified which routed artifact names correspond to the upload-ready note, appendix, and Codex-handoff templates
+
+verification:
+- pending
+
+notes:
+- this reduces naming drift between file labels and the interaction-routing contract

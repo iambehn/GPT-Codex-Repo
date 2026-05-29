@@ -2,6 +2,8 @@
 
 Use this template when `Pipeline Research and Development` hands off work to `Pipeline Architecture and Troubleshooting`.
 
+This file is the upload-ready template for the routed exploratory artifact `research_note`.
+
 This is a draft-first format. It is useful input, not canonical repo truth by itself.
 Do not use this as the primary handoff when the work is meant to directly drive the next repo action. In that case, use the packet contract from:
 

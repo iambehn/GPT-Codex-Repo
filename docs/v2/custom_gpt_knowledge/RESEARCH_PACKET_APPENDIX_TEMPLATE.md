@@ -2,6 +2,8 @@
 
 Use this template only as a supporting appendix to a decision-ready packet.
 
+This file is the upload-ready template for the routed support artifact `packet_appendix`.
+
 Do not use it as the primary handoff when the work is meant to change the repo.
 
 ## Allowed Uses
