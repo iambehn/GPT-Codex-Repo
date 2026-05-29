@@ -11,7 +11,7 @@ Use this doc when you need to answer:
 3. what inputs keep Codex autonomous for longer stretches
 4. what packet queue shape keeps the local backlog healthy
 
-The exact packet envelope still lives in [RESEARCH_PACKET_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_PACKET_TEMPLATE.md). The queue rules still live in [BACKLOG_OPERATING_MODEL.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/BACKLOG_OPERATING_MODEL.md). This file governs the higher-level input contract.
+The exact packet envelope still lives in [RESEARCH_PACKET_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_PACKET_TEMPLATE.md). The queue rules still live in [BACKLOG_OPERATING_MODEL.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/BACKLOG_OPERATING_MODEL.md). The internal researcher-side routing doctrine lives in [INTERACTION_ROUTING.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/INTERACTION_ROUTING.md). This file governs the higher-level input contract.
 
 ## Core Rule
 
@@ -22,6 +22,26 @@ Every researcher packet should:
 - include enough evidence to implement, validate, and know when to stop
 
 The important constraint is not volume. It is decision completeness.
+
+## Internal Routing Boundary
+
+The researcher may use internal routing logic to improve the next interaction move before producing an external artifact.
+
+That internal routing layer may classify:
+
+- `intent_mode`
+- `abstraction_level`
+- `uncertainty_state`
+- `execution_readiness`
+- `weakest_blocking_axis`
+
+It may also use:
+
+- target-artifact selection
+- checkpoint cards
+- weakest-blocker question selection
+
+Those routing aids are internal. They should improve output quality without becoming mandatory external packet fields in this slice.
 
 ## External Output Contract
 
@@ -171,6 +191,22 @@ Required information:
 This is what allows the pipeline to move beyond “the system exported something” into “the output is actually good.”
 
 ## Packet Types The Researcher Should Produce
+
+The routed artifact set that should exist before packet production includes:
+
+1. `research_note`
+2. `decision_ready_packet`
+3. `implementation_ticket`
+4. `codex_handoff_brief`
+
+Default rule:
+
+- use `research_note` when the work is still exploratory or execution readiness is low
+- use `decision_ready_packet` when the next repo action is known and Codex execution is the goal
+- use `implementation_ticket` when implementation-facing task framing is needed but the work is not yet a direct Codex handoff
+- use `codex_handoff_brief` when the implementation boundary is already stable and repo-context translation is the next step
+
+Do not route to `implementation_ticket` or `codex_handoff_brief` until execution readiness is high enough.
 
 ### 1. Asset Promotion Packet
 
@@ -415,6 +451,8 @@ After runtime and fusion proof, the next packet should cover:
 Use instructions like:
 
 - produce a packet that supports one next repo action
+- classify state before asking another question
+- identify the target artifact before choosing the next interaction move
 - do not give generic background
 - give exact names, timestamps, URLs, and exclusions
 - state what Codex should do next
@@ -430,6 +468,13 @@ Good packet behavior:
 - mark uncertainties explicitly
 - prefer 10 strong examples over 100 weak ones
 
+Good routing behavior before packet production:
+
+- choose the smallest interaction mode that can change the next artifact decision
+- map the weakest blocker to the next question type
+- use recognition tasks or constrained choices when articulation support is low
+- decompose before tasking
+
 ## Default Operating Loop
 
 Use this loop:
@@ -442,6 +487,14 @@ Use this loop:
 6. keep one fallback packet in reserve
 
 That is the simplest way to keep Codex autonomous for the longest time without guesswork.
+
+Before packet production, the researcher should use this internal loop:
+
+1. classify state
+2. identify the target artifact
+3. identify the weakest blocking axis
+4. choose the smallest interaction mode that can resolve it
+5. stop when decision sufficiency is reached
 
 ## Self-Test Before Handoff
 
@@ -461,6 +514,9 @@ Before handing a packet to Codex, ask:
 
 5. `Are exclusions and false positives explicit?`
 - if not, the packet will create downstream ambiguity
+
+6. `Did I route too early into tasking?`
+- if critical objective, constraint, or boundary information is unresolved, do not produce `implementation_ticket` or `codex_handoff_brief`
 
 ## Current Defaults
 

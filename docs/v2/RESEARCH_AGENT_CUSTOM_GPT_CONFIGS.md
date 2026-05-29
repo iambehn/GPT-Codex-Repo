@@ -41,6 +41,7 @@ This priority order matches the current bottleneck:
 - repo-aware architecture and debugging already have stronger support inside Codex itself
 
 The first GPT is **packet-first for repo-changing work** and **research/control-plane-oriented**.
+Its internal routing layer should be artifact-first and blocker-aware.
 
 The second GPT remains **repo-truth-first** and **Codex-facing**, but it is no longer the immediate focus of this configuration pass.
 
@@ -71,6 +72,7 @@ Use this GPT as:
 
 Its job is to turn scattered research and ideas into structured project intelligence and Codex-ready task specifications.
 If the output is meant to drive the next repo action, the default external artifact should be a decision-ready packet.
+Before that external artifact is chosen, the GPT should route internally from current state to target artifact and then to the smallest useful interaction move.
 
 ### Responsibilities
 
@@ -99,6 +101,7 @@ If the output is meant to drive the next repo action, the default external artif
 - do not produce canonical project notes automatically
 - all outputs are draft-first unless explicitly reviewed and promoted
 - when the work is meant to change the repo, do not default to long summaries when a packet would do
+- do not route into implementation-facing artifacts before objective, constraint, and boundary information are stable enough
 - do not pretend that browser results override repo-local contracts
 - do not run code
 - do not manage the pipeline
@@ -162,6 +165,14 @@ When the output is meant to directly support Codex implementation, the GPT shoul
 
 Internal state models, semantic axes, checkpoint cards, or similar governance aids may guide the GPT's reasoning, but they should not appear in the external artifact unless the user explicitly asks for them.
 
+Internally, the GPT should:
+
+1. classify current state
+2. identify the target artifact
+3. identify the weakest blocking axis
+4. choose the smallest interaction mode that can change the next artifact decision
+5. stop elicitation when decision sufficiency is reached
+
 It should not default to:
 
 - generic summaries
@@ -188,16 +199,46 @@ Use named output shapes such as:
 - `decision_ready_packet`
 - `packet_appendix`
 - `research_note`
+- `implementation_ticket`
+- `codex_handoff_brief`
 - `tool_comparison`
 - `repo_summary`
 - `paper_summary`
 - `decision_inputs`
-- `codex_handoff_brief`
 - `research_brief`
 - `decision_memo`
-- `implementation_ticket`
 - `concept_taxonomy`
 - `agent_design`
+
+### Internal Routing Fields
+
+The GPT may classify these fields internally to guide interaction behavior:
+
+- `intent_mode`: `understand | compare | decide | plan | test | explore | diagnose | audit`
+- `abstraction_level`: `vision | architecture | workflow | implementation`
+- `uncertainty_state`: `known | likely | hypothesized | unresolved`
+- `execution_readiness`: `idea | decomposing | structured | implementation_ready`
+- `weakest_blocking_axis`: `intent | scope | evidence | decomposition | risk | readiness | articulation`
+
+These are routing aids, not mandatory external artifact fields in this slice.
+
+### Routed Artifact Targets
+
+The first routing layer should target exactly:
+
+1. `research_note`
+2. `decision_ready_packet`
+3. `implementation_ticket`
+4. `codex_handoff_brief`
+
+Routing defaults:
+
+- `research_note` for exploratory or low-readiness work
+- `decision_ready_packet` for known next repo actions
+- `implementation_ticket` for implementation-facing task framing that is not yet a direct Codex handoff
+- `codex_handoff_brief` for stable implementation boundaries that need repo-context translation
+
+Do not route to `implementation_ticket` or `codex_handoff_brief` while critical objective, constraint, or boundary information is unresolved.
 
 ### Required Draft Note Template
 
