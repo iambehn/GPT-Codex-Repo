@@ -95,3 +95,21 @@ verification:
 
 notes:
 - this slice is documentation-only and is intended to reduce routine chat interruptions, not replace blocker or milestone reporting
+
+## 2026-05-30T11:18Z
+
+target:
+- operator-pack run-log consistency follow-up
+
+status:
+- completed
+
+result:
+- linked the run log from the V2 index operator-pack category
+- added the run log to the operator-pack backlog deliverables list
+
+verification:
+- pending
+
+notes:
+- this keeps the new reporting surface discoverable from the canonical doc-routing layer
