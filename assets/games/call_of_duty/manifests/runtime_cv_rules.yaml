@@ -18,3 +18,6 @@ event_mappings:
     target_field: event_row_id
     target_id_source: template_field
     target_value_field: event_row_id
+  reward_banner:
+    signal_type: hud_visibility
+    event_type: high_action_sequence

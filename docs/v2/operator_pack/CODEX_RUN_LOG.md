@@ -237,3 +237,27 @@ verification:
 
 notes:
 - this is the narrowest safe handoff before making a behavior-changing published-pack edit
+
+## 2026-05-30T22:34Z
+
+target:
+- call_of_duty reward-banner runtime pilot
+
+status:
+- completed
+
+result:
+- added a published-pack `reward_banner` pilot for `call_of_duty`
+- validated the pack and repo health after the new runtime family was added
+- proved the new family emits `hud_visibility -> high_action_sequence` on a focused local `UAV` banner probe
+- confirmed the broader 8s-24s probe is no longer equipment-only
+
+verification:
+- `python3 run.py --validate-game-pack call_of_duty`
+- `python3 run.py --run-repo-quality-health`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/measurement/call_of_duty_reward_banner_pilot/_PL_5qWwKtY_9p5s_12p5s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_reward_banner_pilot/_PL_5qWwKtY_9p5s_12p5s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_reward_banner_pilot/debug_3s --sample-fps 2`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/measurement/call_of_duty_reward_banner_pilot/_PL_5qWwKtY_8s_24s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_reward_banner_pilot/_PL_5qWwKtY_8s_24s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_reward_banner_pilot/debug_8s_24s --sample-fps 2`
+
+notes:
+- initial threshold `0.94` was too strict for sampled runtime frames; lowering it to `0.90` unlocked the pilot
+- the broader probe still appears to include at least one likely false positive, so the next slice should be reward-banner quality control rather than family expansion

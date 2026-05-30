@@ -17,6 +17,12 @@ rois:
     y_pct: 0.18
     w_pct: 0.2
     h_pct: 0.18
+  reward_banner:
+    anchor: center
+    x_pct: 0.28
+    y_pct: 0.16
+    w_pct: 0.44
+    h_pct: 0.2
   kill_feed:
     anchor: top_right
     x_pct: 0.74
