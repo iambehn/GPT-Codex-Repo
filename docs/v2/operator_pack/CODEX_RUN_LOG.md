@@ -261,3 +261,26 @@ verification:
 notes:
 - initial threshold `0.94` was too strict for sampled runtime frames; lowering it to `0.90` unlocked the pilot
 - the broader probe still appears to include at least one likely false positive, so the next slice should be reward-banner quality control rather than family expansion
+
+## 2026-05-31T04:12Z
+
+target:
+- call_of_duty reward-banner false-positive control
+
+status:
+- completed
+
+result:
+- identified the broader-probe false positive as a structurally similar `MORTAR STRIKE` banner
+- added a title-focused mask for the `UAV` reward-banner template
+- tightened the final threshold to `0.91`
+- confirmed the masked broader probe keeps the true `UAV` event and drops the late false-positive hit
+
+verification:
+- `python3 run.py --validate-game-pack call_of_duty`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/measurement/call_of_duty_reward_banner_pilot/_PL_5qWwKtY_9p5s_12p5s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_reward_banner_pilot/_PL_5qWwKtY_9p5s_12p5s.masked.runtime.json --debug-output-dir outputs/measurement/call_of_duty_reward_banner_pilot/debug_3s_masked --sample-fps 2`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/measurement/call_of_duty_reward_banner_pilot/_PL_5qWwKtY_8s_24s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_reward_banner_pilot/_PL_5qWwKtY_8s_24s.masked.runtime.json --debug-output-dir outputs/measurement/call_of_duty_reward_banner_pilot/debug_8s_24s_masked --sample-fps 2`
+
+notes:
+- the title-band mask is the smallest change that separates `UAV` from the visually similar `MORTAR STRIKE` banner in the current sample
+- the next slice should validate this masked pilot across the broader measurement set rather than adding more banner families immediately

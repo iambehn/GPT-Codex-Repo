@@ -19,10 +19,12 @@ Published-pack additions:
 - Published asset, candidate, and binding rows in `assets_manifest.json`
 - Ontology event seed: `uav_reward_banner`
 
-Threshold tuning:
+Threshold and mask tuning:
 
 - initial threshold `0.94` failed on sampled runtime frames
-- lowered threshold to `0.90`
+- lowering it to `0.90` unlocked the pilot but allowed a likely false positive
+- added a title-focused mask at `templates/reward_banners/uav.mask.png`
+- tightened the final threshold to `0.91`
 
 ## Validation
 
@@ -81,21 +83,22 @@ Why the first attempt failed:
 - the miss came from runtime sampled-frame scores landing around `0.87` to `0.905`
 - the original `0.94` threshold was too strict for the sampled runtime path
 
-Notable residual issue:
+False-positive control result:
 
-- one broader-probe reward-banner event landed at approximately `14.5s`
-- this is likely a false positive or over-broad banner similarity case
-- the next slice should tighten false-positive control before expanding the family
+- the unmasked broader probe produced a likely false positive at approximately `14.5s`
+- direct crop comparison showed the false hit was a structurally similar `MORTAR STRIKE` banner
+- a title-focused mask separated the true `UAV` title band from the false-positive banner
+- after adding the mask and tightening the threshold to `0.91`, the broader probe kept one clean `UAV` reward-banner event and dropped the `14.5s` false hit
 
 ## Recommended Next Step
 
 Do not add more `reward_banner` templates yet.
 
-Take one narrow quality-control slice first:
+The next useful slice is validation breadth, not family breadth:
 
-1. inspect the `14.5s` false-positive frame
-2. decide whether to tighten threshold, ROI width, or introduce a mask
-3. rerun the same two local probes
+1. rerun the masked pilot against the original four-sample `call_of_duty` measurement set
+2. confirm whether any additional reward-banner false positives appear outside `_PL_5qWwKtY`
+3. only then decide whether to add another banner template or OCR-backed text family
 
 ## Artifacts
 
@@ -105,3 +108,5 @@ Take one narrow quality-control slice first:
 - debug bundles:
   - `outputs/measurement/call_of_duty_reward_banner_pilot/debug_3s/`
   - `outputs/measurement/call_of_duty_reward_banner_pilot/debug_8s_24s/`
+  - `outputs/measurement/call_of_duty_reward_banner_pilot/debug_3s_masked/`
+  - `outputs/measurement/call_of_duty_reward_banner_pilot/debug_8s_24s_masked/`
