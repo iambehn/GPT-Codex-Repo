@@ -200,3 +200,40 @@ verification:
 
 notes:
 - this fixes a real durability gap because the builder checklist already pointed at this file path
+
+## 2026-05-30T12:23Z
+
+target:
+- text-banner bootstrap packet from local evidence plus web search
+
+status:
+- completed
+
+result:
+- wrote a bootstrap runtime packet that recommends `reward_banner` as the first implementation family
+- recorded the limit that current web search is weaker than the local clip probes for this question
+
+verification:
+- pending
+
+notes:
+- this is intended to unblock the next implementation slice without pretending that the web search produced a strong external packet
+
+## 2026-05-31T00:58Z
+
+target:
+- reward-banner first-slice implementation ticket
+
+status:
+- completed
+
+result:
+- converted the bootstrap text-banner packet into a direct implementation ticket
+- fixed the first semantic recommendation as `reward_banner -> hud_visibility -> high_action_sequence`
+- identified the minimum published-pack surfaces that would change in the first pilot
+
+verification:
+- pending
+
+notes:
+- this is the narrowest safe handoff before making a behavior-changing published-pack edit
