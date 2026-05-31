@@ -310,3 +310,32 @@ verification:
 notes:
 - the masked `UAV` banner family is now proven clean across the current measurement set, but only one sample family actually contains the target surface
 - the next slice should validate the same reward-banner family on at least one more compatible clip before adding more templates or moving to OCR
+
+## 2026-06-01T15:43Z
+
+target:
+- call_of_duty reward-banner candidate clip scout
+
+status:
+- completed
+
+result:
+- downloaded two additional public `Black Ops Cold War` high-streak gameplay sources
+- converted each source into a 120-second local probe
+- scanned the published masked `UAV` reward-banner template directly across the published `reward_banner` ROI at one frame per second
+- neither probe produced a score near the published `0.91` threshold
+
+verification:
+- `yt-dlp -f "bv*[height<=480]+ba/b[height<=480]" -o "outputs/public_gameplay_mining/call_of_duty_reward_banner_candidates/%(id)s.%(ext)s" "https://www.youtube.com/watch?v=ZrWvsu5wjuM"`
+- `yt-dlp -f "bv*[height<=480]+ba/b[height<=480]" -o "outputs/public_gameplay_mining/call_of_duty_reward_banner_candidates/%(id)s.%(ext)s" "https://www.youtube.com/watch?v=qryfXU7w2IQ"`
+- `ffmpeg -y -ss 0 -t 120 -i outputs/public_gameplay_mining/call_of_duty_reward_banner_candidates/ZrWvsu5wjuM.webm -c:v libx264 -preset veryfast -crf 23 -c:a aac outputs/measurement/call_of_duty_reward_banner_candidate_probes/ZrWvsu5wjuM.0s-120s.mp4`
+- `ffmpeg -y -ss 0 -t 120 -i outputs/public_gameplay_mining/call_of_duty_reward_banner_candidates/qryfXU7w2IQ.webm -c:v libx264 -preset veryfast -crf 23 -c:a aac outputs/measurement/call_of_duty_reward_banner_candidate_probes/qryfXU7w2IQ.0s-120s.mp4`
+- direct masked frame scan using:
+  - `assets/games/call_of_duty/templates/reward_banners/uav.png`
+  - `assets/games/call_of_duty/templates/reward_banners/uav.mask.png`
+  - ROI `reward_banner` from `assets/games/call_of_duty/hud.yaml`
+
+notes:
+- best observed scores were approximately `0.848` on both probes, well below the current published threshold
+- the current `reward_banner` family still behaves like a narrow pilot rather than a reusable cross-clip family
+- the next decision should focus on source-family verification or pivoting to a different text family, not adding another banner asset
