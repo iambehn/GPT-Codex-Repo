@@ -366,3 +366,29 @@ notes:
 - the `medal.tv` watermark is real in `_PL_5qWwKtY`, but it does not invalidate the native-looking upper-middle `UAV` streak panel
 - the lower-center count text is the weaker source family and should not be the next pack-expansion target
 - the next acquisition pass should target the same title/HUD family as `_PL_5qWwKtY`, not generic `Black Ops Cold War` streak videos
+
+## 2026-06-01T16:44Z
+
+target:
+- call_of_duty MWIII Vista reward-banner same-family scout
+
+status:
+- completed
+
+result:
+- downloaded two `Modern Warfare III` `Vista` no-commentary multiplayer sources
+- converted both into 120-second local probes
+- rescanned the published masked `UAV` reward-banner template directly over the published `reward_banner` ROI
+- both same-family probes still topped out around `0.85`, below the current `0.91` threshold
+
+verification:
+- `yt-dlp -f "bv*[height<=480]+ba/b[height<=480]" -o "outputs/public_gameplay_mining/call_of_duty_reward_banner_mwiii_candidates/%(id)s.%(ext)s" "https://www.youtube.com/watch?v=CXh9c8AUoZw"`
+- `yt-dlp -f "bv*[height<=480]+ba/b[height<=480]" -o "outputs/public_gameplay_mining/call_of_duty_reward_banner_mwiii_candidates/%(id)s.%(ext)s" "https://www.youtube.com/watch?v=gcAGS3R2t2o"`
+- `ffmpeg -y -ss 0 -t 120 -i outputs/public_gameplay_mining/call_of_duty_reward_banner_mwiii_candidates/CXh9c8AUoZw.webm -c:v libx264 -preset veryfast -crf 23 -c:a aac outputs/measurement/call_of_duty_reward_banner_mwiii_probes/CXh9c8AUoZw.0s-120s.mp4`
+- `ffmpeg -y -ss 0 -t 120 -i outputs/public_gameplay_mining/call_of_duty_reward_banner_mwiii_candidates/gcAGS3R2t2o.webm -c:v libx264 -preset veryfast -crf 23 -c:a aac outputs/measurement/call_of_duty_reward_banner_mwiii_probes/gcAGS3R2t2o.0s-120s.mp4`
+- direct masked frame scan using the published `UAV` template, mask, and `reward_banner` ROI
+
+notes:
+- this result is stronger than the earlier `Black Ops Cold War` scout because it uses the same inferred title/HUD family as `_PL_5qWwKtY`
+- the current `reward_banner` asset should now be treated as a narrow validated pilot, not an expanding family
+- the next useful branch is either template-specificity diagnosis or a pivot to a more repeatable native surface
