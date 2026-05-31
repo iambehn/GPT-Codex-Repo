@@ -284,3 +284,29 @@ verification:
 notes:
 - the title-band mask is the smallest change that separates `UAV` from the visually similar `MORTAR STRIKE` banner in the current sample
 - the next slice should validate this masked pilot across the broader measurement set rather than adding more banner families immediately
+
+## 2026-06-01T15:06Z
+
+target:
+- call_of_duty reward-banner cross-sample validation
+
+status:
+- completed
+
+result:
+- reran the masked published-pack `reward_banner` pilot across the original four-sample `call_of_duty` measurement set
+- confirmed the new family stays clean off-target:
+  - `SVbTc2AZzYw.60s-70s` remained equipment-only
+  - `v-SzAArdAfY.60s-70s` remained no-events
+  - `Qop1sH70nHI.60s-70s` remained no-events
+- confirmed `_PL_5qWwKtY` still emits one `reward_banner -> high_action_sequence` event at `11.0s`
+
+verification:
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_reward_banner_cross_sample_masked/SVbTc2AZzYw.60s-70s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_reward_banner_cross_sample_masked/debug_SVbTc2AZzYw.60s-70s --sample-fps 1 --limit-frames 30`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/public_gameplay_mining/call_of_duty_editorial_candidates/_PL_5qWwKtY.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_reward_banner_cross_sample_masked/_PL_5qWwKtY.runtime.json --debug-output-dir outputs/measurement/call_of_duty_reward_banner_cross_sample_masked/debug__PL_5qWwKtY --sample-fps 1 --limit-frames 30`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/public_gameplay_mining/call_of_duty_measurement_sources/v-SzAArdAfY.60s-70s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_reward_banner_cross_sample_masked/v-SzAArdAfY.60s-70s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_reward_banner_cross_sample_masked/debug_v-SzAArdAfY.60s-70s --sample-fps 1 --limit-frames 30`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/public_gameplay_mining/call_of_duty_measurement_sources/Qop1sH70nHI.60s-70s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_reward_banner_cross_sample_masked/Qop1sH70nHI.60s-70s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_reward_banner_cross_sample_masked/debug_Qop1sH70nHI.60s-70s --sample-fps 1 --limit-frames 30`
+
+notes:
+- the masked `UAV` banner family is now proven clean across the current measurement set, but only one sample family actually contains the target surface
+- the next slice should validate the same reward-banner family on at least one more compatible clip before adding more templates or moving to OCR
