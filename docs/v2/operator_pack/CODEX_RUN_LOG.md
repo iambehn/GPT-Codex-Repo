@@ -339,3 +339,30 @@ notes:
 - best observed scores were approximately `0.848` on both probes, well below the current published threshold
 - the current `reward_banner` family still behaves like a narrow pilot rather than a reusable cross-clip family
 - the next decision should focus on source-family verification or pivoting to a different text family, not adding another banner asset
+
+## 2026-06-01T16:09Z
+
+target:
+- call_of_duty native-vs-overlay surface check
+
+status:
+- completed
+
+result:
+- extracted `_PL_5qWwKtY` source frames and ROI crops around `11.0s` and `20.5s`
+- compared them against the two additional `Black Ops Cold War` candidate probes
+- concluded the center-top `UAV` banner in `_PL_5qWwKtY` still looks like native game HUD
+- concluded the lower-center count text (`4TH KILL`, `7TH KO`) behaves like an editorial or overlay family and should not currently be treated as pack truth
+- reclassified the earlier candidate-probe failure as a HUD-family mismatch rather than proof that the `_PL_5qWwKtY` banner is non-native
+
+verification:
+- `ffmpeg -y -ss 11.0 -i outputs/public_gameplay_mining/call_of_duty_editorial_candidates/_PL_5qWwKtY.mp4 -frames:v 1 outputs/inspection/call_of_duty_overlay_check/pl_11_full.png`
+- `ffmpeg -y -ss 20.5 -i outputs/public_gameplay_mining/call_of_duty_editorial_candidates/_PL_5qWwKtY.mp4 -frames:v 1 outputs/inspection/call_of_duty_overlay_check/pl_20p5_full.png`
+- `ffmpeg -y -ss 99.1 -i outputs/measurement/call_of_duty_reward_banner_candidate_probes/ZrWvsu5wjuM.0s-120s.mp4 -frames:v 1 outputs/inspection/call_of_duty_overlay_check/zr_99p1_full.png`
+- `ffmpeg -y -ss 104.1 -i outputs/measurement/call_of_duty_reward_banner_candidate_probes/qryfXU7w2IQ.0s-120s.mp4 -frames:v 1 outputs/inspection/call_of_duty_overlay_check/qr_104p1_full.png`
+- ROI crop extraction from the published `reward_banner` and `ability_hud` regions
+
+notes:
+- the `medal.tv` watermark is real in `_PL_5qWwKtY`, but it does not invalidate the native-looking upper-middle `UAV` streak panel
+- the lower-center count text is the weaker source family and should not be the next pack-expansion target
+- the next acquisition pass should target the same title/HUD family as `_PL_5qWwKtY`, not generic `Black Ops Cold War` streak videos
