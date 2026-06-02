@@ -392,3 +392,27 @@ notes:
 - this result is stronger than the earlier `Black Ops Cold War` scout because it uses the same inferred title/HUD family as `_PL_5qWwKtY`
 - the current `reward_banner` asset should now be treated as a narrow validated pilot, not an expanding family
 - the next useful branch is either template-specificity diagnosis or a pivot to a more repeatable native surface
+
+## 2026-06-03T03:08Z
+
+target:
+- call_of_duty reward-banner template-specificity diagnosis
+
+status:
+- completed
+
+result:
+- extracted the best-scoring same-family non-hit frames from the `MWIII` `Vista` scout
+- compared their reward-region crops directly against the true `_PL_5qWwKtY` `UAV` banner crop
+- confirmed the non-hit frames do not visibly contain a structured upper-middle `UAV` panel at all
+- concluded the current failure mode is missing target surface / timing visibility, not recoverable small alignment or scale drift
+
+verification:
+- `ffmpeg -y -ss 60.06 -i outputs/measurement/call_of_duty_reward_banner_mwiii_probes/CXh9c8AUoZw.0s-120s.mp4 -frames:v 1 outputs/inspection/call_of_duty_reward_banner_specificity/cx_60p06_full.png`
+- `ffmpeg -y -ss 94.09 -i outputs/measurement/call_of_duty_reward_banner_mwiii_probes/gcAGS3R2t2o.0s-120s.mp4 -frames:v 1 outputs/inspection/call_of_duty_reward_banner_specificity/gc_94p09_full.png`
+- reward-region crop extraction using the published `reward_banner` ROI from `assets/games/call_of_duty/hud.yaml`
+
+notes:
+- the best-scoring same-family non-hits are structurally unrelated scene crops, not weak `UAV` banner variants
+- the next slice should not be threshold or scale tuning for this family
+- the strongest next move is to cap `reward_banner` as a narrow pilot and pivot to a more repeatable native surface
