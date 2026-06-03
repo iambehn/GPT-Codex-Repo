@@ -61,6 +61,8 @@ def _runtime_sidecar(path: Path, *, game: str, source: Path) -> None:
             "source": str(source.resolve()),
             "matcher": {
                 "frame_count": 42,
+                "frame_dimensions": {"width": 64, "height": 36},
+                "frame_coordinate_space": "normalized_pack_frame",
                 "confirmed_detections": [
                     {
                         "asset_id": "marvel_rivals.punisher.hero_portrait",
@@ -606,6 +608,29 @@ class ClipRegistryTests(unittest.TestCase):
                 connection.close()
             self.assertEqual(runtime_count, 1)
             self.assertEqual(fused_count, 1)
+
+    def test_refresh_persists_runtime_matcher_frame_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            runtime_path = root / "runtime" / "alpha.runtime_analysis.json"
+            _runtime_sidecar(runtime_path, game="marvel_rivals", source=media)
+            registry_path = root / "registry.sqlite"
+
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            connection = sqlite3.connect(str(registry_path))
+            try:
+                row = connection.execute(
+                    "SELECT frame_dimensions_json, frame_coordinate_space FROM runtime_analyses WHERE analysis_id = ?",
+                    ("runtime-001",),
+                ).fetchone()
+            finally:
+                connection.close()
+            self.assertEqual(row[0], json.dumps({"height": 36, "width": 64}, sort_keys=True))
+            self.assertEqual(row[1], "normalized_pack_frame")
 
     def test_refresh_dedupes_duplicate_analysis_ids_across_multiple_sidecars(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

@@ -256,6 +256,25 @@ verification:
 notes:
 - this keeps replay/debug consumers aligned with the matcher/runtime sidecar contract instead of forcing operators back to raw JSON
 
+## 2026-06-04T08:05Z
+
+target:
+- clip registry runtime matcher metadata parity
+
+status:
+- completed
+
+result:
+- persisted `matcher.frame_dimensions` and `matcher.frame_coordinate_space` into the `runtime_analyses` mirror
+- added registry regression coverage for the normalized-frame metadata fields
+
+verification:
+- `.venv/bin/python -m unittest tests.test_clip_registry`
+- pending repo health gate
+
+notes:
+- this keeps the durable registry summary aligned with `runtime_analysis_v1` without turning registry rows into a full raw-detection mirror
+
 ## 2026-05-31T00:58Z
 
 target:

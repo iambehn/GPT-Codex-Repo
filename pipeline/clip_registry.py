@@ -1030,6 +1030,8 @@ def _ingest_runtime_sidecar(path: Path, rows: dict[str, Any], *, game: str | Non
             "sidecar_path": resolved_path,
             "status": payload.get("status"),
             "frame_count": matcher.get("frame_count"),
+            "frame_dimensions_json": json.dumps(matcher.get("frame_dimensions", {}), sort_keys=True),
+            "frame_coordinate_space": matcher.get("frame_coordinate_space"),
             "confirmed_detection_count": len(list(matcher.get("confirmed_detections", []))),
             "event_count": events.get("event_count", len(list(events.get("rows", [])))),
             "runtime_review_status": review_status,
@@ -3391,6 +3393,8 @@ def _create_schema(connection: sqlite3.Connection) -> None:
             sidecar_path TEXT,
             status TEXT,
             frame_count INTEGER,
+            frame_dimensions_json TEXT,
+            frame_coordinate_space TEXT,
             confirmed_detection_count INTEGER,
             event_count INTEGER,
             runtime_review_status TEXT,
@@ -4348,6 +4352,14 @@ def _create_schema(connection: sqlite3.Connection) -> None:
             ("approved_reject_hook", "INTEGER"),
             ("reject_to_synthetic", "INTEGER"),
             ("natural_to_synthetic", "INTEGER"),
+        ),
+    )
+    _ensure_columns(
+        connection,
+        "runtime_analyses",
+        (
+            ("frame_dimensions_json", "TEXT"),
+            ("frame_coordinate_space", "TEXT"),
         ),
     )
 
@@ -6450,6 +6462,8 @@ _RUNTIME_ANALYSIS_COLUMNS = (
     "sidecar_path",
     "status",
     "frame_count",
+    "frame_dimensions_json",
+    "frame_coordinate_space",
     "confirmed_detection_count",
     "event_count",
     "runtime_review_status",
