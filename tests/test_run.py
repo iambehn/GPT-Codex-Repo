@@ -5063,6 +5063,77 @@ class RunTests(unittest.TestCase):
             self.assertEqual(result["item_count"], 1)
             self.assertEqual(Path(result["items"][0]["source"]).name, "alpha.mp4")
 
+    def test_prepare_proxy_review_skips_malformed_explicit_batch_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            gpt_repo = root / "gpt"
+            media_root = root / "media"
+            _write_gpt_review_repo(gpt_repo)
+
+            media_root.mkdir(parents=True, exist_ok=True)
+            alpha_source = media_root / "alpha.mp4"
+            bravo_source = media_root / "bravo.mp4"
+            alpha_source.write_bytes(b"alpha")
+            bravo_source.write_bytes(b"bravo")
+
+            alpha_sidecar = root / "alpha.proxy_scan.json"
+            bravo_sidecar = root / "bravo.proxy_scan.json"
+            _write_proxy_sidecar(
+                alpha_sidecar,
+                game="marvel_rivals",
+                source=alpha_source,
+                score=0.42,
+                action="download_candidate",
+                sources=["accepted_clip"],
+                source_families=["accepted_ingest"],
+            )
+            _write_proxy_sidecar(
+                bravo_sidecar,
+                game="marvel_rivals",
+                source=bravo_source,
+                score=0.39,
+                action="download_candidate",
+                sources=["accepted_clip"],
+                source_families=["accepted_ingest"],
+            )
+
+            batch_report = root / "batch.json"
+            batch_report.write_text(
+                json.dumps(
+                    {
+                        "results": [
+                            {
+                                "sidecar_path": str(alpha_sidecar),
+                                "source": str(alpha_source),
+                                "top_recommended_action": "download_candidate",
+                                "top_proxy_score": 0.42,
+                                "sources": ["accepted_clip"],
+                                "source_families": ["accepted_ingest"],
+                            },
+                            {
+                                "sidecar_path": str(bravo_sidecar),
+                                "source": str(bravo_source),
+                                "top_recommended_action": "download_candidate",
+                                "top_proxy_score": 0.39,
+                                "sources": {"not": "a-list"},
+                                "source_families": ["accepted_ingest"],
+                            },
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.object(proxy_review_bridge, "REPO_ROOT", root):
+                result = run_prepare_proxy_review(
+                    "marvel_rivals",
+                    batch_report=batch_report,
+                    gpt_repo=gpt_repo,
+                )
+
+            self.assertEqual(result["item_count"], 1)
+            self.assertEqual(Path(result["items"][0]["source"]).name, "alpha.mp4")
+
     def test_apply_proxy_review_updates_sidecars_and_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)

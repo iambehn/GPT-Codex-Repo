@@ -1063,3 +1063,28 @@ verification:
 notes:
 - this is the proxy-side equivalent of the runtime and fused review bridge hardening work
 - no proxy scoring behavior changed
+
+## 2026-06-04T08:02Z
+
+target:
+- proxy review explicit batch-row hardening
+
+status:
+- completed
+
+result:
+- tightened `proxy_review_bridge` explicit batch-report intake so malformed explicit rows no longer fall back to raw sidecar ingestion
+- specifically guarded:
+  - missing or non-file `sidecar_path` on explicit rows
+  - non-list explicit `sources`
+  - non-list explicit `source_families`
+  - partially explicit rows now stay on the explicit path and fail closed if malformed
+- added regression coverage proving malformed explicit batch rows are excluded from proxy review selection
+
+verification:
+- `.venv/bin/python -m unittest tests.test_run.RunTests.test_prepare_proxy_review_can_use_explicit_batch_report_candidates_without_windows tests.test_run.RunTests.test_prepare_proxy_review_skips_malformed_proxy_sidecars tests.test_run.RunTests.test_prepare_proxy_review_skips_malformed_explicit_batch_rows tests.test_run.RunTests.test_prepare_proxy_review_can_select_from_batch_report`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this closes the remaining permissive fallback in proxy review candidate intake
+- no proxy scoring behavior changed

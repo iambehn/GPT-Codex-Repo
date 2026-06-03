@@ -210,6 +210,8 @@ def _select_candidates(
 
 
 def _candidate_from_report_row(row: dict[str, Any], *, game: str) -> dict[str, Any] | None:
+    if any(key in row for key in ("source", "top_proxy_score", "sources", "source_families", "window_count", "signal_count")):
+        return _candidate_from_explicit_report_row(row, game=game)
     explicit_candidate = _candidate_from_explicit_report_row(row, game=game)
     if explicit_candidate is not None:
         return explicit_candidate
@@ -229,14 +231,23 @@ def _candidate_from_explicit_report_row(row: dict[str, Any], *, game: str) -> di
         source_path = source_path.resolve()
     if not source_path.exists() or not source_path.is_file():
         return None
+    sidecar_path = Path(sidecar_value).expanduser()
+    if not sidecar_path.is_absolute():
+        sidecar_path = sidecar_path.resolve()
+    if not sidecar_path.exists() or not sidecar_path.is_file():
+        return None
+    sources = row.get("sources", [])
+    source_families = row.get("source_families", [])
+    if not isinstance(sources, list) or not isinstance(source_families, list):
+        return None
     recommended_action = str(row.get("top_recommended_action", "")).strip() or "none"
     return {
-        "sidecar_path": str(Path(sidecar_value).expanduser().resolve()),
+        "sidecar_path": str(sidecar_path.resolve()),
         "source": str(source_path.resolve()),
         "top_proxy_score": float(row.get("top_proxy_score", 0.0) or 0.0),
         "top_recommended_action": recommended_action,
-        "sources": list(row.get("sources", [])) if isinstance(row.get("sources"), list) else [],
-        "source_families": list(row.get("source_families", [])) if isinstance(row.get("source_families"), list) else [],
+        "sources": list(sources),
+        "source_families": list(source_families),
         "window_count": int(row.get("window_count", 0) or 0),
         "signal_count": int(row.get("signal_count", 0) or 0),
     }
