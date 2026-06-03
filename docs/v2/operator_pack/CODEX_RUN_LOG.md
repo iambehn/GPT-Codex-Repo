@@ -693,3 +693,23 @@ verification:
 notes:
 - these clips mostly show loadout labels, player-name overlays, or environment-only frames in the top-right ROI
 - they should be treated as exclusion evidence, not as positive anchor sources
+
+## 2026-06-04T06:22Z
+
+target:
+- call_of_duty top-right anchor dispatch packaging
+
+status:
+- completed
+
+result:
+- compressed the active blocker, exclusions, and supporting artifact chain into one short researcher-facing dispatch
+- kept the dispatch bounded to the current anchor packet instead of creating a new decision surface
+
+verification:
+- dispatch:
+  - `docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-dispatch.md`
+
+notes:
+- this is a packaging artifact only
+- it exists to reduce external context reconstruction, not to change the current execution branch
