@@ -60,7 +60,7 @@ Maintenance posture:
 
 Active objective:
 
-- choose the correct post-`reward_banner` branch for `call_of_duty`
+- prepare the first direct implementation slice for top-right native event cards in `call_of_duty`
 
 Active workstream:
 
@@ -69,54 +69,53 @@ Active workstream:
 
 Current state:
 
-- `reward_banner` is validated as a narrow native-HUD pilot, and `killfeed_events` is the next recommended family to scout
+- `reward_banner` is validated as a narrow native-HUD pilot, and the next surviving family is top-right native event cards rather than generic killfeed
 
 Desired next state:
 
-- `killfeed_events` is either validated as the next runtime family or rejected with explicit evidence
+- a direct implementation handoff exists for the first top-right event-card runtime pilot
 
 ## Current Blocker
 
 Blocking mechanic:
 
-- repeatability failure
+- implementation-boundary uncertainty
 
 Blocking detail:
 
-- the published `UAV` reward-banner family is clean but does not reproduce across same-family `MWIII Vista` probes
-- the lower-center text in `_PL_5qWwKtY` behaves like editorial or overlay presentation and should not be promoted as pack truth
+- the family label is now narrowed, but the first implementation slice still needs one stable anchor strategy that does not force broad OCR expansion
 
 ## Active Packet
 
 Current packet:
 
-- `ALTERNATIVE_NATIVE_SURFACE_PACKET`
+- `TOP_RIGHT_EVENT_CARD_RUNTIME_TICKET`
 
 Current packet status:
 
-- received and narrowed
+- ready
 
 Current decision target:
 
-- choose the next repeatable native `call_of_duty` HUD surface family after capping `reward_banner`, with `killfeed_events` currently recommended first
+- define the first implementation-facing runtime slice for top-right native event cards after local scouting corrected the original `killfeed_events` label
 
 Acceptance target:
 
-- one alternative native surface family is concrete enough for a narrow runtime pilot, and the next local validation slice is explicit
+- one direct Codex handoff can name the first top-right event-card family label, anchor strategy, and validation loop without guessing
 
 Failure condition:
 
-- the next branch remains ambiguous and Codex falls back into low-yield `reward_banner` tuning, blind surface scouting, or pack mutation without clip evidence
+- the next implementation slice falls back into generic killfeed labeling, broad OCR expansion, or speculative pack mutation without a stable anchor strategy
 
 ## Forecast Queue
 
 Next packet:
 
-- `ALTERNATIVE_NATIVE_SURFACE_PACKET`
+- `none active`
 
 Validation packet:
 
-- `SURFACE_REPEATABILITY_VALIDATION_PACKET`
+- `TOP_RIGHT_EVENT_CARD_VALIDATION_PACKET`
 
 Fallback packet:
 
@@ -126,8 +125,8 @@ Fallback packet:
 
 Last completed work:
 
-- same-family local surface scout completed
-- result: no strong repeatable native alternative surface emerged from local `MWIII Vista` clip inspection alone
+- top-right event-card scout completed
+- result: the repeated visible top-right family is better described as native objective or status cards than as generic killfeed, with same-title support from `gcAGS3R2t2o`
 
 Current repo branch:
 
@@ -135,20 +134,21 @@ Current repo branch:
 
 Current repo focus:
 
-- post-`reward_banner` surface selection for `call_of_duty`
+- first top-right native event-card runtime slice for `call_of_duty`
 
 Current measured behavior:
 
 - current `UAV` pilot reproduces only on `_PL_5qWwKtY`
 - it stays clean off-target
 - it does not reproduce on same-family `MWIII Vista` no-commentary probes
-- the received alternative-surface packet recommends `killfeed_events` as the next family to validate locally
+- local scouting shows the visible repeated top-right family is better described as `objective_event_notifications` or top-right event-status cards than as generic killfeed
+- same-title support exists at `gcAGS3R2t2o @ 27s-29s`
 
 ## Operator View
 
 What Codex should do next:
 
-- scout `kill_feed` visibility and repeatability on the current `call_of_duty` sample family before any published-pack mutation
+- convert the runtime ticket into one direct implementation handoff for the first top-right event-card pilot
 
 What Codex should not do next:
 
@@ -156,8 +156,8 @@ What Codex should not do next:
 
 How we know it worked:
 
-- `killfeed_events` is either advanced with clip-backed evidence and extraction posture, or rejected with explicit reasons and the fallback family becomes active
+- the first implementation handoff names the family label, anchor strategy, semantic mapping posture, and focused validation path without mislabeling the surface
 
 Exact missing input:
 
-- exact clip-backed `killfeed_events` evidence with timestamps, visibility notes, and extraction-feasibility observations across the current sample family
+- one stable first anchor strategy for top-right event cards that avoids broad OCR infrastructure

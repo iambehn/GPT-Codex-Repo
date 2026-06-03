@@ -16,25 +16,26 @@ Status:
 
 Objective:
 
-- identify the next repeatable native `call_of_duty` HUD surface family after capping `reward_banner` as a narrow pilot
+- define the first implementation-facing runtime slice for top-right native event cards after capping `reward_banner` as a narrow pilot
 
 Acceptance criteria:
 
-- one alternative native surface family is chosen
-- the choice is backed by repeatable clip evidence
+- one direct implementation handoff exists
+- the chosen family is backed by repeatable clip evidence
 - native HUD vs overlay posture is explicit
-- extraction posture is explicit enough for a narrow runtime pilot
+- the first anchor strategy is explicit enough for a narrow runtime pilot
 
 Current evidence:
 
 - the published `UAV` `reward_banner` family is clean but only reproduces on `_PL_5qWwKtY`
 - same-family `MWIII Vista` scouting and diagnosis did not justify more `reward_banner` tuning
 - the lower-center count text in `_PL_5qWwKtY` behaves like an editorial or overlay family and should not be promoted as pack truth
-- the received alternative-native-surface packet recommends `killfeed_events` as the first family to validate locally, with `objective_event_notifications` as the fallback family
+- the received alternative-native-surface packet initially recommended `killfeed_events`, but local scouting shows the repeated top-right family behaves more like `objective_event_notifications` or top-right event-status cards
+- same-title support exists at `gcAGS3R2t2o @ 27s-29s`
 
 Primary dependency:
 
-- [2026-06-03-call-of-duty-alternative-native-surface-packet.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-03-call-of-duty-alternative-native-surface-packet.md)
+- [2026-06-03-call-of-duty-top-right-event-card-runtime-ticket.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-03-call-of-duty-top-right-event-card-runtime-ticket.md)
 
 ### Validation packet
 
@@ -44,7 +45,7 @@ Status:
 
 Objective:
 
-- verify whether `killfeed_events` actually repeats cleanly across clips before family expansion
+- verify whether the implemented top-right event-card pilot actually repeats cleanly enough to justify family expansion
 
 Acceptance criteria:
 
@@ -54,7 +55,7 @@ Acceptance criteria:
 
 Packet label:
 
-- `KILLFEED_REPEATABILITY_VALIDATION_PACKET`
+- `TOP_RIGHT_EVENT_CARD_VALIDATION_PACKET`
 
 ### Fallback packet
 
@@ -64,7 +65,7 @@ Status:
 
 Objective:
 
-- acquire higher-confidence same-provenance clips if `killfeed_events` cannot be validated from the current sample family
+- acquire higher-confidence same-provenance clips if top-right event cards cannot be validated cleanly enough for runtime implementation
 
 Acceptance criteria:
 

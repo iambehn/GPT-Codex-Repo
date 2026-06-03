@@ -513,3 +513,33 @@ verification:
 notes:
 - the packet is strong enough to choose the next local scout family
 - it is not yet strong enough to justify published-pack mutation because clip-backed evidence is still missing
+
+## 2026-06-03T05:12Z
+
+target:
+- call_of_duty top-right event-card scout
+
+status:
+- completed
+
+result:
+- generated top-right ROI contact sheets over the current `call_of_duty` sample set and same-title `MWIII Vista` probes
+- confirmed the repeated visible family is not clean generic killfeed
+- confirmed the stronger surviving family is native top-right event or status cards
+- recorded clip-backed evidence at:
+  - `_PL_5qWwKtY @ 12s-14s`
+  - `gcAGS3R2t2o @ 27s-29s`
+- promoted the next implementation-facing slice into a runtime ticket instead of mutating the published pack
+
+verification:
+- contact sheets under:
+  - `outputs/inspection/call_of_duty_killfeed_scout/`
+- exact stills under:
+  - `outputs/inspection/call_of_duty_killfeed_scout/stills/`
+- handoffs:
+  - `docs/handoffs/2026-06-03-call-of-duty-top-right-event-card-scout.md`
+  - `docs/handoffs/2026-06-03-call-of-duty-top-right-event-card-runtime-ticket.md`
+
+notes:
+- the `kill_feed` ROI name should not be treated as proof that the visible repeated family is elimination killfeed
+- the next blocker is now the first stable anchor strategy for a narrow top-right event-card pilot
