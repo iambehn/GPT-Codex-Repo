@@ -148,11 +148,15 @@ def prepare_accepted_proxy_review(
             game=str(payload["game"]),
             review_prep_id=review_prep_id,
         )
-    sidecar_to_item = {
-        str(_resolve_path(str(item["sidecar_path"]))): item
-        for item in bridge_result.get("items", [])
-        if isinstance(item, dict) and item.get("sidecar_path")
-    }
+    sidecar_to_item: dict[str, dict[str, Any]] = {}
+    for item in bridge_result.get("items", []):
+        if not isinstance(item, dict):
+            continue
+        sidecar_path_value = item.get("sidecar_path")
+        prepared_review_path = item.get("gpt_meta_path")
+        if not sidecar_path_value or not prepared_review_path:
+            continue
+        sidecar_to_item[str(_resolve_path(str(sidecar_path_value)))] = item
 
     results: list[dict[str, Any]] = []
     for row in all_rows:

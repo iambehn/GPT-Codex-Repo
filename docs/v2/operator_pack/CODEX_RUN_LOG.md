@@ -1088,3 +1088,26 @@ verification:
 notes:
 - this closes the remaining permissive fallback in proxy review candidate intake
 - no proxy scoring behavior changed
+
+## 2026-06-04T08:11Z
+
+target:
+- accepted proxy review prep bridge-result hardening
+
+status:
+- completed
+
+result:
+- tightened `accepted_proxy_review_prep` so malformed bridge items are ignored instead of being treated as valid prepared results
+- specifically required bridge items to provide both:
+  - `sidecar_path`
+  - `gpt_meta_path`
+- added regression coverage proving malformed bridge items degrade to partial prep results instead of breaking row mapping
+
+verification:
+- `.venv/bin/python -m unittest tests.test_accepted_proxy_review_prep`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this is a prep-layer fail-closed guard around `prepare_proxy_review` integration
+- no bridge selection or proxy scoring behavior changed

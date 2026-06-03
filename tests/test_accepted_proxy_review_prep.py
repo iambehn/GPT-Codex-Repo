@@ -147,6 +147,45 @@ class AcceptedProxyReviewPrepTests(unittest.TestCase):
             failed = next(row for row in result["results"] if row["fixture_id"] == "fixture-b")
             self.assertEqual(failed["status"], "failed")
 
+    def test_prepare_accepted_proxy_review_ignores_malformed_bridge_items(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            sidecar_a = root / "a.proxy_scan.json"
+            sidecar_b = root / "b.proxy_scan.json"
+            sidecar_a.write_text("{}", encoding="utf-8")
+            sidecar_b.write_text("{}", encoding="utf-8")
+            batch_path = root / "accepted_fixture_trial_batch.json"
+            batch_path.write_text(
+                json.dumps(
+                    _batch_payload(
+                        [
+                            {"fixture_id": "fixture-a", "status": "ok", "proxy_sidecar_path": str(sidecar_a)},
+                            {"fixture_id": "fixture-b", "status": "ok", "proxy_sidecar_path": str(sidecar_b)},
+                        ]
+                    ),
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            def _prepare_proxy_review(*args, **kwargs):
+                return {
+                    "manifest_path": str(root / "proxy_review_session.json"),
+                    "session_id": "proxy-session-123",
+                    "items": [
+                        {"sidecar_path": str(sidecar_a), "gpt_meta_path": str(root / "a.meta.json")},
+                        {"sidecar_path": str(sidecar_b)},
+                    ],
+                }
+
+            result = prepare_accepted_proxy_review(batch_path, review_preparer=_prepare_proxy_review)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["status"], "partial")
+            self.assertEqual(result["prepared_count"], 1)
+            failed = next(row for row in result["results"] if row["fixture_id"] == "fixture-b")
+            self.assertEqual(failed["status"], "failed")
+
     def test_prepare_accepted_proxy_review_rejects_invalid_batch_schema(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             batch_path = Path(tempdir) / "accepted_fixture_trial_batch.json"
