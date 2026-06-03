@@ -134,6 +134,8 @@ def map_matcher_result(
         "game": game,
         "source": source,
         "frame_count": int(matcher_result.get("frame_count", 0) or 0),
+        "frame_dimensions": matcher_result.get("frame_dimensions", {}),
+        "frame_coordinate_space": matcher_result.get("frame_coordinate_space"),
         "sample_fps": float(matcher_result.get("sample_fps", 0.0) or 0.0),
         "signal_count": len(signals),
         "signals": signals,

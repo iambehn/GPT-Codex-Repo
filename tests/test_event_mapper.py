@@ -291,6 +291,8 @@ class EventMapperTests(unittest.TestCase):
             "game": "marvel_rivals",
             "source": "/tmp/example.mp4",
             "frame_count": 12,
+            "frame_dimensions": {"width": 64, "height": 36},
+            "frame_coordinate_space": "normalized_pack_frame",
             "sample_fps": 4.0,
             "template_count": 4,
             "detections": [],
@@ -335,6 +337,8 @@ class EventMapperTests(unittest.TestCase):
             ):
                 result = map_matcher_result("marvel_rivals", self._matcher_report(confirmed))
         self.assertTrue(result["ok"])
+        self.assertEqual(result["frame_dimensions"], {"width": 64, "height": 36})
+        self.assertEqual(result["frame_coordinate_space"], "normalized_pack_frame")
         self.assertEqual(result["signal_count"], 3)
         self.assertEqual(result["event_count"], 3)
         event_types = {row["event_type"] for row in result["events"]}

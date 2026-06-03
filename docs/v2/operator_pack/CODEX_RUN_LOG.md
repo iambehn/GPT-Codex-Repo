@@ -371,6 +371,25 @@ verification:
 notes:
 - this keeps both replay viewers aligned with the same runtime matcher coordinate contract
 
+## 2026-06-04T09:42Z
+
+target:
+- event mapper matcher metadata parity
+
+status:
+- completed
+
+result:
+- preserved `matcher.frame_dimensions` and `matcher.frame_coordinate_space` in `map_matcher_result()` output
+- added event-mapper regression coverage for the normalized-frame fields
+
+verification:
+- `.venv/bin/python -m unittest tests.test_event_mapper`
+- pending repo health gate
+
+notes:
+- this keeps direct matcher-report consumers aligned with the same coordinate contract as `runtime_analysis_v1`
+
 ## 2026-05-31T00:58Z
 
 target:
