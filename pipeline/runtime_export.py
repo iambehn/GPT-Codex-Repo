@@ -173,6 +173,8 @@ def _build_rows_for_sidecar(
         "source": sidecar.get("source"),
         "sidecar_path": str(sidecar_path.resolve()),
         "frame_count": int(matcher_payload.get("frame_count", 0) or 0),
+        "frame_dimensions": matcher_payload.get("frame_dimensions", {}),
+        "frame_coordinate_space": matcher_payload.get("frame_coordinate_space"),
         "sample_fps": float(matcher_payload.get("sample_fps", 0.0) or 0.0),
         "template_count": int(matcher_payload.get("template_count", 0) or 0),
         "confirmed_detection_count": len(detection_rows_payload),

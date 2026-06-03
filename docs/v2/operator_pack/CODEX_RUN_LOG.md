@@ -275,6 +275,25 @@ verification:
 notes:
 - this keeps the durable registry summary aligned with `runtime_analysis_v1` without turning registry rows into a full raw-detection mirror
 
+## 2026-06-04T08:21Z
+
+target:
+- runtime export matcher metadata parity
+
+status:
+- completed
+
+result:
+- exposed `matcher.frame_dimensions` and `matcher.frame_coordinate_space` in exported clip rows
+- added runtime export regression coverage for the normalized-frame fields
+
+verification:
+- `.venv/bin/python -m unittest tests.test_runtime_export`
+- pending repo health gate
+
+notes:
+- this keeps exported runtime summaries aligned with the sidecar contract so downstream consumers do not need to reopen raw `runtime_analysis_v1` payloads for coordinate-space context
+
 ## 2026-05-31T00:58Z
 
 target:

@@ -36,6 +36,8 @@ def _runtime_sidecar(
         "matcher": {
             "status": "ok",
             "frame_count": 12,
+            "frame_dimensions": {"width": 64, "height": 36},
+            "frame_coordinate_space": "normalized_pack_frame",
             "sample_fps": 4.0,
             "template_count": 3,
             "summary": {
@@ -145,6 +147,8 @@ class RuntimeExportTests(unittest.TestCase):
             self.assertIn("recommended_action", clip_rows[0])
             self.assertIn("score_breakdown", clip_rows[0])
             self.assertIn("score_reasoning", clip_rows[0])
+            self.assertEqual(clip_rows[0]["frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(clip_rows[0]["frame_coordinate_space"], "normalized_pack_frame")
 
             event_rows = [json.loads(line) for line in events_jsonl.read_text(encoding="utf-8").splitlines() if line.strip()]
             self.assertEqual(len(event_rows), 1)
