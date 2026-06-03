@@ -2,9 +2,78 @@
 
 Status: active-draft
 Version: 1.1
-Last updated: 2026-05-27
+Last updated: 2026-06-03
 
 This backlog is phase-gated. Codex should work in order when useful, but once a local-only phase target is complete it may choose the next local-only target without waiting for explicit user selection. The standing user delegation authorizes long-running local-only execution. Stop only when a real hard-stop category is active.
+
+## Current Active Queue
+
+### Active blocker
+
+Status:
+
+- active
+
+Objective:
+
+- identify the next repeatable native `call_of_duty` HUD surface family after capping `reward_banner` as a narrow pilot
+
+Acceptance criteria:
+
+- one alternative native surface family is chosen
+- the choice is backed by repeatable clip evidence
+- native HUD vs overlay posture is explicit
+- extraction posture is explicit enough for a narrow runtime pilot
+
+Current evidence:
+
+- the published `UAV` `reward_banner` family is clean but only reproduces on `_PL_5qWwKtY`
+- same-family `MWIII Vista` scouting and diagnosis did not justify more `reward_banner` tuning
+- the lower-center count text in `_PL_5qWwKtY` behaves like an editorial or overlay family and should not be promoted as pack truth
+
+Primary dependency:
+
+- [2026-06-03-call-of-duty-alternative-native-surface-request.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-03-call-of-duty-alternative-native-surface-request.md)
+
+### Validation packet
+
+Status:
+
+- queued
+
+Objective:
+
+- verify whether the chosen alternative native surface family actually repeats cleanly across clips before family expansion
+
+Acceptance criteria:
+
+- at least one additional clip or clip family validates the chosen surface cleanly
+- false positives and exclusions are explicit
+- the result clearly supports either expansion or retirement of the surface family
+
+Packet label:
+
+- `SURFACE_REPEATABILITY_VALIDATION_PACKET`
+
+### Fallback packet
+
+Status:
+
+- queued
+
+Objective:
+
+- acquire higher-confidence same-provenance clips if the alternative native surface packet is inconclusive
+
+Acceptance criteria:
+
+- provenance-matched clips are identified
+- timestamps and visible candidate surfaces are explicit
+- the packet reduces ambiguity about whether the blocker is sourcing quality or signal-family choice
+
+Packet label:
+
+- `EXACT_PROVENANCE_CLIP_SOURCING_PACKET`
 
 ## Phase 0: Repo Inventory And Operator Pack
 

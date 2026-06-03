@@ -439,3 +439,26 @@ verification:
 notes:
 - the repo now has enough local evidence to stop blind surface scouting
 - the next useful input is a decision-ready packet that ranks alternative native surface families by repeatability and extraction feasibility
+
+## 2026-06-03T04:02Z
+
+target:
+- operator-pack alignment for post-reward-banner branch
+
+status:
+- completed
+
+result:
+- updated `CODEX_BACKLOG.md` so its active queue reflects the current `call_of_duty` blocker instead of the older bootstrap-only phases
+- updated `EXECUTION_TARGET.md` so the active objective and phase gate match the capped `reward_banner` state
+- kept the coordination split explicit: dashboard for live execution snapshot, run log for chronology, backlog for queued work
+
+verification:
+- consistency check across:
+  - `docs/v2/operator_pack/CODEX_AUTONOMY_DASHBOARD.md`
+  - `docs/v2/operator_pack/CODEX_BACKLOG.md`
+  - `docs/v2/operator_pack/EXECUTION_TARGET.md`
+
+notes:
+- this was a contract-alignment slice only
+- the next behavior-changing step still depends on `ALTERNATIVE_NATIVE_SURFACE_PACKET`

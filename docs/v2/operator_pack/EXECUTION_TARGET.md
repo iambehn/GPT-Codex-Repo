@@ -2,11 +2,11 @@
 
 Status: active-draft
 Version: 1.1
-Last updated: 2026-05-27
+Last updated: 2026-06-03
 
 ## Objective
 
-Pin one concrete, runnable happy path for the gameplay highlight pipeline, then allow broad local-only autonomy to continue improving the pipeline without drifting into external-risk or out-of-scope work.
+Preserve the proven local `call_of_duty` runtime path, then choose the next repeatable native surface family to improve runtime signal coverage without drifting into speculative detector expansion.
 
 ## Current Execution Doctrine
 
@@ -21,7 +21,7 @@ Pin one concrete, runnable happy path for the gameplay highlight pipeline, then 
 
 ## Current Phase Gate
 
-Current phase: `Phase 7 - broad local autonomy on canonical local test path`
+Current phase: `Phase 7 - post-reward-banner native surface selection`
 
 Current execution rule:
 
@@ -48,6 +48,17 @@ Current execution rule:
   - post-promotion rerun on the same four-sample measurement set still produced `0 / 4` medal-driven outcomes and `0 / 4` hook candidates
   - frame probes show that at least one multiplayer-style sample exposes text or reward-banner signals such as `UAV`, `DOUBLE KI`, and `7TH KO` more clearly than native medal badge icons
   - the next useful improvement now depends on deciding whether the current clip family should be targeted through medal-icon detection, text or banner detection, or a medal-visible replacement sample set
+- treat the current `call_of_duty` `reward_banner` work as capped:
+  - the published masked `UAV` `reward_banner` pilot is clean and native-looking on `_PL_5qWwKtY`
+  - the pilot does not reproduce on broader cross-sample checks or same-family `MWIII Vista` no-commentary probes
+  - the same-family diagnosis indicates missing target-surface visibility, not a near-miss threshold or scale problem
+  - the lower-center count text in `_PL_5qWwKtY` behaves like an editorial or overlay family and should not be promoted as pack truth
+  - the next useful branch is to identify a more repeatable native `call_of_duty` HUD surface, not to continue `reward_banner` tuning
+- use the current execution snapshot as the coordination boundary:
+  - `CODEX_AUTONOMY_DASHBOARD.md` should stay a thin execution artifact
+  - `CODEX_RUN_LOG.md` should hold chronology
+  - `CODEX_BACKLOG.md` should hold the active queue
+  - do not add new coordination artifacts unless a recurring pause pattern proves the need
 - allow Codex to choose the next local-only target without waiting for explicit user selection when the work stays inside the gameplay highlight pipeline mission
 - apply the standing user delegation:
   - choose and execute next local-only tasks without asking first
