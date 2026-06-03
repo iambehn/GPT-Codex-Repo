@@ -64,6 +64,8 @@ def _runtime_sidecar(
         "matcher": {
             "status": "ok",
             "frame_count": 12,
+            "frame_dimensions": {"width": 64, "height": 36},
+            "frame_coordinate_space": "normalized_pack_frame",
             "sample_fps": 4.0,
             "template_count": 3,
             "summary": {
@@ -144,6 +146,8 @@ class RuntimeTuningTests(unittest.TestCase):
             moved = result["comparison"]["clip_movements"]["moved_rows"]
             self.assertEqual(len(moved), 1)
             self.assertEqual(moved[0]["movement"], "inspect -> highlight_candidate")
+            self.assertEqual(result["comparison"]["reviewed_comparisons"][0]["frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(result["comparison"]["reviewed_comparisons"][0]["frame_coordinate_space"], "normalized_pack_frame")
             self.assertIn("supporting_metrics", result["recommendation"])
             self.assertIn("follow_up", result["recommendation"])
 

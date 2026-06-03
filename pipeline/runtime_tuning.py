@@ -196,7 +196,8 @@ def _comparison_row_from_sidecar(
         return "unreviewed", None
 
     event_rows = list(sidecar.get("events", {}).get("rows", []))
-    detection_rows = list(sidecar.get("matcher", {}).get("confirmed_detections", []))
+    matcher_payload = sidecar.get("matcher", {})
+    detection_rows = list(matcher_payload.get("confirmed_detections", []))
     current_score = score_runtime_clip(event_rows, detection_rows, current_scoring)
     trial_score = score_runtime_clip(event_rows, detection_rows, trial_scoring)
 
@@ -216,6 +217,8 @@ def _comparison_row_from_sidecar(
         "trial_score_breakdown": trial_score["score_breakdown"],
         "current_score_reasoning": current_score["score_reasoning"],
         "trial_score_reasoning": trial_score["score_reasoning"],
+        "frame_dimensions": matcher_payload.get("frame_dimensions", {}),
+        "frame_coordinate_space": matcher_payload.get("frame_coordinate_space"),
         "event_types": sorted({str(row.get("event_type", "")) for row in event_rows if row.get("event_type")}),
     }
 
@@ -248,6 +251,8 @@ def _comparison(
                 "current_action": row["current_action"],
                 "trial_action": row["trial_action"],
                 "action_changed": row["action_changed"],
+                "frame_dimensions": row["frame_dimensions"],
+                "frame_coordinate_space": row["frame_coordinate_space"],
             }
             for row in reviewed_rows
         ],
