@@ -409,6 +409,25 @@ verification:
 notes:
 - the touched fusion-analysis files already contained unrelated local deltas before this slice, so this commit will include both the new runtime-summary parity change and those pre-existing file-local edits
 
+## 2026-06-04T10:19Z
+
+target:
+- fixture sidecar comparison runtime matcher metadata parity
+
+status:
+- completed
+
+result:
+- carried runtime `frame_dimensions` and `frame_coordinate_space` through fixture-sidecar comparison runtime summaries
+- added comparison-row coverage for baseline/trial normalized-frame metadata
+
+verification:
+- `.venv/bin/python -m unittest tests.test_fixture_sidecar_comparison`
+- pending repo health gate
+
+notes:
+- this keeps runtime fixture comparisons aligned with the matcher coordinate contract instead of reducing runtime rows to score/action only
+
 ## 2026-05-31T00:58Z
 
 target:

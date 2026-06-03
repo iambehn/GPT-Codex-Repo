@@ -185,6 +185,10 @@ def _compare_fixture_layer(
         "trial_action": trial.get("action") if trial else None,
         "baseline_review_status": baseline.get("review_status") if baseline else None,
         "trial_review_status": trial.get("review_status") if trial else None,
+        "baseline_frame_dimensions": baseline.get("frame_dimensions", {}) if baseline else {},
+        "trial_frame_dimensions": trial.get("frame_dimensions", {}) if trial else {},
+        "baseline_frame_coordinate_space": baseline.get("frame_coordinate_space") if baseline else None,
+        "trial_frame_coordinate_space": trial.get("frame_coordinate_space") if trial else None,
         "baseline_shortlist": baseline.get("shortlist", []) if baseline else [],
         "trial_shortlist": trial.get("shortlist", []) if trial else [],
         "shortlist_changed": bool(baseline and trial and baseline.get("shortlist", []) != trial.get("shortlist", [])),
@@ -341,13 +345,16 @@ def _runtime_payload_summary(
     runtime_scoring: dict[str, Any],
 ) -> dict[str, Any]:
     event_rows = list(payload.get("events", {}).get("rows", []))
-    detection_rows = list(payload.get("matcher", {}).get("confirmed_detections", []))
+    matcher_payload = payload.get("matcher", {}) if isinstance(payload.get("matcher"), dict) else {}
+    detection_rows = list(matcher_payload.get("confirmed_detections", []))
     score = score_runtime_clip(event_rows, detection_rows, runtime_scoring)
     return {
         "sidecar_path": str(sidecar_path),
         "score": _as_float(score.get("highlight_score")),
         "action": str(score.get("recommended_action", "skip")),
         "review_status": str(payload.get("runtime_review", {}).get("review_status", "")).strip().lower() or None,
+        "frame_dimensions": matcher_payload.get("frame_dimensions", {}),
+        "frame_coordinate_space": matcher_payload.get("frame_coordinate_space"),
         "shortlist": [],
         "rerank_order": [],
         "stage_latencies": {},

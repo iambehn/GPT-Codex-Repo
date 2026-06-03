@@ -89,6 +89,8 @@ def _runtime_sidecar(
         "source": str(source.resolve()),
         "runtime_review": {"review_status": review_status},
         "matcher": {
+            "frame_dimensions": {"width": 64, "height": 36},
+            "frame_coordinate_space": "normalized_pack_frame",
             "confirmed_detections": [{"first_timestamp": 0.5, "last_timestamp": 1.0, "peak_score": 0.9}],
         },
         "events": {
@@ -236,6 +238,10 @@ class FixtureSidecarComparisonTests(unittest.TestCase):
             self.assertEqual(len(runtime_rows), 1)
             self.assertGreater(runtime_rows[0]["score_delta"], 0.0)
             self.assertEqual(runtime_rows[0]["recommendation_signal"], "trial_better")
+            self.assertEqual(runtime_rows[0]["baseline_frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(runtime_rows[0]["trial_frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(runtime_rows[0]["baseline_frame_coordinate_space"], "normalized_pack_frame")
+            self.assertEqual(runtime_rows[0]["trial_frame_coordinate_space"], "normalized_pack_frame")
             self.assertEqual(fused_rows[0]["coverage_status"], "missing")
             self.assertEqual(fused_rows[0]["recommendation_signal"], "coverage_gap")
 
