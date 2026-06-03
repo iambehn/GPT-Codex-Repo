@@ -647,3 +647,23 @@ verification:
 notes:
 - this does not ban `mixed_ocr_template`
 - it does rule out treating the current local positives as sufficient OCR-first evidence
+
+## 2026-06-04T04:36Z
+
+target:
+- call_of_duty top-right anchor appendix packaging
+
+status:
+- completed
+
+result:
+- packaged the current local top-right anchor evidence into a compact appendix linked to the active anchor packet
+- kept the appendix bounded to visual crops, matched patches, OCR preprocessing artifacts, and concise operator notes
+
+verification:
+- appendix:
+  - `docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-appendix.md`
+
+notes:
+- this is a support artifact only
+- it exists to reduce researcher interpretation burden without creating a second packet
