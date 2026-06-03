@@ -1038,3 +1038,28 @@ verification:
 notes:
 - this mirrors the runtime-review bridge hardening pattern on the fused-review entrypoint
 - no fused scoring behavior changed
+
+## 2026-06-04T07:53Z
+
+target:
+- proxy review bridge sidecar-shape hardening
+
+status:
+- completed
+
+result:
+- tightened `proxy_review_bridge` candidate intake so malformed proxy sidecars are skipped instead of being materialized into GPT review sessions
+- specifically guarded:
+  - non-list `windows`
+  - non-dict top window rows
+  - non-list `sources`
+  - non-list `source_families`
+- added regression coverage at the run-level proxy review entrypoint proving malformed sidecars are excluded from selection
+
+verification:
+- `.venv/bin/python -m unittest tests.test_run.RunTests.test_prepare_proxy_review_selects_download_candidates_and_writes_gpt_queue_files tests.test_run.RunTests.test_prepare_proxy_review_can_select_from_batch_report tests.test_run.RunTests.test_prepare_proxy_review_can_use_explicit_batch_report_candidates_without_windows tests.test_run.RunTests.test_prepare_proxy_review_skips_malformed_proxy_sidecars tests.test_run.RunTests.test_apply_proxy_review_updates_sidecars_and_is_idempotent tests.test_run.RunTests.test_cleanup_proxy_review_removes_generated_bridge_artifacts`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this is the proxy-side equivalent of the runtime and fused review bridge hardening work
+- no proxy scoring behavior changed

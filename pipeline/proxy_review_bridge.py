@@ -249,7 +249,7 @@ def _candidate_from_sidecar(sidecar_path: Path, *, game: str) -> dict[str, Any] 
     if sidecar.get("game") != game:
         return None
     windows = sidecar.get("windows", [])
-    if not windows:
+    if not isinstance(windows, list) or not windows:
         return None
 
     source_path = Path(str(sidecar.get("source", ""))).expanduser()
@@ -259,13 +259,19 @@ def _candidate_from_sidecar(sidecar_path: Path, *, game: str) -> dict[str, Any] 
         return None
 
     top_window = windows[0]
+    if not isinstance(top_window, dict):
+        return None
+    sources = top_window.get("sources", [])
+    source_families = top_window.get("source_families", [])
+    if not isinstance(sources, list) or not isinstance(source_families, list):
+        return None
     return {
         "sidecar_path": str(sidecar_path.resolve()),
         "source": str(source_path.resolve()),
         "top_proxy_score": float(top_window.get("proxy_score", 0.0)),
         "top_recommended_action": str(top_window.get("recommended_action", "none")),
-        "sources": list(top_window.get("sources", [])),
-        "source_families": list(top_window.get("source_families", [])),
+        "sources": list(sources),
+        "source_families": list(source_families),
         "window_count": int(sidecar.get("window_count", len(windows))),
         "signal_count": int(sidecar.get("signal_count", 0)),
     }
