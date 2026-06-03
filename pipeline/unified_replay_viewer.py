@@ -512,6 +512,8 @@ def _build_runtime_section(payload: dict[str, Any] | None) -> dict[str, Any]:
             "signal_count": len(signals),
             "event_count": len(runtime_events),
             "detection_count": len(detections),
+            "frame_dimensions": matcher.get("frame_dimensions", {}),
+            "frame_coordinate_space": matcher.get("frame_coordinate_space"),
         },
         "detections": detections,
         "signals": signals,

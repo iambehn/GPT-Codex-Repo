@@ -100,6 +100,8 @@ def _runtime_sidecar(*, source: Path, game: str = "marvel_rivals", schema_versio
         "game_pack": {"game_id": game},
         "matcher": {
             "status": "ok",
+            "frame_dimensions": {"width": 64, "height": 36},
+            "frame_coordinate_space": "normalized_pack_frame",
             "confirmed_detections": [
                 {
                     "asset_id": "marvel_rivals.punisher.hero_portrait",
@@ -450,6 +452,8 @@ class UnifiedReplayViewerTests(unittest.TestCase):
 
             runtime_rows = derived["detector_diagnostics"]["by_item_id"]["runtime-event-0"]
             fused_rows = derived["detector_diagnostics"]["by_item_id"]["fused-event-0"]
+            self.assertEqual(derived["runtime"]["summary"]["frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(derived["runtime"]["summary"]["frame_coordinate_space"], "normalized_pack_frame")
             self.assertEqual(len(runtime_rows), 1)
             self.assertEqual(len(fused_rows), 1)
             runtime_row = runtime_rows[0]

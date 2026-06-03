@@ -237,6 +237,25 @@ verification:
 notes:
 - this is a doc-only follow-up to the matcher/runtime sidecar hardening in `fda13c9`
 
+## 2026-06-04T07:43Z
+
+target:
+- unified replay viewer matcher-coordinate summary parity
+
+status:
+- completed
+
+result:
+- exposed `matcher.frame_dimensions` and `matcher.frame_coordinate_space` through the unified replay payload runtime summary
+- added viewer regression coverage so replay surfaces preserve the normalized-frame contract from `runtime_analysis_v1`
+
+verification:
+- `.venv/bin/python -m unittest tests.test_unified_replay_viewer`
+- pending repo health gate
+
+notes:
+- this keeps replay/debug consumers aligned with the matcher/runtime sidecar contract instead of forcing operators back to raw JSON
+
 ## 2026-05-31T00:58Z
 
 target:
