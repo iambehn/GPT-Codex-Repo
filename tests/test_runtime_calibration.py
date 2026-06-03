@@ -65,6 +65,8 @@ def _runtime_sidecar(
         "matcher": {
             "status": "ok",
             "frame_count": 12,
+            "frame_dimensions": {"width": 64, "height": 36},
+            "frame_coordinate_space": "normalized_pack_frame",
             "sample_fps": 4.0,
             "template_count": 3,
             "summary": {
@@ -136,6 +138,8 @@ class RuntimeCalibrationTests(unittest.TestCase):
             self.assertIn("medal_seen", result["diagnostics"]["event_type_incidence"]["approved"])
             self.assertIn("threshold_observations", result["recommendations"])
             self.assertIn("weight_observations", result["recommendations"])
+            self.assertEqual(result["diagnostics"]["reviewed_clips"][0]["frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(result["diagnostics"]["reviewed_clips"][0]["frame_coordinate_space"], "normalized_pack_frame")
             self.assertEqual(result["release_gate_summary"]["status"], "pass")
 
     def test_calibrate_runtime_review_skips_invalid_sidecars_with_warnings(self) -> None:

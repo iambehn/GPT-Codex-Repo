@@ -225,9 +225,10 @@ def _build_review_row(
     review_status: str,
 ) -> dict[str, Any]:
     event_rows = list(sidecar.get("events", {}).get("rows", []))
-    detection_rows = list(sidecar.get("matcher", {}).get("confirmed_detections", []))
+    matcher_payload = sidecar.get("matcher", {})
+    detection_rows = list(matcher_payload.get("confirmed_detections", []))
     score = score_runtime_clip(event_rows, detection_rows, scoring_config)
-    matcher_summary = sidecar.get("matcher", {}).get("summary", {})
+    matcher_summary = matcher_payload.get("summary", {})
     event_counts = dict(score["score_breakdown"].get("event_counts", {}))
     event_contributions = dict(score["score_breakdown"].get("event_contributions", {}))
 
@@ -257,6 +258,8 @@ def _build_review_row(
         "confirmed_detection_count": len(detection_rows),
         "detection_rois": detection_rois,
         "detection_asset_families": detection_asset_families,
+        "frame_dimensions": matcher_payload.get("frame_dimensions", {}),
+        "frame_coordinate_space": matcher_payload.get("frame_coordinate_space"),
     }
 
 
@@ -285,6 +288,8 @@ def _diagnostics(
                 "event_count": row["event_count"],
                 "confirmed_detection_count": row["confirmed_detection_count"],
                 "event_types": row["event_types"],
+                "frame_dimensions": row["frame_dimensions"],
+                "frame_coordinate_space": row["frame_coordinate_space"],
             }
             for row in reviewed_rows
         ],

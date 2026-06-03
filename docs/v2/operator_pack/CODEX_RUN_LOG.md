@@ -313,6 +313,25 @@ verification:
 notes:
 - this keeps review-bridge consumers aligned with the normalized-frame matcher contract without requiring separate raw-sidecar inspection
 
+## 2026-06-04T08:55Z
+
+target:
+- runtime calibration matcher metadata parity
+
+status:
+- completed
+
+result:
+- carried `matcher.frame_dimensions` and `matcher.frame_coordinate_space` into reviewed clip diagnostics
+- added runtime calibration regression coverage for the normalized-frame fields
+
+verification:
+- `.venv/bin/python -m unittest tests.test_runtime_calibration`
+- pending repo health gate
+
+notes:
+- this keeps calibration diagnostics aligned with the runtime sidecar contract so reviewed clip summaries retain coordinate-space context
+
 ## 2026-05-31T00:58Z
 
 target:
