@@ -19,6 +19,10 @@ DEFAULT_GPT_REPO = Path.home() / "GPT-Codex-Repo"
 BRIDGE_TEMPLATE_ID = "fused_review_bridge"
 BRIDGE_CLIP_TYPE = "fused_event_candidate"
 DEFAULT_INSPECT_LIMIT = 3
+MIN_REVIEW_DURATION_SECONDS = 3.0
+SUPPRESSED_REVIEW_EVENT_TYPES = {
+    "pov_character_identified",
+}
 
 
 def prepare_fused_review(
@@ -227,6 +231,8 @@ def _select_candidates(
 
     highlight_candidates.sort(key=_candidate_sort_key)
     inspect_candidates.sort(key=_candidate_sort_key)
+    highlight_candidates = _dedupe_review_candidates(highlight_candidates)
+    inspect_candidates = _dedupe_review_candidates(inspect_candidates)
 
     if effective_action in {"highlight_candidate", "inspect", "all_non_skip"}:
         merged = highlight_candidates + inspect_candidates
@@ -260,13 +266,37 @@ def _candidates_from_sidecar(sidecar_path: Path, *, game: str, event_type: str |
     if not source_path.exists() or not source_path.is_file():
         return []
 
+    fused_events = sidecar.get("fused_events", [])
+    if not isinstance(fused_events, list):
+        return []
+
+    fused_review = sidecar.get("fused_review", {})
+    reviewed_events = fused_review.get("events", {}) if isinstance(fused_review, dict) else {}
     candidates: list[dict[str, Any]] = []
-    for row in sidecar.get("fused_events", []):
+    for row in fused_events:
         if not isinstance(row, dict):
             continue
-        if event_type and str(row.get("event_type")) != event_type:
+        metadata = row.get("metadata", {})
+        if metadata is None:
+            metadata = {}
+        if not isinstance(metadata, dict):
             continue
+        row_event_type = str(row.get("event_type") or "").strip()
+        if row_event_type in SUPPRESSED_REVIEW_EVENT_TYPES and event_type is None:
+            continue
+        if event_type and row_event_type != event_type:
+            continue
+        event_id = str(row.get("event_id") or "").strip()
+        existing_review = reviewed_events.get(event_id) if isinstance(reviewed_events, dict) else None
+        if isinstance(existing_review, dict):
+            existing_status = _normalized_review_status(existing_review.get("review_status"))
+            if existing_status in {"approved", "rejected"}:
+                continue
         final_score = float(row.get("final_score", row.get("confidence", 0.0)) or 0.0)
+        review_segment = _normalized_review_segment(
+            start_timestamp=float(row.get("suggested_start_timestamp", 0.0) or 0.0),
+            end_timestamp=float(row.get("suggested_end_timestamp", 0.0) or 0.0),
+        )
         candidate = {
             "sidecar_path": str(sidecar_path.resolve()),
             "source": str(source_path.resolve()),
@@ -277,14 +307,14 @@ def _candidates_from_sidecar(sidecar_path: Path, *, game: str, event_type: str |
             "recommended_action": _recommended_action(final_score),
             "gate_status": row.get("gate_status"),
             "synergy_applied": bool(row.get("synergy_applied", False)),
-            "suggested_start_timestamp": float(row.get("suggested_start_timestamp", 0.0) or 0.0),
-            "suggested_end_timestamp": float(row.get("suggested_end_timestamp", 0.0) or 0.0),
-            "entity_id": row.get("metadata", {}).get("entity_id") if isinstance(row.get("metadata"), dict) else None,
-            "ability_id": row.get("metadata", {}).get("ability_id") if isinstance(row.get("metadata"), dict) else None,
-            "equipment_id": row.get("metadata", {}).get("equipment_id") if isinstance(row.get("metadata"), dict) else None,
-            "event_row_id": row.get("metadata", {}).get("event_row_id") if isinstance(row.get("metadata"), dict) else None,
-            "matched_signal_types": list(row.get("metadata", {}).get("matched_signal_types", []))
-            if isinstance(row.get("metadata"), dict)
+            "suggested_start_timestamp": review_segment["start_timestamp"],
+            "suggested_end_timestamp": review_segment["end_timestamp"],
+            "entity_id": metadata.get("entity_id"),
+            "ability_id": metadata.get("ability_id"),
+            "equipment_id": metadata.get("equipment_id"),
+            "event_row_id": metadata.get("event_row_id"),
+            "matched_signal_types": list(metadata.get("matched_signal_types", []))
+            if isinstance(metadata.get("matched_signal_types", []), list)
             else [],
         }
         candidates.append(candidate)
@@ -295,6 +325,47 @@ def _candidate_sort_key(candidate: dict[str, Any]) -> tuple[float, int, int, str
     gate_bonus = 0 if str(candidate.get("gate_status")) == "confirmed" else 1
     synergy_bonus = 0 if bool(candidate.get("synergy_applied", False)) else 1
     return (-float(candidate.get("final_score", 0.0)), gate_bonus, synergy_bonus, str(candidate.get("source", "")))
+
+
+def _dedupe_review_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    deduped: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, int, int]] = set()
+    for candidate in candidates:
+        key = (
+            str(candidate.get("source", "")),
+            str(candidate.get("event_type", "")),
+            int(round(float(candidate.get("suggested_start_timestamp", 0.0) or 0.0) * 1000)),
+            int(round(float(candidate.get("suggested_end_timestamp", 0.0) or 0.0) * 1000)),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(candidate)
+    return deduped
+
+
+def _normalized_review_segment(*, start_timestamp: float, end_timestamp: float) -> dict[str, float]:
+    start = max(0.0, float(start_timestamp))
+    end = max(0.0, float(end_timestamp))
+    if end <= start:
+        midpoint = start
+        half = MIN_REVIEW_DURATION_SECONDS / 2.0
+        return {
+            "start_timestamp": max(0.0, midpoint - half),
+            "end_timestamp": max(0.0, midpoint + half),
+        }
+    duration = end - start
+    if duration >= MIN_REVIEW_DURATION_SECONDS:
+        return {
+            "start_timestamp": start,
+            "end_timestamp": end,
+        }
+    midpoint = start + (duration / 2.0)
+    half = MIN_REVIEW_DURATION_SECONDS / 2.0
+    return {
+        "start_timestamp": max(0.0, midpoint - half),
+        "end_timestamp": max(0.0, midpoint + half),
+    }
 
 
 def _materialize_candidate(

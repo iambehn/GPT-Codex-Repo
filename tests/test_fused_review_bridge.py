@@ -26,6 +26,7 @@ def _write_fused_sidecar(
     events: list[dict[str, object]],
     ok: bool = True,
     schema_version: str = "fused_analysis_v1",
+    fused_events_override: object | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -37,7 +38,7 @@ def _write_fused_sidecar(
         "source": str(source.resolve()),
         "sidecar_path": str(path.resolve()),
         "normalized_signals": [],
-        "fused_events": events,
+        "fused_events": fused_events_override if fused_events_override is not None else events,
         "fusion_summary": {"event_count": len(events)},
         "rule_matches": [],
     }
@@ -145,6 +146,117 @@ class FusedReviewBridgeTests(unittest.TestCase):
 
             self.assertEqual(result["item_count"], 1)
             self.assertEqual(result["items"][0]["event_type"], "medal_seen")
+
+    def test_prepare_fused_review_skips_invalid_fused_event_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            sidecar_root = root / "sidecars"
+            media_root = root / "media"
+            gpt_repo = root / "gpt"
+            _write_gpt_review_repo(gpt_repo)
+
+            alpha = media_root / "alpha.mp4"
+            bravo = media_root / "bravo.mp4"
+            alpha.parent.mkdir(parents=True, exist_ok=True)
+            alpha.write_bytes(b"alpha")
+            bravo.write_bytes(b"bravo")
+
+            _write_fused_sidecar(
+                sidecar_root / "marvel_rivals" / "alpha.fused_analysis.json",
+                game="marvel_rivals",
+                source=alpha,
+                events=[_event(event_id="event-1", event_type="medal_seen", final_score=0.91)],
+            )
+            broken_event = _event(event_id="event-2", event_type="ability_seen", final_score=0.88)
+            broken_event["metadata"] = "not-an-object"
+            _write_fused_sidecar(
+                sidecar_root / "marvel_rivals" / "bravo.fused_analysis.json",
+                game="marvel_rivals",
+                source=bravo,
+                events=[broken_event],
+            )
+
+            with (
+                patch.object(fused_review_bridge, "REPO_ROOT", root),
+                patch.object(fused_review_bridge, "_materialize_segment", side_effect=self._fake_materialize_segment),
+            ):
+                result = run_prepare_fused_review(
+                    "marvel_rivals",
+                    sidecar_root=sidecar_root,
+                    gpt_repo=gpt_repo,
+                )
+
+            self.assertEqual(result["item_count"], 1)
+            self.assertEqual(result["items"][0]["event_id"], "event-1")
+
+    def test_prepare_fused_review_suppresses_identity_events_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            sidecar_root = root / "sidecars"
+            media_root = root / "media"
+            gpt_repo = root / "gpt"
+            _write_gpt_review_repo(gpt_repo)
+
+            source_path = media_root / "alpha.mp4"
+            source_path.parent.mkdir(parents=True, exist_ok=True)
+            source_path.write_bytes(b"video")
+            _write_fused_sidecar(
+                sidecar_root / "marvel_rivals" / "alpha.fused_analysis.json",
+                game="marvel_rivals",
+                source=source_path,
+                events=[
+                    _event(event_id="event-1", event_type="pov_character_identified", final_score=0.91),
+                    _event(event_id="event-2", event_type="medal_seen", final_score=0.88),
+                ],
+            )
+
+            with (
+                patch.object(fused_review_bridge, "REPO_ROOT", root),
+                patch.object(fused_review_bridge, "_materialize_segment", side_effect=self._fake_materialize_segment),
+            ):
+                result = run_prepare_fused_review(
+                    "marvel_rivals",
+                    sidecar_root=sidecar_root,
+                    gpt_repo=gpt_repo,
+                )
+
+            self.assertEqual(result["item_count"], 1)
+            self.assertEqual(result["items"][0]["event_type"], "medal_seen")
+
+    def test_prepare_fused_review_allows_identity_events_when_explicitly_filtered(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            sidecar_root = root / "sidecars"
+            media_root = root / "media"
+            gpt_repo = root / "gpt"
+            _write_gpt_review_repo(gpt_repo)
+
+            source_path = media_root / "alpha.mp4"
+            source_path.parent.mkdir(parents=True, exist_ok=True)
+            source_path.write_bytes(b"video")
+            _write_fused_sidecar(
+                sidecar_root / "marvel_rivals" / "alpha.fused_analysis.json",
+                game="marvel_rivals",
+                source=source_path,
+                events=[
+                    _event(event_id="event-1", event_type="pov_character_identified", final_score=0.91),
+                    _event(event_id="event-2", event_type="medal_seen", final_score=0.88),
+                ],
+            )
+
+            with (
+                patch.object(fused_review_bridge, "REPO_ROOT", root),
+                patch.object(fused_review_bridge, "_materialize_segment", side_effect=self._fake_materialize_segment),
+            ):
+                result = run_prepare_fused_review(
+                    "marvel_rivals",
+                    sidecar_root=sidecar_root,
+                    gpt_repo=gpt_repo,
+                    event_type="pov_character_identified",
+                )
+
+            self.assertEqual(result["item_count"], 1)
+            self.assertEqual(result["items"][0]["event_type"], "pov_character_identified")
 
     def test_apply_fused_review_updates_fused_sidecars(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -268,6 +380,121 @@ class FusedReviewBridgeTests(unittest.TestCase):
             self.assertIn('"ok": true', buffer.getvalue())
         finally:
             __import__("sys").argv = original_argv
+
+    def test_prepare_fused_review_expands_point_events_and_dedupes_duplicates(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            gpt_repo = root / "gpt"
+            _write_gpt_review_repo(gpt_repo)
+            video_path = root / "source.mp4"
+            video_path.write_bytes(b"video")
+            sidecar_root = root / "fused"
+            sidecar_root.mkdir(parents=True, exist_ok=True)
+            sidecar_path = sidecar_root / "alpha.fused_analysis.json"
+            payload = {
+                "schema_version": "fused_analysis_v1",
+                "ok": True,
+                "game": "marvel_rivals",
+                "source": str(video_path.resolve()),
+                "fusion_id": "fusion-1",
+                "fused_events": [
+                    {
+                        "event_id": "evt-1",
+                        "event_type": "medal_seen",
+                        "final_score": 0.7,
+                        "gate_status": "confirmed",
+                        "synergy_applied": False,
+                        "suggested_start_timestamp": 1.0,
+                        "suggested_end_timestamp": 1.0,
+                        "metadata": {},
+                    },
+                    {
+                        "event_id": "evt-2",
+                        "event_type": "medal_seen",
+                        "final_score": 0.6,
+                        "gate_status": "confirmed",
+                        "synergy_applied": False,
+                        "suggested_start_timestamp": 1.0,
+                        "suggested_end_timestamp": 1.0,
+                        "metadata": {},
+                    },
+                ],
+            }
+            sidecar_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+            with (
+                patch.object(fused_review_bridge, "REPO_ROOT", root),
+                patch.object(fused_review_bridge, "_materialize_segment", side_effect=self._fake_materialize_segment),
+            ):
+                prepared = run_prepare_fused_review(
+                    "marvel_rivals",
+                    sidecar_root=sidecar_root,
+                    gpt_repo=gpt_repo,
+                )
+
+            self.assertEqual(prepared["item_count"], 1)
+            item = prepared["items"][0]
+            self.assertEqual(item["suggested_start_timestamp"], 0.0)
+            self.assertEqual(item["suggested_end_timestamp"], 2.5)
+
+    def test_prepare_fused_review_skips_already_reviewed_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            gpt_repo = root / "gpt"
+            _write_gpt_review_repo(gpt_repo)
+            video_path = root / "source.mp4"
+            video_path.write_bytes(b"video")
+            sidecar_root = root / "fused"
+            sidecar_root.mkdir(parents=True, exist_ok=True)
+            sidecar_path = sidecar_root / "alpha.fused_analysis.json"
+            payload = {
+                "schema_version": "fused_analysis_v1",
+                "ok": True,
+                "game": "marvel_rivals",
+                "source": str(video_path.resolve()),
+                "fusion_id": "fusion-1",
+                "fused_events": [
+                    {
+                        "event_id": "evt-1",
+                        "event_type": "medal_seen",
+                        "final_score": 0.7,
+                        "gate_status": "confirmed",
+                        "synergy_applied": False,
+                        "suggested_start_timestamp": 1.0,
+                        "suggested_end_timestamp": 1.0,
+                        "metadata": {},
+                    },
+                    {
+                        "event_id": "evt-2",
+                        "event_type": "medal_seen",
+                        "final_score": 0.6,
+                        "gate_status": "confirmed",
+                        "synergy_applied": False,
+                        "suggested_start_timestamp": 2.0,
+                        "suggested_end_timestamp": 2.0,
+                        "metadata": {},
+                    },
+                ],
+                "fused_review": {
+                    "events": {
+                        "evt-1": {"review_status": "rejected"},
+                    }
+                },
+            }
+            sidecar_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+            with (
+                patch.object(fused_review_bridge, "REPO_ROOT", root),
+                patch.object(fused_review_bridge, "_materialize_segment", side_effect=self._fake_materialize_segment),
+            ):
+                prepared = run_prepare_fused_review(
+                    "marvel_rivals",
+                    sidecar_root=sidecar_root,
+                    gpt_repo=gpt_repo,
+                )
+
+            self.assertEqual(prepared["item_count"], 1)
+            self.assertEqual(prepared["items"][0]["event_id"], "evt-2")
 
     @staticmethod
     def _fake_materialize_segment(source_path: Path, output_path: Path, *, start_seconds: float, end_seconds: float) -> None:

@@ -1013,3 +1013,28 @@ verification:
 notes:
 - this is a narrow bridge-contract hardening change
 - valid older sidecars are still accepted as long as the relevant sections keep the expected shapes
+
+## 2026-06-04T07:42Z
+
+target:
+- fused review bridge event-shape hardening
+
+status:
+- completed
+
+result:
+- tightened `fused_review_bridge` candidate intake so malformed fused-event payloads are skipped instead of being partially materialized
+- specifically guarded:
+  - non-list `fused_events`
+  - non-dict fused-event rows
+  - non-dict `metadata`
+  - non-list `metadata.matched_signal_types`
+- added regression coverage proving invalid fused-event rows are excluded from prepared review sessions
+
+verification:
+- `.venv/bin/python -m unittest tests.test_fused_review_bridge`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this mirrors the runtime-review bridge hardening pattern on the fused-review entrypoint
+- no fused scoring behavior changed
