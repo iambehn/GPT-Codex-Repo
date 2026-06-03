@@ -490,3 +490,26 @@ verification:
 notes:
 - this slice clarifies placement and scope only
 - it does not change runtime behavior or the active `call_of_duty` execution branch
+
+## 2026-06-03T04:46Z
+
+target:
+- call_of_duty alternative native surface packet intake
+
+status:
+- completed
+
+result:
+- promoted the received `ALTERNATIVE_NATIVE_SURFACE_PACKET` into a durable handoff
+- updated the dashboard and backlog so the next local branch is no longer a generic alternative-surface search
+- narrowed the next local validation family to `killfeed_events`, with `objective_event_notifications` behind it
+
+verification:
+- consistency check across:
+  - `docs/handoffs/2026-06-03-call-of-duty-alternative-native-surface-packet.md`
+  - `docs/v2/operator_pack/CODEX_AUTONOMY_DASHBOARD.md`
+  - `docs/v2/operator_pack/CODEX_BACKLOG.md`
+
+notes:
+- the packet is strong enough to choose the next local scout family
+- it is not yet strong enough to justify published-pack mutation because clip-backed evidence is still missing

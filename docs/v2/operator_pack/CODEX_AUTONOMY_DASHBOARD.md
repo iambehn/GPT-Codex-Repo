@@ -69,11 +69,11 @@ Active workstream:
 
 Current state:
 
-- `reward_banner` is validated as a narrow native-HUD pilot
+- `reward_banner` is validated as a narrow native-HUD pilot, and `killfeed_events` is the next recommended family to scout
 
 Desired next state:
 
-- a more repeatable native `call_of_duty` surface is selected for the next runtime slice
+- `killfeed_events` is either validated as the next runtime family or rejected with explicit evidence
 
 ## Current Blocker
 
@@ -94,19 +94,19 @@ Current packet:
 
 Current packet status:
 
-- requested
+- received and narrowed
 
 Current decision target:
 
-- identify the next repeatable native `call_of_duty` HUD surface family to implement after capping `reward_banner`
+- choose the next repeatable native `call_of_duty` HUD surface family after capping `reward_banner`, with `killfeed_events` currently recommended first
 
 Acceptance target:
 
-- one alternative native surface family is concrete enough for a narrow runtime pilot
+- one alternative native surface family is concrete enough for a narrow runtime pilot, and the next local validation slice is explicit
 
 Failure condition:
 
-- the next branch remains ambiguous and Codex falls back into low-yield `reward_banner` tuning or blind surface scouting
+- the next branch remains ambiguous and Codex falls back into low-yield `reward_banner` tuning, blind surface scouting, or pack mutation without clip evidence
 
 ## Forecast Queue
 
@@ -142,12 +142,13 @@ Current measured behavior:
 - current `UAV` pilot reproduces only on `_PL_5qWwKtY`
 - it stays clean off-target
 - it does not reproduce on same-family `MWIII Vista` no-commentary probes
+- the received alternative-surface packet recommends `killfeed_events` as the next family to validate locally
 
 ## Operator View
 
 What Codex should do next:
 
-- use an `ALTERNATIVE_NATIVE_SURFACE_PACKET` to choose the next native `call_of_duty` surface family
+- scout `kill_feed` visibility and repeatability on the current `call_of_duty` sample family before any published-pack mutation
 
 What Codex should not do next:
 
@@ -155,8 +156,8 @@ What Codex should not do next:
 
 How we know it worked:
 
-- a new candidate surface family is selected because it has explicit repeated evidence, native-HUD classification, and a clear extraction posture
+- `killfeed_events` is either advanced with clip-backed evidence and extraction posture, or rejected with explicit reasons and the fallback family becomes active
 
 Exact missing input:
 
-- stronger candidate native surface family with repeatable visible examples across clips and a decision-ready runtime packet
+- exact clip-backed `killfeed_events` evidence with timestamps, visibility notes, and extraction-feasibility observations across the current sample family

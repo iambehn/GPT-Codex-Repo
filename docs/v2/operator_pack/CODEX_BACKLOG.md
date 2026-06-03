@@ -30,10 +30,11 @@ Current evidence:
 - the published `UAV` `reward_banner` family is clean but only reproduces on `_PL_5qWwKtY`
 - same-family `MWIII Vista` scouting and diagnosis did not justify more `reward_banner` tuning
 - the lower-center count text in `_PL_5qWwKtY` behaves like an editorial or overlay family and should not be promoted as pack truth
+- the received alternative-native-surface packet recommends `killfeed_events` as the first family to validate locally, with `objective_event_notifications` as the fallback family
 
 Primary dependency:
 
-- [2026-06-03-call-of-duty-alternative-native-surface-request.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-03-call-of-duty-alternative-native-surface-request.md)
+- [2026-06-03-call-of-duty-alternative-native-surface-packet.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-03-call-of-duty-alternative-native-surface-packet.md)
 
 ### Validation packet
 
@@ -43,7 +44,7 @@ Status:
 
 Objective:
 
-- verify whether the chosen alternative native surface family actually repeats cleanly across clips before family expansion
+- verify whether `killfeed_events` actually repeats cleanly across clips before family expansion
 
 Acceptance criteria:
 
@@ -53,7 +54,7 @@ Acceptance criteria:
 
 Packet label:
 
-- `SURFACE_REPEATABILITY_VALIDATION_PACKET`
+- `KILLFEED_REPEATABILITY_VALIDATION_PACKET`
 
 ### Fallback packet
 
@@ -63,7 +64,7 @@ Status:
 
 Objective:
 
-- acquire higher-confidence same-provenance clips if the alternative native surface packet is inconclusive
+- acquire higher-confidence same-provenance clips if `killfeed_events` cannot be validated from the current sample family
 
 Acceptance criteria:
 
