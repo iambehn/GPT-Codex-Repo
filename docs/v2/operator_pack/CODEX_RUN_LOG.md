@@ -597,3 +597,27 @@ verification:
 notes:
 - the failure mode is anchor genericity, not threshold weakness
 - the next useful input is a discriminative top-right anchor packet, or explicit family retirement if no such anchor exists
+
+## 2026-06-04T04:05Z
+
+target:
+- call_of_duty top-right anchor local diagnostics
+
+status:
+- completed
+
+result:
+- generated full top-right ROI crops for the positive and negative pilot windows
+- generated exact matched-patch crops from the highest-scoring detections
+- confirmed the matcher was not locking onto a reusable event-card identity
+- recorded the local evidence as a bounded diagnostic handoff
+
+verification:
+- local inspection artifacts under:
+  - `outputs/inspection/call_of_duty_top_right_anchor_diagnostics/`
+- handoff:
+  - `docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-local-diagnostics.md`
+
+notes:
+- the strongest local positive still does not expose a clean reusable icon block
+- the current best local evidence strengthens the need for a discriminative anchor packet rather than another local shell-derived template
