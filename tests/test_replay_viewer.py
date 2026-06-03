@@ -27,6 +27,8 @@ def _runtime_sidecar(*, source: Path, game: str = "marvel_rivals", schema_versio
         "matcher": {
             "status": "ok",
             "frame_count": 42,
+            "frame_dimensions": {"width": 64, "height": 36},
+            "frame_coordinate_space": "normalized_pack_frame",
             "sample_fps": 4.0,
             "template_count": 2,
             "summary": {"total_confirmed_detections": 1},
@@ -134,12 +136,15 @@ class ReplayViewerTests(unittest.TestCase):
             self.assertTrue(result["media_embed_available"])
             viewer_path = Path(result["viewer_path"])
             self.assertTrue(viewer_path.is_file())
+            self.assertEqual(result["warnings"], [])
             html_text = viewer_path.read_text(encoding="utf-8")
             self.assertIn("Replay Viewer - marvel_rivals", html_text)
             self.assertIn("pov_character_identified", html_text)
             self.assertIn("character_identity", html_text)
             self.assertIn("Viewer Controls", html_text)
             self.assertIn("raw-detections", html_text)
+            self.assertIn("normalized_pack_frame", html_text)
+            self.assertIn("64x36", html_text)
 
     def test_render_replay_viewer_includes_fused_sidecar_sections(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

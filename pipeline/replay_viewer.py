@@ -227,6 +227,8 @@ def _derived_payload(
         "media_path": str(media_path) if media_path is not None else None,
         "media_uri": media_path.as_uri() if media_exists and media_path is not None else None,
         "media_exists": media_exists,
+        "frame_dimensions": matcher.get("frame_dimensions", {}),
+        "frame_coordinate_space": matcher.get("frame_coordinate_space"),
         "runtime_review": runtime_payload.get("runtime_review", {}) if isinstance(runtime_payload.get("runtime_review"), dict) else {},
         "fused_review": fused_review,
         "runtime_signal_count": len(runtime_signal_rows),
@@ -882,9 +884,15 @@ def _render_html(runtime_payload: dict[str, Any], fused_payload: dict[str, Any] 
 def _summary_cards(runtime_payload: dict[str, Any], fused_payload: dict[str, Any] | None, derived: dict[str, Any]) -> str:
     matcher = runtime_payload.get("matcher", {}) if isinstance(runtime_payload.get("matcher"), dict) else {}
     events = runtime_payload.get("events", {}) if isinstance(runtime_payload.get("events"), dict) else {}
+    frame_dimensions = derived.get("frame_dimensions", {}) if isinstance(derived.get("frame_dimensions"), dict) else {}
+    frame_dimensions_text = ""
+    if frame_dimensions.get("width") and frame_dimensions.get("height"):
+        frame_dimensions_text = f'{frame_dimensions["width"]}x{frame_dimensions["height"]}'
     cards = [
         ("Runtime status", runtime_payload.get("status")),
         ("Frames", matcher.get("frame_count")),
+        ("Frame space", derived.get("frame_coordinate_space")),
+        ("Frame dims", frame_dimensions_text or None),
         ("Detections", len(list(matcher.get("confirmed_detections", [])))),
         ("Signals", derived.get("runtime_signal_count")),
         ("Runtime events", events.get("event_count")),

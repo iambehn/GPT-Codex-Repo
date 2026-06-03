@@ -351,6 +351,26 @@ verification:
 notes:
 - this keeps replay/tuning comparisons aligned with the runtime sidecar contract so moved-clip diagnostics preserve matcher coordinate-space context
 
+## 2026-06-04T09:24Z
+
+target:
+- legacy replay viewer matcher metadata parity
+
+status:
+- completed
+
+result:
+- exposed `matcher.frame_dimensions` and `matcher.frame_coordinate_space` in the legacy replay viewer derived payload
+- surfaced the normalized-frame context in replay viewer summary cards
+- added replay viewer regression coverage for the rendered frame-space metadata
+
+verification:
+- `.venv/bin/python -m unittest tests.test_replay_viewer`
+- pending repo health gate
+
+notes:
+- this keeps both replay viewers aligned with the same runtime matcher coordinate contract
+
 ## 2026-05-31T00:58Z
 
 target:
