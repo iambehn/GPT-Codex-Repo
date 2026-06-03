@@ -428,6 +428,24 @@ verification:
 notes:
 - this keeps runtime fixture comparisons aligned with the matcher coordinate contract instead of reducing runtime rows to score/action only
 
+## 2026-06-04T10:31Z
+
+target:
+- operator-pack pipeline contracts matcher-coordinate note
+
+status:
+- completed
+
+result:
+- added an operator-facing note in `PIPELINE_CONTRACTS.md` that `runtime_analysis_v1` matcher coordinates are pack-normalized
+- pointed operators to `matcher.frame_dimensions` and `matcher.frame_coordinate_space` before interpreting `frame_match_x` or `frame_match_y`
+
+verification:
+- pending repo health gate
+
+notes:
+- this is a doc-only follow-up so the operator pack reflects the same coordinate contract already enforced in code, tests, and canonical V2 docs
+
 ## 2026-05-31T00:58Z
 
 target:

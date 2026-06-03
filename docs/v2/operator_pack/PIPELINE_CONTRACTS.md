@@ -69,6 +69,12 @@ Current limitation:
 
 - this proof uses downloaded public test media and bootstrap GPT review labels; it is an execution proof, not a publish-cleared production contract
 
+Runtime-sidecar coordinate note:
+
+- `runtime_analysis_v1` matcher coordinates are reported in pack-normalized frame space, not source-video pixel space
+- read `matcher.frame_dimensions` and `matcher.frame_coordinate_space` before interpreting `frame_match_x` or `frame_match_y`
+- downstream summaries that preserve matcher geometry should keep those fields instead of assuming source-resolution pixels
+
 ## Planned Real-Media Command Mapping
 
 These commands are the current preferred continuation and now have one bounded real-media proof.
