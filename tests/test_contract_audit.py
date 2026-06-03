@@ -219,6 +219,21 @@ class ContractAuditTests(unittest.TestCase):
                 + "\n",
                 encoding="utf-8",
             )
+            operator_pack_root = docs_root / "operator_pack"
+            operator_pack_root.mkdir(parents=True, exist_ok=True)
+            (operator_pack_root / "PIPELINE_CONTRACTS.md").write_text(
+                "\n".join(
+                    [
+                        "# Pipeline Contracts",
+                        "Runtime-sidecar coordinate note:",
+                        "- matcher.frame_dimensions",
+                        "- matcher.frame_coordinate_space",
+                        "- pack-normalized frame space",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
             with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
                 "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
             ), patch("pipeline.roi_matcher._template_dimensions", return_value=(10, 10)):
@@ -229,6 +244,7 @@ class ContractAuditTests(unittest.TestCase):
         self.assertEqual(by_surface["v2_index"]["status"], "ok")
         self.assertEqual(by_surface["engineering_governance"]["status"], "ok")
         self.assertEqual(by_surface["quality_maintenance"]["status"], "ok")
+        self.assertEqual(by_surface["pipeline_contracts"]["status"], "ok")
         self.assertFalse(any(row["status"].endswith("governance_surface") for row in result["warnings"]))
 
     def test_contract_audit_warns_when_governance_surface_is_incomplete(self) -> None:
@@ -240,6 +256,9 @@ class ContractAuditTests(unittest.TestCase):
             docs_root = root / "docs" / "v2"
             docs_root.mkdir(parents=True, exist_ok=True)
             (docs_root / "INDEX.md").write_text("# V2 Source of Truth Index\n", encoding="utf-8")
+            operator_pack_root = docs_root / "operator_pack"
+            operator_pack_root.mkdir(parents=True, exist_ok=True)
+            (operator_pack_root / "PIPELINE_CONTRACTS.md").write_text("# Pipeline Contracts\n", encoding="utf-8")
             with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
                 "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
             ), patch("pipeline.roi_matcher._template_dimensions", return_value=(10, 10)):

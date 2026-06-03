@@ -963,3 +963,27 @@ verification:
 notes:
 - this is a contract-clarity hardening slice
 - it does not change detector scoring or runtime matching behavior
+
+## 2026-06-04T07:14Z
+
+target:
+- contract-audit enforcement for matcher coordinate contract
+
+status:
+- completed
+
+result:
+- added `docs/v2/operator_pack/PIPELINE_CONTRACTS.md` to governance-surface auditing
+- required the runtime-sidecar coordinate note to keep explicit anchors for:
+  - `matcher.frame_dimensions`
+  - `matcher.frame_coordinate_space`
+  - pack-normalized frame-space interpretation
+- extended contract-audit tests to cover both complete and incomplete operator-pack cases
+
+verification:
+- `.venv/bin/python -m unittest tests.test_contract_audit`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this promotes the matcher coordinate rule from downstream propagation only to audited operator-contract status
+- no runtime behavior changed

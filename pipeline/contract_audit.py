@@ -111,6 +111,15 @@ GOVERNANCE_REQUIRED_SURFACES = {
             "## Long-Run Data-Quality Preservation",
         ),
     },
+    "pipeline_contracts": {
+        "relative_path": Path("docs/v2/operator_pack/PIPELINE_CONTRACTS.md"),
+        "anchors": (
+            "Runtime-sidecar coordinate note:",
+            "matcher.frame_dimensions",
+            "matcher.frame_coordinate_space",
+            "pack-normalized frame space",
+        ),
+    },
 }
 
 
