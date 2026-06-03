@@ -1,7 +1,7 @@
 # Codex Autonomy Dashboard
 
 Status: active-draft
-Version: 0.1
+Version: 0.2
 Last updated: 2026-06-03
 
 Purpose:
@@ -12,6 +12,20 @@ Purpose:
 
 This file is a coordination snapshot, not a second source of truth.
 
+This file is not:
+
+- a second backlog
+- an archive
+- a governance surface
+- a replacement for evidence handoffs
+- a replacement for the run log
+
+This file is:
+
+- the fastest current answer to "what should happen next?"
+- a compact state snapshot for Codex and the human operator
+- a coordination surface that summarizes, but does not replace, other operator-pack files
+
 Subordinate surfaces:
 
 - chronology lives in [CODEX_RUN_LOG.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/CODEX_RUN_LOG.md)
@@ -19,10 +33,28 @@ Subordinate surfaces:
 - phase intent lives in [EXECUTION_TARGET.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/EXECUTION_TARGET.md)
 - evidence and measured outcomes live in handoff docs under `docs/handoffs/`
 
-Update rule:
+Update trigger:
 
-- update this file only when the next state transition changes
+- update this file only when at least one of these changes:
+  - the next state transition changes
+  - the active blocker changes
+  - the active packet changes
+  - the recommended next action changes
+  - the exact missing input changes
+  - the repo truth changes enough to alter the execution branch
+- do not update it for:
+  - routine milestone logging
+  - minor progress within the same branch
+  - historical completeness
+  - generic documentation polish
 - do not duplicate large narrative history here
+
+Maintenance posture:
+
+- primary updater: `Researcher`
+- Codex updates this file only when a local execution decision materially changes
+- this file should remain writable from current repo truth in under one minute
+- every field should change Codex behavior if updated
 
 ## Active Execution Target
 
@@ -42,10 +74,6 @@ Current state:
 Desired next state:
 
 - a more repeatable native `call_of_duty` surface is selected for the next runtime slice
-
-Current blocker:
-
-- no repeatable native surface has yet been confirmed beyond the one-clip `UAV` pilot
 
 ## Current Blocker
 

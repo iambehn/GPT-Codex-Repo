@@ -26,6 +26,7 @@ Rules:
 - If repo behavior changes, update the relevant operator file in the same slice.
 - Do not stop for routine next-step permission once a local-only target is complete.
 - Prefer logging routine progress in `CODEX_RUN_LOG.md` instead of surfacing it in chat.
+- Treat `CODEX_AUTONOMY_DASHBOARD.md` as a thin live snapshot only; do not let it become a second backlog, archive, or governance file.
 - Apply the standing user delegation for this repo:
   - Codex may choose and execute the next local-only tasks inside this gameplay highlight pipeline without asking first.
   - Codex may batch multiple milestones into one work block.
@@ -39,3 +40,4 @@ Rules:
 - Default reporting style is blockers and milestones, not frequent routine progress prompts.
 - Default progress sink for non-blocking routine work is `CODEX_RUN_LOG.md`.
 - Default live execution snapshot is `CODEX_AUTONOMY_DASHBOARD.md`.
+- Default dashboard ownership is researcher-primary; Codex updates it only when the next execution branch materially changes.
