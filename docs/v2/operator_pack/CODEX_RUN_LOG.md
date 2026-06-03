@@ -667,3 +667,29 @@ verification:
 notes:
 - this is a support artifact only
 - it exists to reduce researcher interpretation burden without creating a second packet
+
+## 2026-06-04T06:08Z
+
+target:
+- call_of_duty Vista anchor candidate scout
+
+status:
+- completed
+
+result:
+- downloaded two additional high-kill `MWIII Vista` probes from `vistastructions`
+- generated sparse top-right contact sheets across the first two minutes
+- confirmed both probes are same-title but wrong-surface candidates for the current blocker
+- tightened the active anchor packet so these clips are now explicit exclusions rather than promising sources
+
+verification:
+- contact sheets:
+  - `outputs/inspection/call_of_duty_top_right_anchor_candidates/-unDN10cqgo_top_right_contact_sheet.png`
+  - `outputs/inspection/call_of_duty_top_right_anchor_candidates/vY8j3bLkkMI_top_right_contact_sheet.png`
+- updated handoffs:
+  - `docs/handoffs/2026-06-04-call-of-duty-vista-anchor-candidate-scout.md`
+  - `docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-packet-request.md`
+
+notes:
+- these clips mostly show loadout labels, player-name overlays, or environment-only frames in the top-right ROI
+- they should be treated as exclusion evidence, not as positive anchor sources

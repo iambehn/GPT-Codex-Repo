@@ -13,6 +13,9 @@ current_repo_truth:
     - `_PL_5qWwKtY` yields only partial text recovery
     - `gcAGS3R2t2o` yields no useful OCR recovery on the tested card regions
     - negatives produce OCR noise
+  - same-title `vistastructions` high-kill Vista probes are now known weak candidates:
+    - they tend to show weapon/loadout labels, player-name overlays, or plain environment in the top-right ROI
+    - they do not strengthen the current event-card anchor branch
 
 required_output:
   - follow `RESEARCH_PACKET_TEMPLATE.md`
@@ -50,6 +53,7 @@ required_findings:
   - explain why the shell anchor failed
   - identify whether a narrower icon block, emblem block, or text fragment is actually discriminative
   - if recommending a text fragment, explain why it is viable despite the current weak local OCR evidence
+  - explicitly exclude same-title but wrong-surface candidate families such as generic high-kill Vista clips when they do not show the event-card family itself
 
 non_goals:
   - generic killfeed semantics
