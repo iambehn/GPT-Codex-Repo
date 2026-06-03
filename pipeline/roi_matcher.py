@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import shutil
 import subprocess
 from dataclasses import dataclass, replace
@@ -95,6 +96,11 @@ class FrameBundle:
     image: Any
 
 
+_NON_FINITE_METHOD_FALLBACKS: dict[str, str] = {
+    "TM_CCOEFF_NORMED": "TM_CCORR_NORMED",
+}
+
+
 def match_roi_templates(
     source: str | Path,
     game: str,
@@ -144,6 +150,7 @@ def match_roi_templates(
 
     detections: list[dict[str, Any]] = []
     confirmed_roi_images: list[tuple[str, int, float, Any]] = []
+    invalid_detection_reasons: dict[str, int] = {}
     for frame in frames:
         for template in templates:
             bounds = rois.get(template.roi_ref)
@@ -157,6 +164,10 @@ def match_roi_templates(
                 np_module=np_module,
             )
             if match is None:
+                continue
+            invalid_reason = _invalid_match_reason(match)
+            if invalid_reason is not None:
+                invalid_detection_reasons[invalid_reason] = invalid_detection_reasons.get(invalid_reason, 0) + 1
                 continue
             threshold = max(template.threshold, float(min_score)) if min_score is not None else template.threshold
             if match["score"] < threshold:
@@ -172,6 +183,15 @@ def match_roi_templates(
                     "template_path": str(template.template_path),
                     "frame_index": frame.frame_index,
                     "asset_family": template.asset_family,
+                    "match_x": match.get("match_x"),
+                    "match_y": match.get("match_y"),
+                    "match_width": match.get("match_width"),
+                    "match_height": match.get("match_height"),
+                    "frame_match_x": (bounds.x + int(match["match_x"])) if match.get("match_x") is not None else None,
+                    "frame_match_y": (bounds.y + int(match["match_y"])) if match.get("match_y") is not None else None,
+                    "frame_width": width,
+                    "frame_height": height,
+                    "frame_coordinate_space": "normalized_pack_frame",
                 }
             )
 
@@ -202,12 +222,16 @@ def match_roi_templates(
         "source": str(source),
         "frame_count": len(frames),
         "sample_fps": fps,
+        "frame_dimensions": {"width": width, "height": height},
+        "frame_coordinate_space": "normalized_pack_frame",
         "template_count": len(templates),
         "detections": detections,
         "confirmed_detections": confirmed,
         "summary": _summary_rows(detections, confirmed, templates),
         "top_scores": top_scores,
         "unseen_templates": unseen_templates,
+        "invalid_detection_count": sum(invalid_detection_reasons.values()),
+        "invalid_detection_reasons": invalid_detection_reasons,
     }
     if output_path is not None:
         Path(output_path).write_text(json.dumps(result, indent=2), encoding="utf-8")
@@ -219,6 +243,44 @@ def match_roi_templates(
             confirmed_roi_images=confirmed_roi_images,
         )
     return result
+
+
+def _invalid_match_reason(match: dict[str, Any]) -> str | None:
+    explicit_reason = str(match.get("invalid_reason", "")).strip()
+    if explicit_reason:
+        return explicit_reason
+    try:
+        score = float(match.get("score"))
+    except (TypeError, ValueError):
+        return "non_finite_match_score"
+    if not math.isfinite(score):
+        return "non_finite_match_score"
+    return None
+
+
+def _degenerate_input_reason(image: Any, *, np_module: Any, reason: str) -> str | None:
+    spread = _image_spread(image, np_module=np_module)
+    if spread is None:
+        return None
+    if spread <= 1e-8:
+        return reason
+    return None
+
+
+def _image_spread(image: Any, *, np_module: Any) -> float | None:
+    if hasattr(image, "spread"):
+        try:
+            return float(getattr(image, "spread"))
+        except (TypeError, ValueError):
+            return None
+    try:
+        array = np_module.asarray(image, dtype=np_module.float32)
+    except Exception:
+        return None
+    try:
+        return float(array.max() - array.min())
+    except Exception:
+        return None
 
 
 def _load_template_specs(pack_root: Path, hud_payload: dict[str, Any], template_payload: dict[str, Any]) -> list[TemplateSpec]:
@@ -300,11 +362,29 @@ def load_template_trial_overrides(path: str | Path) -> dict[str, dict[str, Any]]
             raise RoiMatcherError("invalid_template_trial", f"template trial row for '{normalized_asset_id}' must be an object")
         override: dict[str, Any] = {}
         for key in row.keys():
-            if key not in {"threshold", "scale_set", "temporal_window"}:
+            if key not in {"threshold", "scale_set", "temporal_window", "template_path"}:
                 raise RoiMatcherError(
                     "invalid_template_trial",
                     f"template trial row for '{normalized_asset_id}' uses unsupported field '{key}'",
                 )
+        if "template_path" in row:
+            template_path = str(row["template_path"]).strip()
+            if not template_path:
+                raise RoiMatcherError(
+                    "invalid_template_trial",
+                    f"template trial row for '{normalized_asset_id}' must use a non-empty template_path",
+                )
+            resolved_template_path = Path(template_path).expanduser()
+            if not resolved_template_path.is_absolute():
+                resolved_template_path = (trial_path.parent / resolved_template_path).resolve()
+            else:
+                resolved_template_path = resolved_template_path.resolve()
+            if not resolved_template_path.exists() or not resolved_template_path.is_file():
+                raise RoiMatcherError(
+                    "invalid_template_trial",
+                    f"template trial row for '{normalized_asset_id}' references missing template_path '{resolved_template_path}'",
+                )
+            override["template_path"] = str(resolved_template_path)
         if "threshold" in row:
             override["threshold"] = float(row["threshold"])
         if "scale_set" in row:
@@ -319,7 +399,7 @@ def load_template_trial_overrides(path: str | Path) -> dict[str, dict[str, Any]]
         if not override:
             raise RoiMatcherError(
                 "invalid_template_trial",
-                f"template trial row for '{normalized_asset_id}' must override at least one of threshold, scale_set, or temporal_window",
+                f"template trial row for '{normalized_asset_id}' must override at least one of template_path, threshold, scale_set, or temporal_window",
             )
         overrides[normalized_asset_id] = override
     if not overrides:
@@ -349,6 +429,7 @@ def _apply_template_overrides(
         overridden.append(
             replace(
                 template,
+                template_path=Path(str(row.get("template_path", template.template_path))).expanduser().resolve(),
                 threshold=float(row.get("threshold", template.threshold)),
                 scale_set=[float(item) for item in row.get("scale_set", template.scale_set)],
                 temporal_window=max(1, int(row.get("temporal_window", template.temporal_window))),
@@ -963,8 +1044,14 @@ def _best_match_for_template(*, roi_image: Any, template: TemplateSpec, cv2_modu
 
     best_score = None
     best_scale = None
-    method = getattr(cv2_module, template.match_method, None)
-    if method is None:
+    best_match_x = None
+    best_match_y = None
+    best_match_width = None
+    best_match_height = None
+    invalid_reason_counts: dict[str, int] = {}
+    primary_method_name = template.match_method
+    primary_method = getattr(cv2_module, primary_method_name, None)
+    if primary_method is None:
         raise RoiMatcherError("invalid_match_method", f"unsupported match method: {template.match_method}")
 
     roi_height, roi_width = roi_image.shape[:2]
@@ -983,21 +1070,110 @@ def _best_match_for_template(*, roi_image: Any, template: TemplateSpec, cv2_modu
         prepared_mask = scaled_mask
         if len(prepared_template.shape) == 2 and len(prepared_roi.shape) == 3:
             prepared_roi = cv2_module.cvtColor(prepared_roi, cv2_module.COLOR_RGB2GRAY)
-        elif len(prepared_template.shape) == 3 and len(prepared_roi.shape) == 2:
-            prepared_template = cv2_module.cvtColor(prepared_template, cv2_module.COLOR_BGRA2BGR if prepared_template.shape[2] == 4 else cv2_module.COLOR_BGR2RGB)
         if len(prepared_template.shape) == 3 and prepared_template.shape[2] == 4:
             if prepared_mask is None:
                 alpha_mask = prepared_template[:, :, 3]
                 prepared_mask = alpha_mask
             prepared_template = prepared_template[:, :, :3]
-        result = cv2_module.matchTemplate(prepared_roi, prepared_template, method, mask=prepared_mask)
-        _, max_val, _, _ = cv2_module.minMaxLoc(result)
-        if best_score is None or max_val > best_score:
-            best_score = float(max_val)
+        if len(prepared_template.shape) == 3 and len(prepared_roi.shape) == 3 and prepared_template.shape[2] == 3:
+            prepared_template = cv2_module.cvtColor(prepared_template, cv2_module.COLOR_BGR2RGB)
+        elif len(prepared_template.shape) == 3 and len(prepared_roi.shape) == 2:
+            prepared_template = cv2_module.cvtColor(prepared_template, cv2_module.COLOR_RGB2GRAY)
+        degenerate_roi_reason = _degenerate_input_reason(prepared_roi, np_module=np_module, reason="degenerate_roi_input")
+        if degenerate_roi_reason is not None:
+            invalid_reason_counts[degenerate_roi_reason] = invalid_reason_counts.get(degenerate_roi_reason, 0) + 1
+            continue
+        degenerate_template_reason = _degenerate_input_reason(
+            prepared_template,
+            np_module=np_module,
+            reason="degenerate_template_input",
+        )
+        if degenerate_template_reason is not None:
+            invalid_reason_counts[degenerate_template_reason] = invalid_reason_counts.get(degenerate_template_reason, 0) + 1
+            continue
+        match_result = _match_score_with_fallback(
+            cv2_module=cv2_module,
+            prepared_roi=prepared_roi,
+            prepared_template=prepared_template,
+            prepared_mask=prepared_mask,
+            primary_method_name=primary_method_name,
+            primary_method=primary_method,
+        )
+        score = float(match_result["score"])
+        if best_score is None or score > best_score:
+            best_score = score
             best_scale = scale
+            best_match_x = int(match_result["match_x"])
+            best_match_y = int(match_result["match_y"])
+            best_match_width = int(match_result["match_width"])
+            best_match_height = int(match_result["match_height"])
     if best_score is None:
+        if invalid_reason_counts:
+            invalid_reason = max(invalid_reason_counts.items(), key=lambda item: item[1])[0]
+            return {"invalid_reason": invalid_reason}
         return None
-    return {"score": best_score, "scale": best_scale}
+    return {
+        "score": best_score,
+        "scale": best_scale,
+        "match_x": best_match_x,
+        "match_y": best_match_y,
+        "match_width": best_match_width,
+        "match_height": best_match_height,
+    }
+
+
+def _match_score_with_fallback(
+    *,
+    cv2_module: Any,
+    prepared_roi: Any,
+    prepared_template: Any,
+    prepared_mask: Any,
+    primary_method_name: str,
+    primary_method: Any,
+) -> float:
+    match_result = _match_score(
+        cv2_module=cv2_module,
+        prepared_roi=prepared_roi,
+        prepared_template=prepared_template,
+        prepared_mask=prepared_mask,
+        method=primary_method,
+    )
+    score = float(match_result["score"])
+    if math.isfinite(score):
+        return match_result
+    fallback_method_name = _NON_FINITE_METHOD_FALLBACKS.get(primary_method_name)
+    if not fallback_method_name:
+        return match_result
+    fallback_method = getattr(cv2_module, fallback_method_name, None)
+    if fallback_method is None:
+        return match_result
+    fallback_result = _match_score(
+        cv2_module=cv2_module,
+        prepared_roi=prepared_roi,
+        prepared_template=prepared_template,
+        prepared_mask=prepared_mask,
+        method=fallback_method,
+    )
+    return fallback_result
+
+
+def _match_score(
+    *,
+    cv2_module: Any,
+    prepared_roi: Any,
+    prepared_template: Any,
+    prepared_mask: Any,
+    method: Any,
+) -> dict[str, float | int]:
+    result = cv2_module.matchTemplate(prepared_roi, prepared_template, method, mask=prepared_mask)
+    _, max_val, _, max_loc = cv2_module.minMaxLoc(result)
+    return {
+        "score": float(max_val),
+        "match_x": int(max_loc[0]),
+        "match_y": int(max_loc[1]),
+        "match_width": int(prepared_template.shape[1]),
+        "match_height": int(prepared_template.shape[0]),
+    }
 
 
 def _confirm_detections(detections: list[dict[str, Any]], templates: list[TemplateSpec]) -> list[dict[str, Any]]:
@@ -1050,6 +1226,7 @@ def _append_confirmed_cluster(
 ) -> None:
     if len(cluster) < temporal_window:
         return
+    best_row = max(cluster, key=lambda item: float(item["score"]))
     row = {
         "asset_id": asset_id,
         "roi_ref": roi_ref,
@@ -1058,6 +1235,15 @@ def _append_confirmed_cluster(
         "peak_score": max(float(row["score"]) for row in cluster),
         "supporting_frames": len(cluster),
         "temporal_window": temporal_window,
+        "match_x": best_row.get("match_x"),
+        "match_y": best_row.get("match_y"),
+        "match_width": best_row.get("match_width"),
+        "match_height": best_row.get("match_height"),
+        "frame_match_x": best_row.get("frame_match_x"),
+        "frame_match_y": best_row.get("frame_match_y"),
+        "frame_width": best_row.get("frame_width"),
+        "frame_height": best_row.get("frame_height"),
+        "frame_coordinate_space": best_row.get("frame_coordinate_space"),
     }
     if template is not None:
         row["asset_family"] = template.asset_family

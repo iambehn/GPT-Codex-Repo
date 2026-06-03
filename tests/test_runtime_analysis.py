@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import io
 import json
 import sys
@@ -153,7 +154,11 @@ class RuntimeAnalysisTests(unittest.TestCase):
         )
         template_path = game_root / "templates" / "heroes" / "punisher.png"
         template_path.parent.mkdir(parents=True, exist_ok=True)
-        template_path.write_bytes(b"template")
+        template_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn5wQAAAABJRU5ErkJggg=="
+            )
+        )
 
     def _matcher_result(self) -> dict[str, object]:
         return {
@@ -163,6 +168,8 @@ class RuntimeAnalysisTests(unittest.TestCase):
             "source": "/tmp/example.mp4",
             "frame_count": 12,
             "sample_fps": 4.0,
+            "frame_dimensions": {"width": 64, "height": 36},
+            "frame_coordinate_space": "normalized_pack_frame",
             "template_count": 1,
             "summary": {
                 "total_confirmed_detections": 1,
@@ -205,7 +212,11 @@ class RuntimeAnalysisTests(unittest.TestCase):
             self.assertIn("matcher", payload)
             self.assertIn("events", payload)
             self.assertIn("signals", payload["matcher"])
+            self.assertEqual(payload["matcher"]["invalid_detection_count"], 0)
+            self.assertEqual(payload["matcher"]["invalid_detection_reasons"], {})
             self.assertEqual(payload["events"]["signal_count"], 1)
+            self.assertEqual(payload["events"]["invalid_confirmed_detection_count"], 0)
+            self.assertEqual(payload["events"]["invalid_confirmed_detection_reasons"], {})
 
     def test_analyze_roi_runtime_respects_explicit_output_path(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -221,6 +232,28 @@ class RuntimeAnalysisTests(unittest.TestCase):
                 result = analyze_roi_runtime("/tmp/example.mp4", "marvel_rivals", output_path=output_path)
             self.assertEqual(Path(result["sidecar_path"]), output_path.resolve())
             self.assertTrue(output_path.exists())
+
+    def test_analyze_roi_runtime_persists_matcher_debug_output_dir_in_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            self._write_published_pack(root)
+            debug_root = root / "debug" / "runtime"
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ), patch(
+                "pipeline.runtime_analysis.match_roi_templates",
+                return_value=self._matcher_result(),
+            ):
+                result = analyze_roi_runtime(
+                    "/tmp/example.mp4",
+                    "marvel_rivals",
+                    debug_output_dir=debug_root,
+                )
+            sidecar_path = Path(result["sidecar_path"])
+            payload = json.loads(sidecar_path.read_text(encoding="utf-8"))
+            self.assertEqual(Path(payload["matcher"]["debug_output_dir"]).resolve(), debug_root.resolve())
+            self.assertEqual(payload["matcher"]["frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(payload["matcher"]["frame_coordinate_space"], "normalized_pack_frame")
 
     def test_analyze_roi_runtime_uses_matcher_report_without_rerunning_matcher(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -275,6 +308,8 @@ class RuntimeAnalysisTests(unittest.TestCase):
                     "signals": [],
                     "event_count": 1,
                     "events": [],
+                    "invalid_confirmed_detection_count": 1,
+                    "invalid_confirmed_detection_reasons": {"non_finite_peak_score": 1},
                     "event_summary": {},
                 },
             ) as mock_map:
@@ -286,6 +321,10 @@ class RuntimeAnalysisTests(unittest.TestCase):
 
             self.assertTrue(result["ok"])
             self.assertEqual(mock_map.call_args.kwargs["runtime_rule_overrides"], overrides)
+            self.assertEqual(result["matcher"]["invalid_detection_count"], 0)
+            self.assertEqual(result["matcher"]["invalid_detection_reasons"], {})
+            self.assertEqual(result["events"]["invalid_confirmed_detection_count"], 1)
+            self.assertEqual(result["events"]["invalid_confirmed_detection_reasons"], {"non_finite_peak_score": 1})
 
     def test_run_analyze_roi_runtime_returns_structured_error(self) -> None:
         with patch("run.analyze_roi_runtime", side_effect=RuntimeAnalysisError("matcher_failed", "matcher failed")):

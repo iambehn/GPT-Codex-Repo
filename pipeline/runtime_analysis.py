@@ -75,6 +75,7 @@ def analyze_roi_runtime(
     )
     if debug_output_dir is not None:
         write_event_debug_bundle(debug_output_dir, event_result)
+    resolved_debug_output_dir = _resolve_optional_path(debug_output_dir)
 
     sidecar_path = _runtime_analysis_path(source, game, output_path)
     analysis_id = _analysis_id(game, source)
@@ -90,9 +91,14 @@ def analyze_roi_runtime(
         "contract_summary": _runtime_contract_summary(game),
         "matcher": {
             "status": matcher_result.get("status"),
+            "debug_output_dir": str(resolved_debug_output_dir) if resolved_debug_output_dir is not None else None,
             "frame_count": int(matcher_result.get("frame_count", 0) or 0),
             "sample_fps": float(matcher_result.get("sample_fps", 0.0) or 0.0),
+            "frame_dimensions": matcher_result.get("frame_dimensions", {}),
+            "frame_coordinate_space": matcher_result.get("frame_coordinate_space"),
             "template_count": int(matcher_result.get("template_count", 0) or 0),
+            "invalid_detection_count": int(matcher_result.get("invalid_detection_count", 0) or 0),
+            "invalid_detection_reasons": matcher_result.get("invalid_detection_reasons", {}),
             "summary": matcher_result.get("summary", {}),
             "top_scores": matcher_result.get("top_scores", {}),
             "unseen_templates": matcher_result.get("unseen_templates", []),
@@ -103,6 +109,8 @@ def analyze_roi_runtime(
             "status": event_result.get("status"),
             "signal_count": int(event_result.get("signal_count", 0) or 0),
             "event_count": int(event_result.get("event_count", 0) or 0),
+            "invalid_confirmed_detection_count": int(event_result.get("invalid_confirmed_detection_count", 0) or 0),
+            "invalid_confirmed_detection_reasons": event_result.get("invalid_confirmed_detection_reasons", {}),
             "event_summary": event_result.get("event_summary", {}),
             "rows": event_result.get("events", []),
         },
@@ -133,11 +141,9 @@ def _runtime_contract_summary(game: str) -> dict[str, Any]:
 
 def _runtime_analysis_path(source: str | Path, game: str, output_path: str | Path | None) -> Path:
     if output_path is not None:
-        path = Path(output_path).expanduser()
-        if not path.is_absolute():
-            path = (Path.cwd() / path).resolve()
-        else:
-            path = path.resolve()
+        path = _resolve_optional_path(output_path)
+        if path is None:
+            raise RuntimeAnalysisError("invalid_output_path", "output_path must not be empty")
         return path
 
     source_slug = _source_slug(source)
@@ -159,3 +165,14 @@ def _source_slug(source: str | Path) -> str:
 def _analysis_id(game: str, source: str | Path) -> str:
     digest = hashlib.sha1(f"{game}\n{source}".encode("utf-8")).hexdigest()[:12]
     return f"{game}-runtime-{digest}"
+
+
+def _resolve_optional_path(path: str | Path | None) -> Path | None:
+    if path is None:
+        return None
+    resolved = Path(path).expanduser()
+    if not resolved.is_absolute():
+        resolved = (Path.cwd() / resolved).resolve()
+    else:
+        resolved = resolved.resolve()
+    return resolved

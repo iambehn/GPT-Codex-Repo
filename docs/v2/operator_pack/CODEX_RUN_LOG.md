@@ -713,3 +713,26 @@ verification:
 notes:
 - this is a packaging artifact only
 - it exists to reduce external context reconstruction, not to change the current execution branch
+
+## 2026-06-04T06:46Z
+
+target:
+- roi matcher normalized-frame debug contract
+
+status:
+- completed
+
+result:
+- made matcher results expose normalized frame dimensions and coordinate-space explicitly
+- propagated the same fields into runtime-analysis matcher payloads
+- added regression coverage for:
+  - non-zero ROI origin frame-coordinate reconstruction
+  - debug CSV visibility of normalized coordinate space
+
+verification:
+- `.venv/bin/python -m unittest tests.test_roi_matcher tests.test_runtime_analysis`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this is a contract-clarity hardening slice
+- it does not change detector scoring or runtime matching behavior

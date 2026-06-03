@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -30,9 +31,10 @@ from run import (
 
 
 class _FakeImage:
-    def __init__(self, shape: tuple[int, ...], score: float = 0.0) -> None:
+    def __init__(self, shape: tuple[int, ...], score: float = 0.0, spread: float = 1.0) -> None:
         self.shape = shape
         self.score = score
+        self.spread = spread
 
     def __getitem__(self, key):  # noqa: ANN001
         return self
@@ -44,32 +46,36 @@ class _FakeCv2:
     INTER_LINEAR = 1
     INTER_NEAREST = 2
     TM_CCOEFF_NORMED = 3
+    TM_CCORR_NORMED = 7
     COLOR_RGB2GRAY = 4
     COLOR_BGRA2BGR = 5
     COLOR_BGR2RGB = 6
+    COLOR_BGR2GRAY = 8
 
     def __init__(self) -> None:
         self.mask_calls = 0
+        self.method_calls: list[int] = []
 
     def imread(self, path: str, mode: int) -> _FakeImage | None:
         if path.endswith(".mask.png"):
             return _FakeImage((10, 10))
-        return _FakeImage((10, 10, 4) if mode == self.IMREAD_UNCHANGED else (10, 10), score=0.0)
+        return _FakeImage((10, 10, 4) if mode == self.IMREAD_UNCHANGED else (10, 10), score=0.0, spread=1.0)
 
     def resize(self, image: _FakeImage, _none, fx: float, fy: float, interpolation: int) -> _FakeImage:
         height = max(1, int(image.shape[0] * fy))
         width = max(1, int(image.shape[1] * fx))
         channels = image.shape[2:] if len(image.shape) > 2 else ()
-        return _FakeImage((height, width, *channels), score=fx)
+        return _FakeImage((height, width, *channels), score=fx, spread=image.spread)
 
     def cvtColor(self, image: _FakeImage, code: int) -> _FakeImage:
-        if code == self.COLOR_RGB2GRAY:
-            return _FakeImage((image.shape[0], image.shape[1]), score=image.score)
-        return _FakeImage((image.shape[0], image.shape[1], 3), score=image.score)
+        if code in {self.COLOR_RGB2GRAY, self.COLOR_BGR2GRAY}:
+            return _FakeImage((image.shape[0], image.shape[1]), score=image.score, spread=image.spread)
+        return _FakeImage((image.shape[0], image.shape[1], 3), score=image.score, spread=image.spread)
 
     def matchTemplate(self, roi_image: _FakeImage, template_image: _FakeImage, method: int, mask=None) -> _FakeImage:  # noqa: ANN001
         if mask is not None:
             self.mask_calls += 1
+        self.method_calls.append(method)
         return _FakeImage((1, 1), score=template_image.score or 1.0)
 
     def minMaxLoc(self, result: _FakeImage) -> tuple[float, float, tuple[int, int], tuple[int, int]]:
@@ -622,6 +628,10 @@ class RoiMatcherTests(unittest.TestCase):
         )
         self.assertIsNotNone(result)
         self.assertEqual(round(float(result["score"]), 2), 1.2)
+        self.assertEqual(result["match_x"], 0)
+        self.assertEqual(result["match_y"], 0)
+        self.assertEqual(result["match_width"], 12)
+        self.assertEqual(result["match_height"], 12)
         self.assertGreater(fake_cv2.mask_calls, 0)
 
     def test_confirm_detections_requires_temporal_window(self) -> None:
@@ -668,7 +678,7 @@ class RoiMatcherTests(unittest.TestCase):
 
             def fake_matcher(*, roi_image, template, cv2_module, np_module):  # noqa: ANN001
                 if template.asset_id == "marvel_rivals.hero.punisher":
-                    return {"score": 0.97, "scale": 1.0}
+                    return {"score": 0.97, "scale": 1.0, "match_x": 3, "match_y": 4, "match_width": 10, "match_height": 12}
                 if template.asset_id == "marvel_rivals.medal.headshot" and roi_image is not None:
                     return {"score": 0.40, "scale": 1.0}
                 return None
@@ -684,10 +694,309 @@ class RoiMatcherTests(unittest.TestCase):
 
             self.assertTrue(result["ok"])
             self.assertEqual(result["template_count"], 2)
+            self.assertEqual(result["frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(result["frame_coordinate_space"], "normalized_pack_frame")
             self.assertGreaterEqual(len(result["detections"]), 3)
+            self.assertEqual(result["detections"][0]["match_x"], 3)
+            self.assertEqual(result["detections"][0]["frame_match_x"], 3)
+            self.assertEqual(result["detections"][0]["frame_width"], 64)
+            self.assertEqual(result["detections"][0]["frame_height"], 36)
+            self.assertEqual(result["detections"][0]["frame_coordinate_space"], "normalized_pack_frame")
             self.assertEqual(len(result["confirmed_detections"]), 1)
             self.assertEqual(result["confirmed_detections"][0]["asset_id"], "marvel_rivals.hero.punisher")
             self.assertEqual(result["confirmed_detections"][0]["asset_family"], "hero_portrait")
+            self.assertEqual(result["confirmed_detections"][0]["match_width"], 10)
+            self.assertEqual(result["confirmed_detections"][0]["frame_width"], 64)
+            self.assertEqual(result["confirmed_detections"][0]["frame_height"], 36)
+            self.assertEqual(result["confirmed_detections"][0]["frame_coordinate_space"], "normalized_pack_frame")
+
+    def test_matcher_drops_non_finite_scores_from_published_payloads(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.hero.punisher",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/punisher.png",
+                        "temporal_window": 2,
+                    },
+                    {
+                        "asset_id": "marvel_rivals.hero.bad",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/bad.png",
+                        "temporal_window": 2,
+                    },
+                ],
+            )
+            frames = [
+                FrameBundle(0, 0.0, _FakeImage((36, 64, 3))),
+                FrameBundle(1, 0.25, _FakeImage((36, 64, 3))),
+                FrameBundle(2, 0.50, _FakeImage((36, 64, 3))),
+            ]
+
+            def fake_matcher(*, template, **kwargs):  # noqa: ANN001
+                del kwargs
+                if template.asset_id == "marvel_rivals.hero.punisher":
+                    return {"score": 0.97, "scale": 1.0}
+                if template.asset_id == "marvel_rivals.hero.bad":
+                    return {"score": math.nan, "scale": 1.0}
+                return None
+
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root), patch(
+                "pipeline.roi_matcher._load_cv_runtime",
+                return_value=(object(), object()),
+            ), patch("pipeline.roi_matcher._decode_video_frames", return_value=frames), patch(
+                "pipeline.roi_matcher._best_match_for_template",
+                side_effect=fake_matcher,
+            ):
+                result = match_roi_templates("/tmp/example.mp4", "marvel_rivals", sample_fps=4.0)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["invalid_detection_count"], 3)
+            self.assertEqual(result["invalid_detection_reasons"], {"non_finite_match_score": 3})
+            self.assertTrue(all(math.isfinite(float(row["score"])) for row in result["detections"]))
+            self.assertTrue(all(math.isfinite(float(value)) for value in result["top_scores"].values()))
+            self.assertTrue(all(math.isfinite(float(row["peak_score"])) for row in result["confirmed_detections"]))
+            self.assertEqual({row["asset_id"] for row in result["detections"]}, {"marvel_rivals.hero.punisher"})
+
+    def test_matcher_reports_frame_match_coordinates_in_normalized_frame_space(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.medal.headshot",
+                        "asset_family": "medal_icon",
+                        "event_row_id": "headshot",
+                        "roi_ref": "medal_area",
+                        "template_path": "templates/medals/headshot.png",
+                        "temporal_window": 1,
+                    }
+                ],
+            )
+            frames = [FrameBundle(0, 0.0, _FakeImage((36, 64, 3)))]
+
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root
+            ), patch(
+                "pipeline.roi_matcher._load_cv_runtime",
+                return_value=(object(), object()),
+            ), patch(
+                "pipeline.roi_matcher._decode_video_frames",
+                return_value=frames,
+            ), patch(
+                "pipeline.roi_matcher._best_match_for_template",
+                return_value={"score": 0.97, "scale": 1.0, "match_x": 3, "match_y": 4, "match_width": 10, "match_height": 12},
+            ):
+                result = match_roi_templates("/tmp/example.mp4", "marvel_rivals", sample_fps=4.0)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(len(result["detections"]), 1)
+            detection = result["detections"][0]
+            self.assertEqual(detection["roi_ref"], "medal_area")
+            self.assertEqual(detection["match_x"], 3)
+            self.assertEqual(detection["match_y"], 4)
+            self.assertEqual(detection["frame_match_x"], 35)
+            self.assertEqual(detection["frame_match_y"], 4)
+            self.assertEqual(detection["frame_coordinate_space"], "normalized_pack_frame")
+
+    def test_best_match_retries_non_finite_ccoeff_with_ccorr_fallback(self) -> None:
+        class _FallbackCv2(_FakeCv2):
+            def matchTemplate(self, roi_image: _FakeImage, template_image: _FakeImage, method: int, mask=None) -> _FakeImage:  # noqa: ANN001
+                if mask is not None:
+                    self.mask_calls += 1
+                self.method_calls.append(method)
+                if method == self.TM_CCOEFF_NORMED:
+                    return _FakeImage((1, 1), score=math.nan)
+                if method == self.TM_CCORR_NORMED:
+                    return _FakeImage((1, 1), score=0.91)
+                return _FakeImage((1, 1), score=0.0)
+
+        fake_cv2 = _FallbackCv2()
+        template = TemplateSpec(
+            asset_id="marvel_rivals.hero.punisher",
+            roi_ref="hero_portrait",
+            template_path=Path("/tmp/punisher.png"),
+            mask_path=None,
+            threshold=0.9,
+            scale_set=[1.0],
+            temporal_window=2,
+            match_method="TM_CCOEFF_NORMED",
+            asset_family="hero_portrait",
+        )
+        result = _best_match_for_template(
+            roi_image=_FakeImage((36, 64, 3)),
+            template=template,
+            cv2_module=fake_cv2,
+            np_module=None,
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(round(float(result["score"]), 2), 0.91)
+        self.assertEqual(fake_cv2.method_calls, [fake_cv2.TM_CCOEFF_NORMED, fake_cv2.TM_CCORR_NORMED])
+
+    def test_best_match_normalizes_bgr_template_to_rgb_for_color_roi(self) -> None:
+        class _ColorAwareCv2(_FakeCv2):
+            def imread(self, path: str, mode: int) -> _FakeImage | None:
+                image = _FakeImage((10, 10, 3), score=0.0, spread=1.0)
+                image.color_space = "bgr"
+                return image
+
+            def cvtColor(self, image: _FakeImage, code: int) -> _FakeImage:
+                converted = super().cvtColor(image, code)
+                if code == self.COLOR_BGR2RGB:
+                    converted.color_space = "rgb"
+                return converted
+
+            def matchTemplate(self, roi_image: _FakeImage, template_image: _FakeImage, method: int, mask=None) -> _FakeImage:  # noqa: ANN001
+                self.method_calls.append(method)
+                score = 0.97 if getattr(template_image, "color_space", None) == "rgb" else 0.50
+                return _FakeImage((1, 1), score=score)
+
+        fake_cv2 = _ColorAwareCv2()
+        template = TemplateSpec(
+            asset_id="marvel_rivals.double_kill.medal_icon",
+            roi_ref="medal_area",
+            template_path=Path("/tmp/double_kill.png"),
+            mask_path=None,
+            threshold=0.94,
+            scale_set=[1.0],
+            temporal_window=3,
+            match_method="TM_CCORR_NORMED",
+            asset_family="medal_icon",
+        )
+        roi_image = _FakeImage((36, 64, 3), spread=1.0)
+        roi_image.color_space = "rgb"
+        result = _best_match_for_template(
+            roi_image=roi_image,
+            template=template,
+            cv2_module=fake_cv2,
+            np_module=None,
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(round(float(result["score"]), 2), 0.97)
+
+    def test_matcher_invalid_count_survives_double_non_finite_primary_and_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.hero.bad",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/bad.png",
+                        "temporal_window": 2,
+                    },
+                ],
+            )
+            frames = [
+                FrameBundle(0, 0.0, _FakeImage((36, 64, 3))),
+                FrameBundle(1, 0.25, _FakeImage((36, 64, 3))),
+                FrameBundle(2, 0.50, _FakeImage((36, 64, 3))),
+            ]
+
+            class _DoubleNonFiniteCv2(_FakeCv2):
+                def matchTemplate(self, roi_image: _FakeImage, template_image: _FakeImage, method: int, mask=None) -> _FakeImage:  # noqa: ANN001
+                    if mask is not None:
+                        self.mask_calls += 1
+                    self.method_calls.append(method)
+                    if method in {self.TM_CCOEFF_NORMED, self.TM_CCORR_NORMED}:
+                        return _FakeImage((1, 1), score=math.nan)
+                    return _FakeImage((1, 1), score=0.0)
+
+            fake_cv2 = _DoubleNonFiniteCv2()
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root), patch(
+                "pipeline.roi_matcher._load_cv_runtime",
+                return_value=(fake_cv2, object()),
+            ), patch("pipeline.roi_matcher._decode_video_frames", return_value=frames):
+                result = match_roi_templates("/tmp/example.mp4", "marvel_rivals", sample_fps=4.0)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["invalid_detection_count"], 3)
+            self.assertEqual(result["invalid_detection_reasons"], {"non_finite_match_score": 3})
+            self.assertEqual(result["detections"], [])
+            self.assertEqual(result["confirmed_detections"], [])
+
+    def test_matcher_counts_degenerate_roi_input(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.hero.flat-roi",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/flat-roi.png",
+                        "temporal_window": 2,
+                    },
+                ],
+            )
+            frames = [
+                FrameBundle(0, 0.0, _FakeImage((36, 64, 3), spread=0.0)),
+                FrameBundle(1, 0.25, _FakeImage((36, 64, 3), spread=0.0)),
+                FrameBundle(2, 0.50, _FakeImage((36, 64, 3), spread=0.0)),
+            ]
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root), patch(
+                "pipeline.roi_matcher._load_cv_runtime",
+                return_value=(_FakeCv2(), object()),
+            ), patch("pipeline.roi_matcher._decode_video_frames", return_value=frames):
+                result = match_roi_templates("/tmp/example.mp4", "marvel_rivals", sample_fps=4.0)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["invalid_detection_count"], 3)
+            self.assertEqual(result["invalid_detection_reasons"], {"degenerate_roi_input": 3})
+            self.assertEqual(result["detections"], [])
+
+    def test_matcher_counts_degenerate_template_input(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.hero.flat-template",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/flat-template.png",
+                        "temporal_window": 2,
+                    },
+                ],
+            )
+            frames = [
+                FrameBundle(0, 0.0, _FakeImage((36, 64, 3), spread=1.0)),
+                FrameBundle(1, 0.25, _FakeImage((36, 64, 3), spread=1.0)),
+                FrameBundle(2, 0.50, _FakeImage((36, 64, 3), spread=1.0)),
+            ]
+
+            class _FlatTemplateCv2(_FakeCv2):
+                def imread(self, path: str, mode: int) -> _FakeImage | None:
+                    if path.endswith(".mask.png"):
+                        return _FakeImage((10, 10), spread=1.0)
+                    return _FakeImage((10, 10, 4) if mode == self.IMREAD_UNCHANGED else (10, 10), score=0.0, spread=0.0)
+
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch("pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root), patch(
+                "pipeline.roi_matcher._load_cv_runtime",
+                return_value=(_FlatTemplateCv2(), object()),
+            ), patch("pipeline.roi_matcher._decode_video_frames", return_value=frames):
+                result = match_roi_templates("/tmp/example.mp4", "marvel_rivals", sample_fps=4.0)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["invalid_detection_count"], 3)
+            self.assertEqual(result["invalid_detection_reasons"], {"degenerate_template_input": 3})
+            self.assertEqual(result["detections"], [])
 
     def test_load_template_trial_overrides_rejects_invalid_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -697,6 +1006,31 @@ class RoiMatcherTests(unittest.TestCase):
             with self.assertRaises(RoiMatcherError) as exc:
                 load_template_trial_overrides(trial_path)
         self.assertEqual(exc.exception.status, "invalid_template_trial")
+
+    def test_load_template_trial_overrides_supports_template_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            template_path = root / "trial-template.png"
+            template_path.write_bytes(b"trial")
+            trial_path = root / "trial.yaml"
+            trial_path.write_text(
+                "\n".join(
+                    [
+                        "templates:",
+                        "  marvel_rivals.hero.punisher:",
+                        f'    template_path: "{template_path.name}"',
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            overrides = load_template_trial_overrides(trial_path)
+
+        self.assertEqual(
+            overrides["marvel_rivals.hero.punisher"]["template_path"],
+            str(template_path.resolve()),
+        )
 
     def test_matcher_applies_template_overrides_without_mutating_pack(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -751,6 +1085,54 @@ class RoiMatcherTests(unittest.TestCase):
             self.assertEqual(len(trial["confirmed_detections"]), 1)
             self.assertEqual(trial["confirmed_detections"][0]["entity_id"], "punisher")
             self.assertEqual(trial["confirmed_detections"][0]["temporal_window"], 1)
+            self.assertEqual((game_root / "manifests" / "cv_templates.yaml").read_text(encoding="utf-8"), original_manifest)
+
+    def test_matcher_applies_template_path_override_without_mutating_pack(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            assets_root = root / "assets" / "games"
+            starter_root = root / "starter_assets"
+            game_root = self._write_published_pack(
+                root,
+                template_rows=[
+                    {
+                        "asset_id": "marvel_rivals.hero.punisher",
+                        "entity_id": "punisher",
+                        "roi_ref": "hero_portrait",
+                        "template_path": "templates/heroes/punisher.png",
+                        "asset_family": "hero_portrait",
+                        "threshold": 0.8,
+                        "temporal_window": 1,
+                    }
+                ],
+            )
+            original_manifest = (game_root / "manifests" / "cv_templates.yaml").read_text(encoding="utf-8")
+            candidate_template = root / "candidate-template.png"
+            candidate_template.write_bytes(b"candidate")
+            frames = [FrameBundle(frame_index=0, timestamp=0.0, image=_FakeImage((36, 64, 3)))]
+            with patch("pipeline.game_pack.ASSETS_ROOT", assets_root), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", starter_root
+            ), patch(
+                "pipeline.roi_matcher._load_cv_runtime",
+                return_value=(_FakeCv2(), object()),
+            ), patch(
+                "pipeline.roi_matcher._decode_video_frames",
+                return_value=frames,
+            ), patch(
+                "pipeline.roi_matcher._best_match_for_template",
+                return_value={"score": 0.85, "scale": 1.0},
+            ):
+                trial = match_roi_templates(
+                    "/tmp/example.mp4",
+                    "marvel_rivals",
+                    sample_fps=4.0,
+                    template_overrides={
+                        "marvel_rivals.hero.punisher": {
+                            "template_path": str(candidate_template),
+                        }
+                    },
+                )
+            self.assertEqual(trial["detections"][0]["template_path"], str(candidate_template.resolve()))
             self.assertEqual((game_root / "manifests" / "cv_templates.yaml").read_text(encoding="utf-8"), original_manifest)
 
     def test_matcher_writes_output_report(self) -> None:
@@ -823,6 +1205,9 @@ class RoiMatcherTests(unittest.TestCase):
             self.assertTrue((debug_dir / "pack_summary.json").exists())
             self.assertTrue((debug_dir / "detections.csv").exists())
             self.assertTrue((debug_dir / "confirmed_detections.csv").exists())
+            detections_csv = (debug_dir / "detections.csv").read_text(encoding="utf-8")
+            self.assertIn("frame_coordinate_space", detections_csv)
+            self.assertIn("normalized_pack_frame", detections_csv)
             self.assertIn("summary", result)
             self.assertIn("top_scores", result)
             self.assertIn("unseen_templates", result)
