@@ -185,6 +185,8 @@ class FusionAnalysisTests(unittest.TestCase):
             "source": "/tmp/example.mp4",
             "matcher": {
                 "status": "ok",
+                "frame_dimensions": {"width": 64, "height": 36},
+                "frame_coordinate_space": "normalized_pack_frame",
                 "signals": [
                     {
                         "signal_id": "sig-medal",
@@ -228,6 +230,69 @@ class FusionAnalysisTests(unittest.TestCase):
                 "status": "ok",
                 "signal_count": 2,
                 "event_count": 2,
+                "rows": [],
+            },
+            "sidecar_path": "/tmp/example.runtime_analysis.json",
+        }
+
+    def _identity_runtime_sidecar(self, *, with_medal: bool = False) -> dict[str, object]:
+        signals: list[dict[str, object]] = [
+            {
+                "signal_id": "sig-identity",
+                "signal_type": "character_identity",
+                "event_type": "pov_character_identified",
+                "timestamp": 5.0,
+                "start_timestamp": 4.9,
+                "end_timestamp": 5.1,
+                "asset_id": "marvel_rivals.punisher.hero_portrait",
+                "asset_family": "hero_portrait",
+                "roi_ref": "hero_portrait",
+                "confidence": 0.96,
+                "entity_id": "punisher",
+                "evidence": {"peak_score": 0.96, "supporting_frames": 3},
+                "source_detection_count": 3,
+                "producer": "runtime_cv_template_matcher",
+                "producer_family": "runtime",
+                "source_ref": "/tmp/example.mp4",
+            }
+        ]
+        if with_medal:
+            signals.append(
+                {
+                    "signal_id": "sig-medal",
+                    "signal_type": "medal_visibility",
+                    "event_type": "medal_seen",
+                    "timestamp": 5.05,
+                    "start_timestamp": 4.95,
+                    "end_timestamp": 5.15,
+                    "asset_id": "marvel_rivals.double_kill.medal_icon",
+                    "asset_family": "medal_icon",
+                    "roi_ref": "center_badge",
+                    "confidence": 0.92,
+                    "event_row_id": "double_kill",
+                    "evidence": {"peak_score": 0.92, "supporting_frames": 4},
+                    "source_detection_count": 4,
+                    "producer": "runtime_cv_template_matcher",
+                    "producer_family": "runtime",
+                    "source_ref": "/tmp/example.mp4",
+                }
+            )
+        return {
+            "schema_version": "runtime_analysis_v1",
+            "analysis_id": "runtime-identity-001",
+            "ok": True,
+            "game": "marvel_rivals",
+            "source": "/tmp/example.mp4",
+            "matcher": {
+                "status": "ok",
+                "frame_dimensions": {"width": 64, "height": 36},
+                "frame_coordinate_space": "normalized_pack_frame",
+                "signals": signals,
+            },
+            "events": {
+                "status": "ok",
+                "signal_count": len(signals),
+                "event_count": len(signals),
                 "rows": [],
             },
             "sidecar_path": "/tmp/example.runtime_analysis.json",
@@ -378,6 +443,8 @@ class FusionAnalysisTests(unittest.TestCase):
                     runtime_sidecar=self._runtime_sidecar(),
                 )
                 self.assertTrue(Path(result["sidecar_path"]).exists())
+        self.assertEqual(result["runtime"]["frame_dimensions"], {"width": 64, "height": 36})
+        self.assertEqual(result["runtime"]["frame_coordinate_space"], "normalized_pack_frame")
         event_types = {row["event_type"] for row in result["fused_events"]}
         self.assertIn("medal_seen", event_types)
         self.assertIn("ability_plus_medal_combo", event_types)
@@ -432,6 +499,72 @@ class FusionAnalysisTests(unittest.TestCase):
         self.assertLess(row["confidence"], 0.75)
         self.assertGreater(row["entropy"], 0.0)
         self.assertEqual(row["penalties"][0]["type"], "low_confidence_signals")
+
+    def test_identity_only_fused_event_is_suppressed(self) -> None:
+        rules_text = "\n".join(
+            [
+                "rules:",
+                "  - rule_id: character_identity_atomic",
+                "    event_type: pov_character_identified",
+                '    signal_types: ["character_identity"]',
+                '    required_signal_types: ["character_identity"]',
+                "    window_seconds: 0.5",
+                "    min_signal_count: 1",
+                "    confidence_method: max",
+                '    group_by: ["entity_id"]',
+            ]
+        ) + "\n"
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            self._write_published_pack(root, rules_text=rules_text)
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ):
+                result = fuse_analysis(
+                    "/tmp/example.mp4",
+                    "marvel_rivals",
+                    proxy_sidecar=self._proxy_sidecar(),
+                    runtime_sidecar=self._identity_runtime_sidecar(),
+                    output_path=root / "fusion.json",
+                )
+        row = result["fused_events"][0]
+        self.assertTrue(row["suppressed"])
+        self.assertEqual(row["suppression_reason"], "low_value_identity_only")
+        self.assertEqual(row["suppression_policy"], "global_low_value_event_filter_v1")
+        self.assertEqual(row["recommended_action"], "skip")
+        self.assertEqual(row["final_score"], 0.0)
+        self.assertEqual(row["confidence"], 0.0)
+
+    def test_identity_plus_stronger_evidence_is_not_suppressed(self) -> None:
+        rules_text = "\n".join(
+            [
+                "rules:",
+                "  - rule_id: identity_plus_medal",
+                "    event_type: pov_character_identified",
+                '    signal_types: ["character_identity", "medal_visibility"]',
+                '    required_signal_types: ["character_identity"]',
+                "    window_seconds: 0.5",
+                "    min_signal_count: 1",
+                "    confidence_method: max",
+            ]
+        ) + "\n"
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            self._write_published_pack(root, rules_text=rules_text)
+            with patch("pipeline.game_pack.ASSETS_ROOT", root / "assets" / "games"), patch(
+                "pipeline.game_pack.STARTER_ASSETS_ROOT", root / "starter_assets"
+            ):
+                result = fuse_analysis(
+                    "/tmp/example.mp4",
+                    "marvel_rivals",
+                    proxy_sidecar=self._proxy_sidecar(),
+                    runtime_sidecar=self._identity_runtime_sidecar(with_medal=True),
+                    output_path=root / "fusion.json",
+                )
+        row = result["fused_events"][0]
+        self.assertFalse(row["suppressed"])
+        self.assertNotEqual(row["recommended_action"], "skip")
+        self.assertGreater(row["final_score"], 0.0)
 
     def test_gated_rule_confirms_and_emits_clip_boundaries(self) -> None:
         rules_text = "\n".join(
@@ -563,6 +696,7 @@ class FusionAnalysisTests(unittest.TestCase):
                     "post_gate_confidence": 0.92,
                     "confidence": 0.92,
                     "final_score": 0.92,
+                    "recommended_action": "highlight_candidate",
                     "entropy": 0.0,
                     "gate_status": "not_applicable",
                     "anchor_timestamp": 5.15,

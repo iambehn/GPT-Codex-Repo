@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from pipeline.fused_export import DEFAULT_ACTION_THRESHOLDS
 from pipeline.game_pack import load_game_pack
 from pipeline.roi_matcher import validate_published_pack
 from pipeline.runtime_ontology import load_runtime_signal_event_ontology, validate_group_by_fields
@@ -22,6 +23,13 @@ RUNTIME_ANALYSIS_SCHEMA_VERSION = "runtime_analysis_v1"
 
 SUPPORTED_CONFIDENCE_METHODS = {"max", "mean"}
 MAX_SYNERGY_MULTIPLIER = 1.5
+LOW_VALUE_SUPPRESSION_POLICY = "global_low_value_event_filter_v1"
+LOW_VALUE_EVENT_TYPES = {
+    "pov_character_identified",
+}
+LOW_VALUE_SIGNAL_TYPES = {
+    "character_identity",
+}
 REQUIRED_NORMALIZED_SIGNAL_FIELDS = (
     "signal_id",
     "producer_family",
@@ -43,6 +51,7 @@ REQUIRED_FUSED_EVENT_FIELDS = (
     "timestamp",
     "confidence",
     "final_score",
+    "recommended_action",
     "gate_status",
     "anchor_timestamp",
     "contributing_signals",
@@ -165,6 +174,8 @@ def fuse_analysis(
             "signal_count": int(runtime_sidecar.get("events", {}).get("signal_count", 0) or 0),
             "event_count": int(runtime_sidecar.get("events", {}).get("event_count", 0) or 0),
             "matcher_status": runtime_sidecar.get("matcher", {}).get("status"),
+            "frame_dimensions": runtime_sidecar.get("matcher", {}).get("frame_dimensions", {}),
+            "frame_coordinate_space": runtime_sidecar.get("matcher", {}).get("frame_coordinate_space"),
             "events_status": runtime_sidecar.get("events", {}).get("status"),
         },
         "normalized_signals": normalized_signals,
@@ -816,7 +827,7 @@ def _build_fused_event(
     metadata["matched_signal_types"] = synergy_state["matched_signal_types"]
     if gate_state["dependent_signal_types"]:
         metadata["dependent_signal_types"] = gate_state["dependent_signal_types"]
-    return {
+    event = {
         "event_id": event_id,
         "event_type": rule.event_type,
         "start_timestamp": round(start_timestamp, 5),
@@ -826,6 +837,7 @@ def _build_fused_event(
         "post_gate_confidence": round(post_gate_confidence, 5),
         "confidence": round(final_confidence, 5),
         "final_score": round(final_confidence, 5),
+        "recommended_action": _recommended_fused_action(final_confidence),
         "entropy": round(entropy, 5),
         "gate_status": gate_state["gate_status"],
         "anchor_timestamp": round(anchor_timestamp, 5),
@@ -852,6 +864,37 @@ def _build_fused_event(
         "bonuses": bonuses,
         "metadata": metadata,
     }
+    return _apply_low_value_event_suppression(event)
+
+
+def _apply_low_value_event_suppression(event: dict[str, Any]) -> dict[str, Any]:
+    event_type = str(event.get("event_type") or "").strip()
+    if event_type not in LOW_VALUE_EVENT_TYPES:
+        return event
+    matched_signal_types = {
+        str(value).strip()
+        for value in list(event.get("metadata", {}).get("matched_signal_types", []))
+        if str(value).strip()
+    }
+    non_identity_signal_types = matched_signal_types - LOW_VALUE_SIGNAL_TYPES
+    if non_identity_signal_types:
+        event["suppressed"] = False
+        return event
+    event["suppressed"] = True
+    event["suppression_reason"] = "low_value_identity_only"
+    event["suppression_policy"] = LOW_VALUE_SUPPRESSION_POLICY
+    event["final_score"] = 0.0
+    event["confidence"] = 0.0
+    event["recommended_action"] = "skip"
+    return event
+
+
+def _recommended_fused_action(final_score: float) -> str:
+    if final_score >= float(DEFAULT_ACTION_THRESHOLDS["highlight_candidate"]):
+        return "highlight_candidate"
+    if final_score >= float(DEFAULT_ACTION_THRESHOLDS["inspect"]):
+        return "inspect"
+    return "skip"
 
 
 def _evaluate_synergy(
