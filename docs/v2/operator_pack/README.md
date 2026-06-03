@@ -9,6 +9,7 @@ This directory is the active execution-control pack for the first runnable happy
 Use these files to keep Codex work phase-aware, inspectable, and autonomous within local-only pipeline boundaries:
 
 - `EXECUTION_TARGET.md`: the current happy-path target, stop condition, non-goals, and escalation triggers
+- `CODEX_AUTONOMY_DASHBOARD.md`: the thin live snapshot of current execution state, next transition, and exact missing input
 - `CODEX_BACKLOG.md`: the ordered phase backlog Codex should work through
 - `CODEX_RUN_LOG.md`: the append-only routine execution log for progress that does not need a chat interruption
 - `PIPELINE_CONTRACTS.md`: minimal stage contracts and validation levels
@@ -37,3 +38,4 @@ Rules:
   - local truth that is too weak to continue responsibly
 - Default reporting style is blockers and milestones, not frequent routine progress prompts.
 - Default progress sink for non-blocking routine work is `CODEX_RUN_LOG.md`.
+- Default live execution snapshot is `CODEX_AUTONOMY_DASHBOARD.md`.
