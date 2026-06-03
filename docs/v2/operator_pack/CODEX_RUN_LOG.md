@@ -621,3 +621,29 @@ verification:
 notes:
 - the strongest local positive still does not expose a clean reusable icon block
 - the current best local evidence strengthens the need for a discriminative anchor packet rather than another local shell-derived template
+
+## 2026-06-04T04:22Z
+
+target:
+- call_of_duty top-right anchor OCR viability
+
+status:
+- completed
+
+result:
+- ran bounded OCR probes over the two positive top-right cards and the three negative comparison crops
+- confirmed `_PL_5qWwKtY` yields only partial text recovery
+- confirmed `gcAGS3R2t2o` does not yield useful OCR signal at the current crop quality
+- confirmed negatives generate OCR noise rather than a clean separable failure pattern
+- tightened the active anchor-packet request so a text-fragment recommendation now needs stronger evidence than the current local clips provide
+
+verification:
+- OCR diagnostic crops under:
+  - `outputs/inspection/call_of_duty_top_right_anchor_diagnostics/ocr/`
+- updated handoffs:
+  - `docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-local-diagnostics.md`
+  - `docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-packet-request.md`
+
+notes:
+- this does not ban `mixed_ocr_template`
+- it does rule out treating the current local positives as sufficient OCR-first evidence

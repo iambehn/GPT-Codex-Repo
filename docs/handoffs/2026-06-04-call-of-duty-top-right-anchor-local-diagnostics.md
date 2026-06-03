@@ -37,13 +37,20 @@ structured_findings:
     - `Qop1sH70nHI` negative patch is a wall edge / flat texture boundary
   - this means the current highest-scoring matches are not locking onto a stable event-card identity
   - they are locking onto generic local contrast patterns inside the top-right ROI
+  - a bounded local OCR viability pass also weakens the text-fragment path on the current clips:
+    - `_PL_5qWwKtY` full-card OCR recovers only partial signal such as `AkuRenatashiki` and weak fragments like `5 @ -`
+    - `_PL_5qWwKtY` lower-text OCR does not recover a stable phrase from `ON A 5 KILL STREAK!`
+    - `gcAGS3R2t2o` produces no OCR output on the tested full-card, badge, upper-name, or lower-text crops
+    - negatives produce OCR noise such as `omy`, `@iso By`, and scoreboard-like fragments
+  - this does not rule out `mixed_ocr_template` completely
+  - it does mean the current local positives do not justify a broad OCR-first move on their own
 
 recommendation:
   - do not attempt another local shell-derived template from the current crops
   - the next packet should explicitly bias toward one of these narrower anchor classes:
     - icon or emblem block
     - compact left-side badge cluster
-    - stable text fragment, if and only if it is large enough to justify `mixed_ocr_template`
+    - stable text fragment, if and only if it is larger and cleaner than the current `gcAGS3R2t2o` positive and can outperform OCR noise on the current negative set
   - if the researcher cannot surface one of those with exact clip-backed evidence, retire the top-right family rather than continuing local template experiments
 
 open_uncertainties:
