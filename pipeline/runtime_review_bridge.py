@@ -251,11 +251,25 @@ def _candidate_from_sidecar(sidecar_path: Path, *, game: str) -> dict[str, Any] 
 
     events_payload = sidecar.get("events", {})
     matcher_payload = sidecar.get("matcher", {})
+    if not isinstance(events_payload, dict) or not isinstance(matcher_payload, dict):
+        return None
+    event_rows = events_payload.get("rows", [])
+    confirmed_detections = matcher_payload.get("confirmed_detections", [])
+    frame_dimensions = matcher_payload.get("frame_dimensions", {})
+    frame_coordinate_space = matcher_payload.get("frame_coordinate_space")
+    if not isinstance(event_rows, list) or not isinstance(confirmed_detections, list):
+        return None
+    if frame_dimensions is None:
+        frame_dimensions = {}
+    if not isinstance(frame_dimensions, dict):
+        return None
+    if frame_coordinate_space is not None and not isinstance(frame_coordinate_space, str):
+        return None
+
     runtime_action = str(sidecar.get("runtime_review", {}).get("recommended_action") or "").strip()
     if not runtime_action:
         runtime_action = _recommended_action_from_sidecar(sidecar)
 
-    event_rows = list(events_payload.get("rows", []))
     event_types = sorted({str(row.get("event_type", "")) for row in event_rows if row.get("event_type")})
     return {
         "sidecar_path": str(sidecar_path.resolve()),
@@ -263,9 +277,9 @@ def _candidate_from_sidecar(sidecar_path: Path, *, game: str) -> dict[str, Any] 
         "highlight_score": float(sidecar.get("runtime_review", {}).get("highlight_score") or _highlight_score_from_sidecar(sidecar)),
         "recommended_action": runtime_action,
         "event_count": int(events_payload.get("event_count", len(event_rows)) or 0),
-        "confirmed_detection_count": len(list(matcher_payload.get("confirmed_detections", []))),
-        "frame_dimensions": matcher_payload.get("frame_dimensions", {}),
-        "frame_coordinate_space": matcher_payload.get("frame_coordinate_space"),
+        "confirmed_detection_count": len(confirmed_detections),
+        "frame_dimensions": frame_dimensions,
+        "frame_coordinate_space": frame_coordinate_space,
         "event_types": event_types,
     }
 

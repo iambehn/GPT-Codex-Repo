@@ -987,3 +987,29 @@ verification:
 notes:
 - this promotes the matcher coordinate rule from downstream propagation only to audited operator-contract status
 - no runtime behavior changed
+
+## 2026-06-04T07:31Z
+
+target:
+- runtime review bridge sidecar-shape hardening
+
+status:
+- completed
+
+result:
+- tightened `runtime_review_bridge` candidate intake so malformed `matcher` or `events` payloads are skipped instead of being normalized implicitly
+- specifically guarded:
+  - non-dict `matcher` or `events` sections
+  - non-list `confirmed_detections`
+  - non-list `events.rows`
+  - non-dict `frame_dimensions`
+  - non-string `frame_coordinate_space` when present
+- added regression coverage proving malformed sidecars are excluded from prepared review sessions
+
+verification:
+- `.venv/bin/python -m unittest tests.test_runtime_review_bridge`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this is a narrow bridge-contract hardening change
+- valid older sidecars are still accepted as long as the relevant sections keep the expected shapes

@@ -28,8 +28,45 @@ def _write_runtime_sidecar(
     event_types: list[str],
     ok: bool = True,
     schema_version: str = "runtime_analysis_v1",
+    matcher_overrides: dict[str, object] | None = None,
+    events_overrides: dict[str, object] | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    matcher_payload = {
+        "status": "ok",
+        "frame_count": 12,
+        "frame_dimensions": {"width": 64, "height": 36},
+        "frame_coordinate_space": "normalized_pack_frame",
+        "sample_fps": 4.0,
+        "template_count": 3,
+        "summary": {"total_confirmed_detections": len(event_types)},
+        "top_scores": {},
+        "unseen_templates": [],
+        "confirmed_detections": [{"asset_id": f"{event_type}-asset"} for event_type in event_types],
+    }
+    if matcher_overrides:
+        matcher_payload.update(matcher_overrides)
+    events_payload = {
+        "status": "ok",
+        "event_count": len(event_types),
+        "event_summary": {"counts_by_event_type": {event_type: 1 for event_type in event_types}},
+        "rows": [
+            {
+                "event_id": f"{path.stem}-{index}",
+                "event_type": event_type,
+                "asset_id": f"{event_type}-asset",
+                "roi_ref": "hero_portrait",
+                "timestamp": 1.0,
+                "start_timestamp": 1.0,
+                "end_timestamp": 1.5,
+                "confidence": 0.95,
+                "source_detection_count": 3,
+            }
+            for index, event_type in enumerate(event_types)
+        ],
+    }
+    if events_overrides:
+        events_payload.update(events_overrides)
     payload = {
         "schema_version": schema_version,
         "analysis_id": f"{game}-{path.stem}",
@@ -39,37 +76,8 @@ def _write_runtime_sidecar(
         "source": str(source.resolve()),
         "sidecar_path": str(path.resolve()),
         "game_pack": {"game_id": game},
-        "matcher": {
-            "status": "ok",
-            "frame_count": 12,
-            "frame_dimensions": {"width": 64, "height": 36},
-            "frame_coordinate_space": "normalized_pack_frame",
-            "sample_fps": 4.0,
-            "template_count": 3,
-            "summary": {"total_confirmed_detections": len(event_types)},
-            "top_scores": {},
-            "unseen_templates": [],
-            "confirmed_detections": [{"asset_id": f"{event_type}-asset"} for event_type in event_types],
-        },
-        "events": {
-            "status": "ok",
-            "event_count": len(event_types),
-            "event_summary": {"counts_by_event_type": {event_type: 1 for event_type in event_types}},
-            "rows": [
-                {
-                    "event_id": f"{path.stem}-{index}",
-                    "event_type": event_type,
-                    "asset_id": f"{event_type}-asset",
-                    "roi_ref": "hero_portrait",
-                    "timestamp": 1.0,
-                    "start_timestamp": 1.0,
-                    "end_timestamp": 1.5,
-                    "confidence": 0.95,
-                    "source_detection_count": 3,
-                }
-                for index, event_type in enumerate(event_types)
-            ],
-        },
+        "matcher": matcher_payload,
+        "events": events_payload,
         "runtime_review": {
             "highlight_score": highlight_score,
             "recommended_action": action,
@@ -192,6 +200,49 @@ class RuntimeReviewBridgeTests(unittest.TestCase):
                     sidecar_root=sidecar_root,
                     gpt_repo=gpt_repo,
                     action="highlight_candidate",
+                )
+
+            self.assertEqual(result["item_count"], 1)
+            self.assertEqual(Path(result["items"][0]["source"]).name, "alpha.mp4")
+
+    def test_prepare_runtime_review_skips_sidecars_with_invalid_matcher_or_event_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            sidecar_root = root / "sidecars"
+            media_root = root / "media"
+            gpt_repo = root / "gpt"
+            _write_gpt_review_repo(gpt_repo)
+
+            media_root.mkdir(parents=True, exist_ok=True)
+            alpha = media_root / "alpha.mp4"
+            bravo = media_root / "bravo.mp4"
+            alpha.write_bytes(b"alpha")
+            bravo.write_bytes(b"bravo")
+
+            _write_runtime_sidecar(
+                sidecar_root / "marvel_rivals" / "alpha.runtime_analysis.json",
+                game="marvel_rivals",
+                source=alpha,
+                highlight_score=0.91,
+                action="highlight_candidate",
+                event_types=["medal_seen"],
+            )
+            _write_runtime_sidecar(
+                sidecar_root / "marvel_rivals" / "bravo.runtime_analysis.json",
+                game="marvel_rivals",
+                source=bravo,
+                highlight_score=0.88,
+                action="highlight_candidate",
+                event_types=["ability_seen"],
+                matcher_overrides={"confirmed_detections": {"not": "a-list"}},
+                events_overrides={"rows": {"not": "a-list"}},
+            )
+
+            with patch.object(runtime_review_bridge, "REPO_ROOT", root):
+                result = run_prepare_runtime_review(
+                    "marvel_rivals",
+                    sidecar_root=sidecar_root,
+                    gpt_repo=gpt_repo,
                 )
 
             self.assertEqual(result["item_count"], 1)
