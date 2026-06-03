@@ -543,3 +543,30 @@ verification:
 notes:
 - the `kill_feed` ROI name should not be treated as proof that the visible repeated family is elimination killfeed
 - the next blocker is now the first stable anchor strategy for a narrow top-right event-card pilot
+
+## 2026-06-04T00:14Z
+
+target:
+- call_of_duty top-right event-card direct handoff
+
+status:
+- completed
+
+result:
+- converted the top-right event-card runtime ticket into a direct Codex handoff
+- locked the first conservative anchor strategy:
+  - template-compatible top-right card-shell anchor
+  - existing `kill_feed` ROI
+  - conservative `hud_visibility -> high_action_sequence` mapping
+- updated the operator pack so the branch is now implementation-ready rather than still waiting on boundary clarification
+
+verification:
+- consistency check across:
+  - `docs/handoffs/2026-06-03-call-of-duty-top-right-event-card-runtime-ticket.md`
+  - `docs/handoffs/2026-06-04-call-of-duty-top-right-event-card-codex-handoff.md`
+  - `docs/v2/operator_pack/CODEX_AUTONOMY_DASHBOARD.md`
+  - `docs/v2/operator_pack/CODEX_BACKLOG.md`
+
+notes:
+- this slice still stops before published-pack mutation
+- broad OCR expansion remains explicitly out of scope for the first pilot

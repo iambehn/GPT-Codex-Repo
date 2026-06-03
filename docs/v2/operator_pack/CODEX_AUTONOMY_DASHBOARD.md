@@ -73,39 +73,40 @@ Current state:
 
 Desired next state:
 
-- a direct implementation handoff exists for the first top-right event-card runtime pilot
+- the first top-right event-card runtime pilot is implemented and validated on the clip-backed evidence windows
 
 ## Current Blocker
 
 Blocking mechanic:
 
-- implementation-boundary uncertainty
+- implementation execution
 
 Blocking detail:
 
-- the family label is now narrowed, but the first implementation slice still needs one stable anchor strategy that does not force broad OCR expansion
+- the direct implementation handoff now exists
+- the next blocker is executing the pilot without slipping into generic killfeed semantics or broad OCR expansion
 
 ## Active Packet
 
 Current packet:
 
-- `TOP_RIGHT_EVENT_CARD_RUNTIME_TICKET`
+- `TOP_RIGHT_EVENT_CARD_CODEX_HANDOFF`
 
 Current packet status:
 
-- ready
+- implementation_ready
 
 Current decision target:
 
-- define the first implementation-facing runtime slice for top-right native event cards after local scouting corrected the original `killfeed_events` label
+- implement the first top-right native event-card runtime slice using a shell-anchor strategy over the existing top-right ROI
 
 Acceptance target:
 
-- one direct Codex handoff can name the first top-right event-card family label, anchor strategy, and validation loop without guessing
+- the pilot emits the new family on the two positive evidence windows and stays controlled on the existing negative pressure set
 
 Failure condition:
 
-- the next implementation slice falls back into generic killfeed labeling, broad OCR expansion, or speculative pack mutation without a stable anchor strategy
+- the pilot requires broad OCR, collapses into generic killfeed semantics, or produces uncontrolled false positives
 
 ## Forecast Queue
 
@@ -125,8 +126,8 @@ Fallback packet:
 
 Last completed work:
 
-- top-right event-card scout completed
-- result: the repeated visible top-right family is better described as native objective or status cards than as generic killfeed, with same-title support from `gcAGS3R2t2o`
+- direct implementation handoff completed
+- result: the first pilot is now bounded around a template-compatible top-right card-shell anchor with conservative `hud_visibility -> high_action_sequence` mapping
 
 Current repo branch:
 
@@ -148,7 +149,7 @@ Current measured behavior:
 
 What Codex should do next:
 
-- convert the runtime ticket into one direct implementation handoff for the first top-right event-card pilot
+- implement the first top-right event-card runtime pilot from the direct handoff
 
 What Codex should not do next:
 
@@ -156,8 +157,8 @@ What Codex should not do next:
 
 How we know it worked:
 
-- the first implementation handoff names the family label, anchor strategy, semantic mapping posture, and focused validation path without mislabeling the surface
+- the implemented pilot hits `_PL_5qWwKtY` and `gcAGS3R2t2o` in the expected windows without forcing broad OCR infrastructure
 
 Exact missing input:
 
-- one stable first anchor strategy for top-right event cards that avoids broad OCR infrastructure
+- none for the first pilot slice

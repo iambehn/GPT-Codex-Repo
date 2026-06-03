@@ -16,14 +16,14 @@ Status:
 
 Objective:
 
-- define the first implementation-facing runtime slice for top-right native event cards after capping `reward_banner` as a narrow pilot
+- implement the first top-right native event-card runtime slice after capping `reward_banner` as a narrow pilot
 
 Acceptance criteria:
 
-- one direct implementation handoff exists
+- one narrow pilot is implemented
 - the chosen family is backed by repeatable clip evidence
 - native HUD vs overlay posture is explicit
-- the first anchor strategy is explicit enough for a narrow runtime pilot
+- the first anchor strategy remains template-compatible and auditable
 
 Current evidence:
 
@@ -35,7 +35,7 @@ Current evidence:
 
 Primary dependency:
 
-- [2026-06-03-call-of-duty-top-right-event-card-runtime-ticket.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-03-call-of-duty-top-right-event-card-runtime-ticket.md)
+- [2026-06-04-call-of-duty-top-right-event-card-codex-handoff.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-04-call-of-duty-top-right-event-card-codex-handoff.md)
 
 ### Validation packet
 
