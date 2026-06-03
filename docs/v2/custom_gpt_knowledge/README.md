@@ -21,6 +21,55 @@ The canonical truth still lives in:
 - [DETECTION_RUNTIME_FUSION.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/DETECTION_RUNTIME_FUSION.md)
 - [REVIEW_CALIBRATION_REPLAY.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/REVIEW_CALIBRATION_REPLAY.md)
 
+## What This Pack Is For
+
+Use this pack to help the GPT workers do four things well:
+
+- turn messy notes or web findings into decision-ready packets
+- keep researcher output aligned to the repo's packet contract
+- hand work cleanly from the researcher GPT to Codex
+- give the architecture/troubleshooting GPT a compact repo-aware context set
+
+This pack is not for:
+
+- replacing canonical repo truth
+- storing live execution state
+- acting as a second roadmap or backlog
+- preserving large theory dumps or stale planning notes
+
+## What To Update And When
+
+Update this pack when:
+
+- the researcher GPT should ingest a different set of files
+- the researcher-to-Codex artifact contract changes
+- the builder or launch workflow changes
+- a blocker-specific brief or stub needs sharper evidence or instructions
+
+Do not update this pack just because:
+
+- a local execution state changed
+- a run log entry changed
+- a dashboard field changed
+- a new theory artifact exists but has not changed packet quality or operator behavior
+
+## ML And Learned-System Scope
+
+This pack may support ML-adjacent work, but only in bounded forms such as:
+
+- dataset-readiness packets
+- label-quality packets
+- shadow-model evaluation packets
+- learned-component adoption or retirement decisions
+
+Do not use the pack as a generic "manage the ML system" surface.
+
+The roadmap still treats learned systems as later-phase work. Until those phases become active, prefer:
+
+- runtime and fusion contract hardening
+- review and calibration release-gate clarity
+- training-readiness and label capture only when a packet or experiment explicitly needs them
+
 ## Pack Contents
 
 - [PIPELINE_PROJECT_BRIEF.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/PIPELINE_PROJECT_BRIEF.md)

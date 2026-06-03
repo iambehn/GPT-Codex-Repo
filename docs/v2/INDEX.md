@@ -61,6 +61,62 @@ This index is the categorization authority.
 - If it answers "what happened when we tried it?", put it in an experiment ledger.
 - If it is exploratory or historical, catalog it in the archive.
 
+## Knowledge Base Split
+
+Use this three-way split consistently.
+
+### 1. Canonical Repo Knowledge Base
+
+Use `docs/v2/` plus code, manifests, fixtures, and tests for:
+
+- stable pipeline truth
+- roadmap sequencing
+- runtime, fusion, review, calibration, registry, and publish contracts
+- governance rules
+- machine-checkable truth when behavior is involved
+
+Update these when:
+
+- repo behavior changes
+- a durable contract changes
+- a placement or governance rule changes
+- a strategic sequencing decision changes
+
+### 2. Custom GPT Upload Pack
+
+Use [custom_gpt_knowledge/README.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/README.md) and its routed files for:
+
+- compact upload-ready context for the repo's GPT workers
+- researcher packet contracts
+- interaction-routing instructions
+- note, packet, appendix, ticket, and handoff templates
+- selected blocker-specific briefs and stubs
+
+Update these when:
+
+- the researcher GPT should ingest different files
+- the researcher-to-Codex handoff contract changes
+- the upload routing or builder workflow changes
+- a blocker-specific brief or stub needs new evidence or sharper instructions
+
+### 3. Keep It Out Of The System
+
+Do not promote material into either knowledge base when it is only:
+
+- duplicate authority
+- stale planning prose
+- broad theory with no behavior change
+- raw note sprawl that has not been reviewed
+- governance machinery with no recurring operational failure behind it
+- a second backlog, dashboard, or roadmap
+
+If it is still useful, keep it as:
+
+- a handoff
+- an experiment record
+- an ADR
+- an archived note
+
 ## Current V2 Priorities
 
 The active V2 execution phases are now:

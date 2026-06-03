@@ -462,3 +462,31 @@ verification:
 notes:
 - this was a contract-alignment slice only
 - the next behavior-changing step still depends on `ALTERNATIVE_NATIVE_SURFACE_PACKET`
+
+## 2026-06-03T04:21Z
+
+target:
+- knowledge-base placement split
+
+status:
+- completed
+
+result:
+- updated the canonical V2 index to explicitly separate:
+  - canonical repo knowledge base
+  - Custom GPT upload pack
+  - material that should stay out of the system
+- updated the Custom GPT knowledge-pack readme to clarify:
+  - what the pack is for
+  - when it should be updated
+  - how ML-adjacent work should be scoped
+
+verification:
+- consistency check across:
+  - `docs/v2/INDEX.md`
+  - `docs/v2/custom_gpt_knowledge/README.md`
+  - `FUTURE_FEATURES_ROADMAP.md`
+
+notes:
+- this slice clarifies placement and scope only
+- it does not change runtime behavior or the active `call_of_duty` execution branch
