@@ -132,6 +132,14 @@ The conceptual point is:
 - fusion turned that evidence into candidate highlight events
 - fused review decided whether those candidate claims were acceptable
 
+For `runtime_analysis_v1`, matcher debug coordinates should be read in normalized pack-frame space, not source-video pixel space.
+
+- `frame_match_x` and `frame_match_y` point to the matched patch origin after the input frame has been normalized to the pack's working dimensions
+- `matcher.frame_dimensions` records those working dimensions
+- `matcher.frame_coordinate_space` is the explicit contract field and should currently read `normalized_pack_frame`
+
+That distinction matters because the same source clip can be decoded at different native resolutions while still producing the same pack-normalized matcher coordinates.
+
 That is why runtime success alone was not enough for local export. The pipeline needed a fused candidate layer, not just runtime evidence.
 
 There is a second important lesson from the later `call_of_duty` editorial scout path:

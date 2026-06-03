@@ -219,6 +219,24 @@ verification:
 notes:
 - this is intended to unblock the next implementation slice without pretending that the web search produced a strong external packet
 
+## 2026-06-04T07:18Z
+
+target:
+- runtime matcher coordinate-contract discoverability
+
+status:
+- completed
+
+result:
+- documented that `runtime_analysis_v1` matcher coordinates are reported in pack-normalized frame space
+- added canonical pointers to `matcher.frame_dimensions` and `matcher.frame_coordinate_space`
+
+verification:
+- pending
+
+notes:
+- this is a doc-only follow-up to the matcher/runtime sidecar hardening in `fda13c9`
+
 ## 2026-05-31T00:58Z
 
 target:

@@ -78,6 +78,7 @@ It proves this chain:
 2. Runtime evidence
 - `runtime_analysis_v1`
 - this is where ROI matching and event extraction become inspectable sidecar evidence
+- matcher debug coordinates are expressed in pack-normalized frame space; read `matcher.frame_dimensions` and `matcher.frame_coordinate_space` before treating `frame_match_x` or `frame_match_y` as pixel locations
 
 3. Runtime review
 - `runtime_review_session_v1`
