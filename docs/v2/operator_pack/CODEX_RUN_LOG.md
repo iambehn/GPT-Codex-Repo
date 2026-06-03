@@ -570,3 +570,30 @@ verification:
 notes:
 - this slice still stops before published-pack mutation
 - broad OCR expansion remains explicitly out of scope for the first pilot
+
+## 2026-06-04T03:20Z
+
+target:
+- call_of_duty top-right event-card shell pilot
+
+status:
+- completed
+
+result:
+- implemented the first provisional shell-anchor pilot against the existing top-right ROI
+- confirmed both positive evidence windows around `_PL_5qWwKtY @ 12s-15s` and `gcAGS3R2t2o @ 27s-30s`
+- pressure-tested the same anchor on the three short-window negatives
+- rolled the published-pack mutation back after the shell matched all three negatives at the same score band as the positives
+- promoted the next blocker into an anchor-specific packet request
+
+verification:
+- `python3 run.py --validate-game-pack call_of_duty`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/measurement/call_of_duty_top_right_event_card_pilot/_PL_5qWwKtY_12s_15s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_top_right_event_card_pilot/_PL_5qWwKtY_12s_15s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_top_right_event_card_pilot/debug_pl_12s_15s --sample-fps 2`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/measurement/call_of_duty_top_right_event_card_pilot/gcAGS3R2t2o_27s_30s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_top_right_event_card_pilot/gcAGS3R2t2o_27s_30s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_top_right_event_card_pilot/debug_gc_27s_30s --sample-fps 2`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_top_right_event_card_pilot/SVbTc2AZzYw_60s_70s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_top_right_event_card_pilot/debug_SVbTc2AZzYw_60s_70s --sample-fps 2`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/public_gameplay_mining/call_of_duty_measurement_sources/v-SzAArdAfY.60s-70s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_top_right_event_card_pilot/v-SzAArdAfY_60s_70s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_top_right_event_card_pilot/debug_v-SzAArdAfY_60s_70s --sample-fps 2`
+- `.venv/bin/python run.py --analyze-roi-runtime outputs/public_gameplay_mining/call_of_duty_measurement_sources/Qop1sH70nHI.60s-70s.mp4 call_of_duty --output-path outputs/measurement/call_of_duty_top_right_event_card_pilot/Qop1sH70nHI_60s_70s.runtime.json --debug-output-dir outputs/measurement/call_of_duty_top_right_event_card_pilot/debug_Qop1sH70nHI_60s_70s --sample-fps 2`
+
+notes:
+- the failure mode is anchor genericity, not threshold weakness
+- the next useful input is a discriminative top-right anchor packet, or explicit family retirement if no such anchor exists

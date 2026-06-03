@@ -2,7 +2,7 @@
 
 Status: active-draft
 Version: 1.1
-Last updated: 2026-06-03
+Last updated: 2026-06-04
 
 ## Objective
 
@@ -54,6 +54,12 @@ Current execution rule:
   - the same-family diagnosis indicates missing target-surface visibility, not a near-miss threshold or scale problem
   - the lower-center count text in `_PL_5qWwKtY` behaves like an editorial or overlay family and should not be promoted as pack truth
   - the next useful branch is to identify a more repeatable native `call_of_duty` HUD surface, not to continue `reward_banner` tuning
+ - treat the first top-right event-card shell pilot as falsified:
+   - the intended positive windows hit around `0.952`
+   - the three negative pressure clips also hit around `0.953` to `0.956`
+   - the shell anchor behaves like generic top-right HUD chrome rather than a discriminative event-card signal
+   - the provisional published-pack mutation must stay rolled back
+   - the next useful branch is anchor-specific evidence, not threshold or scale tuning
 - use the current execution snapshot as the coordination boundary:
   - `CODEX_AUTONOMY_DASHBOARD.md` should stay a thin execution artifact
   - `CODEX_RUN_LOG.md` should hold chronology

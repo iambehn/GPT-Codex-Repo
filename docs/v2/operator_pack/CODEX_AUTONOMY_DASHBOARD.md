@@ -2,7 +2,7 @@
 
 Status: active-draft
 Version: 0.2
-Last updated: 2026-06-03
+Last updated: 2026-06-04
 
 Purpose:
 
@@ -60,7 +60,7 @@ Maintenance posture:
 
 Active objective:
 
-- prepare the first direct implementation slice for top-right native event cards in `call_of_duty`
+- choose the first discriminative anchor strategy for top-right native event cards in `call_of_duty`
 
 Active workstream:
 
@@ -69,44 +69,45 @@ Active workstream:
 
 Current state:
 
-- `reward_banner` is validated as a narrow native-HUD pilot, and the next surviving family is top-right native event cards rather than generic killfeed
+- `reward_banner` is validated as a narrow native-HUD pilot, and the shell-anchor top-right event-card pilot has now been falsified
 
 Desired next state:
 
-- the first top-right event-card runtime pilot is implemented and validated on the clip-backed evidence windows
+- one anchor-specific packet identifies a narrower top-right event-card anchor that can separate positives from the existing negative set, or retires the family explicitly
 
 ## Current Blocker
 
 Blocking mechanic:
 
-- implementation execution
+- anchor specificity
 
 Blocking detail:
 
-- the direct implementation handoff now exists
-- the next blocker is executing the pilot without slipping into generic killfeed semantics or broad OCR expansion
+- the shell anchor reproduces on the intended positive windows, but it also reproduces across all three negative pressure clips with the same confidence band
+- the next blocker is no longer implementation mechanics
+- the next blocker is finding an anchor narrower than generic top-right HUD chrome
 
 ## Active Packet
 
 Current packet:
 
-- `TOP_RIGHT_EVENT_CARD_CODEX_HANDOFF`
+- `TOP_RIGHT_EVENT_CARD_ANCHOR_PACKET`
 
 Current packet status:
 
-- implementation_ready
+- active
 
 Current decision target:
 
-- implement the first top-right native event-card runtime slice using a shell-anchor strategy over the existing top-right ROI
+- decide whether the top-right family has a discriminative icon, emblem, or text-fragment anchor that is specific enough for a narrow runtime pilot
 
 Acceptance target:
 
-- the pilot emits the new family on the two positive evidence windows and stays controlled on the existing negative pressure set
+- one anchor candidate is specific enough to separate the positive windows from the current negative pressure set, or the packet explicitly retires the family
 
 Failure condition:
 
-- the pilot requires broad OCR, collapses into generic killfeed semantics, or produces uncontrolled false positives
+- the remaining visible anchors are still generic HUD chrome, require premature broad OCR expansion, or stay indistinguishable from the current negative set
 
 ## Forecast Queue
 
@@ -126,8 +127,8 @@ Fallback packet:
 
 Last completed work:
 
-- direct implementation handoff completed
-- result: the first pilot is now bounded around a template-compatible top-right card-shell anchor with conservative `hud_visibility -> high_action_sequence` mapping
+- top-right event-card shell pilot executed and rolled back
+- result: the shell anchor matched the positive windows and all three negative pressure clips at nearly identical confidence, so it is not a valid published pilot
 
 Current repo branch:
 
@@ -135,30 +136,33 @@ Current repo branch:
 
 Current repo focus:
 
-- first top-right native event-card runtime slice for `call_of_duty`
+- discriminative anchor selection for top-right native event cards in `call_of_duty`
 
 Current measured behavior:
 
 - current `UAV` pilot reproduces only on `_PL_5qWwKtY`
 - it stays clean off-target
 - it does not reproduce on same-family `MWIII Vista` no-commentary probes
-- local scouting shows the visible repeated top-right family is better described as `objective_event_notifications` or top-right event-status cards than as generic killfeed
-- same-title support exists at `gcAGS3R2t2o @ 27s-29s`
+- local scouting still supports the top-right family as a plausible native surface
+- the first shell-anchor top-right pilot is invalid:
+  - positives hit at about `0.952`
+  - negatives hit at about `0.953` to `0.956`
+  - there is no usable threshold gap
 
 ## Operator View
 
 What Codex should do next:
 
-- implement the first top-right event-card runtime pilot from the direct handoff
+- use the new anchor-packet request to get one narrower, discriminative top-right anchor candidate
 
 What Codex should not do next:
 
-- do not continue threshold tuning, scale tuning, or asset expansion for the current `reward_banner` family, and do not keep doing blind local surface scouting
+- do not keep threshold-tuning or republishing the shell anchor, and do not expand the family until an anchor-specific packet justifies it
 
 How we know it worked:
 
-- the implemented pilot hits `_PL_5qWwKtY` and `gcAGS3R2t2o` in the expected windows without forcing broad OCR infrastructure
+- the next packet either names one narrower anchor with clip-backed evidence and explicit exclusions, or retires the top-right family without ambiguity
 
 Exact missing input:
 
-- none for the first pilot slice
+- one clip-backed anchor candidate inside the top-right card region that is more specific than the shell itself

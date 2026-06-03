@@ -16,14 +16,15 @@ Status:
 
 Objective:
 
-- implement the first top-right native event-card runtime slice after capping `reward_banner` as a narrow pilot
+- determine whether the top-right native event-card family has a discriminative anchor worth another runtime pilot after the shell-anchor attempt failed
 
 Acceptance criteria:
 
-- one narrow pilot is implemented
-- the chosen family is backed by repeatable clip evidence
-- native HUD vs overlay posture is explicit
-- the first anchor strategy remains template-compatible and auditable
+- one anchor-specific packet resolves whether a narrower icon, emblem, or text-fragment anchor is viable
+- the shell anchor failure mode is explicit
+- the next branch is unambiguous:
+  - narrower pilot
+  - or family retirement / fallback sourcing
 
 Current evidence:
 
@@ -32,10 +33,16 @@ Current evidence:
 - the lower-center count text in `_PL_5qWwKtY` behaves like an editorial or overlay family and should not be promoted as pack truth
 - the received alternative-native-surface packet initially recommended `killfeed_events`, but local scouting shows the repeated top-right family behaves more like `objective_event_notifications` or top-right event-status cards
 - same-title support exists at `gcAGS3R2t2o @ 27s-29s`
+- the first shell-anchor pilot failed the negative pressure set:
+  - `_PL_5qWwKtY @ 12s-15s`: `0.95271`
+  - `gcAGS3R2t2o @ 27s-30s`: `0.95194`
+  - `SVbTc2AZzYw.60s-70s`: `0.95474`
+  - `v-SzAArdAfY.60s-70s`: `0.95557`
+  - `Qop1sH70nHI.60s-70s`: `0.95325`
 
 Primary dependency:
 
-- [2026-06-04-call-of-duty-top-right-event-card-codex-handoff.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-04-call-of-duty-top-right-event-card-codex-handoff.md)
+- [2026-06-04-call-of-duty-top-right-anchor-packet-request.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-packet-request.md)
 
 ### Validation packet
 
@@ -45,7 +52,7 @@ Status:
 
 Objective:
 
-- verify whether the implemented top-right event-card pilot actually repeats cleanly enough to justify family expansion
+- verify whether any narrower top-right anchor actually repeats cleanly enough to justify family expansion
 
 Acceptance criteria:
 
@@ -65,7 +72,7 @@ Status:
 
 Objective:
 
-- acquire higher-confidence same-provenance clips if top-right event cards cannot be validated cleanly enough for runtime implementation
+- acquire higher-confidence same-provenance clips if no narrower top-right anchor can be validated cleanly enough for runtime implementation
 
 Acceptance criteria:
 
