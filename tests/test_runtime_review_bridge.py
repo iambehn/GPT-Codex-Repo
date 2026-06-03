@@ -42,6 +42,8 @@ def _write_runtime_sidecar(
         "matcher": {
             "status": "ok",
             "frame_count": 12,
+            "frame_dimensions": {"width": 64, "height": 36},
+            "frame_coordinate_space": "normalized_pack_frame",
             "sample_fps": 4.0,
             "template_count": 3,
             "summary": {"total_confirmed_detections": len(event_types)},
@@ -148,6 +150,10 @@ class RuntimeReviewBridgeTests(unittest.TestCase):
             self.assertEqual(meta["selected_template_id"], "runtime_review_bridge")
             self.assertEqual(meta["scoring"]["clip_type"], "runtime_candidate")
             self.assertTrue(meta["runtime_review_bridge"]["bridge_owned"])
+            self.assertEqual(meta["runtime_review_bridge"]["frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(meta["runtime_review_bridge"]["frame_coordinate_space"], "normalized_pack_frame")
+            self.assertEqual(result["items"][0]["frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(result["items"][0]["frame_coordinate_space"], "normalized_pack_frame")
 
     def test_prepare_runtime_review_highlight_only_excludes_inspect(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -256,6 +262,8 @@ class RuntimeReviewBridgeTests(unittest.TestCase):
             bravo_sidecar = json.loads((sidecar_root / "marvel_rivals" / "bravo.runtime_analysis.json").read_text(encoding="utf-8"))
             self.assertEqual(alpha_sidecar["runtime_review"]["review_status"], "approved")
             self.assertEqual(bravo_sidecar["runtime_review"]["review_status"], "rejected")
+            self.assertEqual(alpha_sidecar["runtime_review"]["bridge_frame_dimensions"], {"width": 64, "height": 36})
+            self.assertEqual(alpha_sidecar["runtime_review"]["bridge_frame_coordinate_space"], "normalized_pack_frame")
             self.assertNotIn("proxy_review", alpha_sidecar)
 
     def test_cleanup_runtime_review_removes_generated_bridge_artifacts(self) -> None:

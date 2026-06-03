@@ -294,6 +294,25 @@ verification:
 notes:
 - this keeps exported runtime summaries aligned with the sidecar contract so downstream consumers do not need to reopen raw `runtime_analysis_v1` payloads for coordinate-space context
 
+## 2026-06-04T08:38Z
+
+target:
+- runtime review bridge matcher metadata parity
+
+status:
+- completed
+
+result:
+- carried `matcher.frame_dimensions` and `matcher.frame_coordinate_space` into prepared review items and GPT bridge metadata
+- persisted the same fields into applied `runtime_review` bridge metadata on the source sidecar
+
+verification:
+- `.venv/bin/python -m unittest tests.test_runtime_review_bridge`
+- pending repo health gate
+
+notes:
+- this keeps review-bridge consumers aligned with the normalized-frame matcher contract without requiring separate raw-sidecar inspection
+
 ## 2026-05-31T00:58Z
 
 target:

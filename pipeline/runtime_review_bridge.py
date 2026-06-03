@@ -113,6 +113,8 @@ def apply_runtime_review(session_manifest: str | Path, *, gpt_repo: str | Path |
             "bridge_score": item.get("highlight_score"),
             "bridge_recommended_action": item.get("recommended_action"),
             "bridge_event_types": list(item.get("event_types", [])),
+            "bridge_frame_dimensions": item.get("frame_dimensions", {}),
+            "bridge_frame_coordinate_space": item.get("frame_coordinate_space"),
             "gpt_meta_path": str(gpt_meta_path),
             "gpt_processed_path": item.get("gpt_processed_path"),
             "gpt_final_path": final_path,
@@ -262,6 +264,8 @@ def _candidate_from_sidecar(sidecar_path: Path, *, game: str) -> dict[str, Any] 
         "recommended_action": runtime_action,
         "event_count": int(events_payload.get("event_count", len(event_rows)) or 0),
         "confirmed_detection_count": len(list(matcher_payload.get("confirmed_detections", []))),
+        "frame_dimensions": matcher_payload.get("frame_dimensions", {}),
+        "frame_coordinate_space": matcher_payload.get("frame_coordinate_space"),
         "event_types": event_types,
     }
 
@@ -310,6 +314,8 @@ def _materialize_candidate(
             "source_clip_path": candidate["source"],
             "highlight_score": candidate["highlight_score"],
             "recommended_action": candidate["recommended_action"],
+            "frame_dimensions": candidate["frame_dimensions"],
+            "frame_coordinate_space": candidate["frame_coordinate_space"],
             "event_types": list(candidate["event_types"]),
         },
     }
@@ -325,6 +331,8 @@ def _materialize_candidate(
         "recommended_action": candidate["recommended_action"],
         "event_count": candidate["event_count"],
         "confirmed_detection_count": candidate["confirmed_detection_count"],
+        "frame_dimensions": candidate["frame_dimensions"],
+        "frame_coordinate_space": candidate["frame_coordinate_space"],
         "event_types": list(candidate["event_types"]),
         "materialization_mode": "copy",
         "bridge_owned": True,
