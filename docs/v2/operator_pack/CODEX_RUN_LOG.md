@@ -416,3 +416,26 @@ notes:
 - the best-scoring same-family non-hits are structurally unrelated scene crops, not weak `UAV` banner variants
 - the next slice should not be threshold or scale tuning for this family
 - the strongest next move is to cap `reward_banner` as a narrow pilot and pivot to a more repeatable native surface
+
+## 2026-06-03T03:34Z
+
+target:
+- call_of_duty post-reward-banner surface pivot
+
+status:
+- completed
+
+result:
+- locally scouted same-family `MWIII Vista` clip contact sheets for repeatable native HUD alternatives
+- found stable HUD and objective clutter, but no strong alternative surface that is both clearly native and highlight-salient enough to implement directly from local evidence
+- converted the next branch into an explicit research request for `ALTERNATIVE_NATIVE_SURFACE_PACKET`
+
+verification:
+- contact-sheet scout from:
+  - `outputs/inspection/call_of_duty_alt_surface_scout/cx_contact.png`
+  - `outputs/inspection/call_of_duty_alt_surface_scout/gc_contact.png`
+- direct spot checks on repeated late-match frames
+
+notes:
+- the repo now has enough local evidence to stop blind surface scouting
+- the next useful input is a decision-ready packet that ranks alternative native surface families by repeatability and extraction feasibility

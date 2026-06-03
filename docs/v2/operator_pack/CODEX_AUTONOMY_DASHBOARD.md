@@ -90,23 +90,23 @@ Blocking detail:
 
 Current packet:
 
-- `none active`
+- `ALTERNATIVE_NATIVE_SURFACE_PACKET`
 
 Current packet status:
 
-- no external packet is required for the immediate next local decision
+- requested
 
 Current decision target:
 
-- decide whether to pivot to another native surface family or reopen sourcing only if stronger repeated evidence appears
+- identify the next repeatable native `call_of_duty` HUD surface family to implement after capping `reward_banner`
 
 Acceptance target:
 
-- one next implementation direction is explicit without requiring more interpretation
+- one alternative native surface family is concrete enough for a narrow runtime pilot
 
 Failure condition:
 
-- Codex resumes low-yield `reward_banner` tuning or blind clip hunting
+- the next branch remains ambiguous and Codex falls back into low-yield `reward_banner` tuning or blind surface scouting
 
 ## Forecast Queue
 
@@ -126,8 +126,8 @@ Fallback packet:
 
 Last completed work:
 
-- `reward_banner` template-specificity diagnosis completed
-- result: same-family non-hits do not contain a visible `UAV` panel, so the current failure mode is missing target surface / timing visibility, not recoverable small alignment drift
+- same-family local surface scout completed
+- result: no strong repeatable native alternative surface emerged from local `MWIII Vista` clip inspection alone
 
 Current repo branch:
 
@@ -147,16 +147,16 @@ Current measured behavior:
 
 What Codex should do next:
 
-- pivot toward identifying a more repeatable native `call_of_duty` surface family
+- use an `ALTERNATIVE_NATIVE_SURFACE_PACKET` to choose the next native `call_of_duty` surface family
 
 What Codex should not do next:
 
-- do not continue threshold tuning, scale tuning, or asset expansion for the current `reward_banner` family
+- do not continue threshold tuning, scale tuning, or asset expansion for the current `reward_banner` family, and do not keep doing blind local surface scouting
 
 How we know it worked:
 
-- a new candidate surface family is selected because it shows visible cross-clip repeatability evidence, not just one-clip success
+- a new candidate surface family is selected because it has explicit repeated evidence, native-HUD classification, and a clear extraction posture
 
 Exact missing input:
 
-- stronger candidate native surface family with repeatable visible examples across clips
+- stronger candidate native surface family with repeatable visible examples across clips and a decision-ready runtime packet
