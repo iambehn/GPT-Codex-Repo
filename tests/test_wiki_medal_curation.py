@@ -277,12 +277,15 @@ class WikiMedalCurationTests(unittest.TestCase):
 
             self.assertTrue(result["ok"])
             self.assertEqual(result["status"], "exported")
+            self.assertEqual(result["packet_identity"], "raw_wiki_packet")
             exported_names = {Path(path).name for path in result["artifacts"].values()}
-            self.assertEqual(result["counts"]["file_count"], 5)
-            self.assertTrue(all(name.startswith("call_of_duty_wiki_raw_curation_fixture_") for name in exported_names))
-            self.assertIn("call_of_duty_wiki_raw_curation_fixture_assets.csv", exported_names)
-            self.assertIn("call_of_duty_wiki_raw_curation_fixture_events_or_medals.csv", exported_names)
-            self.assertIn("call_of_duty_wiki_raw_curation_fixture_assets_manifest.json", exported_names)
+            self.assertEqual(result["counts"]["file_count"], 7)
+            self.assertTrue(all(name.startswith("raw_wiki_packet__call_of_duty__raw_curation_fixture_") for name in exported_names))
+            self.assertIn("raw_wiki_packet__call_of_duty__raw_curation_fixture_assets.csv", exported_names)
+            self.assertIn("raw_wiki_packet__call_of_duty__raw_curation_fixture_events_or_medals.csv", exported_names)
+            self.assertIn("raw_wiki_packet__call_of_duty__raw_curation_fixture_assets_manifest.json", exported_names)
+            self.assertIn("raw_wiki_packet__call_of_duty__raw_curation_fixture_packet_identity.json", exported_names)
+            self.assertIn("raw_wiki_packet__call_of_duty__raw_curation_fixture_SEND_THESE_FILES_FIRST.txt", exported_names)
 
     def test_export_wiki_research_packet_includes_curation_outputs_for_curated_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -295,10 +298,52 @@ class WikiMedalCurationTests(unittest.TestCase):
             result = export_wiki_research_packet(curated_root, output_path=packet_root, repo_root=repo_root)
 
             self.assertTrue(result["ok"])
+            self.assertEqual(result["packet_identity"], "curated_multikill_medal_seed_packet")
             exported_names = {Path(path).name for path in result["artifacts"].values()}
-            self.assertEqual(result["counts"]["file_count"], 7)
-            self.assertIn("call_of_duty_wiki_curated_curated_curation_decisions.csv", exported_names)
-            self.assertIn("call_of_duty_wiki_curated_curated_curation_summary.json", exported_names)
+            self.assertEqual(result["counts"]["file_count"], 9)
+            self.assertIn("curated_multikill_medal_seed_packet__call_of_duty__curated_curation_decisions.csv", exported_names)
+            self.assertIn("curated_multikill_medal_seed_packet__call_of_duty__curated_curation_summary.json", exported_names)
+            self.assertIn("curated_multikill_medal_seed_packet__call_of_duty__curated_packet_identity.json", exported_names)
+            self.assertIn("curated_multikill_medal_seed_packet__call_of_duty__curated_SEND_THESE_FILES_FIRST.txt", exported_names)
+            self.assertEqual(
+                result["recommended_handoff_files"][:2],
+                [
+                    "curated_multikill_medal_seed_packet__call_of_duty__curated_events_or_medals.csv",
+                    "curated_multikill_medal_seed_packet__call_of_duty__curated_assets.csv",
+                ],
+            )
+
+    def test_export_wiki_research_packet_default_output_root_is_semantic_first(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            wiki_root = self._write_raw_wiki_fixture(repo_root)
+            curated_root = repo_root / "assets" / "games" / "call_of_duty" / "drafts" / "wiki_curated" / "20260526T233955Z"
+
+            curate_wiki_medal_draft(wiki_root, output_path=curated_root, repo_root=repo_root)
+            result = export_wiki_research_packet(curated_root, repo_root=repo_root)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(
+                Path(result["packet_root"]).name,
+                "curated_multikill_medal_seed_packet__call_of_duty__20260526t233955z",
+            )
+
+    def test_export_wiki_research_packet_infers_medal_seed_identity_without_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            wiki_root = self._write_raw_wiki_fixture(repo_root)
+            curated_root = repo_root / "assets" / "games" / "call_of_duty" / "drafts" / "wiki_curated" / "20260526T233955Z"
+
+            curate_wiki_medal_draft(wiki_root, output_path=curated_root, repo_root=repo_root)
+            (curated_root / "catalog" / "curation_summary.json").unlink()
+            result = export_wiki_research_packet(curated_root, repo_root=repo_root)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["packet_identity"], "curated_medal_seed_packet")
+            self.assertEqual(
+                Path(result["packet_root"]).name,
+                "curated_medal_seed_packet__call_of_duty__20260526t233955z",
+            )
 
 
 if __name__ == "__main__":

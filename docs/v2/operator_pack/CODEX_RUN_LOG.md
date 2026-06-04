@@ -1585,3 +1585,32 @@ verification:
 
 notes:
 - this indicates an external upload-selection mistake, not a bad local curated export
+
+## 2026-06-05T12:02Z
+
+target:
+- operator-safe research packet naming/export hardening
+
+status:
+- completed
+
+result:
+- changed `export_wiki_research_packet` to emit semantic-first packet roots and filenames instead of timestamp-first generic names
+- added packet-side identity artifacts:
+  - `*_packet_identity.json`
+  - `*_SEND_THESE_FILES_FIRST.txt`
+- added fallback semantic inference for older curated bundles that lack `curation_summary.json`
+- re-exported the real `call_of_duty` curated packet to:
+  - `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/`
+- the exported packet now recommends the exact first-send files:
+  - `curated_medal_seed_packet__call_of_duty__20260526t233955z_events_or_medals.csv`
+  - `curated_medal_seed_packet__call_of_duty__20260526t233955z_assets.csv`
+- updated curated packet verification docs to point at the operator-safe packet path
+
+verification:
+- `.venv/bin/python -m unittest tests.test_wiki_medal_curation`
+- `python3 run.py --run-repo-quality-health`
+- `python3 run.py --export-wiki-research-packet assets/games/call_of_duty/drafts/wiki_curated/20260526T233955Z`
+
+notes:
+- this hardening specifically addresses the first observed wrong-packet upload failure mode

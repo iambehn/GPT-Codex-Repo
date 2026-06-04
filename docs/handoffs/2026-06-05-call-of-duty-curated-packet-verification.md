@@ -14,12 +14,12 @@ Yes.
 
 The correct curated packet exists locally at:
 
-- `outputs/research_packets/call_of_duty/wiki_curated_20260526t233955z/`
+- `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/`
 
-The exact files are:
+Current operator-safe handoff files:
 
-- `outputs/research_packets/call_of_duty/wiki_curated_20260526t233955z/call_of_duty_wiki_curated_20260526t233955z_events_or_medals.csv`
-- `outputs/research_packets/call_of_duty/wiki_curated_20260526t233955z/call_of_duty_wiki_curated_20260526t233955z_assets.csv`
+- `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/curated_medal_seed_packet__call_of_duty__20260526t233955z_events_or_medals.csv`
+- `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/curated_medal_seed_packet__call_of_duty__20260526t233955z_assets.csv`
 
 ## Local Verification
 
@@ -98,8 +98,8 @@ It is not consistent with:
 
 Send these two exact files:
 
-- `outputs/research_packets/call_of_duty/wiki_curated_20260526t233955z/call_of_duty_wiki_curated_20260526t233955z_events_or_medals.csv`
-- `outputs/research_packets/call_of_duty/wiki_curated_20260526t233955z/call_of_duty_wiki_curated_20260526t233955z_assets.csv`
+- `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/curated_medal_seed_packet__call_of_duty__20260526t233955z_events_or_medals.csv`
+- `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/curated_medal_seed_packet__call_of_duty__20260526t233955z_assets.csv`
 
 ## Bottom Line
 

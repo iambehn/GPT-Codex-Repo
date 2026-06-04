@@ -639,17 +639,6 @@ def export_wiki_research_packet(
     if not game:
         raise ValueError("wiki draft assets manifest must include game_id")
 
-    packet_root = _resolve_wiki_research_packet_output_root(
-        game,
-        bundle_root=resolved_wiki_root,
-        output_path=output_path,
-        repo_root=repo_root,
-    )
-    packet_parent = packet_root.parent
-    packet_parent.mkdir(parents=True, exist_ok=True)
-    timestamp = _timestamp_slug()
-    stage_root = Path(tempfile.mkdtemp(prefix=f".wiki-research-packet-{timestamp}.", dir=packet_parent))
-
     required_files = {
         "assets_manifest_json": resolved_wiki_root / "assets_manifest.json",
         "assets_csv": resolved_wiki_root / "catalog" / "assets.csv",
@@ -663,11 +652,35 @@ def export_wiki_research_packet(
     }
 
     bundle_kind = _infer_wiki_bundle_kind(resolved_wiki_root)
-    filename_prefix = _wiki_research_packet_prefix(
+    curation_summary = (
+        _load_json_mapping_file(optional_files["curation_summary_json"], label="wiki draft curation summary")
+        if optional_files["curation_summary_json"].exists()
+        else None
+    )
+    event_rows = _read_csv_rows(required_files["events_or_medals_csv"])
+    packet_identity = _wiki_research_packet_identity(
         game=game,
         bundle_kind=bundle_kind,
         bundle_root=resolved_wiki_root,
+        curation_summary=curation_summary,
+        event_rows=event_rows,
     )
+    filename_prefix = _wiki_research_packet_prefix(
+        game=game,
+        packet_identity=packet_identity,
+        bundle_root=resolved_wiki_root,
+    )
+    packet_root = _resolve_wiki_research_packet_output_root(
+        game,
+        bundle_root=resolved_wiki_root,
+        packet_identity=packet_identity,
+        output_path=output_path,
+        repo_root=repo_root,
+    )
+    packet_parent = packet_root.parent
+    packet_parent.mkdir(parents=True, exist_ok=True)
+    timestamp = _timestamp_slug()
+    stage_root = Path(tempfile.mkdtemp(prefix=f".wiki-research-packet-{timestamp}.", dir=packet_parent))
 
     try:
         artifacts: dict[str, str] = {}
@@ -683,6 +696,55 @@ def export_wiki_research_packet(
             target_path = stage_root / f"{filename_prefix}_{source_path.name}"
             shutil.copyfile(source_path, target_path)
             artifacts[artifact_key] = str(target_path)
+
+        recommended_handoff_files = [
+            Path(artifacts[key]).name
+            for key in ("events_or_medals_csv", "assets_csv", "curation_decisions_csv", "curation_summary_json")
+            if key in artifacts
+        ]
+        identity_payload = {
+            "packet_identity": packet_identity,
+            "game": game,
+            "bundle_kind": bundle_kind,
+            "source_bundle_root": str(resolved_wiki_root),
+            "filename_prefix": filename_prefix,
+            "recommended_handoff_files": recommended_handoff_files,
+            "distinguishes_from": [
+                "raw wiki bundle",
+                "wrong-surface or rejected bundle",
+            ],
+        }
+        if curation_summary is not None:
+            identity_payload["curation_summary"] = {
+                "profile": curation_summary.get("profile"),
+                "status": curation_summary.get("status"),
+                "kept_asset_count": curation_summary.get("kept_asset_count"),
+                "kept_event_count": curation_summary.get("kept_event_count"),
+                "dropped_asset_count": curation_summary.get("dropped_asset_count"),
+                "dropped_event_count": curation_summary.get("dropped_event_count"),
+            }
+        identity_json_path = stage_root / f"{filename_prefix}_packet_identity.json"
+        identity_json_path.write_text(json.dumps(identity_payload, indent=2), encoding="utf-8")
+        artifacts["packet_identity_json"] = str(identity_json_path)
+
+        handoff_note_path = stage_root / f"{filename_prefix}_SEND_THESE_FILES_FIRST.txt"
+        handoff_lines = [
+            f"PACKET IDENTITY: {packet_identity}",
+            f"GAME: {game}",
+            f"BUNDLE KIND: {bundle_kind}",
+            f"SOURCE BUNDLE: {resolved_wiki_root}",
+            "",
+            "SEND THESE FILES FIRST:",
+        ]
+        handoff_lines.extend(f"- {name}" for name in recommended_handoff_files)
+        handoff_lines.extend(
+            [
+                "",
+                "CHOOSE THIS PACKET BY ITS IDENTITY, NOT BY TIMESTAMP ALONE.",
+            ]
+        )
+        handoff_note_path.write_text("\n".join(handoff_lines) + "\n", encoding="utf-8")
+        artifacts["handoff_note_txt"] = str(handoff_note_path)
 
         if packet_root.exists():
             shutil.rmtree(packet_root)
@@ -701,8 +763,10 @@ def export_wiki_research_packet(
         "game": game,
         "wiki_draft_root": str(resolved_wiki_root),
         "packet_root": str(packet_root),
+        "packet_identity": packet_identity,
         "bundle_kind": bundle_kind,
         "filename_prefix": filename_prefix,
+        "recommended_handoff_files": recommended_handoff_files,
         "counts": {
             "file_count": len(packet_artifacts),
         },
@@ -4165,13 +4229,14 @@ def _resolve_wiki_research_packet_output_root(
     game: str,
     *,
     bundle_root: Path,
+    packet_identity: str,
     output_path: str | Path | None,
     repo_root: Path,
 ) -> Path:
     if output_path is not None:
         return Path(output_path).expanduser().resolve()
     packet_root = repo_root / "outputs" / "research_packets" / game
-    return packet_root / f"{_infer_wiki_bundle_kind(bundle_root)}_{_canonical_id(bundle_root.name)}"
+    return packet_root / f"{packet_identity}__{_canonical_id(game)}__{_canonical_id(bundle_root.name)}"
 
 
 def _load_json_mapping_file(path: Path, *, label: str) -> dict[str, Any]:
@@ -4428,11 +4493,38 @@ def _infer_wiki_bundle_kind(bundle_root: Path) -> str:
     return _canonical_id(bundle_root.parent.name or "wiki_bundle")
 
 
-def _wiki_research_packet_prefix(*, game: str, bundle_kind: str, bundle_root: Path) -> str:
-    bundle_label = _canonical_id(bundle_root.name)
-    if bundle_label == bundle_kind:
-        return f"{_canonical_id(game)}_{bundle_kind}"
-    return f"{_canonical_id(game)}_{bundle_kind}_{bundle_label}"
+def _wiki_research_packet_identity(
+    *,
+    game: str,
+    bundle_kind: str,
+    bundle_root: Path,
+    curation_summary: dict[str, Any] | None,
+    event_rows: list[dict[str, str]],
+) -> str:
+    del game, bundle_root
+    if bundle_kind == "wiki_curated":
+        profile = ""
+        status = ""
+        if isinstance(curation_summary, dict):
+            profile = _canonical_id(str(curation_summary.get("profile") or "").strip())
+            status = _canonical_id(str(curation_summary.get("status") or "").strip())
+        if profile and status == "curated":
+            return f"curated_{profile}_medal_seed_packet"
+        section_headings = {
+            _canonical_id(str(row.get("section_heading") or "").strip())
+            for row in event_rows
+            if isinstance(row, dict) and str(row.get("section_heading") or "").strip()
+        }
+        if section_headings and section_headings.issubset({"multikill", "elimination_streak", "payoff_or_victory", "medals"}):
+            return "curated_medal_seed_packet"
+        return "curated_wiki_packet"
+    if bundle_kind == "wiki":
+        return "raw_wiki_packet"
+    return f"{bundle_kind}_packet"
+
+
+def _wiki_research_packet_prefix(*, game: str, packet_identity: str, bundle_root: Path) -> str:
+    return f"{packet_identity}__{_canonical_id(game)}__{_canonical_id(bundle_root.name)}"
 
 
 def _rebase_published_candidates_for_bridge(
