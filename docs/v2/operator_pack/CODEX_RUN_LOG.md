@@ -1550,3 +1550,38 @@ verification:
 notes:
 - this is not a new workflow surface
 - it is a delivery wrapper for the already-blocked external evidence problem
+
+## 2026-06-05T11:24Z
+
+target:
+- curated packet verification after wrong-surface researcher upload report
+
+status:
+- completed
+
+result:
+- verified that the correct local curated packet exists at:
+  - `outputs/research_packets/call_of_duty/wiki_curated_20260526t233955z/`
+- verified the exact requested local files:
+  - `call_of_duty_wiki_curated_20260526t233955z_events_or_medals.csv`
+  - `call_of_duty_wiki_curated_20260526t233955z_assets.csv`
+- confirmed the curated `events_or_medals.csv` has:
+  - `15` rows
+  - curated medal seeds only
+- confirmed the previously rejected wrong-surface Warzone event rows are absent:
+  - `Armor Plate Bundle`
+  - `Cash Drop`
+  - `Cluster Strike`
+  - `Heavy Weapons Crate`
+  - `Jailbreak`
+  - `Restock`
+  - `Resurgence`
+  - `Titan Frenzy`
+- added a durable verification note at:
+  - `docs/handoffs/2026-06-05-call-of-duty-curated-packet-verification.md`
+
+verification:
+- direct local file inspection only
+
+notes:
+- this indicates an external upload-selection mistake, not a bad local curated export
