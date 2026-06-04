@@ -1083,6 +1083,29 @@ def _posted_metrics_snapshot_shape_error(payload: dict[str, Any]) -> str | None:
     return None
 
 
+def _fixture_trial_run_shape_error(payload: dict[str, Any]) -> str | None:
+    fixtures = payload.get("fixtures", [])
+    if not isinstance(fixtures, list):
+        return "fixtures must be a list"
+    for index, row in enumerate(fixtures):
+        if not isinstance(row, dict):
+            return f"fixtures[{index}] must be an object"
+    return None
+
+
+def _fixture_trial_batch_shape_error(payload: dict[str, Any]) -> str | None:
+    selected_trials = payload.get("selected_trials", [])
+    trial_comparisons = payload.get("trial_comparisons", [])
+    if not isinstance(selected_trials, list):
+        return "selected_trials must be a list"
+    if not isinstance(trial_comparisons, list):
+        return "trial_comparisons must be a list"
+    for index, row in enumerate(trial_comparisons):
+        if not isinstance(row, dict):
+            return f"trial_comparisons[{index}] must be an object"
+    return None
+
+
 def _ingest_proxy_sidecar(path: Path, rows: dict[str, Any], *, game: str | None) -> None:
     payload = _load_json(path, rows)
     if payload is None:
@@ -1591,6 +1614,10 @@ def _ingest_fixture_trial_run_manifest(path: Path, rows: dict[str, Any], *, game
     if payload.get("schema_version") != FIXTURE_TRIAL_RUN_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _fixture_trial_run_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_fixture_trial_run_shape", detail=shape_error)
+        return
     trial_name = str(payload.get("trial_name") or "").strip()
     rows["fixture_trial_runs"].append(
         {
@@ -1641,6 +1668,10 @@ def _ingest_fixture_trial_batch_manifest(path: Path, rows: dict[str, Any], *, ga
         return
     if payload.get("schema_version") != FIXTURE_TRIAL_BATCH_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
+        return
+    shape_error = _fixture_trial_batch_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_fixture_trial_batch_shape", detail=shape_error)
         return
     batch_name = str(payload.get("batch_name") or "").strip()
     rows["fixture_trial_batches"].append(

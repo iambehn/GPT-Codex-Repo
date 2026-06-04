@@ -1384,3 +1384,33 @@ verification:
 notes:
 - this closes most of the remaining top-level list-shape trust gaps in registry ingestion
 - valid downstream manifest ingestion behavior is unchanged
+
+## 2026-06-05T09:46Z
+
+target:
+- clip registry fixture-trial manifest shape hardening
+
+status:
+- completed
+
+result:
+- tightened `clip_registry` so malformed fixture-trial run and batch manifests are skipped before they create durable trial rows
+- specifically guarded fixture-trial run ingestion:
+  - non-list `fixtures`
+  - non-dict fixture rows
+- specifically guarded fixture-trial batch ingestion:
+  - non-list `selected_trials`
+  - non-list `trial_comparisons`
+  - non-dict trial-comparison rows
+- added regression coverage proving invalid manifests emit:
+  - `invalid_fixture_trial_run_shape`
+  - `invalid_fixture_trial_batch_shape`
+  and do not generate durable rows
+
+verification:
+- `.venv/bin/python -m unittest tests.test_clip_registry`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the same fail-closed rule into the fixture-trial lineage surfaces
+- valid fixture-trial registry ingestion behavior is unchanged

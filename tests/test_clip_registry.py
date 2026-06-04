@@ -910,6 +910,58 @@ class ClipRegistryTests(unittest.TestCase):
             self.assertEqual(batch_result["rows"][0]["batch_name"], "nightly")
             self.assertEqual(batch_result["rows"][0]["recommendation_decision"], "prefer_trial")
 
+    def test_refresh_skips_invalid_fixture_trial_run_and_batch_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            proxy_path = root / "proxy" / "alpha.proxy_scan.json"
+            runtime_path = root / "runtime" / "alpha.runtime_analysis.json"
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            comparison_path = root / "comparisons" / "comparison.json"
+            run_manifest_path = root / "trial" / "fixture_trial_run_manifest.json"
+            batch_manifest_path = root / "trial" / "fixture_trial_batch_manifest.json"
+            _proxy_sidecar(proxy_path, game="marvel_rivals", source=media)
+            _runtime_sidecar(runtime_path, game="marvel_rivals", source=media)
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            _fixture_comparison_report(
+                comparison_path,
+                proxy_sidecar_path=proxy_path,
+                runtime_sidecar_path=runtime_path,
+                game="marvel_rivals",
+                source=media,
+            )
+            _fixture_trial_run_manifest(
+                run_manifest_path,
+                trial_name="distil-whisper",
+                game="marvel_rivals",
+                source=media,
+                proxy_sidecar_path=proxy_path,
+                runtime_sidecar_path=runtime_path,
+                fused_sidecar_path=fused_path,
+            )
+            _fixture_trial_batch_manifest(batch_manifest_path, comparison_report_path=comparison_path)
+
+            run_payload = json.loads(run_manifest_path.read_text(encoding="utf-8"))
+            run_payload["fixtures"] = {"not": "a-list"}
+            _write_json(run_manifest_path, run_payload)
+
+            batch_payload = json.loads(batch_manifest_path.read_text(encoding="utf-8"))
+            batch_payload["trial_comparisons"] = ["not-an-object"]
+            _write_json(batch_manifest_path, batch_payload)
+
+            result = refresh_clip_registry(root, registry_path=root / "registry.sqlite")
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["fixture_trial_run_manifest_count"], 0)
+            self.assertEqual(result["fixture_trial_run_fixture_row_count"], 0)
+            self.assertEqual(result["fixture_trial_batch_manifest_count"], 0)
+            self.assertEqual(result["fixture_trial_batch_comparison_row_count"], 0)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_fixture_trial_run_shape", reasons)
+            self.assertIn("invalid_fixture_trial_batch_shape", reasons)
+
     def test_query_clips_and_fused_events_support_disagreement_and_fixture_filters(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
