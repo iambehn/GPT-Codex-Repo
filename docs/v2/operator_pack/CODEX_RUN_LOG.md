@@ -1835,3 +1835,21 @@ verification:
 
 notes:
 - this removes the last materially stale researcher-facing instructions found in the current `call_of_duty` routing lane
+
+## 2026-06-05T14:55Z
+
+target:
+- stale backlog phase cleanup for `call_of_duty` signal targeting
+
+status:
+- completed
+
+result:
+- updated `CODEX_BACKLOG.md` so `Phase 8: Post-Promotion Signal Targeting` is no longer marked active
+- the phase now explicitly reads as historical context that has been superseded by the current top-right anchor branch in the active queue
+
+verification:
+- not run; doc-only backlog correction
+
+notes:
+- this prevents the backlog from presenting two different active `call_of_duty` blocker stories at once

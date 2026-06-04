@@ -350,10 +350,10 @@ Goal:
 
 Status:
 
-- active
+- superseded by later `call_of_duty` runtime-surface work
 - medal packet promotion is complete and published
-- current blocker is no longer medal-source onboarding mechanics
-- current blocker is signal-surface mismatch on the measured clip set
+- this phase should now be treated as historical context, not the live queue
+- the current live blocker is the top-right native event-card anchor branch tracked in the active queue above
 
 Ready now:
 
@@ -363,8 +363,11 @@ Ready now:
 
 Needs researcher packet:
 
-- a `call_of_duty` text or banner signal packet if the current sample family is the intended target
-- or a medal-visible sample packet if native badge-icon detection is still the intended first-class path
+- historical outcome:
+  - this phase originally justified text/banner and medal-visible replacement packet work
+- current replacement:
+  - use the active top-right anchor packet path in the active queue above
+  - use medal-visible replacement sourcing only if the project explicitly pivots away from the top-right family
 
 Avoid:
 
