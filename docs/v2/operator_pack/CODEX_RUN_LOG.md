@@ -1254,3 +1254,42 @@ verification:
 notes:
 - this extends the fail-closed intake rule into direct highlight-selection manifest generation
 - no selection behavior changed for valid sidecars
+
+## 2026-06-04T09:28Z
+
+target:
+- clip registry sidecar-shape hardening
+
+status:
+- completed
+
+result:
+- tightened `clip_registry` so malformed proxy, runtime, and fused sidecar shapes are skipped before they mutate durable registry state
+- specifically guarded proxy ingestion:
+  - non-list `windows`
+  - non-dict window rows
+  - non-list window `sources`
+  - non-list window `source_families`
+- specifically guarded runtime ingestion:
+  - non-dict `matcher`
+  - non-dict `events`
+  - non-list `matcher.confirmed_detections`
+  - non-list `events.rows`
+  - non-dict `matcher.frame_dimensions` when present
+  - non-string `matcher.frame_coordinate_space` when present
+  - non-dict detection and event rows
+- specifically guarded fused ingestion:
+  - non-list `normalized_signals`
+  - non-list `fused_events`
+  - non-dict normalized-signal rows
+  - non-dict fused-event rows
+  - non-dict fused-event `metadata` when present
+- added regression coverage proving invalid sidecars emit `invalid_proxy_shape`, `invalid_runtime_shape`, and `invalid_fused_shape` warnings without generating clip or child rows
+
+verification:
+- `.venv/bin/python -m unittest tests.test_clip_registry`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the fail-closed intake rule into the durable sidecar-to-registry ingestion layer
+- valid registry ingestion behavior is unchanged

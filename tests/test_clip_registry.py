@@ -632,6 +632,49 @@ class ClipRegistryTests(unittest.TestCase):
             self.assertEqual(row[0], json.dumps({"height": 36, "width": 64}, sort_keys=True))
             self.assertEqual(row[1], "normalized_pack_frame")
 
+    def test_refresh_skips_invalid_proxy_runtime_and_fused_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            proxy_path = root / "proxy" / "alpha.proxy_scan.json"
+            runtime_path = root / "runtime" / "alpha.runtime_analysis.json"
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+
+            _proxy_sidecar(proxy_path, game="marvel_rivals", source=media)
+            _runtime_sidecar(runtime_path, game="marvel_rivals", source=media)
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+
+            proxy_payload = json.loads(proxy_path.read_text(encoding="utf-8"))
+            proxy_payload["windows"] = [{"sources": "not-a-list"}]
+            _write_json(proxy_path, proxy_payload)
+
+            runtime_payload = json.loads(runtime_path.read_text(encoding="utf-8"))
+            runtime_payload["matcher"]["confirmed_detections"] = {"not": "a-list"}
+            _write_json(runtime_path, runtime_payload)
+
+            fused_payload = json.loads(fused_path.read_text(encoding="utf-8"))
+            fused_payload["fused_events"] = [{"metadata": "not-an-object"}]
+            _write_json(fused_path, fused_payload)
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["clip_row_count"], 0)
+            self.assertEqual(result["proxy_sidecar_count"], 0)
+            self.assertEqual(result["runtime_sidecar_count"], 0)
+            self.assertEqual(result["fused_sidecar_count"], 0)
+            self.assertEqual(result["proxy_window_row_count"], 0)
+            self.assertEqual(result["runtime_event_row_count"], 0)
+            self.assertEqual(result["runtime_detection_row_count"], 0)
+            self.assertEqual(result["fused_event_row_count"], 0)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_proxy_shape", reasons)
+            self.assertIn("invalid_runtime_shape", reasons)
+            self.assertIn("invalid_fused_shape", reasons)
+
     def test_refresh_dedupes_duplicate_analysis_ids_across_multiple_sidecars(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)

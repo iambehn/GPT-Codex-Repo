@@ -944,6 +944,67 @@ def _load_json_dict(value: Any) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _proxy_shape_error(payload: dict[str, Any]) -> str | None:
+    windows = payload.get("windows", [])
+    if not isinstance(windows, list):
+        return "windows must be a list"
+    for index, window in enumerate(windows):
+        if not isinstance(window, dict):
+            return f"windows[{index}] must be an object"
+        if not isinstance(window.get("sources", []), list):
+            return f"windows[{index}].sources must be a list"
+        if not isinstance(window.get("source_families", []), list):
+            return f"windows[{index}].source_families must be a list"
+    return None
+
+
+def _runtime_shape_error(payload: dict[str, Any]) -> str | None:
+    matcher = payload.get("matcher", {})
+    events = payload.get("events", {})
+    if not isinstance(matcher, dict):
+        return "matcher must be an object"
+    if not isinstance(events, dict):
+        return "events must be an object"
+    frame_dimensions = matcher.get("frame_dimensions", {})
+    frame_coordinate_space = matcher.get("frame_coordinate_space")
+    detections = matcher.get("confirmed_detections", [])
+    event_rows = events.get("rows", [])
+    if frame_dimensions is not None and not isinstance(frame_dimensions, dict):
+        return "matcher.frame_dimensions must be an object when present"
+    if frame_coordinate_space is not None and not isinstance(frame_coordinate_space, str):
+        return "matcher.frame_coordinate_space must be a string when present"
+    if not isinstance(detections, list):
+        return "matcher.confirmed_detections must be a list"
+    if not isinstance(event_rows, list):
+        return "events.rows must be a list"
+    for index, row in enumerate(detections):
+        if not isinstance(row, dict):
+            return f"matcher.confirmed_detections[{index}] must be an object"
+    for index, row in enumerate(event_rows):
+        if not isinstance(row, dict):
+            return f"events.rows[{index}] must be an object"
+    return None
+
+
+def _fused_shape_error(payload: dict[str, Any]) -> str | None:
+    normalized_signals = payload.get("normalized_signals", [])
+    fused_events = payload.get("fused_events", [])
+    if not isinstance(normalized_signals, list):
+        return "normalized_signals must be a list"
+    if not isinstance(fused_events, list):
+        return "fused_events must be a list"
+    for index, row in enumerate(normalized_signals):
+        if not isinstance(row, dict):
+            return f"normalized_signals[{index}] must be an object"
+    for index, row in enumerate(fused_events):
+        if not isinstance(row, dict):
+            return f"fused_events[{index}] must be an object"
+        metadata = row.get("metadata", {})
+        if metadata is not None and not isinstance(metadata, dict):
+            return f"fused_events[{index}].metadata must be an object when present"
+    return None
+
+
 def _ingest_proxy_sidecar(path: Path, rows: dict[str, Any], *, game: str | None) -> None:
     payload = _load_json(path, rows)
     if payload is None:
@@ -955,6 +1016,10 @@ def _ingest_proxy_sidecar(path: Path, rows: dict[str, Any], *, game: str | None)
         _warning(rows, path=path, reason="failed_analysis")
         return
     if game is not None and payload.get("game") != game:
+        return
+    shape_error = _proxy_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_proxy_shape", detail=shape_error)
         return
 
     resolved_path = str(path.resolve())
@@ -1004,6 +1069,10 @@ def _ingest_runtime_sidecar(path: Path, rows: dict[str, Any], *, game: str | Non
         _warning(rows, path=path, reason="failed_analysis")
         return
     if game is not None and payload.get("game") != game:
+        return
+    shape_error = _runtime_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_runtime_shape", detail=shape_error)
         return
 
     resolved_path = str(path.resolve())
@@ -1096,6 +1165,10 @@ def _ingest_fused_sidecar(path: Path, rows: dict[str, Any], *, game: str | None)
         _warning(rows, path=path, reason="failed_analysis")
         return
     if game is not None and payload.get("game") != game:
+        return
+    shape_error = _fused_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_fused_shape", detail=shape_error)
         return
 
     resolved_path = str(path.resolve())
