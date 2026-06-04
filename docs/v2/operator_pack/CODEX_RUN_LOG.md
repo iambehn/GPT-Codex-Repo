@@ -1293,3 +1293,26 @@ verification:
 notes:
 - this extends the fail-closed intake rule into the durable sidecar-to-registry ingestion layer
 - valid registry ingestion behavior is unchanged
+
+## 2026-06-04T09:36Z
+
+target:
+- clip registry review-session shape hardening
+
+status:
+- completed
+
+result:
+- tightened `clip_registry` so malformed runtime and fused review-session manifests are skipped before they create durable session or item rows
+- specifically guarded:
+  - non-list `items`
+  - non-dict item rows
+- added regression coverage proving invalid runtime and fused review-session manifests emit `invalid_*_review_session_shape` warnings without generating session or item rows
+
+verification:
+- `.venv/bin/python -m unittest tests.test_clip_registry`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the fail-closed intake rule one layer above the already-hardened review bridges
+- valid review-session registry ingestion behavior is unchanged

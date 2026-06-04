@@ -731,6 +731,42 @@ class ClipRegistryTests(unittest.TestCase):
             self.assertGreaterEqual(result["warning_count"], 1)
             self.assertEqual(session_path.read_text(encoding="utf-8"), before_text)
 
+    def test_refresh_skips_invalid_runtime_and_fused_review_session_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            runtime_path = root / "runtime" / "alpha.runtime_analysis.json"
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            runtime_session_path = root / "review" / "runtime.runtime_review_session.json"
+            fused_session_path = root / "review" / "fused.fused_review_session.json"
+            registry_path = root / "registry.sqlite"
+
+            _runtime_sidecar(runtime_path, game="marvel_rivals", source=media)
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            _runtime_review_session(runtime_session_path, game="marvel_rivals", sidecar_path=runtime_path, source=media)
+            _fused_review_session(fused_session_path, game="marvel_rivals", sidecar_path=fused_path, source=media)
+
+            runtime_session = json.loads(runtime_session_path.read_text(encoding="utf-8"))
+            runtime_session["items"] = ["not-an-object"]
+            _write_json(runtime_session_path, runtime_session)
+
+            fused_session = json.loads(fused_session_path.read_text(encoding="utf-8"))
+            fused_session["items"] = {"not": "a-list"}
+            _write_json(fused_session_path, fused_session)
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["runtime_review_session_count"], 0)
+            self.assertEqual(result["fused_review_session_count"], 0)
+            self.assertEqual(result["runtime_review_item_row_count"], 0)
+            self.assertEqual(result["fused_review_item_row_count"], 0)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_runtime_review_session_shape", reasons)
+            self.assertIn("invalid_fused_review_session_shape", reasons)
+
     def test_refresh_ingests_fixture_artifacts_and_updates_clip_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)

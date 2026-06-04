@@ -1005,6 +1005,16 @@ def _fused_shape_error(payload: dict[str, Any]) -> str | None:
     return None
 
 
+def _review_session_items_error(payload: dict[str, Any]) -> str | None:
+    items = payload.get("items", [])
+    if not isinstance(items, list):
+        return "items must be a list"
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            return f"items[{index}] must be an object"
+    return None
+
+
 def _ingest_proxy_sidecar(path: Path, rows: dict[str, Any], *, game: str | None) -> None:
     payload = _load_json(path, rows)
     if payload is None:
@@ -1290,6 +1300,10 @@ def _ingest_runtime_review_session(path: Path, rows: dict[str, Any], *, game: st
         return
     if game is not None and payload.get("game") != game:
         return
+    shape_error = _review_session_items_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_runtime_review_session_shape", detail=shape_error)
+        return
 
     resolved_path = str(path.resolve())
     session_id = str(payload.get("session_id") or "").strip()
@@ -1343,6 +1357,10 @@ def _ingest_fused_review_session(path: Path, rows: dict[str, Any], *, game: str 
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
     if game is not None and payload.get("game") != game:
+        return
+    shape_error = _review_session_items_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_fused_review_session_shape", detail=shape_error)
         return
 
     resolved_path = str(path.resolve())
