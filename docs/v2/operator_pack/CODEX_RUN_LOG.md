@@ -1524,3 +1524,29 @@ verification:
 notes:
 - the remaining blocked problem is unchanged: external evidence for the `call_of_duty` top-right anchor branch
 - there is no comparable local `clip_registry` durable-ingestion gap left after this slice
+
+## 2026-06-05T11:10Z
+
+target:
+- researcher unblock handoff packaging
+
+status:
+- completed
+
+result:
+- added a direct researcher-facing unblock handoff at:
+  - `docs/handoffs/2026-06-05-project-researcher-unblock-handoff.md`
+- the handoff compresses the active blocker into:
+  - what is already exhausted
+  - what the researcher should read first
+  - what output format will actually unblock Codex
+  - what output will not help
+- the handoff is intended to be sent alongside:
+  - `docs/handoffs/2026-06-05-call-of-duty-top-right-anchor-researcher-brief.md`
+
+verification:
+- not run; doc-only packaging change
+
+notes:
+- this is not a new workflow surface
+- it is a delivery wrapper for the already-blocked external evidence problem
