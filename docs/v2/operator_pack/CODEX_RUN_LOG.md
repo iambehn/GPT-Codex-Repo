@@ -1222,3 +1222,35 @@ verification:
 notes:
 - this extends the fail-closed intake rule into the fused-side dataset export surface
 - no fused scoring or selection behavior changed for valid sidecars
+
+## 2026-06-04T09:14Z
+
+target:
+- highlight selection export sidecar-shape hardening
+
+status:
+- completed
+
+result:
+- tightened `highlight_selection_export` so malformed proxy or fused sidecar shapes fail closed before manifest and OTIO generation
+- specifically guarded proxy selection inputs:
+  - non-list `windows`
+  - non-dict window rows
+  - non-list window `sources`
+  - non-list window `source_families`
+- specifically guarded fused selection inputs:
+  - non-list `normalized_signals`
+  - non-list `fused_events`
+  - non-dict normalized-signal rows
+  - non-dict fused-event rows
+  - non-dict fused-event `metadata` when present
+  - non-list fused-event `contributing_signals`
+- added regression coverage proving malformed proxy and fused sidecars return `invalid_*_sidecar` errors
+
+verification:
+- `.venv/bin/python -m unittest tests.test_highlight_selection_export`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the fail-closed intake rule into direct highlight-selection manifest generation
+- no selection behavior changed for valid sidecars

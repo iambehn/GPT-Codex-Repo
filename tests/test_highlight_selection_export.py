@@ -148,6 +148,22 @@ class HighlightSelectionExportTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_proxy_sidecar")
 
+    def test_export_highlight_selection_rejects_invalid_proxy_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "alpha.mp4"
+            media.write_bytes(b"video")
+            sidecar = root / "bad.proxy_scan.json"
+            payload = _proxy_sidecar(media)
+            payload["windows"] = {"not": "a-list"}
+            sidecar.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+            result = export_highlight_selection(sidecar)
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_proxy_sidecar")
+            self.assertIn("windows must be a list", result["error"])
+
     def test_export_highlight_selection_rejects_invalid_fused_schema(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
@@ -160,6 +176,22 @@ class HighlightSelectionExportTests(unittest.TestCase):
 
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_fused_sidecar")
+
+    def test_export_highlight_selection_rejects_invalid_fused_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "alpha.mp4"
+            media.write_bytes(b"video")
+            sidecar = root / "bad.fused_analysis.json"
+            payload = _fused_sidecar(media)
+            payload["fused_events"] = {"not": "a-list"}
+            sidecar.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+            result = export_highlight_selection(fused_sidecar=sidecar)
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_fused_sidecar")
+            self.assertIn("fused_events must be a list", result["error"])
 
 
 if __name__ == "__main__":

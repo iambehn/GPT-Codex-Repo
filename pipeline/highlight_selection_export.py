@@ -46,6 +46,14 @@ def _export_from_proxy_sidecar(
             "proxy_sidecar_path": str(sidecar_path),
             "error": "proxy sidecar does not use proxy_scan_v1",
         }
+    proxy_shape_error = _proxy_shape_error(payload)
+    if proxy_shape_error is not None:
+        return {
+            "ok": False,
+            "status": "invalid_proxy_sidecar",
+            "proxy_sidecar_path": str(sidecar_path),
+            "error": proxy_shape_error,
+        }
 
     game = str(payload.get("game", "")).strip() or "unknown_game"
     source = str(payload.get("source", "")).strip()
@@ -75,6 +83,14 @@ def _export_from_fused_sidecar(
             "status": "invalid_fused_sidecar",
             "fused_sidecar_path": str(sidecar_path),
             "error": "fused sidecar does not use fused_analysis_v1",
+        }
+    fused_shape_error = _fused_shape_error(payload)
+    if fused_shape_error is not None:
+        return {
+            "ok": False,
+            "status": "invalid_fused_sidecar",
+            "fused_sidecar_path": str(sidecar_path),
+            "error": fused_shape_error,
         }
 
     game = str(payload.get("game", "")).strip() or "unknown_game"
@@ -112,6 +128,44 @@ def _write_manifest(manifest: dict[str, Any], *, output_path: str | Path | None)
         "otio_skeleton_path": str(otio_path),
         "selected_highlight_count": len(list(manifest.get("selected_highlights", []))),
     }
+
+
+def _proxy_shape_error(payload: dict[str, Any]) -> str | None:
+    windows = payload.get("windows", [])
+    if not isinstance(windows, list):
+        return "proxy sidecar windows must be a list"
+    for index, window in enumerate(windows):
+        if not isinstance(window, dict):
+            return f"proxy sidecar windows[{index}] must be an object"
+        sources = window.get("sources", [])
+        source_families = window.get("source_families", [])
+        if not isinstance(sources, list):
+            return f"proxy sidecar windows[{index}].sources must be a list"
+        if not isinstance(source_families, list):
+            return f"proxy sidecar windows[{index}].source_families must be a list"
+    return None
+
+
+def _fused_shape_error(payload: dict[str, Any]) -> str | None:
+    normalized_signals = payload.get("normalized_signals", [])
+    fused_events = payload.get("fused_events", [])
+    if not isinstance(normalized_signals, list):
+        return "fused sidecar normalized_signals must be a list"
+    if not isinstance(fused_events, list):
+        return "fused sidecar fused_events must be a list"
+    for index, row in enumerate(normalized_signals):
+        if not isinstance(row, dict):
+            return f"fused sidecar normalized_signals[{index}] must be an object"
+    for index, event in enumerate(fused_events):
+        if not isinstance(event, dict):
+            return f"fused sidecar fused_events[{index}] must be an object"
+        metadata = event.get("metadata", {})
+        contributing_signals = event.get("contributing_signals", [])
+        if metadata is not None and not isinstance(metadata, dict):
+            return f"fused sidecar fused_events[{index}].metadata must be an object when present"
+        if not isinstance(contributing_signals, list):
+            return f"fused sidecar fused_events[{index}].contributing_signals must be a list"
+    return None
 
 
 def _selected_proxy_windows(payload: dict[str, Any]) -> list[dict[str, Any]]:
