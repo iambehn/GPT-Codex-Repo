@@ -1015,6 +1015,16 @@ def _review_session_items_error(payload: dict[str, Any]) -> str | None:
     return None
 
 
+def _highlight_selection_shape_error(payload: dict[str, Any]) -> str | None:
+    selected_highlights = payload.get("selected_highlights", [])
+    if not isinstance(selected_highlights, list):
+        return "selected_highlights must be a list"
+    for index, row in enumerate(selected_highlights):
+        if not isinstance(row, dict):
+            return f"selected_highlights[{index}] must be an object"
+    return None
+
+
 def _ingest_proxy_sidecar(path: Path, rows: dict[str, Any], *, game: str | None) -> None:
     payload = _load_json(path, rows)
     if payload is None:
@@ -1611,6 +1621,10 @@ def _ingest_highlight_selection_manifest(path: Path, rows: dict[str, Any], *, ga
         return
     payload_game = str(payload.get("game") or "").strip()
     if game is not None and payload_game and payload_game != game:
+        return
+    shape_error = _highlight_selection_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_highlight_selection_shape", detail=shape_error)
         return
     rows["highlight_selection_manifests"].append(
         {

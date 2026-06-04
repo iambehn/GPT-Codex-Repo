@@ -1035,6 +1035,43 @@ class ClipRegistryTests(unittest.TestCase):
             self.assertEqual(posted_selected["candidate_id"], candidate_id)
             self.assertEqual(posted_selected["event_id"], "fused-event-1")
 
+    def test_refresh_skips_invalid_highlight_selection_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            candidate_id = _candidate_id(
+                game="marvel_rivals",
+                source=str(media.resolve()),
+                fused_sidecar_path=str(fused_path.resolve()),
+                event_id="fused-event-1",
+            )
+            selection_manifest_path = root / "exports" / "alpha.highlight_selection.json"
+            _highlight_selection_manifest(
+                selection_manifest_path,
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+
+            selection_payload = json.loads(selection_manifest_path.read_text(encoding="utf-8"))
+            selection_payload["selected_highlights"] = {"not": "a-list"}
+            _write_json(selection_manifest_path, selection_payload)
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["highlight_selection_manifest_count"], 0)
+            self.assertEqual(result["candidate_lifecycle_row_count"], 1)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_highlight_selection_shape", reasons)
+
     def test_refresh_preserves_selected_highlight_details_in_posted_metrics_and_rollups(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)

@@ -1316,3 +1316,26 @@ verification:
 notes:
 - this extends the fail-closed intake rule one layer above the already-hardened review bridges
 - valid review-session registry ingestion behavior is unchanged
+
+## 2026-06-05T09:12Z
+
+target:
+- clip registry highlight-selection shape hardening
+
+status:
+- completed
+
+result:
+- tightened `clip_registry` so malformed highlight-selection manifests are skipped before they create durable selection rows used by lifecycle and export lineage
+- specifically guarded:
+  - non-list `selected_highlights`
+  - non-dict selected-highlight rows
+- added regression coverage proving invalid highlight-selection manifests emit `invalid_highlight_selection_shape` warnings without being ingested
+
+verification:
+- `.venv/bin/python -m unittest tests.test_clip_registry`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the fail-closed intake rule into a manifest that feeds candidate lifecycle and export-detail derivation
+- valid highlight-selection registry ingestion behavior is unchanged
