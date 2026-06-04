@@ -1166,3 +1166,31 @@ verification:
 notes:
 - this extends the same fail-closed intake rule into the reviewed-runtime analysis surfaces
 - no scoring behavior changed for valid sidecars
+
+## 2026-06-04T08:47Z
+
+target:
+- proxy training export and calibration sidecar-shape hardening
+
+status:
+- completed
+
+result:
+- tightened both `training_export` and `proxy_calibration` so malformed `proxy_scan_v1` payload shapes are skipped instead of being exported or calibrated
+- specifically guarded:
+  - non-list `windows`
+  - non-dict `source_results`
+  - non-dict window rows
+  - non-list window `sources`
+  - non-list window `source_families`
+  - non-list window `signals`
+- added explicit `invalid_proxy_shape` skip accounting for training export
+- added regression coverage proving malformed proxy sidecars surface `invalid_proxy_shape` in export and calibration flows
+
+verification:
+- `.venv/bin/python -m unittest tests.test_training_export tests.test_proxy_calibration`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the fail-closed intake rule into the proxy-side dataset and review-calibration consumers
+- no proxy scoring behavior changed for valid sidecars

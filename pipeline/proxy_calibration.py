@@ -219,6 +219,8 @@ def _review_row_from_sidecar(
         return "unsupported_schema_version", None
     if game is not None and sidecar.get("game") != game:
         return "game_filter_mismatch", None
+    if _proxy_shape_error(sidecar) is not None:
+        return "invalid_proxy_shape", None
     if not sidecar.get("ok", False):
         return "failed_scan", None
     windows = list(sidecar.get("windows", []))
@@ -233,6 +235,28 @@ def _review_row_from_sidecar(
     if review_status not in {"approved", "rejected"}:
         return "unreviewed", row
     return None, row
+
+
+def _proxy_shape_error(sidecar: dict[str, Any]) -> str | None:
+    windows = sidecar.get("windows", [])
+    source_results = sidecar.get("source_results", {})
+    if not isinstance(windows, list):
+        return "windows must be a list"
+    if not isinstance(source_results, dict):
+        return "source_results must be an object"
+    for index, window in enumerate(windows):
+        if not isinstance(window, dict):
+            return f"window {index} must be an object"
+        sources = window.get("sources", [])
+        source_families = window.get("source_families", [])
+        signals = window.get("signals", [])
+        if not isinstance(sources, list):
+            return f"window {index} sources must be a list"
+        if not isinstance(source_families, list):
+            return f"window {index} source_families must be a list"
+        if not isinstance(signals, list):
+            return f"window {index} signals must be a list"
+    return None
 
 
 def _build_review_row(sidecar_path: Path, sidecar: dict[str, Any], *, review_status: str) -> dict[str, Any]:

@@ -161,15 +161,37 @@ class TrainingExportTests(unittest.TestCase):
             malformed_path = root / "bad" / "malformed.proxy_scan.json"
             malformed_path.parent.mkdir(parents=True, exist_ok=True)
             malformed_path.write_text("{not-json", encoding="utf-8")
+            self._write_sidecar(
+                root / "bad" / "invalid.proxy_scan.json",
+                {
+                    **_sidecar(
+                        scan_id="scan-invalid",
+                        game="marvel_rivals",
+                        source="invalid",
+                        windows=[
+                            _window(
+                                0.0,
+                                5.0,
+                                0.2,
+                                "skip",
+                                ["chat_spike"],
+                                ["chat_velocity"],
+                                [],
+                            )
+                        ],
+                    ),
+                    "windows": {"not": "a-list"},
+                },
+            )
 
             with patch.object(training_export, "DEFAULT_OUTPUT_ROOT", Path(export_root)):
                 result = run_export_training_data(root)
 
             self.assertTrue(result["ok"])
             self.assertEqual(result["row_count"], 3)
-            self.assertEqual(result["scanned_sidecar_count"], 6)
+            self.assertEqual(result["scanned_sidecar_count"], 7)
             self.assertEqual(result["exported_sidecar_count"], 2)
-            self.assertEqual(result["skipped_sidecar_count"], 4)
+            self.assertEqual(result["skipped_sidecar_count"], 5)
 
             jsonl_path = Path(result["jsonl_path"])
             csv_path = Path(result["csv_path"])
@@ -204,13 +226,16 @@ class TrainingExportTests(unittest.TestCase):
 
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             self.assertEqual(manifest["row_count"], 3)
-            self.assertEqual(manifest["scanned_sidecar_count"], 6)
+            self.assertEqual(manifest["scanned_sidecar_count"], 7)
             self.assertEqual(manifest["exported_sidecar_count"], 2)
             self.assertEqual(manifest["skipped_malformed_count"], 1)
+            self.assertEqual(manifest["skipped_invalid_proxy_shape_count"], 1)
             self.assertEqual(manifest["skipped_schema_mismatch_count"], 1)
             self.assertEqual(manifest["skipped_failed_scan_count"], 1)
             self.assertEqual(manifest["skipped_empty_scan_count"], 1)
-            self.assertEqual(len(manifest["warnings"]), 4)
+            self.assertEqual(len(manifest["warnings"]), 5)
+            reasons = {row["reason"] for row in manifest["warnings"]}
+            self.assertIn("invalid_proxy_shape", reasons)
 
     def test_export_training_data_game_filter_limits_rows(self) -> None:
         with tempfile.TemporaryDirectory() as sidecar_root, tempfile.TemporaryDirectory() as export_root:

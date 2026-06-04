@@ -193,11 +193,29 @@ class ProxyCalibrationTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            (root / "invalid.proxy_scan.json").write_text(
+                json.dumps(
+                    {
+                        **_proxy_sidecar(
+                            scan_id="invalid",
+                            game="marvel_rivals",
+                            source="clip-invalid.mp4",
+                            proxy_score=0.5,
+                            action="inspect",
+                            review_status="approved",
+                        ),
+                        "windows": {"not": "a-list"},
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
             (root / "malformed.proxy_scan.json").write_text("{bad-json", encoding="utf-8")
             result = run_calibrate_proxy_review(root, game="marvel_rivals", min_reviewed=1)
             reasons = {warning["reason"] for warning in result["warnings"]}
             self.assertIn("non_hf_source", reasons)
             self.assertIn("unsupported_schema_version", reasons)
+            self.assertIn("invalid_proxy_shape", reasons)
             self.assertIn("malformed_json", reasons)
             self.assertEqual(result["release_gate_summary"]["status"], "fail")
 

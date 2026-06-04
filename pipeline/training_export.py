@@ -82,6 +82,7 @@ def _collect_dataset(root: Path, game: str | None) -> dict[str, Any]:
         "exported_sidecar_count": 0,
         "skipped_sidecar_count": 0,
         "skipped_malformed_count": 0,
+        "skipped_invalid_proxy_shape_count": 0,
         "skipped_schema_mismatch_count": 0,
         "skipped_failed_scan_count": 0,
         "skipped_empty_scan_count": 0,
@@ -98,6 +99,8 @@ def _collect_dataset(root: Path, game: str | None) -> dict[str, Any]:
             warnings.append({"path": str(sidecar_path), "reason": skip_reason})
             if skip_reason == "malformed_json":
                 manifest["skipped_malformed_count"] += 1
+            elif skip_reason == "invalid_proxy_shape":
+                manifest["skipped_invalid_proxy_shape_count"] += 1
             elif skip_reason == "unsupported_schema_version":
                 manifest["skipped_schema_mismatch_count"] += 1
             elif skip_reason == "failed_scan":
@@ -134,11 +137,35 @@ def _rows_from_sidecar(
         return "game_filter_mismatch", sidecar, []
     if not sidecar.get("ok", False):
         return "failed_scan", sidecar, []
+    if _proxy_shape_error(sidecar) is not None:
+        return "invalid_proxy_shape", sidecar, []
     windows = sidecar.get("windows", [])
     if not windows:
         return "empty_scan", sidecar, []
 
     return None, sidecar, _build_rows_for_sidecar(sidecar_path, sidecar, dataset_id)
+
+
+def _proxy_shape_error(sidecar: dict[str, Any]) -> str | None:
+    windows = sidecar.get("windows", [])
+    source_results = sidecar.get("source_results", {})
+    if not isinstance(windows, list):
+        return "windows must be a list"
+    if not isinstance(source_results, dict):
+        return "source_results must be an object"
+    for index, window in enumerate(windows):
+        if not isinstance(window, dict):
+            return f"window {index} must be an object"
+        sources = window.get("sources", [])
+        source_families = window.get("source_families", [])
+        signals = window.get("signals", [])
+        if not isinstance(sources, list):
+            return f"window {index} sources must be a list"
+        if not isinstance(source_families, list):
+            return f"window {index} source_families must be a list"
+        if not isinstance(signals, list):
+            return f"window {index} signals must be a list"
+    return None
 
 
 def _build_rows_for_sidecar(sidecar_path: Path, sidecar: dict[str, Any], dataset_id: str) -> list[dict[str, Any]]:
