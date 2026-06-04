@@ -20,6 +20,24 @@ A good packet answers five questions:
 
 If a packet does not answer those five questions, it is usually not ready for implementation.
 
+## Exported Bundle Rule
+
+If the packet references a locally exported research bundle, identify the bundle by semantic identity first, not by timestamp alone.
+
+Include:
+
+- the semantic-first packet root
+- the exact first-send files inside that root
+- the packet identity artifact when present:
+  - `*_packet_identity.json`
+  - `*_SEND_THESE_FILES_FIRST.txt`
+
+Do not rely on:
+
+- “latest export”
+- timestamp alone
+- parent folder inference without the exact file names
+
 ## Required Metadata
 
 ```yaml
@@ -92,6 +110,16 @@ For each item, include:
   path_or_url: exact path or URL
   why_it_matters: one sentence
   trust_level: authoritative | strong_candidate | exploratory
+```
+
+When the evidence item is an exported local packet, prefer entries like:
+
+```yaml
+- evidence_id: curated-medal-seed-packet
+  type: table
+  path_or_url: outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/curated_medal_seed_packet__call_of_duty__20260526t233955z_events_or_medals.csv
+  why_it_matters: canonical curated medal-seed export for researcher upload
+  trust_level: authoritative
 ```
 
 ### 4. Structured Findings

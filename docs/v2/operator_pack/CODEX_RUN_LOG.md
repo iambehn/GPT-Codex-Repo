@@ -1636,3 +1636,24 @@ verification:
 
 notes:
 - this keeps the new export contract aligned across code and researcher-facing guidance
+
+## 2026-06-05T12:23Z
+
+target:
+- research packet template alignment for exported bundle identity
+
+status:
+- completed
+
+result:
+- updated `RESEARCH_PACKET_TEMPLATE.md` so exported local bundles must be referenced by:
+  - semantic-first packet root
+  - exact first-send files
+  - packet identity artifacts when present
+- added an explicit example using the `call_of_duty` curated medal-seed packet path
+
+verification:
+- not run; doc-only change
+
+notes:
+- this places the packet identity rule on the packet-authoring surface itself, not only in routing and contract docs
