@@ -1454,3 +1454,73 @@ verification:
 notes:
 - this closes the remaining local `clip_registry` families that had been explicitly set aside as lower-yield follow-up work
 - the blocked `call_of_duty` branch still remains deferred on external evidence and did not require an operator-surface change in this slice
+
+## 2026-06-05T10:26Z
+
+target:
+- blocked `call_of_duty` researcher brief plus final local summary-manifest hardening
+
+status:
+- completed
+
+result:
+- added a full researcher-facing blocker brief at:
+  - `docs/handoffs/2026-06-05-call-of-duty-top-right-anchor-researcher-brief.md`
+- the brief consolidates:
+  - current blocker
+  - exact positive and negative windows
+  - failed shell-anchor evidence
+  - weak OCR evidence
+  - wrong-surface Vista exclusions
+  - exact success condition for the next researcher packet
+- tightened the remaining summary-only `clip_registry` ingestors so malformed persisted object/list fields fail closed:
+  - `hook_evaluation_report`
+  - `shadow_ranking_model`
+  - `shadow_evaluation_policy`
+  - `real_artifact_intake_dashboard`
+- added grouped regression coverage proving invalid summary manifests emit:
+  - `invalid_hook_evaluation_report_shape`
+  - `invalid_shadow_ranking_model_shape`
+  - `invalid_shadow_evaluation_policy_shape`
+  - `invalid_real_artifact_intake_dashboard_shape`
+  and do not generate durable rows
+
+verification:
+- `.venv/bin/python -m unittest tests.test_clip_registry`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- the local `clip_registry` hardening pass is now materially exhausted
+- the main remaining deferred problem is external evidence for the `call_of_duty` top-right anchor branch
+
+## 2026-06-05T11:01Z
+
+target:
+- final `clip_registry` durable-ingestion parity check
+
+status:
+- completed
+
+result:
+- added a full researcher-facing blocker brief at:
+  - `docs/handoffs/2026-06-05-call-of-duty-top-right-anchor-researcher-brief.md`
+- closed the last remaining permissive durable `clip_registry` ingestor:
+  - `shadow_ranking_experiment`
+- `shadow_ranking_experiment` now fails closed on malformed summary object fields:
+  - invalid `filters`
+  - invalid `comparison_recommendation`
+  - invalid `training_metrics`
+  - invalid `evaluation_metrics`
+  - invalid `comparison_summary`
+- extended grouped regression coverage so invalid shadow-ranking experiment manifests emit:
+  - `invalid_shadow_ranking_experiment_shape`
+  and do not create durable rows
+- verified that every current `clip_registry` `_ingest_*` path now has explicit invalid-shape rejection rather than silently normalizing malformed persisted payloads
+
+verification:
+- `.venv/bin/python -m unittest tests.test_clip_registry`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- the remaining blocked problem is unchanged: external evidence for the `call_of_duty` top-right anchor branch
+- there is no comparable local `clip_registry` durable-ingestion gap left after this slice

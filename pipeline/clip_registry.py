@@ -1144,6 +1144,25 @@ def _shadow_ranking_experiment_ledger_shape_error(payload: dict[str, Any]) -> st
     return None
 
 
+def _shadow_ranking_experiment_shape_error(payload: dict[str, Any]) -> str | None:
+    filters = payload.get("filters", {})
+    if filters is not None and not isinstance(filters, dict):
+        return "filters must be an object when present"
+    comparison_recommendation = payload.get("comparison_recommendation", {})
+    if comparison_recommendation is not None and not isinstance(comparison_recommendation, dict):
+        return "comparison_recommendation must be an object when present"
+    training_metrics = payload.get("training_metrics", {})
+    if training_metrics is not None and not isinstance(training_metrics, dict):
+        return "training_metrics must be an object when present"
+    evaluation_metrics = payload.get("evaluation_metrics", {})
+    if evaluation_metrics is not None and not isinstance(evaluation_metrics, dict):
+        return "evaluation_metrics must be an object when present"
+    comparison_summary = payload.get("comparison_summary", {})
+    if comparison_summary is not None and not isinstance(comparison_summary, dict):
+        return "comparison_summary must be an object when present"
+    return None
+
+
 def _shadow_ranking_replay_shape_error(payload: dict[str, Any]) -> str | None:
     rows_list = payload.get("rows", [])
     if not isinstance(rows_list, list):
@@ -1235,6 +1254,53 @@ def _shadow_benchmark_evidence_comparison_shape_error(payload: dict[str, Any]) -
     for index, row in enumerate(rows_list):
         if not isinstance(row, dict):
             return f"rows[{index}] must be an object"
+    return None
+
+
+def _hook_evaluation_report_shape_error(payload: dict[str, Any]) -> str | None:
+    trial_comparison = payload.get("trial_comparison", {})
+    candidate_rollups = payload.get("candidate_rollups", {})
+    fused_hook_disagreement = payload.get("fused_hook_disagreement", {})
+    policy = payload.get("policy", {})
+    if trial_comparison is not None and not isinstance(trial_comparison, dict):
+        return "trial_comparison must be an object when present"
+    if candidate_rollups is not None and not isinstance(candidate_rollups, dict):
+        return "candidate_rollups must be an object when present"
+    if fused_hook_disagreement is not None and not isinstance(fused_hook_disagreement, dict):
+        return "fused_hook_disagreement must be an object when present"
+    if policy is not None and not isinstance(policy, dict):
+        return "policy must be an object when present"
+    return None
+
+
+def _shadow_ranking_model_shape_error(payload: dict[str, Any]) -> str | None:
+    feature_fields = payload.get("feature_fields", [])
+    warnings = payload.get("warnings", [])
+    if feature_fields is not None and not isinstance(feature_fields, list):
+        return "feature_fields must be a list when present"
+    if warnings is not None and not isinstance(warnings, list):
+        return "warnings must be a list when present"
+    return None
+
+
+def _shadow_evaluation_policy_shape_error(payload: dict[str, Any]) -> str | None:
+    targets = payload.get("targets", {})
+    if targets is not None and not isinstance(targets, dict):
+        return "targets must be an object when present"
+    return None
+
+
+def _real_artifact_intake_dashboard_shape_error(payload: dict[str, Any]) -> str | None:
+    dict_fields = {
+        "filters": payload.get("filters", {}),
+        "current_intake": payload.get("current_intake", {}),
+        "preflight_trends": payload.get("preflight_trends", {}),
+        "refresh_outcome_trends": payload.get("refresh_outcome_trends", {}),
+        "history_comparison": payload.get("history_comparison", {}),
+    }
+    for field_name, value in dict_fields.items():
+        if value is not None and not isinstance(value, dict):
+            return f"{field_name} must be an object when present"
     return None
 
 
@@ -2077,6 +2143,10 @@ def _ingest_hook_evaluation_report(path: Path, rows: dict[str, Any], *, game: st
     if payload.get("schema_version") != HOOK_EVALUATION_REPORT_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _hook_evaluation_report_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_hook_evaluation_report_shape", detail=shape_error)
+        return
     payload_game = str(payload.get("game_filter") or "").strip()
     if game is not None and payload_game and payload_game != game:
         return
@@ -2382,6 +2452,10 @@ def _ingest_shadow_ranking_model(path: Path, rows: dict[str, Any], *, game: str 
     if payload.get("schema_version") != SHADOW_RANKING_MODEL_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _shadow_ranking_model_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_ranking_model_shape", detail=shape_error)
+        return
     filters = payload.get("filters", {}) if isinstance(payload.get("filters"), dict) else {}
     filter_game = str(filters.get("game") or "").strip() or None
     if game is not None and filter_game and filter_game != game:
@@ -2420,6 +2494,10 @@ def _ingest_shadow_evaluation_policy(path: Path, rows: dict[str, Any], *, game: 
     if payload.get("schema_version") != SHADOW_EVALUATION_POLICY_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _shadow_evaluation_policy_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_evaluation_policy_shape", detail=shape_error)
+        return
     rows["shadow_evaluation_policies"].append(
         {
             "manifest_path": str(path.resolve()),
@@ -2437,6 +2515,10 @@ def _ingest_shadow_ranking_experiment(path: Path, rows: dict[str, Any], *, game:
         return
     if payload.get("schema_version") != SHADOW_RANKING_EXPERIMENT_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
+        return
+    shape_error = _shadow_ranking_experiment_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_ranking_experiment_shape", detail=shape_error)
         return
     filters = payload.get("filters", {}) if isinstance(payload.get("filters"), dict) else {}
     filter_game = str(filters.get("game") or "").strip() or None
@@ -2999,6 +3081,10 @@ def _ingest_real_artifact_intake_dashboard(path: Path, rows: dict[str, Any], *, 
         return
     if payload.get("schema_version") != REAL_ARTIFACT_INTAKE_DASHBOARD_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
+        return
+    shape_error = _real_artifact_intake_dashboard_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_real_artifact_intake_dashboard_shape", detail=shape_error)
         return
     filters = payload.get("filters", {}) if isinstance(payload.get("filters"), dict) else {}
     target_game = str(filters.get("game") or "").strip() or None

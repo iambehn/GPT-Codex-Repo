@@ -1403,6 +1403,13 @@ class ClipRegistryTests(unittest.TestCase):
             registry_path = root / "registry.sqlite"
 
             _write_json(
+                root / "shadow" / "alpha.shadow_ranking_experiment.json",
+                {
+                    "schema_version": "shadow_ranking_experiment_v1",
+                    "filters": "not-an-object",
+                },
+            )
+            _write_json(
                 root / "shadow" / "alpha.shadow_experiment_ledger.json",
                 {
                     "schema_version": "shadow_experiment_ledger_v1",
@@ -1445,6 +1452,7 @@ class ClipRegistryTests(unittest.TestCase):
             result = refresh_clip_registry(root, registry_path=registry_path)
 
             self.assertTrue(result["ok"])
+            self.assertEqual(result["shadow_ranking_experiment_manifest_count"], 0)
             self.assertEqual(result["shadow_ranking_experiment_ledger_manifest_count"], 0)
             self.assertEqual(result["shadow_ranking_experiment_slice_row_count"], 0)
             self.assertEqual(result["shadow_ranking_replay_manifest_count"], 0)
@@ -1456,6 +1464,7 @@ class ClipRegistryTests(unittest.TestCase):
             self.assertEqual(result["shadow_benchmark_review_manifest_count"], 0)
             self.assertEqual(result["shadow_target_readiness_row_count"], 0)
             reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_shadow_ranking_experiment_shape", reasons)
             self.assertIn("invalid_shadow_ranking_experiment_ledger_shape", reasons)
             self.assertIn("invalid_shadow_ranking_replay_shape", reasons)
             self.assertIn("invalid_shadow_model_family_comparison_shape", reasons)
@@ -1483,6 +1492,53 @@ class ClipRegistryTests(unittest.TestCase):
             self.assertEqual(result["real_posted_lineage_import_manifest_count"], 0)
             reasons = {warning.get("reason") for warning in result["warnings"]}
             self.assertIn("invalid_real_posted_lineage_import_shape", reasons)
+
+    def test_refresh_skips_invalid_summary_manifest_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            registry_path = root / "registry.sqlite"
+
+            _write_json(
+                root / "reports" / "alpha.hook_evaluation_report.json",
+                {
+                    "schema_version": "hook_evaluation_report_v1",
+                    "trial_comparison": "not-an-object",
+                },
+            )
+            _write_json(
+                root / "shadow" / "alpha.shadow_ranking_model.json",
+                {
+                    "schema_version": "shadow_ranking_model_v1",
+                    "feature_fields": "not-a-list",
+                },
+            )
+            _write_json(
+                root / "shadow" / "alpha.shadow_evaluation_policy.json",
+                {
+                    "schema_version": "shadow_evaluation_policy_v1",
+                    "targets": ["not-an-object"],
+                },
+            )
+            _write_json(
+                root / "reports" / "alpha.real_artifact_intake.dashboard.json",
+                {
+                    "schema_version": "real_artifact_intake_dashboard_v1",
+                    "filters": "not-an-object",
+                },
+            )
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["hook_evaluation_report_count"], 0)
+            self.assertEqual(result["shadow_ranking_model_manifest_count"], 0)
+            self.assertEqual(result["shadow_evaluation_policy_manifest_count"], 0)
+            self.assertEqual(result["real_artifact_intake_dashboard_manifest_count"], 0)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_hook_evaluation_report_shape", reasons)
+            self.assertIn("invalid_shadow_ranking_model_shape", reasons)
+            self.assertIn("invalid_shadow_evaluation_policy_shape", reasons)
+            self.assertIn("invalid_real_artifact_intake_dashboard_shape", reasons)
 
     def test_transition_candidate_lifecycle_updates_state_and_history(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
