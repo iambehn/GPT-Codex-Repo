@@ -1817,3 +1817,21 @@ verification:
 
 notes:
 - this closes the remaining stale index-level surface in the current researcher-routing lane
+
+## 2026-06-05T14:45Z
+
+target:
+- stale researcher-contract and template cleanup for the active `call_of_duty` blocker
+
+status:
+- completed
+
+result:
+- updated `RESEARCHER_INPUT_CONTRACT.md` so the highest-priority `call_of_duty` packet is now the top-right anchor packet rather than a text or reward-banner packet
+- updated `IMPLEMENTATION_TICKET_TEMPLATE.md` so its example no longer uses the retired `reward_banner` branch as the default `call_of_duty` implementation example
+
+verification:
+- not run; doc-only contract and template correction
+
+notes:
+- this removes the last materially stale researcher-facing instructions found in the current `call_of_duty` routing lane

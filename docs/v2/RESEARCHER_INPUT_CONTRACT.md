@@ -402,29 +402,32 @@ Escalate to another packet when:
 
 ## Current Highest-Value Packets
 
-### 1. Highest priority: `call_of_duty` text or reward-banner signal packet
+### 1. Highest priority: `call_of_duty` top-right anchor packet
 
 Reason:
 
-- medal promotion is structurally complete
-- the current clips still do not yield medal-driven runtime outcomes
-- at least one sample visibly shows text or banner surfaces like `UAV`, `DOUBLE KI`, and `7TH KO`
+- the bounded local `call_of_duty` runtime path is mechanically proven
+- `reward_banner` is capped as a narrow validated pilot
+- the first top-right shell anchor is falsified
+- the current blocker is now discriminative anchor specificity inside the top-right native event-card family
 
 Required contents:
 
-- exact visible text variants
+- one recommended anchor candidate only
+- exact clip windows
 - screenshots and crops
 - timestamps
-- whether each signal is native UI or overlay
-- likely extraction method:
-  - OCR
-  - template
-  - mixed
+- whether the candidate is native UI or overlay
+- explicit exclusions
+- why the recommendation is stronger than:
+  - the failed shell anchor
+  - weak local OCR evidence
+  - wrong-surface same-title candidates
 
 Supporting repo files:
 
-- [CALL_OF_DUTY_TEXT_BANNER_PACKET_BRIEF.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/CALL_OF_DUTY_TEXT_BANNER_PACKET_BRIEF.md)
-- [CALL_OF_DUTY_TEXT_BANNER_PACKET_STUB.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/custom_gpt_knowledge/CALL_OF_DUTY_TEXT_BANNER_PACKET_STUB.md)
+- [2026-06-05-call-of-duty-top-right-anchor-researcher-brief.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-05-call-of-duty-top-right-anchor-researcher-brief.md)
+- [2026-06-04-call-of-duty-top-right-anchor-packet-request.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-packet-request.md)
 
 ### 2. Alternative path: medal-visible sample packet
 
@@ -441,15 +444,13 @@ Required contents:
 - title-family notes
 - notes on whether the current ROI assumptions look compatible
 
-### 3. Runtime extraction packet for the chosen signal family
+### 3. Validation or fallback packet for the chosen signal family
 
 After packet 1 or 2, the next packet should cover:
 
-- signal location
-- timing window
-- expected visibility length
-- negatives
-- compression or scaling caveats
+- repeatability across additional clips
+- false positives and exclusions
+- whether the branch should expand or retire
 
 ### 4. Fusion packet for the chosen signal family
 
@@ -544,5 +545,5 @@ Before handing a packet to Codex, ask:
 - [RESEARCH_PACKET_TEMPLATE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/RESEARCH_PACKET_TEMPLATE.md) remains the canonical envelope and field template.
 - [BACKLOG_OPERATING_MODEL.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/BACKLOG_OPERATING_MODEL.md) remains the canonical queue-shape and readiness doc.
 - The current highest-value blocker is no longer medal onboarding mechanics; it is signal-surface mismatch on the measured `call_of_duty` clips.
-- The next best external input is a text or reward-banner packet unless the project intentionally pivots to a medal-visible replacement sample set.
+- The next best external input is a top-right anchor packet unless the project intentionally pivots to medal-visible replacement samples or explicitly retires the top-right family.
 - The researcher should optimize for decision-ready packets, not exhaustive topic coverage.
