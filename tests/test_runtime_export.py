@@ -120,6 +120,19 @@ class RuntimeExportTests(unittest.TestCase):
             malformed_path = root / "bad" / "malformed.runtime_analysis.json"
             malformed_path.parent.mkdir(parents=True, exist_ok=True)
             malformed_path.write_text("{not-json", encoding="utf-8")
+            self._write_sidecar(
+                root / "bad" / "invalid-shape.runtime_analysis.json",
+                {
+                    **_runtime_sidecar(
+                        analysis_id="analysis-c",
+                        game="marvel_rivals",
+                        source="fixture-c",
+                        events=[],
+                        detections=[],
+                    ),
+                    "events": {"rows": {"not": "a-list"}},
+                },
+            )
 
             with patch.object(runtime_export, "DEFAULT_OUTPUT_ROOT", Path(export_root)):
                 result = run_export_runtime_analysis(root)
@@ -128,9 +141,9 @@ class RuntimeExportTests(unittest.TestCase):
             self.assertEqual(result["clip_row_count"], 1)
             self.assertEqual(result["event_row_count"], 1)
             self.assertEqual(result["detection_row_count"], 1)
-            self.assertEqual(result["scanned_sidecar_count"], 3)
+            self.assertEqual(result["scanned_sidecar_count"], 4)
             self.assertEqual(result["exported_sidecar_count"], 1)
-            self.assertEqual(result["skipped_sidecar_count"], 2)
+            self.assertEqual(result["skipped_sidecar_count"], 3)
 
             clips_jsonl = Path(result["clips_jsonl_path"])
             events_jsonl = Path(result["events_jsonl_path"])
@@ -166,6 +179,9 @@ class RuntimeExportTests(unittest.TestCase):
             self.assertEqual(manifest["detection_row_count"], 1)
             self.assertEqual(manifest["skipped_failed_analysis_count"], 1)
             self.assertEqual(manifest["skipped_malformed_count"], 1)
+            self.assertEqual(manifest["skipped_invalid_runtime_shape_count"], 1)
+            reasons = {row["reason"] for row in manifest["warnings"]}
+            self.assertIn("invalid_runtime_shape", reasons)
 
     def test_export_runtime_analysis_game_filter_limits_rows(self) -> None:
         with tempfile.TemporaryDirectory() as sidecar_root, tempfile.TemporaryDirectory() as export_root:

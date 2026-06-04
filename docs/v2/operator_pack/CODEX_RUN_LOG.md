@@ -1111,3 +1111,31 @@ verification:
 notes:
 - this is a prep-layer fail-closed guard around `prepare_proxy_review` integration
 - no bridge selection or proxy scoring behavior changed
+
+## 2026-06-04T08:22Z
+
+target:
+- runtime export sidecar-shape hardening
+
+status:
+- completed
+
+result:
+- tightened `runtime_export` so malformed `runtime_analysis_v1` payload shapes are skipped instead of being exported into dataset rows
+- specifically guarded:
+  - non-dict `events`
+  - non-dict `matcher`
+  - non-list `events.rows`
+  - non-list `matcher.confirmed_detections`
+  - non-dict `matcher.frame_dimensions` when present
+  - non-string `matcher.frame_coordinate_space` when present
+- added explicit skip accounting for `invalid_runtime_shape`
+- added regression coverage proving malformed runtime sidecars are skipped with the new reason
+
+verification:
+- `.venv/bin/python -m unittest tests.test_runtime_export`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the fail-closed intake pattern from review/prep bridges into dataset export
+- no runtime scoring behavior changed for valid sidecars
