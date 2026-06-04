@@ -1025,6 +1025,64 @@ def _highlight_selection_shape_error(payload: dict[str, Any]) -> str | None:
     return None
 
 
+def _hook_candidate_shape_error(payload: dict[str, Any]) -> str | None:
+    hook_candidates = payload.get("hook_candidates", [])
+    if not isinstance(hook_candidates, list):
+        return "hook_candidates must be a list"
+    for index, row in enumerate(hook_candidates):
+        if not isinstance(row, dict):
+            return f"hook_candidates[{index}] must be an object"
+    return None
+
+
+def _workflow_run_shape_error(payload: dict[str, Any]) -> str | None:
+    items = payload.get("items", [])
+    if not isinstance(items, list):
+        return "items must be a list"
+    for index, row in enumerate(items):
+        if not isinstance(row, dict):
+            return f"items[{index}] must be an object"
+    return None
+
+
+def _highlight_export_batch_shape_error(payload: dict[str, Any]) -> str | None:
+    linked_inputs = payload.get("linked_inputs", {})
+    exports = payload.get("exports", [])
+    if linked_inputs is not None and not isinstance(linked_inputs, dict):
+        return "linked_inputs must be an object when present"
+    if not isinstance(exports, list):
+        return "exports must be a list"
+    if isinstance(linked_inputs, dict):
+        for key in ("fused_sidecar_paths", "hook_manifest_paths", "selection_manifest_paths"):
+            value = linked_inputs.get(key, [])
+            if not isinstance(value, list):
+                return f"linked_inputs.{key} must be a list when present"
+    for index, row in enumerate(exports):
+        if not isinstance(row, dict):
+            return f"exports[{index}] must be an object"
+    return None
+
+
+def _posted_highlight_ledger_shape_error(payload: dict[str, Any]) -> str | None:
+    posted_records = payload.get("posted_records", [])
+    if not isinstance(posted_records, list):
+        return "posted_records must be a list"
+    for index, row in enumerate(posted_records):
+        if not isinstance(row, dict):
+            return f"posted_records[{index}] must be an object"
+    return None
+
+
+def _posted_metrics_snapshot_shape_error(payload: dict[str, Any]) -> str | None:
+    snapshots = payload.get("snapshots", [])
+    if not isinstance(snapshots, list):
+        return "snapshots must be a list"
+    for index, row in enumerate(snapshots):
+        if not isinstance(row, dict):
+            return f"snapshots[{index}] must be an object"
+    return None
+
+
 def _ingest_proxy_sidecar(path: Path, rows: dict[str, Any], *, game: str | None) -> None:
     payload = _load_json(path, rows)
     if payload is None:
@@ -1650,6 +1708,10 @@ def _ingest_hook_candidate_manifest(path: Path, rows: dict[str, Any], *, game: s
     payload_game = str(payload.get("game") or "").strip()
     if game is not None and payload_game and payload_game != game:
         return
+    shape_error = _hook_candidate_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_hook_candidate_shape", detail=shape_error)
+        return
     manifest_path = str(path.resolve())
     fused_sidecar_path = str(payload.get("fused_sidecar_path") or "").strip() or None
     source = str(payload.get("source") or "").strip()
@@ -1711,6 +1773,10 @@ def _ingest_workflow_run_manifest(path: Path, rows: dict[str, Any], *, game: str
     filters = payload.get("filters", {}) if isinstance(payload.get("filters"), dict) else {}
     filter_game = str(filters.get("game") or "").strip()
     if game is not None and filter_game and filter_game != game:
+        return
+    shape_error = _workflow_run_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_workflow_run_shape", detail=shape_error)
         return
     manifest_path = str(path.resolve())
     workflow_run_id = str(payload.get("workflow_run_id") or "").strip() or path.stem
@@ -1883,6 +1949,10 @@ def _ingest_highlight_export_batch_manifest(path: Path, rows: dict[str, Any], *,
     payload_game = str(payload.get("game") or "").strip()
     if game is not None and payload_game and payload_game != game:
         return
+    shape_error = _highlight_export_batch_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_highlight_export_batch_shape", detail=shape_error)
+        return
     manifest_path = str(path.resolve())
     export_batch_id = str(payload.get("export_batch_id") or "").strip() or path.stem
     linked_inputs = payload.get("linked_inputs", {}) if isinstance(payload.get("linked_inputs"), dict) else {}
@@ -1961,6 +2031,10 @@ def _ingest_posted_highlight_ledger(path: Path, rows: dict[str, Any], *, game: s
     if payload.get("schema_version") != POSTED_HIGHLIGHT_LEDGER_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _posted_highlight_ledger_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_posted_highlight_ledger_shape", detail=shape_error)
+        return
     manifest_path = str(path.resolve())
     ledger_platform = str(payload.get("platform") or "").strip() or None
     rows["post_ledgers"].append(
@@ -2038,6 +2112,10 @@ def _ingest_posted_metrics_snapshot(path: Path, rows: dict[str, Any], *, game: s
         return
     if payload.get("schema_version") != POSTED_HIGHLIGHT_METRICS_SNAPSHOT_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
+        return
+    shape_error = _posted_metrics_snapshot_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_posted_metrics_snapshot_shape", detail=shape_error)
         return
     manifest_path = str(path.resolve())
     snapshot_platform = str(payload.get("platform") or "").strip() or None

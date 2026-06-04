@@ -1339,3 +1339,48 @@ verification:
 notes:
 - this extends the fail-closed intake rule into a manifest that feeds candidate lifecycle and export-detail derivation
 - valid highlight-selection registry ingestion behavior is unchanged
+
+## 2026-06-05T09:31Z
+
+target:
+- clip registry downstream manifest shape hardening
+
+status:
+- completed
+
+result:
+- tightened `clip_registry` so malformed downstream durable manifests are skipped before they create persistent rows
+- specifically guarded hook-candidate ingestion:
+  - non-list `hook_candidates`
+  - non-dict hook-candidate rows
+- specifically guarded workflow-run ingestion:
+  - non-list `items`
+  - non-dict workflow item rows
+- specifically guarded highlight-export-batch ingestion:
+  - non-dict `linked_inputs` when present
+  - non-list `linked_inputs.fused_sidecar_paths`
+  - non-list `linked_inputs.hook_manifest_paths`
+  - non-list `linked_inputs.selection_manifest_paths`
+  - non-list `exports`
+  - non-dict export rows
+- specifically guarded posted-ledger ingestion:
+  - non-list `posted_records`
+  - non-dict posted-record rows
+- specifically guarded posted-metrics ingestion:
+  - non-list `snapshots`
+  - non-dict snapshot rows
+- added regression coverage proving invalid manifests emit:
+  - `invalid_hook_candidate_shape`
+  - `invalid_workflow_run_shape`
+  - `invalid_highlight_export_batch_shape`
+  - `invalid_posted_highlight_ledger_shape`
+  - `invalid_posted_metrics_snapshot_shape`
+  and do not generate durable rows
+
+verification:
+- `.venv/bin/python -m unittest tests.test_clip_registry`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this closes most of the remaining top-level list-shape trust gaps in registry ingestion
+- valid downstream manifest ingestion behavior is unchanged

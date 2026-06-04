@@ -419,6 +419,40 @@ def _highlight_export_batch_manifest(
     )
 
 
+def _hook_candidate_manifest(
+    path: Path,
+    *,
+    game: str,
+    source: Path,
+    fused_sidecar_path: Path,
+    candidate_id: str,
+    event_id: str,
+) -> None:
+    _write_json(
+        path,
+        {
+            "schema_version": "hook_candidate_v1",
+            "game": game,
+            "source": str(source.resolve()),
+            "fused_sidecar_path": str(fused_sidecar_path.resolve()),
+            "hook_candidate_count": 1,
+            "hook_candidates": [
+                {
+                    "hook_id": "hook-1",
+                    "candidate_id": candidate_id,
+                    "event_id": event_id,
+                    "lifecycle_state": "selected_for_export",
+                    "hook_archetype": "character",
+                    "hook_mode": "natural",
+                    "hook_strength": 0.82,
+                    "packaging_strategy": "single_clip",
+                    "metadata_summary": {"anchor": "punisher"},
+                }
+            ],
+        },
+    )
+
+
 def _posted_highlight_ledger(
     path: Path,
     *,
@@ -1072,6 +1106,53 @@ class ClipRegistryTests(unittest.TestCase):
             reasons = {warning.get("reason") for warning in result["warnings"]}
             self.assertIn("invalid_highlight_selection_shape", reasons)
 
+    def test_refresh_skips_invalid_hook_candidate_and_workflow_run_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+            candidate_id = _candidate_id(
+                game="marvel_rivals",
+                source=str(media.resolve()),
+                fused_sidecar_path=str(fused_path.resolve()),
+                event_id="fused-event-1",
+            )
+            hook_manifest_path = root / "hooks" / "alpha.hook_candidates.json"
+            _hook_candidate_manifest(
+                hook_manifest_path,
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            workflow_path = root / "workflow" / "selection.workflow_run.json"
+            create_workflow_run("selection_queue", registry_path=registry_path, output_path=workflow_path)
+
+            hook_payload = json.loads(hook_manifest_path.read_text(encoding="utf-8"))
+            hook_payload["hook_candidates"] = {"not": "a-list"}
+            _write_json(hook_manifest_path, hook_payload)
+
+            workflow_payload = json.loads(workflow_path.read_text(encoding="utf-8"))
+            workflow_payload["items"] = ["not-an-object"]
+            _write_json(workflow_path, workflow_payload)
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["hook_candidate_manifest_count"], 0)
+            self.assertEqual(result["hook_candidate_row_count"], 0)
+            self.assertEqual(result["workflow_run_manifest_count"], 0)
+            self.assertEqual(result["workflow_run_item_row_count"], 0)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_hook_candidate_shape", reasons)
+            self.assertIn("invalid_workflow_run_shape", reasons)
+
     def test_refresh_preserves_selected_highlight_details_in_posted_metrics_and_rollups(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
@@ -1140,6 +1221,79 @@ class ClipRegistryTests(unittest.TestCase):
             row = rollups["rows"][0]
             self.assertEqual(json.loads(row["by_selected_event_type_json"]), {"ability_plus_medal_combo": 1})
             self.assertEqual(json.loads(row["by_selected_producer_family_json"]), {"runtime": 1})
+
+    def test_refresh_skips_invalid_export_posted_ledger_and_metrics_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="marvel_rivals", source=media)
+            candidate_id = _candidate_id(
+                game="marvel_rivals",
+                source=str(media.resolve()),
+                fused_sidecar_path=str(fused_path.resolve()),
+                event_id="fused-event-1",
+            )
+            selection_manifest_path = root / "exports" / "alpha.highlight_selection.json"
+            _highlight_selection_manifest(
+                selection_manifest_path,
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            export_batch_path = root / "exports" / "alpha.highlight_export_batch.json"
+            _highlight_export_batch_manifest(
+                export_batch_path,
+                game="marvel_rivals",
+                source=media,
+                fused_sidecar_path=fused_path,
+                selection_manifest_path=selection_manifest_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            post_ledger_path = root / "posted" / "alpha.posted_highlight_ledger.json"
+            _posted_highlight_ledger(
+                post_ledger_path,
+                export_batch_manifest_path=export_batch_path,
+                candidate_id=candidate_id,
+                event_id="fused-event-1",
+            )
+            metrics_path = root / "posted" / "alpha.posted_highlight_metrics_snapshot.json"
+            _posted_metrics_snapshot(
+                metrics_path,
+                post_ledger_manifest_path=post_ledger_path,
+            )
+
+            export_payload = json.loads(export_batch_path.read_text(encoding="utf-8"))
+            export_payload["linked_inputs"] = {"fused_sidecar_paths": "not-a-list"}
+            _write_json(export_batch_path, export_payload)
+
+            post_payload = json.loads(post_ledger_path.read_text(encoding="utf-8"))
+            post_payload["posted_records"] = {"not": "a-list"}
+            _write_json(post_ledger_path, post_payload)
+
+            metrics_payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+            metrics_payload["snapshots"] = ["not-an-object"]
+            _write_json(metrics_path, metrics_payload)
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["highlight_export_batch_manifest_count"], 0)
+            self.assertEqual(result["highlight_export_row_count"], 0)
+            self.assertEqual(result["post_ledger_manifest_count"], 0)
+            self.assertEqual(result["posted_highlight_row_count"], 0)
+            self.assertEqual(result["posted_metrics_snapshot_manifest_count"], 0)
+            self.assertEqual(result["posted_metrics_snapshot_row_count"], 0)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_highlight_export_batch_shape", reasons)
+            self.assertIn("invalid_posted_highlight_ledger_shape", reasons)
+            self.assertIn("invalid_posted_metrics_snapshot_shape", reasons)
 
     def test_transition_candidate_lifecycle_updates_state_and_history(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
