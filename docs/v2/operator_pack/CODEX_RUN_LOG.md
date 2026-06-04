@@ -1798,3 +1798,22 @@ verification:
 
 notes:
 - this removes another stale researcher entrypoint that could have recreated the retired `reward_banner` or text-banner-first branch
+
+## 2026-06-05T14:36Z
+
+target:
+- custom-gpt pack index alignment for the active `call_of_duty` blocker
+
+status:
+- completed
+
+result:
+- updated `docs/v2/custom_gpt_knowledge/README.md` so the pack contents and recommended upload set now:
+  - include the top-right anchor researcher brief as the active `call_of_duty` blocker surface
+  - mark the text-banner brief and stub as dormant-branch references only
+
+verification:
+- not run; doc-only index alignment
+
+notes:
+- this closes the remaining stale index-level surface in the current researcher-routing lane
