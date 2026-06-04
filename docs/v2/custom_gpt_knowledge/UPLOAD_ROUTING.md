@@ -66,6 +66,7 @@ For exported wiki research packets:
 - use the semantic-first packet root and filenames
 - check `*_packet_identity.json` for what the packet is
 - check `*_SEND_THESE_FILES_FIRST.txt` for the exact first-send files
+- if the packet root contains `SUPERSEDED_DO_NOT_UPLOAD.txt` or the identity JSON says `superseded_status: do_not_upload`, do not use that bundle
 
 Do not assume that the newest timestamped folder is the right bundle.
 

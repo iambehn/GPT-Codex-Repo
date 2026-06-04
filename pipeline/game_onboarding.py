@@ -753,6 +753,12 @@ def export_wiki_research_packet(
         shutil.rmtree(stage_root, ignore_errors=True)
         raise
 
+    superseded_packet_roots = _mark_superseded_wiki_packet_exports(
+        packet_parent=packet_parent,
+        source_bundle_root=resolved_wiki_root,
+        current_packet_root=packet_root,
+        current_packet_identity=packet_identity,
+    )
     packet_artifacts = {
         artifact_key: str(packet_root / Path(path).name)
         for artifact_key, path in artifacts.items()
@@ -767,6 +773,7 @@ def export_wiki_research_packet(
         "bundle_kind": bundle_kind,
         "filename_prefix": filename_prefix,
         "recommended_handoff_files": recommended_handoff_files,
+        "superseded_packet_roots": superseded_packet_roots,
         "counts": {
             "file_count": len(packet_artifacts),
         },
@@ -4525,6 +4532,49 @@ def _wiki_research_packet_identity(
 
 def _wiki_research_packet_prefix(*, game: str, packet_identity: str, bundle_root: Path) -> str:
     return f"{packet_identity}__{_canonical_id(game)}__{_canonical_id(bundle_root.name)}"
+
+
+def _mark_superseded_wiki_packet_exports(
+    *,
+    packet_parent: Path,
+    source_bundle_root: Path,
+    current_packet_root: Path,
+    current_packet_identity: str,
+) -> list[str]:
+    superseded_roots: list[str] = []
+    for sibling in packet_parent.iterdir():
+        if not sibling.is_dir() or sibling == current_packet_root:
+            continue
+        identity_files = list(sibling.glob("*_packet_identity.json"))
+        if len(identity_files) != 1:
+            continue
+        identity_path = identity_files[0]
+        try:
+            payload = json.loads(identity_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        sibling_source_root = Path(str(payload.get("source_bundle_root") or ""))
+        if sibling_source_root != source_bundle_root:
+            continue
+        payload["superseded_by_packet_root"] = str(current_packet_root)
+        payload["superseded_by_packet_identity"] = current_packet_identity
+        payload["superseded_status"] = "do_not_upload"
+        identity_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        note_path = sibling / "SUPERSEDED_DO_NOT_UPLOAD.txt"
+        note_lines = [
+            "THIS PACKET EXPORT IS SUPERSEDED.",
+            f"Do not upload files from: {sibling}",
+            f"Use instead: {current_packet_root}",
+            f"Replacement packet identity: {current_packet_identity}",
+            f"Source bundle: {source_bundle_root}",
+            "",
+            "This older export remains on disk for provenance only.",
+        ]
+        note_path.write_text("\n".join(note_lines) + "\n", encoding="utf-8")
+        superseded_roots.append(str(sibling))
+    return sorted(superseded_roots)
 
 
 def _rebase_published_candidates_for_bridge(

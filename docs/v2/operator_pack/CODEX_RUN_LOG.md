@@ -1732,3 +1732,50 @@ verification:
 
 notes:
 - this keeps the strategic roadmap from lagging behind `EXECUTION_TARGET.md` and the current operator queue
+
+## 2026-06-05T14:04Z
+
+target:
+- stale research-packet sibling deprecation for semantic-first exports
+
+status:
+- completed
+
+result:
+- updated `export_wiki_research_packet` so a newly exported semantic packet marks older sibling exports from the same source bundle as superseded instead of leaving them equally uploadable
+- added regression coverage proving a stale `curated_wiki_packet__...` sibling is rewritten with:
+  - `superseded_status: do_not_upload`
+  - replacement packet identity and packet root
+  - `SUPERSEDED_DO_NOT_UPLOAD.txt`
+- re-exported the real `call_of_duty` curated packet and confirmed the older `curated_wiki_packet__call_of_duty__20260526t233955z` root is now explicitly deprecated in favor of `curated_medal_seed_packet__call_of_duty__20260526t233955z`
+
+verification:
+- `.venv/bin/python -m unittest tests.test_wiki_medal_curation tests.test_run.RunTests.test_run_export_wiki_research_packet_returns_semantic_identity_fields`
+- `python3 run.py --run-repo-quality-health`
+- `python3 run.py --export-wiki-research-packet assets/games/call_of_duty/drafts/wiki_curated/20260526T233955Z`
+
+notes:
+- this closes the remaining local operator hazard from the old timestamp-first packet naming failure without deleting provenance-bearing generated bundles
+
+## 2026-06-05T14:12Z
+
+target:
+- researcher-facing superseded-packet routing rule propagation
+
+status:
+- completed
+
+result:
+- updated researcher-facing guidance so exported research bundles must reject any packet root marked by:
+  - `SUPERSEDED_DO_NOT_UPLOAD.txt`
+  - `superseded_status: do_not_upload`
+- propagated the rule into:
+  - `docs/v2/custom_gpt_knowledge/UPLOAD_ROUTING.md`
+  - `docs/v2/RESEARCHER_INPUT_CONTRACT.md`
+  - `docs/v2/RESEARCH_PACKET_TEMPLATE.md`
+
+verification:
+- not run; doc-only propagation after code and test validation
+
+notes:
+- this makes the stale-bundle rejection rule explicit on both the exporter side and the researcher packet-authoring side

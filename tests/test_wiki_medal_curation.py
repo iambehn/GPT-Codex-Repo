@@ -345,6 +345,58 @@ class WikiMedalCurationTests(unittest.TestCase):
                 "curated_medal_seed_packet__call_of_duty__20260526t233955z",
             )
 
+    def test_export_wiki_research_packet_marks_stale_sibling_exports_as_superseded(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            wiki_root = self._write_raw_wiki_fixture(repo_root)
+            curated_root = repo_root / "assets" / "games" / "call_of_duty" / "drafts" / "wiki_curated" / "20260526T233955Z"
+
+            curate_wiki_medal_draft(wiki_root, output_path=curated_root, repo_root=repo_root)
+            (curated_root / "catalog" / "curation_summary.json").unlink()
+
+            stale_root = (
+                repo_root
+                / "outputs"
+                / "research_packets"
+                / "call_of_duty"
+                / "curated_wiki_packet__call_of_duty__20260526t233955z"
+            )
+            stale_root.mkdir(parents=True, exist_ok=True)
+            stale_identity_path = stale_root / "curated_wiki_packet__call_of_duty__20260526t233955z_packet_identity.json"
+            stale_identity_path.write_text(
+                json.dumps(
+                    {
+                        "packet_identity": "curated_wiki_packet",
+                        "game": "call_of_duty",
+                        "bundle_kind": "wiki_curated",
+                        "source_bundle_root": str(curated_root.resolve()),
+                        "filename_prefix": "curated_wiki_packet__call_of_duty__20260526t233955z",
+                        "recommended_handoff_files": [
+                            "curated_wiki_packet__call_of_duty__20260526t233955z_events_or_medals.csv",
+                            "curated_wiki_packet__call_of_duty__20260526t233955z_assets.csv",
+                        ],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            result = export_wiki_research_packet(curated_root, repo_root=repo_root)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["packet_identity"], "curated_medal_seed_packet")
+            self.assertEqual(
+                [str(Path(path).resolve()) for path in result["superseded_packet_roots"]],
+                [str(stale_root.resolve())],
+            )
+            updated_identity = json.loads(stale_identity_path.read_text(encoding="utf-8"))
+            self.assertEqual(updated_identity["superseded_status"], "do_not_upload")
+            self.assertEqual(updated_identity["superseded_by_packet_identity"], "curated_medal_seed_packet")
+            self.assertEqual(updated_identity["superseded_by_packet_root"], result["packet_root"])
+            note_text = (stale_root / "SUPERSEDED_DO_NOT_UPLOAD.txt").read_text(encoding="utf-8")
+            self.assertIn("THIS PACKET EXPORT IS SUPERSEDED.", note_text)
+            self.assertIn(result["packet_root"], note_text)
+
 
 if __name__ == "__main__":
     unittest.main()

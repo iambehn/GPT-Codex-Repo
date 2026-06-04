@@ -38,6 +38,9 @@ For exported wiki research packets, the handoff should use:
 - the semantic-first packet root
 - the `*_packet_identity.json` file
 - the `*_SEND_THESE_FILES_FIRST.txt` file
+- and it should reject any bundle marked by:
+  - `SUPERSEDED_DO_NOT_UPLOAD.txt`
+  - `superseded_status: do_not_upload`
 
 If a human could plausibly upload the wrong packet without opening files, the packet identity is still too weak.
 

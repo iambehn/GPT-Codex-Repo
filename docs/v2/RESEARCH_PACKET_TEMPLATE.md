@@ -31,6 +31,10 @@ Include:
 - the packet identity artifact when present:
   - `*_packet_identity.json`
   - `*_SEND_THESE_FILES_FIRST.txt`
+- if a sibling or referenced bundle is marked by:
+  - `SUPERSEDED_DO_NOT_UPLOAD.txt`
+  - `superseded_status: do_not_upload`
+  exclude it explicitly from the handoff
 
 Do not rely on:
 

@@ -21,6 +21,19 @@ Current operator-safe handoff files:
 - `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/curated_medal_seed_packet__call_of_duty__20260526t233955z_events_or_medals.csv`
 - `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/curated_medal_seed_packet__call_of_duty__20260526t233955z_assets.csv`
 
+The older ambiguous sibling export:
+
+- `outputs/research_packets/call_of_duty/curated_wiki_packet__call_of_duty__20260526t233955z/`
+
+is now explicitly marked:
+
+- `superseded_status: do_not_upload`
+- `superseded_by_packet_identity: curated_medal_seed_packet`
+
+and contains:
+
+- `SUPERSEDED_DO_NOT_UPLOAD.txt`
+
 ## Local Verification
 
 ### Events or medals CSV
@@ -100,6 +113,10 @@ Send these two exact files:
 
 - `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/curated_medal_seed_packet__call_of_duty__20260526t233955z_events_or_medals.csv`
 - `outputs/research_packets/call_of_duty/curated_medal_seed_packet__call_of_duty__20260526t233955z/curated_medal_seed_packet__call_of_duty__20260526t233955z_assets.csv`
+
+Do not send files from:
+
+- `outputs/research_packets/call_of_duty/curated_wiki_packet__call_of_duty__20260526t233955z/`
 
 ## Bottom Line
 
