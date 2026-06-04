@@ -1414,3 +1414,43 @@ verification:
 notes:
 - this extends the same fail-closed rule into the fixture-trial lineage surfaces
 - valid fixture-trial registry ingestion behavior is unchanged
+
+## 2026-06-05T10:08Z
+
+target:
+- clip registry deferred report and shadow manifest hardening
+
+status:
+- completed
+
+result:
+- tightened `clip_registry` so the remaining deferred comparison-report, shadow-manifest, and real-lineage summary surfaces fail closed on malformed list/object payloads
+- specifically guarded comparison/report ingestion:
+  - invalid fixture comparison `comparison.fixture_rows`
+  - invalid hook comparison `comparison.fixture_rows`
+  - invalid shadow ranking comparison `comparison.rows`
+  - invalid shadow benchmark evidence comparison `rows`
+- specifically guarded shadow row/slice ingestion:
+  - invalid shadow ranking experiment ledger `slice_rows`
+  - invalid shadow ranking replay `rows`
+  - invalid shadow model family comparison `rows`
+  - invalid shadow benchmark matrix `runs`
+  - invalid shadow benchmark matrix `benchmark_config.model_families`
+  - invalid shadow benchmark matrix `benchmark_config.training_targets`
+  - invalid shadow benchmark review `target_reviews`
+  - invalid shadow benchmark review `reviewed_targets`
+  - invalid shadow benchmark review `reviewed_families`
+  - invalid shadow benchmark review `source_benchmark_manifest_paths`
+- specifically guarded real lineage summary ingestion:
+  - invalid `source_roots`
+  - invalid `scanned_roots`
+  - invalid `source_root_summaries`
+- added grouped regression coverage proving invalid manifests emit manifest-specific `invalid_*_shape` warnings and do not generate durable rows
+
+verification:
+- `.venv/bin/python -m unittest tests.test_clip_registry`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this closes the remaining local `clip_registry` families that had been explicitly set aside as lower-yield follow-up work
+- the blocked `call_of_duty` branch still remains deferred on external evidence and did not require an operator-surface change in this slice

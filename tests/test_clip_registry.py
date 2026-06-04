@@ -999,6 +999,56 @@ class ClipRegistryTests(unittest.TestCase):
             self.assertTrue(fused_result["ok"])
             self.assertEqual(fused_result["row_count"], 1)
 
+    def test_refresh_skips_invalid_comparison_report_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            registry_path = root / "registry.sqlite"
+
+            _write_json(
+                root / "reports" / "fixture_comparison.json",
+                {
+                    "schema_version": "fixture_sidecar_comparison_v1",
+                    "comparison": {"fixture_rows": "not-a-list"},
+                },
+            )
+            _write_json(
+                root / "reports" / "hook_comparison.json",
+                {
+                    "schema_version": "hook_candidate_comparison_v1",
+                    "comparison": {"fixture_rows": ["not-an-object"]},
+                },
+            )
+            _write_json(
+                root / "reports" / "alpha.shadow_ranking_comparison.json",
+                {
+                    "schema_version": "shadow_ranking_comparison_v1",
+                    "comparison": {"rows": {"not": "a-list"}},
+                },
+            )
+            _write_json(
+                root / "reports" / "alpha.shadow_benchmark_evidence_comparison.json",
+                {
+                    "schema_version": "shadow_benchmark_evidence_comparison_v1",
+                    "rows": ["not-an-object"],
+                },
+            )
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["fixture_comparison_report_count"], 0)
+            self.assertEqual(result["fixture_comparison_row_count"], 0)
+            self.assertEqual(result["hook_comparison_report_count"], 0)
+            self.assertEqual(result["hook_comparison_row_count"], 0)
+            self.assertEqual(result["shadow_ranking_comparison_report_count"], 0)
+            self.assertEqual(result["shadow_ranking_comparison_row_count"], 0)
+            self.assertEqual(result["shadow_benchmark_evidence_comparison_row_count"], 0)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_fixture_comparison_shape", reasons)
+            self.assertIn("invalid_hook_comparison_shape", reasons)
+            self.assertIn("invalid_shadow_ranking_comparison_shape", reasons)
+            self.assertIn("invalid_shadow_benchmark_evidence_comparison_shape", reasons)
+
     def test_malformed_fixture_trial_manifest_emits_warning(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
@@ -1346,6 +1396,93 @@ class ClipRegistryTests(unittest.TestCase):
             self.assertIn("invalid_highlight_export_batch_shape", reasons)
             self.assertIn("invalid_posted_highlight_ledger_shape", reasons)
             self.assertIn("invalid_posted_metrics_snapshot_shape", reasons)
+
+    def test_refresh_skips_invalid_shadow_manifest_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            registry_path = root / "registry.sqlite"
+
+            _write_json(
+                root / "shadow" / "alpha.shadow_experiment_ledger.json",
+                {
+                    "schema_version": "shadow_experiment_ledger_v1",
+                    "slice_rows": {"not": "a-list"},
+                },
+            )
+            _write_json(
+                root / "shadow" / "alpha.shadow_ranking_replay.json",
+                {
+                    "schema_version": "shadow_ranking_replay_v1",
+                    "rows": ["not-an-object"],
+                },
+            )
+            _write_json(
+                root / "shadow" / "alpha.shadow_model_family_comparison.json",
+                {
+                    "schema_version": "shadow_model_family_comparison_v1",
+                    "rows": {"not": "a-list"},
+                },
+            )
+            _write_json(
+                root / "shadow" / "alpha.shadow_benchmark_matrix.json",
+                {
+                    "schema_version": "shadow_benchmark_matrix_v1",
+                    "benchmark_config": {"model_families": "not-a-list", "training_targets": []},
+                    "runs": [],
+                },
+            )
+            _write_json(
+                root / "shadow" / "alpha.shadow_benchmark_review.json",
+                {
+                    "schema_version": "shadow_benchmark_review_v1",
+                    "target_reviews": {"not": "a-list"},
+                    "reviewed_targets": [],
+                    "reviewed_families": [],
+                    "source_benchmark_manifest_paths": [],
+                },
+            )
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["shadow_ranking_experiment_ledger_manifest_count"], 0)
+            self.assertEqual(result["shadow_ranking_experiment_slice_row_count"], 0)
+            self.assertEqual(result["shadow_ranking_replay_manifest_count"], 0)
+            self.assertEqual(result["shadow_ranking_replay_row_count"], 0)
+            self.assertEqual(result["shadow_model_family_comparison_manifest_count"], 0)
+            self.assertEqual(result["shadow_model_family_comparison_row_count"], 0)
+            self.assertEqual(result["shadow_benchmark_matrix_manifest_count"], 0)
+            self.assertEqual(result["shadow_benchmark_run_row_count"], 0)
+            self.assertEqual(result["shadow_benchmark_review_manifest_count"], 0)
+            self.assertEqual(result["shadow_target_readiness_row_count"], 0)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_shadow_ranking_experiment_ledger_shape", reasons)
+            self.assertIn("invalid_shadow_ranking_replay_shape", reasons)
+            self.assertIn("invalid_shadow_model_family_comparison_shape", reasons)
+            self.assertIn("invalid_shadow_benchmark_matrix_shape", reasons)
+            self.assertIn("invalid_shadow_benchmark_review_shape", reasons)
+
+    def test_refresh_skips_invalid_real_posted_lineage_import_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            registry_path = root / "registry.sqlite"
+
+            _write_json(
+                root / "imports" / "alpha.real_posted_lineage_import.json",
+                {
+                    "schema_version": "real_posted_lineage_import_v1",
+                    "source_roots": "not-a-list",
+                    "scanned_roots": [],
+                    "source_root_summaries": [],
+                },
+            )
+
+            result = refresh_clip_registry(root, registry_path=registry_path)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["real_posted_lineage_import_manifest_count"], 0)
+            reasons = {warning.get("reason") for warning in result["warnings"]}
+            self.assertIn("invalid_real_posted_lineage_import_shape", reasons)
 
     def test_transition_candidate_lifecycle_updates_state_and_history(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

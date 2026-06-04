@@ -1106,6 +1106,138 @@ def _fixture_trial_batch_shape_error(payload: dict[str, Any]) -> str | None:
     return None
 
 
+def _fixture_comparison_shape_error(payload: dict[str, Any]) -> str | None:
+    comparison = payload.get("comparison")
+    if comparison is None:
+        return None
+    if not isinstance(comparison, dict):
+        return "comparison must be an object"
+    fixture_rows = comparison.get("fixture_rows", [])
+    if not isinstance(fixture_rows, list):
+        return "comparison.fixture_rows must be a list"
+    for index, row in enumerate(fixture_rows):
+        if not isinstance(row, dict):
+            return f"comparison.fixture_rows[{index}] must be an object"
+    return None
+
+
+def _hook_comparison_shape_error(payload: dict[str, Any]) -> str | None:
+    comparison = payload.get("comparison", {})
+    if comparison is not None and not isinstance(comparison, dict):
+        return "comparison must be an object when present"
+    fixture_rows = comparison.get("fixture_rows", []) if isinstance(comparison, dict) else []
+    if not isinstance(fixture_rows, list):
+        return "comparison.fixture_rows must be a list"
+    for index, row in enumerate(fixture_rows):
+        if not isinstance(row, dict):
+            return f"comparison.fixture_rows[{index}] must be an object"
+    return None
+
+
+def _shadow_ranking_experiment_ledger_shape_error(payload: dict[str, Any]) -> str | None:
+    slice_rows = payload.get("slice_rows", [])
+    if not isinstance(slice_rows, list):
+        return "slice_rows must be a list"
+    for index, row in enumerate(slice_rows):
+        if not isinstance(row, dict):
+            return f"slice_rows[{index}] must be an object"
+    return None
+
+
+def _shadow_ranking_replay_shape_error(payload: dict[str, Any]) -> str | None:
+    rows_list = payload.get("rows", [])
+    if not isinstance(rows_list, list):
+        return "rows must be a list"
+    for index, row in enumerate(rows_list):
+        if not isinstance(row, dict):
+            return f"rows[{index}] must be an object"
+    return None
+
+
+def _shadow_ranking_comparison_shape_error(payload: dict[str, Any]) -> str | None:
+    comparison = payload.get("comparison", {})
+    if comparison is not None and not isinstance(comparison, dict):
+        return "comparison must be an object when present"
+    rows_list = comparison.get("rows", []) if isinstance(comparison, dict) else []
+    if not isinstance(rows_list, list):
+        return "comparison.rows must be a list"
+    for index, row in enumerate(rows_list):
+        if not isinstance(row, dict):
+            return f"comparison.rows[{index}] must be an object"
+    return None
+
+
+def _shadow_model_family_comparison_shape_error(payload: dict[str, Any]) -> str | None:
+    rows_list = payload.get("rows", [])
+    if not isinstance(rows_list, list):
+        return "rows must be a list"
+    for index, row in enumerate(rows_list):
+        if not isinstance(row, dict):
+            return f"rows[{index}] must be an object"
+    return None
+
+
+def _shadow_benchmark_matrix_shape_error(payload: dict[str, Any]) -> str | None:
+    benchmark_config = payload.get("benchmark_config", {})
+    if benchmark_config is not None and not isinstance(benchmark_config, dict):
+        return "benchmark_config must be an object when present"
+    runs = payload.get("runs", [])
+    if not isinstance(runs, list):
+        return "runs must be a list"
+    if isinstance(benchmark_config, dict):
+        model_families = benchmark_config.get("model_families", [])
+        training_targets = benchmark_config.get("training_targets", [])
+        if not isinstance(model_families, list):
+            return "benchmark_config.model_families must be a list"
+        if not isinstance(training_targets, list):
+            return "benchmark_config.training_targets must be a list"
+    for index, row in enumerate(runs):
+        if not isinstance(row, dict):
+            return f"runs[{index}] must be an object"
+    return None
+
+
+def _shadow_benchmark_review_shape_error(payload: dict[str, Any]) -> str | None:
+    target_reviews = payload.get("target_reviews", [])
+    reviewed_targets = payload.get("reviewed_targets", [])
+    reviewed_families = payload.get("reviewed_families", [])
+    source_benchmark_manifest_paths = payload.get("source_benchmark_manifest_paths", [])
+    if not isinstance(target_reviews, list):
+        return "target_reviews must be a list"
+    if not isinstance(reviewed_targets, list):
+        return "reviewed_targets must be a list"
+    if not isinstance(reviewed_families, list):
+        return "reviewed_families must be a list"
+    if not isinstance(source_benchmark_manifest_paths, list):
+        return "source_benchmark_manifest_paths must be a list"
+    for index, row in enumerate(target_reviews):
+        if not isinstance(row, dict):
+            return f"target_reviews[{index}] must be an object"
+    return None
+
+
+def _real_posted_lineage_import_shape_error(payload: dict[str, Any]) -> str | None:
+    list_fields = {
+        "source_roots": payload.get("source_roots", []),
+        "scanned_roots": payload.get("scanned_roots", []),
+        "source_root_summaries": payload.get("source_root_summaries", []),
+    }
+    for field_name, value in list_fields.items():
+        if not isinstance(value, list):
+            return f"{field_name} must be a list"
+    return None
+
+
+def _shadow_benchmark_evidence_comparison_shape_error(payload: dict[str, Any]) -> str | None:
+    rows_list = payload.get("rows", [])
+    if not isinstance(rows_list, list):
+        return "rows must be a list"
+    for index, row in enumerate(rows_list):
+        if not isinstance(row, dict):
+            return f"rows[{index}] must be an object"
+    return None
+
+
 def _ingest_proxy_sidecar(path: Path, rows: dict[str, Any], *, game: str | None) -> None:
     payload = _load_json(path, rows)
     if payload is None:
@@ -1533,10 +1665,14 @@ def _ingest_fixture_comparison_report(path: Path, rows: dict[str, Any], *, game:
     payload = _load_json_silent(path)
     if not isinstance(payload, dict):
         return
+    if payload.get("schema_version") not in {None, "", FIXTURE_SIDECAR_COMPARISON_SCHEMA_VERSION}:
+        return
+    shape_error = _fixture_comparison_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_fixture_comparison_shape", detail=shape_error)
+        return
     fixture_rows = list(payload.get("comparison", {}).get("fixture_rows", [])) if isinstance(payload.get("comparison"), dict) else []
     if not fixture_rows:
-        return
-    if payload.get("schema_version") not in {None, "", FIXTURE_SIDECAR_COMPARISON_SCHEMA_VERSION}:
         return
     comparison_path = str(path.resolve())
     recommendation = payload.get("recommendation", {}) if isinstance(payload.get("recommendation"), dict) else {}
@@ -1868,6 +2004,10 @@ def _ingest_hook_comparison_report(path: Path, rows: dict[str, Any], *, game: st
         return
     if payload.get("schema_version") != HOOK_CANDIDATE_COMPARISON_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
+        return
+    shape_error = _hook_comparison_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_hook_comparison_shape", detail=shape_error)
         return
     report_path = str(path.resolve())
     baseline_root = str(payload.get("baseline_sidecar_root") or "").strip() or None
@@ -2339,6 +2479,10 @@ def _ingest_shadow_ranking_experiment_ledger(path: Path, rows: dict[str, Any], *
     if payload.get("schema_version") != SHADOW_EXPERIMENT_LEDGER_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _shadow_ranking_experiment_ledger_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_ranking_experiment_ledger_shape", detail=shape_error)
+        return
     filters = payload.get("filters", {}) if isinstance(payload.get("filters"), dict) else {}
     target_game = str(filters.get("game") or "").strip() or None
     if game is not None and target_game and target_game != game:
@@ -2425,6 +2569,10 @@ def _ingest_shadow_ranking_replay(path: Path, rows: dict[str, Any], *, game: str
     if payload.get("schema_version") != SHADOW_RANKING_REPLAY_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _shadow_ranking_replay_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_ranking_replay_shape", detail=shape_error)
+        return
     manifest_path = str(path.resolve())
     replay_id = str(payload.get("replay_id") or "").strip() or path.stem
     rows["shadow_ranking_replays"].append(
@@ -2504,6 +2652,10 @@ def _ingest_shadow_ranking_comparison(path: Path, rows: dict[str, Any], *, game:
     if payload.get("schema_version") != SHADOW_RANKING_COMPARISON_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _shadow_ranking_comparison_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_ranking_comparison_shape", detail=shape_error)
+        return
     report_path = str(path.resolve())
     comparison_id = str(payload.get("comparison_id") or "").strip() or path.stem
     recommendation = payload.get("recommendation", {}) if isinstance(payload.get("recommendation"), dict) else {}
@@ -2555,6 +2707,10 @@ def _ingest_shadow_model_family_comparison(path: Path, rows: dict[str, Any], *, 
     if payload.get("schema_version") != SHADOW_MODEL_FAMILY_COMPARISON_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _shadow_model_family_comparison_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_model_family_comparison_shape", detail=shape_error)
+        return
     filters = payload.get("filters", {}) if isinstance(payload.get("filters"), dict) else {}
     target_game = str(filters.get("game") or "").strip() or None
     if game is not None and target_game and target_game != game:
@@ -2593,6 +2749,10 @@ def _ingest_shadow_benchmark_matrix(path: Path, rows: dict[str, Any], *, game: s
         return
     if payload.get("schema_version") != SHADOW_BENCHMARK_MATRIX_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
+        return
+    shape_error = _shadow_benchmark_matrix_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_benchmark_matrix_shape", detail=shape_error)
         return
     config = payload.get("benchmark_config", {}) if isinstance(payload.get("benchmark_config"), dict) else {}
     filters = config.get("filters", {}) if isinstance(config.get("filters"), dict) else {}
@@ -2667,6 +2827,10 @@ def _ingest_shadow_benchmark_review(path: Path, rows: dict[str, Any], *, game: s
     if payload.get("schema_version") != SHADOW_BENCHMARK_REVIEW_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _shadow_benchmark_review_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_benchmark_review_shape", detail=shape_error)
+        return
     manifest_path = str(path.resolve())
     review_targets = [row for row in list(payload.get("target_reviews", [])) if isinstance(row, dict)]
     reviewed_targets = [str(item) for item in list(payload.get("reviewed_targets", [])) if str(item).strip()]
@@ -2733,6 +2897,10 @@ def _ingest_real_posted_lineage_import(path: Path, rows: dict[str, Any], *, game
     if payload.get("schema_version") != REAL_POSTED_LINEAGE_IMPORT_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
         return
+    shape_error = _real_posted_lineage_import_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_real_posted_lineage_import_shape", detail=shape_error)
+        return
     filters = payload.get("filters", {}) if isinstance(payload.get("filters"), dict) else {}
     target_game = str(filters.get("game") or "").strip() or None
     if game is not None and target_game and target_game != game:
@@ -2774,6 +2942,10 @@ def _ingest_shadow_benchmark_evidence_comparison(path: Path, rows: dict[str, Any
         return
     if payload.get("schema_version") != SHADOW_BENCHMARK_EVIDENCE_COMPARISON_SCHEMA_VERSION:
         _warning(rows, path=path, reason="unsupported_schema_version", detail=str(payload.get("schema_version")))
+        return
+    shape_error = _shadow_benchmark_evidence_comparison_shape_error(payload)
+    if shape_error is not None:
+        _warning(rows, path=path, reason="invalid_shadow_benchmark_evidence_comparison_shape", detail=shape_error)
         return
     filters = payload.get("filters", {}) if isinstance(payload.get("filters"), dict) else {}
     target_game = str(filters.get("game") or "").strip() or None
