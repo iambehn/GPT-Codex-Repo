@@ -72,6 +72,7 @@ def _collect_dataset(root: Path, game: str | None) -> dict[str, Any]:
         "exported_sidecar_count": 0,
         "skipped_sidecar_count": 0,
         "skipped_malformed_count": 0,
+        "skipped_invalid_fused_shape_count": 0,
         "skipped_schema_mismatch_count": 0,
         "skipped_failed_analysis_count": 0,
         "skipped_game_filter_mismatch_count": 0,
@@ -87,6 +88,8 @@ def _collect_dataset(root: Path, game: str | None) -> dict[str, Any]:
             warnings.append({"path": str(sidecar_path), "reason": skip_reason})
             if skip_reason == "malformed_json":
                 manifest["skipped_malformed_count"] += 1
+            elif skip_reason == "invalid_fused_shape":
+                manifest["skipped_invalid_fused_shape_count"] += 1
             elif skip_reason == "unsupported_schema_version":
                 manifest["skipped_schema_mismatch_count"] += 1
             elif skip_reason == "failed_analysis":
@@ -125,9 +128,33 @@ def _rows_from_sidecar(
         return "game_filter_mismatch", sidecar, [], [], []
     if not sidecar.get("ok", False):
         return "failed_analysis", sidecar, [], [], []
+    if _fused_shape_error(sidecar) is not None:
+        return "invalid_fused_shape", sidecar, [], [], []
 
     candidate_rows, event_rows, signal_reference_rows = _build_rows_for_sidecar(sidecar_path, sidecar, dataset_id)
     return None, sidecar, candidate_rows, event_rows, signal_reference_rows
+
+
+def _fused_shape_error(sidecar: dict[str, Any]) -> str | None:
+    normalized_signals = sidecar.get("normalized_signals", [])
+    fused_events = sidecar.get("fused_events", [])
+    if not isinstance(normalized_signals, list):
+        return "normalized_signals must be a list"
+    if not isinstance(fused_events, list):
+        return "fused_events must be a list"
+    for index, row in enumerate(normalized_signals):
+        if not isinstance(row, dict):
+            return f"normalized_signals[{index}] must be an object"
+    for index, row in enumerate(fused_events):
+        if not isinstance(row, dict):
+            return f"fused_events[{index}] must be an object"
+        metadata = row.get("metadata", {})
+        contributing_signals = row.get("contributing_signals", [])
+        if metadata is not None and not isinstance(metadata, dict):
+            return f"fused_events[{index}].metadata must be an object when present"
+        if not isinstance(contributing_signals, list):
+            return f"fused_events[{index}].contributing_signals must be a list"
+    return None
 
 
 def _build_rows_for_sidecar(

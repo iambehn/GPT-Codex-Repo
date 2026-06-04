@@ -133,6 +133,19 @@ class FusedExportTests(unittest.TestCase):
             malformed_path = root / "bad" / "malformed.fused_analysis.json"
             malformed_path.parent.mkdir(parents=True, exist_ok=True)
             malformed_path.write_text("{not-json", encoding="utf-8")
+            self._write_sidecar(
+                root / "bad" / "invalid.fused_analysis.json",
+                {
+                    **_fused_sidecar(
+                        fusion_id="fusion-c",
+                        game="marvel_rivals",
+                        source="fixture-c.mp4",
+                        fused_events=[],
+                        normalized_signals=[],
+                    ),
+                    "fused_events": {"not": "a-list"},
+                },
+            )
 
             with patch.object(fused_export, "DEFAULT_OUTPUT_ROOT", Path(export_root)):
                 result = run_export_fused_analysis(root)
@@ -141,9 +154,9 @@ class FusedExportTests(unittest.TestCase):
             self.assertEqual(result["candidate_row_count"], 1)
             self.assertEqual(result["event_row_count"], 1)
             self.assertEqual(result["signal_reference_row_count"], 2)
-            self.assertEqual(result["scanned_sidecar_count"], 3)
+            self.assertEqual(result["scanned_sidecar_count"], 4)
             self.assertEqual(result["exported_sidecar_count"], 1)
-            self.assertEqual(result["skipped_sidecar_count"], 2)
+            self.assertEqual(result["skipped_sidecar_count"], 3)
 
             candidates_jsonl = Path(result["candidates_jsonl_path"])
             events_jsonl = Path(result["events_jsonl_path"])
@@ -175,6 +188,9 @@ class FusedExportTests(unittest.TestCase):
             self.assertEqual(manifest["signal_reference_row_count"], 2)
             self.assertEqual(manifest["skipped_failed_analysis_count"], 1)
             self.assertEqual(manifest["skipped_malformed_count"], 1)
+            self.assertEqual(manifest["skipped_invalid_fused_shape_count"], 1)
+            reasons = {row["reason"] for row in manifest["warnings"]}
+            self.assertIn("invalid_fused_shape", reasons)
 
     def test_export_fused_analysis_game_filter_limits_rows(self) -> None:
         with tempfile.TemporaryDirectory() as sidecar_root, tempfile.TemporaryDirectory() as export_root:

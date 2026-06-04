@@ -1194,3 +1194,31 @@ verification:
 notes:
 - this extends the fail-closed intake rule into the proxy-side dataset and review-calibration consumers
 - no proxy scoring behavior changed for valid sidecars
+
+## 2026-06-04T09:01Z
+
+target:
+- fused export sidecar-shape hardening
+
+status:
+- completed
+
+result:
+- tightened `fused_export` so malformed `fused_analysis_v1` payload shapes are skipped instead of being exported into fused candidate datasets
+- specifically guarded:
+  - non-list `normalized_signals`
+  - non-list `fused_events`
+  - non-dict normalized-signal rows
+  - non-dict fused-event rows
+  - non-dict fused-event `metadata` when present
+  - non-list fused-event `contributing_signals`
+- added explicit `invalid_fused_shape` skip accounting
+- added regression coverage proving malformed fused sidecars are skipped with that reason
+
+verification:
+- `.venv/bin/python -m unittest tests.test_fused_export`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the fail-closed intake rule into the fused-side dataset export surface
+- no fused scoring or selection behavior changed for valid sidecars
