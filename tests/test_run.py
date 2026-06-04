@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 import pipeline.proxy_review_bridge as proxy_review_bridge
 from pipeline.hf_adapters import HFAdapterError
+from tests.test_wiki_medal_curation import WikiMedalCurationTests
 from run import (
     DEFAULT_CONFIG,
     REPO_ROOT,
@@ -257,6 +258,33 @@ class RunTests(unittest.TestCase):
             result = run_export_wiki_research_packet(Path(tempdir))
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_wiki_research_packet_export")
+
+    def test_run_export_wiki_research_packet_returns_semantic_identity_fields(self) -> None:
+        helper = WikiMedalCurationTests()
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            wiki_root = helper._write_raw_wiki_fixture(repo_root)
+            curated_root = repo_root / "assets" / "games" / "call_of_duty" / "drafts" / "wiki_curated" / "20260526T233955Z"
+
+            run_curate_wiki_medal_draft(wiki_root, output_path=curated_root)
+            result = run_export_wiki_research_packet(curated_root)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["status"], "exported")
+            self.assertEqual(result["packet_identity"], "curated_multikill_medal_seed_packet")
+            self.assertEqual(
+                Path(result["packet_root"]).name,
+                "curated_multikill_medal_seed_packet__call_of_duty__20260526t233955z",
+            )
+            self.assertEqual(
+                result["recommended_handoff_files"][:2],
+                [
+                    "curated_multikill_medal_seed_packet__call_of_duty__20260526t233955z_events_or_medals.csv",
+                    "curated_multikill_medal_seed_packet__call_of_duty__20260526t233955z_assets.csv",
+                ],
+            )
+            self.assertTrue(result["artifacts"]["packet_identity_json"].endswith("_packet_identity.json"))
+            self.assertTrue(result["artifacts"]["handoff_note_txt"].endswith("_SEND_THESE_FILES_FIRST.txt"))
 
     def test_run_report_unresolved_derived_rows_returns_invalid_status_for_missing_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

@@ -1657,3 +1657,30 @@ verification:
 
 notes:
 - this places the packet identity rule on the packet-authoring surface itself, not only in routing and contract docs
+
+## 2026-06-05T12:33Z
+
+target:
+- runner-level research packet export contract coverage
+
+status:
+- completed
+
+result:
+- added a positive integration test in `tests/test_run.py` for `run_export_wiki_research_packet`
+- the runner contract now explicitly verifies:
+  - semantic `packet_identity`
+  - semantic-first `packet_root`
+  - `recommended_handoff_files`
+  - `packet_identity_json` artifact
+  - `handoff_note_txt` artifact
+- this closes the remaining test-layer gap between:
+  - exporter unit coverage in `tests/test_wiki_medal_curation.py`
+  - runner-facing contract behavior in `tests/test_run.py`
+
+verification:
+- `.venv/bin/python -m unittest tests.test_run.RunTests.test_run_export_wiki_research_packet_returns_semantic_identity_fields tests.test_wiki_medal_curation`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- no further concrete packet-identity workflow gap is currently visible after this slice
