@@ -1853,3 +1853,21 @@ verification:
 
 notes:
 - this prevents the backlog from presenting two different active `call_of_duty` blocker stories at once
+
+## 2026-06-05T15:03Z
+
+target:
+- final operator and fallback-handoff alignment for the active `call_of_duty` blocker
+
+status:
+- completed
+
+result:
+- updated `EXECUTION_TARGET.md` so its current governance limit now reflects the live top-right anchor blocker instead of the older medal-vs-text discriminator framing
+- updated `2026-05-27-call-of-duty-medal-visible-replacement-samples-request.md` so it is explicitly marked as a historical fallback rather than a live first-path packet
+
+verification:
+- not run; doc-only operator and handoff correction
+
+notes:
+- this removes one remaining operator-pack mismatch and one remaining historical handoff that still read like current guidance

@@ -262,8 +262,9 @@ Current governance limit:
   - published asset families now include `99` `hero_portrait`, `13` `equipment_icon`, and `15` `medal_icon`
   - the packet-derived medal slice has been published canonically
   - the current blocker is no longer onboarding workflow shape or medal-source promotion mechanics
-  - the current blocker is that the measured clip set does not yet show clear medal-icon-driven runtime evidence even after promotion
-  - the next useful discriminator is whether the intended clip family actually contains native medal badges or mostly text or reward-banner surfaces
+  - the older medal-vs-text discriminator work is no longer the live branch
+  - the current live blocker is discriminative anchor specificity inside the top-right native event-card family
+  - the next useful external input is the active top-right anchor packet or explicit retirement of that family
 - the standing user delegation authorizes longer autonomous local-only work blocks inside the existing pipeline mission
 - Codex may autonomously choose the next local-only target, including pipeline quality hardening, editorial or hook-layer improvement, new local test samples, additional local-only execution targets within the existing pipeline mission, docs clarification, and focused refactors that improve inspectability, validation, or workflow clarity
 - Codex must stop only when a hard-stop category is active:
