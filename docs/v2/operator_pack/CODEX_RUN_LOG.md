@@ -1684,3 +1684,29 @@ verification:
 
 notes:
 - no further concrete packet-identity workflow gap is currently visible after this slice
+
+## 2026-06-05T12:48Z
+
+target:
+- pipeline current-state refresher memo
+
+status:
+- completed
+
+result:
+- added a compact current-state refresher at:
+  - `docs/handoffs/2026-06-05-pipeline-current-state-refresher.md`
+- the memo separates:
+  - project scope
+  - pipeline stages
+  - mechanically proven path
+  - evidence-limited areas
+  - current blockers
+  - source inventory reality
+  - highest-value next confidence improvements
+
+verification:
+- not run; doc-only summary built from canonical docs and operator-pack truth
+
+notes:
+- intended as a user-facing refresher on what the project is, what has been built, and what remains uncertain
