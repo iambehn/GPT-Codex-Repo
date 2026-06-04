@@ -24,6 +24,7 @@ def _base_args() -> SimpleNamespace:
         ingest_game_sources=None,
         source_manifest=None,
         curate_wiki_medal_draft=None,
+        export_wiki_research_packet=None,
         curation_profile="multikill",
         bridge_wiki_draft_to_onboarding=None,
         build_onboarding_draft=None,
@@ -71,6 +72,7 @@ def _dispatch(args: SimpleNamespace) -> int | None:
         run_adapt_game_schema_fn=lambda *a, **k: {"ok": True, "status": "ok"},
         run_ingest_game_sources_fn=lambda *a, **k: {"ok": True, "status": "ok"},
         run_curate_wiki_medal_draft_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+        run_export_wiki_research_packet_fn=lambda *a, **k: {"ok": True, "status": "ok"},
         run_bridge_wiki_draft_to_onboarding_fn=lambda *a, **k: {"ok": True, "status": "ok"},
         run_build_onboarding_draft_fn=lambda *a, **k: {"ok": True, "status": "ok"},
         run_report_unresolved_derived_rows_fn=lambda *a, **k: {"ok": True, "status": "ok"},
@@ -128,6 +130,7 @@ class OnboardingAnalysisCommandTests(unittest.TestCase):
                 run_adapt_game_schema_fn=lambda *a, **k: {"ok": True, "status": "ok"},
                 run_ingest_game_sources_fn=lambda *a, **k: {"ok": True, "status": "ok"},
                 run_curate_wiki_medal_draft_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_export_wiki_research_packet_fn=lambda *a, **k: {"ok": True, "status": "ok"},
                 run_bridge_wiki_draft_to_onboarding_fn=_run_bridge,
                 run_build_onboarding_draft_fn=lambda *a, **k: {"ok": True, "status": "ok"},
                 run_report_unresolved_derived_rows_fn=lambda *a, **k: {"ok": True, "status": "ok"},
@@ -173,6 +176,7 @@ class OnboardingAnalysisCommandTests(unittest.TestCase):
                 run_adapt_game_schema_fn=lambda *a, **k: {"ok": True, "status": "ok"},
                 run_ingest_game_sources_fn=lambda *a, **k: {"ok": True, "status": "ok"},
                 run_curate_wiki_medal_draft_fn=_run_curate,
+                run_export_wiki_research_packet_fn=lambda *a, **k: {"ok": True, "status": "ok"},
                 run_bridge_wiki_draft_to_onboarding_fn=lambda *a, **k: {"ok": True, "status": "ok"},
                 run_build_onboarding_draft_fn=lambda *a, **k: {"ok": True, "status": "ok"},
                 run_report_unresolved_derived_rows_fn=lambda *a, **k: {"ok": True, "status": "ok"},
@@ -195,6 +199,51 @@ class OnboardingAnalysisCommandTests(unittest.TestCase):
         self.assertEqual(calls, [(("/tmp/wiki",), {"output_path": "/tmp/wiki_curated", "profile": "multikill"})])
         payload = json.loads(stdout.getvalue())
         self.assertEqual(payload["status"], "curated")
+
+    def test_export_wiki_research_packet_uses_output_path(self) -> None:
+        args = _base_args()
+        args.export_wiki_research_packet = "/tmp/wiki"
+        args.output_path = "/tmp/research_packet"
+        stdout = io.StringIO()
+        calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+        result_payload = {"ok": True, "status": "exported"}
+
+        def _run_export(*a, **k):
+            calls.append((a, k))
+            return result_payload
+
+        with redirect_stdout(stdout):
+            exit_code = dispatch_onboarding_analysis_commands(
+                args,
+                parser=_ParserStub(),
+                print_cli_result_fn=lambda result, **kwargs: print(json.dumps({"result": result, "kwargs": kwargs}, indent=2)),
+                run_enrich_game_from_wiki_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_adapt_game_schema_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_ingest_game_sources_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_curate_wiki_medal_draft_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_export_wiki_research_packet_fn=_run_export,
+                run_bridge_wiki_draft_to_onboarding_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_build_onboarding_draft_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_report_unresolved_derived_rows_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_derive_game_detection_manifest_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_fill_derived_detection_rows_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_prepare_derived_row_review_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_summarize_derived_row_review_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_apply_derived_row_review_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_onboard_game_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_publish_onboarding_draft_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_publish_onboarding_batch_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_validate_onboarding_publish_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_report_onboarding_batch_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_fuse_clip_signals_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_match_roi_templates_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_map_roi_events_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+                run_analyze_roi_runtime_fn=lambda *a, **k: {"ok": True, "status": "ok"},
+            )
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(calls, [(("/tmp/wiki",), {"output_path": "/tmp/research_packet"})])
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(payload["status"], "exported")
 
     def test_fill_derived_detection_rows_requires_detection_ids(self) -> None:
         args = _base_args()

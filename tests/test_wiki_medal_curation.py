@@ -6,7 +6,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from pipeline.game_onboarding import bridge_wiki_draft_to_onboarding, curate_wiki_medal_draft
+from pipeline.game_onboarding import (
+    bridge_wiki_draft_to_onboarding,
+    curate_wiki_medal_draft,
+    export_wiki_research_packet,
+)
 from pipeline.simple_yaml import load_yaml_file
 from tests.test_wiki_draft_onboarding_bridge import WikiDraftOnboardingBridgeTests
 
@@ -262,6 +266,39 @@ class WikiMedalCurationTests(unittest.TestCase):
             medal_rows = [row for row in detection_manifest["rows"] if row["asset_family"] == "medal_icon"]
             self.assertEqual(len(medal_rows), 1)
             self.assertEqual(medal_rows[0]["detection_id"], "call_of_duty.triple_kill.medal_icon")
+
+    def test_export_wiki_research_packet_uses_unique_names_for_raw_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            wiki_root = self._write_raw_wiki_fixture(repo_root)
+            packet_root = repo_root / "outputs" / "research_packets" / "call_of_duty" / "raw_fixture"
+
+            result = export_wiki_research_packet(wiki_root, output_path=packet_root, repo_root=repo_root)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["status"], "exported")
+            exported_names = {Path(path).name for path in result["artifacts"].values()}
+            self.assertEqual(result["counts"]["file_count"], 5)
+            self.assertTrue(all(name.startswith("call_of_duty_wiki_raw_curation_fixture_") for name in exported_names))
+            self.assertIn("call_of_duty_wiki_raw_curation_fixture_assets.csv", exported_names)
+            self.assertIn("call_of_duty_wiki_raw_curation_fixture_events_or_medals.csv", exported_names)
+            self.assertIn("call_of_duty_wiki_raw_curation_fixture_assets_manifest.json", exported_names)
+
+    def test_export_wiki_research_packet_includes_curation_outputs_for_curated_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            repo_root = Path(tempdir)
+            wiki_root = self._write_raw_wiki_fixture(repo_root)
+            curated_root = repo_root / "assets" / "games" / "call_of_duty" / "drafts" / "wiki_curated" / "curated"
+            packet_root = repo_root / "outputs" / "research_packets" / "call_of_duty" / "curated_fixture"
+
+            curate_wiki_medal_draft(wiki_root, output_path=curated_root, repo_root=repo_root)
+            result = export_wiki_research_packet(curated_root, output_path=packet_root, repo_root=repo_root)
+
+            self.assertTrue(result["ok"])
+            exported_names = {Path(path).name for path in result["artifacts"].values()}
+            self.assertEqual(result["counts"]["file_count"], 7)
+            self.assertIn("call_of_duty_wiki_curated_curated_curation_decisions.csv", exported_names)
+            self.assertIn("call_of_duty_wiki_curated_curated_curation_summary.json", exported_names)
 
 
 if __name__ == "__main__":

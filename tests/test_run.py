@@ -28,6 +28,7 @@ from run import (
     run_build_onboarding_draft,
     run_bridge_wiki_draft_to_onboarding,
     run_curate_wiki_medal_draft,
+    run_export_wiki_research_packet,
     run_derive_game_detection_manifest,
     run_fill_derived_detection_rows,
     run_ingest_game_sources,
@@ -250,6 +251,12 @@ class RunTests(unittest.TestCase):
             result = run_curate_wiki_medal_draft(Path(tempdir))
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_wiki_medal_curation")
+
+    def test_run_export_wiki_research_packet_returns_invalid_status_for_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_export_wiki_research_packet(Path(tempdir))
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_wiki_research_packet_export")
 
     def test_run_report_unresolved_derived_rows_returns_invalid_status_for_missing_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -4353,6 +4360,30 @@ class RunTests(unittest.TestCase):
                     exit_code = run_main()
             self.assertEqual(exit_code, 0)
             mock_run.assert_called_once_with("/tmp/wiki", output_path="/tmp/wiki_curated", profile="multikill")
+            payload = json.loads(stdout.getvalue())
+            self.assertTrue(payload["ok"])
+        finally:
+            sys.argv = original_argv
+
+    def test_cli_routes_to_export_wiki_research_packet(self) -> None:
+        original_argv = sys.argv
+        try:
+            sys.argv = [
+                "run.py",
+                "--export-wiki-research-packet",
+                "/tmp/wiki",
+                "--output-path",
+                "/tmp/research_packet",
+            ]
+            stdout = io.StringIO()
+            with patch(
+                "run.run_export_wiki_research_packet",
+                return_value={"ok": True, "packet_root": "/tmp/research_packet"},
+            ) as mock_run:
+                with redirect_stdout(stdout):
+                    exit_code = run_main()
+            self.assertEqual(exit_code, 0)
+            mock_run.assert_called_once_with("/tmp/wiki", output_path="/tmp/research_packet")
             payload = json.loads(stdout.getvalue())
             self.assertTrue(payload["ok"])
         finally:

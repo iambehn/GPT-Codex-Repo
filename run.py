@@ -67,6 +67,7 @@ from pipeline.game_onboarding import (
     build_onboarding_draft,
     bridge_wiki_draft_to_onboarding,
     curate_wiki_medal_draft,
+    export_wiki_research_packet,
     fill_derived_detection_rows,
     ingest_onboarding_sources,
     report_unresolved_derived_rows,
@@ -2640,6 +2641,22 @@ def run_curate_wiki_medal_draft(
         }
 
 
+def run_export_wiki_research_packet(
+    wiki_draft_root: str | Path,
+    *,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    try:
+        return export_wiki_research_packet(wiki_draft_root, output_path=output_path)
+    except (ValueError, KeyError, TypeError, FileNotFoundError, json.JSONDecodeError) as exc:
+        return {
+            "ok": False,
+            "status": "invalid_wiki_research_packet_export",
+            "wiki_draft_root": str(wiki_draft_root),
+            "error": str(exc),
+        }
+
+
 def run_report_unresolved_derived_rows(
     draft_root: str | Path,
     *,
@@ -4921,6 +4938,11 @@ def main() -> int:
         help="Create a curated wiki medal draft bundle before bridging into canonical onboarding flow.",
     )
     parser.add_argument(
+        "--export-wiki-research-packet",
+        metavar="WIKI_DRAFT_ROOT",
+        help="Export one wiki or wiki_curated bundle into researcher-facing uniquely named copies without renaming canonical bundle files.",
+    )
+    parser.add_argument(
         "--curation-profile",
         default="multikill",
         help="Curated wiki medal profile to apply. Defaults to 'multikill'.",
@@ -5750,6 +5772,7 @@ def main() -> int:
         run_adapt_game_schema_fn=run_adapt_game_schema,
         run_ingest_game_sources_fn=run_ingest_game_sources,
         run_curate_wiki_medal_draft_fn=run_curate_wiki_medal_draft,
+        run_export_wiki_research_packet_fn=run_export_wiki_research_packet,
         run_bridge_wiki_draft_to_onboarding_fn=run_bridge_wiki_draft_to_onboarding,
         run_build_onboarding_draft_fn=run_build_onboarding_draft,
         run_report_unresolved_derived_rows_fn=run_report_unresolved_derived_rows,

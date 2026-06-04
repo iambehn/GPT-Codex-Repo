@@ -14,6 +14,7 @@ def dispatch_onboarding_analysis_commands(
     run_adapt_game_schema_fn: Callable[..., dict[str, Any]],
     run_ingest_game_sources_fn: Callable[..., dict[str, Any]],
     run_curate_wiki_medal_draft_fn: Callable[..., dict[str, Any]],
+    run_export_wiki_research_packet_fn: Callable[..., dict[str, Any]],
     run_bridge_wiki_draft_to_onboarding_fn: Callable[..., dict[str, Any]],
     run_build_onboarding_draft_fn: Callable[..., dict[str, Any]],
     run_report_unresolved_derived_rows_fn: Callable[..., dict[str, Any]],
@@ -57,6 +58,13 @@ def dispatch_onboarding_analysis_commands(
             args.curate_wiki_medal_draft,
             output_path=args.output_path,
             profile=args.curation_profile,
+        )
+        return _json_exit(result)
+
+    if args.export_wiki_research_packet:
+        result = run_export_wiki_research_packet_fn(
+            args.export_wiki_research_packet,
+            output_path=args.output_path,
         )
         return _json_exit(result)
 

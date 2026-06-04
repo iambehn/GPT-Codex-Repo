@@ -622,6 +622,94 @@ def curate_wiki_medal_draft(
     }
 
 
+def export_wiki_research_packet(
+    wiki_draft_root: str | Path,
+    *,
+    output_path: str | Path | None = None,
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    repo_root = (repo_root or REPO_ROOT).resolve()
+    resolved_wiki_root = Path(wiki_draft_root).expanduser().resolve()
+    wiki_manifest_path = resolved_wiki_root / "assets_manifest.json"
+    if not wiki_manifest_path.exists():
+        raise FileNotFoundError(f"wiki draft does not contain assets manifest: {wiki_manifest_path}")
+
+    wiki_manifest = _load_json_mapping_file(wiki_manifest_path, label="wiki draft assets manifest")
+    game = str(wiki_manifest.get("game_id", "")).strip()
+    if not game:
+        raise ValueError("wiki draft assets manifest must include game_id")
+
+    packet_root = _resolve_wiki_research_packet_output_root(
+        game,
+        bundle_root=resolved_wiki_root,
+        output_path=output_path,
+        repo_root=repo_root,
+    )
+    packet_parent = packet_root.parent
+    packet_parent.mkdir(parents=True, exist_ok=True)
+    timestamp = _timestamp_slug()
+    stage_root = Path(tempfile.mkdtemp(prefix=f".wiki-research-packet-{timestamp}.", dir=packet_parent))
+
+    required_files = {
+        "assets_manifest_json": resolved_wiki_root / "assets_manifest.json",
+        "assets_csv": resolved_wiki_root / "catalog" / "assets.csv",
+        "events_or_medals_csv": resolved_wiki_root / "catalog" / "events_or_medals.csv",
+        "source_fetch_log_csv": resolved_wiki_root / "catalog" / "source_fetch_log.csv",
+        "qa_queue_csv": resolved_wiki_root / "catalog" / "qa_queue.csv",
+    }
+    optional_files = {
+        "curation_decisions_csv": resolved_wiki_root / "catalog" / "curation_decisions.csv",
+        "curation_summary_json": resolved_wiki_root / "catalog" / "curation_summary.json",
+    }
+
+    bundle_kind = _infer_wiki_bundle_kind(resolved_wiki_root)
+    filename_prefix = _wiki_research_packet_prefix(
+        game=game,
+        bundle_kind=bundle_kind,
+        bundle_root=resolved_wiki_root,
+    )
+
+    try:
+        artifacts: dict[str, str] = {}
+        for artifact_key, source_path in required_files.items():
+            if not source_path.exists():
+                raise FileNotFoundError(f"wiki draft research packet source is missing: {source_path}")
+            target_path = stage_root / f"{filename_prefix}_{source_path.name}"
+            shutil.copyfile(source_path, target_path)
+            artifacts[artifact_key] = str(target_path)
+        for artifact_key, source_path in optional_files.items():
+            if not source_path.exists():
+                continue
+            target_path = stage_root / f"{filename_prefix}_{source_path.name}"
+            shutil.copyfile(source_path, target_path)
+            artifacts[artifact_key] = str(target_path)
+
+        if packet_root.exists():
+            shutil.rmtree(packet_root)
+        stage_root.rename(packet_root)
+    except Exception:
+        shutil.rmtree(stage_root, ignore_errors=True)
+        raise
+
+    packet_artifacts = {
+        artifact_key: str(packet_root / Path(path).name)
+        for artifact_key, path in artifacts.items()
+    }
+    return {
+        "ok": True,
+        "status": "exported",
+        "game": game,
+        "wiki_draft_root": str(resolved_wiki_root),
+        "packet_root": str(packet_root),
+        "bundle_kind": bundle_kind,
+        "filename_prefix": filename_prefix,
+        "counts": {
+            "file_count": len(packet_artifacts),
+        },
+        "artifacts": packet_artifacts,
+    }
+
+
 def ingest_onboarding_sources(
     schema_draft_or_game: str | Path,
     sources: list[OnboardingSource],
@@ -4073,6 +4161,19 @@ def _resolve_curated_wiki_output_root(
     return drafts_parent / _timestamp_slug()
 
 
+def _resolve_wiki_research_packet_output_root(
+    game: str,
+    *,
+    bundle_root: Path,
+    output_path: str | Path | None,
+    repo_root: Path,
+) -> Path:
+    if output_path is not None:
+        return Path(output_path).expanduser().resolve()
+    packet_root = repo_root / "outputs" / "research_packets" / game
+    return packet_root / f"{_infer_wiki_bundle_kind(bundle_root)}_{_canonical_id(bundle_root.name)}"
+
+
 def _load_json_mapping_file(path: Path, *, label: str) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"missing {label}: {path}")
@@ -4316,6 +4417,22 @@ def _build_wiki_curation_summary(
 def _strip_game_prefix(value: str, *, game: str) -> str:
     prefix = f"{game}."
     return value[len(prefix):] if value.startswith(prefix) else value
+
+
+def _infer_wiki_bundle_kind(bundle_root: Path) -> str:
+    parts = list(bundle_root.parts)
+    if "drafts" in parts:
+        draft_index = parts.index("drafts")
+        if draft_index + 1 < len(parts):
+            return _canonical_id(parts[draft_index + 1])
+    return _canonical_id(bundle_root.parent.name or "wiki_bundle")
+
+
+def _wiki_research_packet_prefix(*, game: str, bundle_kind: str, bundle_root: Path) -> str:
+    bundle_label = _canonical_id(bundle_root.name)
+    if bundle_label == bundle_kind:
+        return f"{_canonical_id(game)}_{bundle_kind}"
+    return f"{_canonical_id(game)}_{bundle_kind}_{bundle_label}"
 
 
 def _rebase_published_candidates_for_bridge(
