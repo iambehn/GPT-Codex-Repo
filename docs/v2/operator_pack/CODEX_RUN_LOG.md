@@ -1710,3 +1710,25 @@ verification:
 
 notes:
 - intended as a user-facing refresher on what the project is, what has been built, and what remains uncertain
+
+## 2026-06-05T13:15Z
+
+target:
+- strategic roadmap alignment with current operator-pack truth
+
+status:
+- completed
+
+result:
+- updated `FUTURE_FEATURES_ROADMAP.md` so the strategic roadmap now reflects:
+  - the bounded local `call_of_duty` runtime-to-export path is mechanically proven
+  - the current blocker is evidence quality for the next repeatable native runtime surface
+  - `reward_banner` is capped as a narrow pilot
+  - the first top-right event-card shell anchor is falsified
+  - Phases 2 through 4 are now primarily hardening and coverage-expansion work, not greenfield pipeline construction
+
+verification:
+- not run; roadmap and run-log only change
+
+notes:
+- this keeps the strategic roadmap from lagging behind `EXECUTION_TARGET.md` and the current operator queue

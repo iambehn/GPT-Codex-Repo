@@ -1,5 +1,7 @@
 # Version 2 Roadmap
 
+Last updated: 2026-06-05
+
 This document is the canonical V2 roadmap for the repo. It supersedes the prior split between `FUTURE_FEATURES_ROADMAP.md` and `V2_KICKOFF.md`.
 
 Its job is to hold three things in one place:
@@ -41,6 +43,25 @@ Source enrichment also stays separate:
 - leaderboards, wikis, and identity resolution are scored enrichment layers
 - they are not assumed truth sources and they are not runtime dependencies for highlight detection
 
+## Current Strategic State
+
+The roadmap should now assume these points as current repo truth:
+
+- one bounded local `call_of_duty` path is mechanically proven from runtime analysis through fused selection and local highlight export artifact creation
+- runtime review, fused review, runtime calibration, registry refresh, highlight selection, workflow-run creation, and local export-batch creation are no longer speculative surfaces
+- local export readiness is proven as a local-only boundary, not as publish clearance or editorial proof
+- the current active blocker is no longer basic orchestration; it is evidence quality for the next repeatable `call_of_duty` native runtime surface
+- the current `call_of_duty` `reward_banner` pilot should be treated as a narrow validated pilot, not a reusable family
+- the first top-right event-card shell anchor is falsified, so further work there depends on better anchor evidence rather than more threshold tuning
+
+That means the roadmap should optimize for:
+
+- preserving the proven local path
+- tightening release-gate and durable-state contracts
+- improving source evidence quality where detector expansion is currently evidence-limited
+
+It should not imply that the repo still needs first-pass proof of the basic local multimodal path.
+
 ---
 
 ## Baseline And Next Phases
@@ -70,8 +91,9 @@ The repo already has meaningful implementation coverage in manifests, runtime no
 
 The pipeline should currently be treated as:
 
-- stable in upstream detection, replay, registry, lifecycle, export-selection, and hook-artifact foundations
-- not yet complete in orchestration, post/export progression, hook evaluation, and downstream analytics feedback loops
+- stable in upstream detection, reviewed runtime flow, replay, registry, lifecycle, export-selection, and hook-artifact foundations
+- mechanically proven for one bounded local runtime-to-export path
+- not yet complete in publish-cleared source coverage, repeatable `call_of_duty` runtime surface coverage, post/export progression, hook evaluation, and downstream analytics feedback loops
 
 The following are explicitly partial, not done:
 
@@ -79,6 +101,7 @@ The following are explicitly partial, not done:
 - export/post lifecycle progression as a full operating loop
 - registry-backed operator workflow beyond query/state infrastructure
 - analytics wired back to measurable candidate, hook, and export lineage
+- repeatable `call_of_duty` runtime surface expansion beyond the currently capped `reward_banner` pilot
 
 ### Active Execution Phases
 
@@ -88,6 +111,12 @@ Only the items below should be treated as the active V2 implementation order:
 2. Runtime and fusion contract hardening
 3. Review, calibration, and replay release gating
 4. Candidate, export, and downstream analytics integration
+
+Current planning note:
+
+- the first three phases are no longer greenfield construction tasks
+- they are now mostly hardening, release-gate tightening, and coverage-expansion tasks on top of a mechanically proven bounded path
+- the main evidence-limited branch sits inside Phase 2, where `call_of_duty` runtime-surface expansion now depends on better native-surface evidence rather than more orchestration work
 
 ### Deferred Phases
 
@@ -211,6 +240,12 @@ Acceptance criteria:
 - fused outputs remain inspectable enough to explain why a candidate scored or failed
 - heavy analysis remains shortlist-only and does not become a full-path default
 
+Current state note:
+
+- the bounded local `call_of_duty` path already proves runtime analysis, fused analysis, review persistence, calibration, registry propagation, and local export-readiness on one real-media sample
+- the active Phase 2 gap is not "can these layers run together"
+- the active Phase 2 gap is "which additional native runtime surface is repeatable enough to justify promotion beyond the capped `reward_banner` pilot"
+
 Out of scope:
 
 - editorial packaging or hook-specific policy
@@ -268,6 +303,15 @@ Acceptance criteria:
 - performance can be traced back to candidate, hook, and export lineage
 - analytics stay downstream and do not redefine upstream evidence truth
 - the repo has enough structured evidence to support later learning-oriented work
+
+Current state note:
+
+- candidate selection, local export batch creation, and exported lifecycle state are already proven locally
+- the open work in this phase is the rest of the chain:
+  - posting ledgers
+  - posted metrics snapshots
+  - downstream performance interpretation
+  - closing the loop without collapsing upstream evidence boundaries
 
 Out of scope:
 
