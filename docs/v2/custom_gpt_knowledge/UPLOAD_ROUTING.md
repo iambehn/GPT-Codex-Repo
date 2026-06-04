@@ -59,6 +59,16 @@ Do not rely on:
 
 The research GPT should hand off structured research packets by default when the work is meant to change the repo.
 
+When Codex has exported a researcher packet bundle locally, choose the packet by semantic identity first, not by timestamp alone.
+
+For exported wiki research packets:
+
+- use the semantic-first packet root and filenames
+- check `*_packet_identity.json` for what the packet is
+- check `*_SEND_THESE_FILES_FIRST.txt` for the exact first-send files
+
+Do not assume that the newest timestamped folder is the right bundle.
+
 The routing doctrine also allows these internal target artifacts when they are the smallest truthful next output:
 
 - `research_note`

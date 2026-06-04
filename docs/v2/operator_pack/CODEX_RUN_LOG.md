@@ -1614,3 +1614,25 @@ verification:
 
 notes:
 - this hardening specifically addresses the first observed wrong-packet upload failure mode
+
+## 2026-06-05T12:14Z
+
+target:
+- packet identity guidance propagation
+
+status:
+- completed
+
+result:
+- updated CLI help for `--export-wiki-research-packet` to describe semantic-first handoff files and packet identity artifacts
+- updated `RESEARCHER_INPUT_CONTRACT.md` with a packet identity rule:
+  - semantic-first selection
+  - timestamp as provenance, not primary identity
+  - use `*_packet_identity.json` and `*_SEND_THESE_FILES_FIRST.txt`
+- updated `custom_gpt_knowledge/UPLOAD_ROUTING.md` so researcher-side routing explicitly checks packet identity artifacts instead of assuming the newest timestamped folder is correct
+
+verification:
+- not run; help-text and doc-only change
+
+notes:
+- this keeps the new export contract aligned across code and researcher-facing guidance

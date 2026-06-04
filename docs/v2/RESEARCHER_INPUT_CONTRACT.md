@@ -23,6 +23,24 @@ Every researcher packet should:
 
 The important constraint is not volume. It is decision completeness.
 
+## Packet Identity Rule
+
+When Codex exports a researcher-facing packet bundle, the bundle should be selected by semantic identity first, not by timestamp alone.
+
+Operational rule:
+
+- prefer semantic-first packet roots and filenames
+- keep timestamps as provenance, not as the primary human discriminator
+- include an explicit packet-identity artifact when the export surface supports it
+
+For exported wiki research packets, the handoff should use:
+
+- the semantic-first packet root
+- the `*_packet_identity.json` file
+- the `*_SEND_THESE_FILES_FIRST.txt` file
+
+If a human could plausibly upload the wrong packet without opening files, the packet identity is still too weak.
+
 ## Internal Routing Boundary
 
 The researcher may use internal routing logic to improve the next interaction move before producing an external artifact.

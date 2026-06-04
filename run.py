@@ -4940,7 +4940,7 @@ def main() -> int:
     parser.add_argument(
         "--export-wiki-research-packet",
         metavar="WIKI_DRAFT_ROOT",
-        help="Export one wiki or wiki_curated bundle into researcher-facing uniquely named copies without renaming canonical bundle files.",
+        help="Export one wiki or wiki_curated bundle into semantic-first researcher handoff files, including packet identity and first-send guidance, without renaming canonical bundle files.",
     )
     parser.add_argument(
         "--curation-profile",
