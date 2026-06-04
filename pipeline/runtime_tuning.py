@@ -190,6 +190,8 @@ def _comparison_row_from_sidecar(
         return "game_filter_mismatch", None
     if not sidecar.get("ok", False):
         return "failed_analysis", None
+    if _runtime_shape_error(sidecar) is not None:
+        return "invalid_runtime_shape", None
 
     review_status = str(sidecar.get("runtime_review", {}).get("review_status", "")).strip().lower()
     if review_status not in {"approved", "rejected"}:
@@ -221,6 +223,28 @@ def _comparison_row_from_sidecar(
         "frame_coordinate_space": matcher_payload.get("frame_coordinate_space"),
         "event_types": sorted({str(row.get("event_type", "")) for row in event_rows if row.get("event_type")}),
     }
+
+
+def _runtime_shape_error(sidecar: dict[str, Any]) -> str | None:
+    events_payload = sidecar.get("events", {})
+    matcher_payload = sidecar.get("matcher", {})
+    if not isinstance(events_payload, dict):
+        return "events must be an object"
+    if not isinstance(matcher_payload, dict):
+        return "matcher must be an object"
+    event_rows = events_payload.get("rows", [])
+    detection_rows = matcher_payload.get("confirmed_detections", [])
+    frame_dimensions = matcher_payload.get("frame_dimensions", {})
+    frame_coordinate_space = matcher_payload.get("frame_coordinate_space")
+    if not isinstance(event_rows, list):
+        return "events.rows must be a list"
+    if not isinstance(detection_rows, list):
+        return "matcher.confirmed_detections must be a list"
+    if frame_dimensions is not None and not isinstance(frame_dimensions, dict):
+        return "matcher.frame_dimensions must be an object when present"
+    if frame_coordinate_space is not None and not isinstance(frame_coordinate_space, str):
+        return "matcher.frame_coordinate_space must be a string when present"
+    return None
 
 
 def _comparison(

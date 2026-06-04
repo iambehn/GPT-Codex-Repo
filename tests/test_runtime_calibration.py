@@ -180,6 +180,20 @@ class RuntimeCalibrationTests(unittest.TestCase):
                     schema_version="runtime_analysis_v0",
                 ),
             )
+            self._write_sidecar(
+                root / "invalid-shape.runtime_analysis.json",
+                {
+                    **_runtime_sidecar(
+                        analysis_id="invalid-shape",
+                        game="marvel_rivals",
+                        source="clip-invalid.mp4",
+                        events=[],
+                        detections=[],
+                        review_status="approved",
+                    ),
+                    "matcher": {"confirmed_detections": {"not": "a-list"}},
+                },
+            )
             (root / "malformed.runtime_analysis.json").write_text("{bad-json", encoding="utf-8")
 
             result = run_calibrate_runtime_review(root, game="marvel_rivals", min_reviewed=1)
@@ -188,6 +202,7 @@ class RuntimeCalibrationTests(unittest.TestCase):
             reasons = {warning["reason"] for warning in result["warnings"]}
             self.assertIn("failed_analysis", reasons)
             self.assertIn("unsupported_schema_version", reasons)
+            self.assertIn("invalid_runtime_shape", reasons)
             self.assertIn("malformed_json", reasons)
 
     def test_calibrate_runtime_review_returns_insufficient_data_when_below_threshold(self) -> None:

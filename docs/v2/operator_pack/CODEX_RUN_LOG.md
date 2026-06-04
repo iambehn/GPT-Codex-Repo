@@ -1139,3 +1139,30 @@ verification:
 notes:
 - this extends the fail-closed intake pattern from review/prep bridges into dataset export
 - no runtime scoring behavior changed for valid sidecars
+
+## 2026-06-04T08:34Z
+
+target:
+- runtime calibration and tuning sidecar-shape hardening
+
+status:
+- completed
+
+result:
+- tightened both `runtime_calibration` and `runtime_tuning` so malformed `runtime_analysis_v1` payload shapes are skipped instead of being treated as reviewed runtime evidence
+- specifically guarded:
+  - non-dict `events`
+  - non-dict `matcher`
+  - non-list `events.rows`
+  - non-list `matcher.confirmed_detections`
+  - non-dict `matcher.frame_dimensions` when present
+  - non-string `matcher.frame_coordinate_space` when present
+- added regression coverage proving malformed reviewed sidecars surface `invalid_runtime_shape` warnings in both calibration and tuning flows
+
+verification:
+- `.venv/bin/python -m unittest tests.test_runtime_calibration tests.test_runtime_tuning`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the same fail-closed intake rule into the reviewed-runtime analysis surfaces
+- no scoring behavior changed for valid sidecars

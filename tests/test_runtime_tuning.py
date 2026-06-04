@@ -253,6 +253,20 @@ class RuntimeTuningTests(unittest.TestCase):
                     schema_version="runtime_analysis_v0",
                 ),
             )
+            self._write_sidecar(
+                root / "invalid-shape.runtime_analysis.json",
+                {
+                    **_runtime_sidecar(
+                        analysis_id="invalid-shape",
+                        game="marvel_rivals",
+                        source="clip-invalid.mp4",
+                        events=[],
+                        detections=[],
+                        review_status="approved",
+                    ),
+                    "events": {"rows": {"not": "a-list"}},
+                },
+            )
             (root / "malformed.runtime_analysis.json").write_text("{bad-json", encoding="utf-8")
 
             good_trial = config_dir / "trial.yaml"
@@ -260,6 +274,7 @@ class RuntimeTuningTests(unittest.TestCase):
             good_result = run_replay_runtime_scoring(root, good_trial, game="marvel_rivals", min_reviewed=1)
             reasons = {warning["reason"] for warning in good_result["warnings"]}
             self.assertIn("unsupported_schema_version", reasons)
+            self.assertIn("invalid_runtime_shape", reasons)
             self.assertIn("malformed_json", reasons)
 
             bad_trial = config_dir / "bad.yaml"
