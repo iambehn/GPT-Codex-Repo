@@ -1,204 +1,106 @@
 # Call Of Duty Text Banner Packet Stub
 
-Use this as the starting document for the next `call_of_duty` text or reward-banner research packet.
+This file is no longer the active default packet for `call_of_duty`.
+
+Use it only if new evidence explicitly reopens a text or reward-banner branch.
+
+Current active branch:
+
+- top-right native event-card anchor selection
+- see [2026-06-05-call-of-duty-top-right-anchor-researcher-brief.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-05-call-of-duty-top-right-anchor-researcher-brief.md)
 
 ## Metadata
 
 ```yaml
 packet_id: 2026-05-27-call-of-duty-text-banner-packet
-status: draft
+status: dormant_branch
 owner: Pipeline Research Strategist
-decision_target: Identify the first visible text or reward-banner signal subset worth promoting for call_of_duty.
+decision_target: Reopen text or reward-banner work only if materially new evidence appears.
 pipeline_layer: onboarding
 game: call_of_duty
-priority: P1
-confidence: exploratory
-supersedes:
+priority: deferred
+confidence: historical_stub
+superseded_by:
+  - 2026-06-05-call-of-duty-top-right-anchor-researcher-brief
 ```
 
 ## 1. Decision Target
 
-Identify the first `call_of_duty` text or reward-banner subset worth promoting for the current measured sample family.
+If this branch is reopened, the packet must answer one narrower question:
 
-Priority surface:
+> Does new evidence justify reopening `kill_count_text`, `multikill_text`, or `reward_banner` work after the current top-right anchor branch?
 
-- multikill text
-- kill-count or streak text
-- reward banners
+Do not use this stub to propose a first implementation slice. That decision is already stale.
 
 ## 2. Current Repo Truth
 
-Current published-pack truth:
+Current active truth:
 
-- published `call_of_duty` pack now includes promoted `medal_icon` coverage for `15` medals
+- the published `call_of_duty` medal promotion did not produce clip-visible medal outcomes on the current measured sample family
+- the published masked `UAV` `reward_banner` pilot is clean on `_PL_5qWwKtY`
+- that `reward_banner` pilot did not generalize across broader cross-sample checks or same-family `MWIII Vista` probes
+- `reward_banner` is now capped as a narrow validated pilot, not an expanding family
+- the first top-right event-card shell anchor was implemented, measured, and rolled back
+- the current active blocker is a discriminative top-right anchor candidate, not a text-banner-first promotion choice
 
-Current measured behavior after medal promotion:
+This means:
 
-- post-promotion rerun on the same four public samples still produced:
-  - `2 / 4` samples with no runtime events
-  - `2 / 4` samples with equipment-only events
-  - `0 / 4` medal-driven outcomes
-  - `0 / 4` hook candidates
+- do not recommend `reward_banner` as the next default implementation family
+- do not treat the older `_PL_5qWwKtY` text/banner evidence as enough to restart that branch by itself
 
-Current frame-level truth:
+Relevant current docs:
 
-- `_PL_5qWwKtY` visibly shows:
-  - `UAV`
-  - `DOUBLE KI`
-  - `7TH KO`
-- the probed frames do not show a clear native medal badge icon in the expected ROI
+- [2026-06-05-call-of-duty-top-right-anchor-researcher-brief.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-05-call-of-duty-top-right-anchor-researcher-brief.md)
+- [2026-06-04-call-of-duty-top-right-anchor-packet-request.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-packet-request.md)
+- [2026-06-04-call-of-duty-top-right-anchor-dispatch.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-04-call-of-duty-top-right-anchor-dispatch.md)
+- [2026-06-05-pipeline-current-state-refresher.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-05-pipeline-current-state-refresher.md)
 
-Relevant repo evidence:
+## 3. When This Stub Is Valid Again
 
-- `docs/handoffs/2026-05-27-call-of-duty-medal-packet-promotion-results.md`
-- `docs/handoffs/2026-05-27-call-of-duty-sample-family-audit.md`
-- `docs/handoffs/2026-05-27-call-of-duty-text-banner-frame-probes.md`
+Reopen this branch only if at least one of these is true:
 
-## 3. Evidence Bundle
+- a new clip family shows repeatable native `reward_banner` behavior beyond `_PL_5qWwKtY`
+- a new clip family shows clear native `kill_count_text` or `multikill_text` with better visibility than the current top-right family
+- the top-right anchor branch is explicitly retired and text or banner evidence becomes the next strongest native surface
 
-Starter local evidence:
+Without one of those conditions, use the top-right anchor brief instead.
 
-```yaml
-- evidence_id: EV-COD-TEXT-001
-  type: clip_timestamp
-  path_or_url: outputs/public_gameplay_mining/call_of_duty_editorial_candidates/_PL_5qWwKtY.mp4 @ 11.0s
-  why_it_matters: Multiplayer-style frame with a clear UAV reward banner and visible 4TH KILL text.
-  trust_level: strong_candidate
-- evidence_id: EV-COD-TEXT-002
-  type: screenshot
-  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/uav_11.0_full.png
-  why_it_matters: Full frame showing live gameplay context for the UAV banner and kill-count text.
-  trust_level: strong_candidate
-- evidence_id: EV-COD-TEXT-003
-  type: crop
-  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/uav_banner_11.0_crop.png
-  why_it_matters: Tight crop of the UAV reward banner with readable supporting text.
-  trust_level: strong_candidate
-- evidence_id: EV-COD-TEXT-004
-  type: crop
-  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/killcount_4th_11.0_crop.png
-  why_it_matters: Tight crop of the 4TH KILL counter in the same frame as the UAV reward banner.
-  trust_level: strong_candidate
-- evidence_id: EV-COD-TEXT-005
-  type: clip_timestamp
-  path_or_url: outputs/public_gameplay_mining/call_of_duty_editorial_candidates/_PL_5qWwKtY.mp4 @ 20.5s
-  why_it_matters: Multiplayer-style frame with visible yellow multikill text and a red kill-count counter.
-  trust_level: strong_candidate
-- evidence_id: EV-COD-TEXT-006
-  type: screenshot
-  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/doubleki_20.5_full.png
-  why_it_matters: Full frame showing live gameplay context for the yellow multikill text and red kill-count counter.
-  trust_level: strong_candidate
-- evidence_id: EV-COD-TEXT-007
-  type: crop
-  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/doublekill_20.5_crop.png
-  why_it_matters: Tight crop of the visible DOUBLE KI multikill text; useful as a partial-read local seed.
-  trust_level: exploratory
-- evidence_id: EV-COD-TEXT-008
-  type: crop
-  path_or_url: outputs/measurement/call_of_duty_text_banner_probes/killcount_7th_20.5_crop.png
-  why_it_matters: Tight crop of the visible 7TH KO kill-count text; useful as a partial-read local seed.
-  trust_level: exploratory
-```
+## 4. Required Evidence If Reopened
 
-## 4. Structured Findings
+Any reopened packet must include:
 
-### Target Signals To Keep
+- exact clip URLs or local paths
+- exact timestamps
+- crop or still references
+- native UI vs overlay classification
+- same-family repetition evidence
+- explicit exclusions
+- why the reopened text/banner branch is now better than:
+  - the capped `reward_banner` pilot
+  - the failed top-right shell anchor
+  - the current weak OCR evidence
 
-- `UAV`
-- `4TH KILL`
-- `DOUBLE KILL` or visible truncated variant `DOUBLE KI`
-- `7TH KILL` or visible truncated variant `7TH KO`
+## 5. What Not To Recommend
 
-### Category Mapping
+Do not recommend:
 
-```text
-multikill_text:
-- DOUBLE KILL
-- visible local seed: DOUBLE KI
-
-kill_count_text:
-- 4TH KILL
-- 7TH KILL
-- visible local seed: 7TH KO
-
-reward_banner:
-- UAV
-```
-
-### Explicit Exclusions
-
-- cosmetic overlays
-- generic scoreboard text
-- unrelated subtitles
-- broad killfeed names unless the signal is explicitly killfeed-driven
-
-### Ambiguous Candidates
-
-- `DOUBLE KI`: likely a truncated live `DOUBLE KILL` read, but not yet a clean full-string capture
-- `7TH KO`: likely a truncated or stylized kill-count read, but not yet a clean title-verified full-string capture
-
-### Negative Examples / False Positives
-
-- `medal.tv` watermark and branding in the clip frame
-- post-production overlays that might mimic in-game text
-- generic scoreboard or location labels such as `PLAZA` and `TOWER`
-
-### Source Quality Notes
-
-- current local evidence is strong enough to justify a text/banner packet
-- current local evidence is not strong enough to settle title-family truth or native-versus-overlay status on its own
-- outside packet work should focus on validating the visible signal family, not re-proving that the text exists in the local clip
-
-## 5. Recommendation
-
-State the exact action Codex should take next.
-
-Recommendation:
-
-- start with a narrow `reward_banner + kill_count_text` packet using `UAV`, `4TH KILL`, and `7TH KILL` as the cleanest visible local seeds
-- treat `DOUBLE KILL` as a secondary `multikill_text` candidate until a cleaner full-string frame is found
-- require the researcher to classify each signal as native UI, post-production overlay, or unresolved
+- `reward_banner` as the default next slice without new repeatability evidence
+- broad OCR expansion from the existing local `_PL_5qWwKtY` crops alone
+- overlay-adjacent lower-center text
+- a generic “text signals might work” packet without one chosen branch and one chosen reason
 
 ## 6. Acceptance Target
 
-The packet is good enough when Codex can use it to:
+This stub is only useful if a reopened packet lets Codex do one of these without guessing:
 
-1. choose a first text or banner signal family
-2. identify sample clips that visibly contain it
-3. decide whether the signal should route through OCR, template matching, or a mixed path
+1. reopen one text/banner family with new evidence-backed justification
+2. keep the branch retired because the evidence is still weaker than the current top-right anchor branch
 
-Concrete expected outcome:
+## 7. Bottom Line
 
-- Codex can choose whether the next implementation slice should target `reward_banner`, `kill_count_text`, or `multikill_text`
-- the next packet contains at least one clip-backed candidate for each promoted family
-- the packet explicitly resolves or escalates the native-versus-overlay ambiguity
+This is now a dormant branch.
 
-## 7. Open Uncertainties
+The active `call_of_duty` packet need is:
 
-```yaml
-- question: Are the visible `_PL_5qWwKtY` text surfaces native game UI or post-production overlays added by medal.tv?
-  blocks_implementation: true
-  recommended_next_step: Validate against outside gameplay references or a second local clip showing the same signal family without branded post-production.
-- question: Is `7TH KO` a truncated `7TH KILL`, a title-specific abbreviation, or a different overlay surface?
-  blocks_implementation: false
-  recommended_next_step: Find adjacent frames or outside references with a cleaner full-string read.
-- question: Does the current sample set contain enough clean `multikill_text` evidence to prioritize OCR or template work next?
-  blocks_implementation: false
-  recommended_next_step: Prefer `UAV` and `kill_count_text` as the first validation slice unless the researcher finds better clean multikill frames.
-```
-
-## Researcher Reminder
-
-Prefer:
-
-- live gameplay HUD frames
-- tight crops
-- visible text with timestamps
-- evidence about whether the signal is native game UI or post-production
-
-Avoid:
-
-- generic wiki pages without screenshots
-- broad gameplay compilations without timestamps
-- source sets that mention medals but do not show the actual visible signal
+- one discriminative top-right native event-card anchor
+- or explicit retirement of that family

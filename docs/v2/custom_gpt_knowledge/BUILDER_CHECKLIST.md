@@ -108,12 +108,14 @@ Optional upload after initial creation:
 
 ### Current Recommended First Real Task
 
-If the current repo blocker is still `call_of_duty` text or reward-banner signal visibility, use this as the first real GPT 1 task after the smoke test:
+If the current repo blocker is still the `call_of_duty` top-right anchor branch, use this as the first real GPT 1 task after the smoke test:
 
 ```text
-Fill out the call_of_duty text banner packet stub using the text banner packet brief and the supporting repo evidence.
+Use the call_of_duty top-right anchor researcher brief and supporting repo evidence to produce exactly one decision-ready packet.
+
 Return one decision-ready research packet for the next repo action.
-Focus on visible in-clip text or reward-banner signals, exact timestamps, crops, false positives, and the likely extraction method.
+Focus on one narrower discriminative anchor inside the top-right native event-card family.
+Include exact timestamps, crops, false positives, explicit exclusions, and why the recommended anchor is stronger than the failed shell anchor or weak OCR path.
 ```
 
 ### Conversation Starters
@@ -150,7 +152,7 @@ Pass criteria:
 Then run this packet-facing check:
 
 ```text
-Fill out the call_of_duty text banner packet stub using the text banner packet brief and the supporting repo evidence.
+Use the call_of_duty top-right anchor researcher brief and supporting repo evidence to produce exactly one decision-ready packet.
 
 Return exactly one decision-ready packet for one next repo action.
 Use an appendix only if overflow evidence is necessary.

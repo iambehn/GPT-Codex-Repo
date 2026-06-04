@@ -1779,3 +1779,22 @@ verification:
 
 notes:
 - this makes the stale-bundle rejection rule explicit on both the exporter side and the researcher packet-authoring side
+
+## 2026-06-05T14:28Z
+
+target:
+- custom-gpt `call_of_duty` packet prompt alignment with current blocker
+
+status:
+- completed
+
+result:
+- rewrote the dormant `CALL_OF_DUTY_TEXT_BANNER_PACKET_STUB.md` and `CALL_OF_DUTY_TEXT_BANNER_PACKET_BRIEF.md` so they no longer present `reward_banner` or generic text-banner work as the live next branch
+- updated `LAUNCH_SEQUENCE.md`, `BUILDER_CHECKLIST.md`, and `UPLOAD_ROUTING.md` so the researcher-facing default `call_of_duty` packet path now points to the top-right anchor brief
+- the text-banner files now act as dormant-branch references only, to be used if new evidence explicitly reopens that line
+
+verification:
+- not run; doc-only routing and prompt correction
+
+notes:
+- this removes another stale researcher entrypoint that could have recreated the retired `reward_banner` or text-banner-first branch

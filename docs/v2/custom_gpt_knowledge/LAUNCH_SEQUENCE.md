@@ -86,10 +86,10 @@ Default rule:
 - if the task is exploratory only, use the draft-note template
 - if the task is implementation-facing but still needs boundary stabilization, use the implementation-ticket template before asking for a direct Codex handoff
 
-Recommended default prompt when the current blocker is `call_of_duty` text or reward-banner visibility:
+Recommended default prompt when the current blocker is the `call_of_duty` top-right native event-card anchor:
 
 ```text
-Fill out the call_of_duty text banner packet stub using the text banner packet brief and the supporting repo evidence.
+Use the call_of_duty top-right anchor researcher brief and supporting repo evidence to produce exactly one decision-ready packet.
 
 Return a complete research packet with:
 - decision target
@@ -100,8 +100,8 @@ Return a complete research packet with:
 - acceptance target
 - open uncertainties
 
-Focus only on true visible in-clip text or reward-banner signals.
-Include exact timestamps, crops, extraction-method candidates, false positives, and whether each signal is native UI or overlay.
+Focus only on one narrower discriminative anchor inside the top-right native event-card family.
+Include exact timestamps, crops, explicit exclusions, why the failed shell anchor is insufficient, and whether the recommended anchor is native UI or overlay.
 ```
 
 Fallback generic prompt:
