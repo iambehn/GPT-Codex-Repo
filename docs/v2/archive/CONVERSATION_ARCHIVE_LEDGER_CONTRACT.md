@@ -13,6 +13,10 @@ Compact inspector:
 
 - `python3 run.py --inspect-conversation-archive-ledger outputs/conversation_archives/conversation_archive_ledger.json`
 
+Upload-prep helper:
+
+- `python3 run.py --prepare-conversation-archive-upload --ledger-path outputs/conversation_archives/conversation_archive_ledger.json --batch-id <batch_id>`
+
 Schema version:
 
 - `conversation_archive_ledger_v1`

@@ -1924,3 +1924,29 @@ verification:
 
 notes:
 - the archive workflow now has the same compact-inspector posture used by the repo's other ledger-driven operator surfaces
+
+## 2026-06-05T17:22Z
+
+target:
+- deterministic publication-prep helper for closed conversation archive batches
+
+status:
+- completed
+
+result:
+- added `tools/prepare_conversation_archive_upload.py`
+- added CLI support in `run.py` for `--prepare-conversation-archive-upload`
+- the helper now turns a `closed_pending_upload` ledger row into one upload-ready manifest with:
+  - batch markdown path
+  - suggested semantic-first Google Docs title
+  - suggested Drive folder path
+  - conversation/date-range summary
+- updated archive docs so the automation prompt and ledger contract point at the helper explicitly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_prepare_conversation_archive_upload tests.test_run.RunTests.test_run_prepare_conversation_archive_upload_emits_manifest`
+- `python3 run.py --run-repo-quality-health`
+- result: `OK` / `Ok: True`
+
+notes:
+- this closes the last local gap between closed archive batches and a deterministic Google Docs upload handoff

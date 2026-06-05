@@ -184,6 +184,7 @@ from tools.conversation_archive import (
     supersede_conversation_archive_batch,
 )
 from tools.inspect_conversation_archive_ledger import inspect_conversation_archive_ledger
+from tools.prepare_conversation_archive_upload import prepare_conversation_archive_upload
 
 try:
     from tools.inspect_detector_calibration_followup_report import inspect_detector_calibration_followup_report
@@ -2778,6 +2779,19 @@ def run_inspect_conversation_archive_ledger(
     )
 
 
+def run_prepare_conversation_archive_upload(
+    *,
+    ledger: str | Path,
+    batch_id: str,
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    return prepare_conversation_archive_upload(
+        ledger=ledger,
+        batch_id=batch_id,
+        output_path=output_path,
+    )
+
+
 def run_report_unresolved_derived_rows(
     draft_root: str | Path,
     *,
@@ -5106,6 +5120,11 @@ def main() -> int:
         help="Inspect one conversation archive ledger in a compact terminal view or raw JSON form.",
     )
     parser.add_argument(
+        "--prepare-conversation-archive-upload",
+        action="store_true",
+        help="Prepare one closed conversation archive batch for deterministic Google Docs upload using the local ledger and batch markdown.",
+    )
+    parser.add_argument(
         "--curation-profile",
         default="multikill",
         help="Curated wiki medal profile to apply. Defaults to 'multikill'.",
@@ -6002,6 +6021,14 @@ def main() -> int:
         result = run_inspect_conversation_archive_ledger(
             args.inspect_conversation_archive_ledger,
             emit_json=bool(args.emit_json),
+        )
+        return _print_cli_result(result)
+
+    if args.prepare_conversation_archive_upload:
+        result = run_prepare_conversation_archive_upload(
+            ledger=args.ledger_path,
+            batch_id=str(args.batch_id or "").strip(),
+            output_path=args.output_path,
         )
         return _print_cli_result(result)
 

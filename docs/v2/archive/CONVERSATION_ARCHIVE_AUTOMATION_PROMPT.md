@@ -12,7 +12,7 @@ Follow this workflow:
 2. capture one new conversation archive record for the current thread using the existing repo tooling
 3. assign exactly one primary topic and any helpful secondary tags
 4. append the record into the correct topic batch
-5. if a batch becomes `closed_pending_upload`, prepare it for Google Docs upload
+5. if a batch becomes `closed_pending_upload`, prepare it for Google Docs upload using `python3 run.py --prepare-conversation-archive-upload --ledger-path <ledger> --batch-id <batch_id>`
 6. if Google Docs upload is completed, update the local ledger with:
    - `drive_doc_id`
    - `drive_url`
