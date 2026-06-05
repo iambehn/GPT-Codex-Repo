@@ -284,8 +284,13 @@ def supersede_conversation_archive_batch(
     row = _find_batch_row(ledger, batch_id=batch_id)
     if row is None:
         return _failure("unknown_batch_id", f"batch_id not found: {batch_id}")
+    normalized_superseded_by = str(superseded_by).strip()
+    if not normalized_superseded_by:
+        return _failure("invalid_superseded_by", "superseded_by must be non-empty")
+    if normalized_superseded_by == batch_id:
+        return _failure("invalid_superseded_by", "superseded_by must not equal batch_id")
     row["status"] = "superseded"
-    row["superseded_by"] = str(superseded_by).strip()
+    row["superseded_by"] = normalized_superseded_by
     _finalize_ledger(ledger_target, ledger)
     return {
         "ok": True,

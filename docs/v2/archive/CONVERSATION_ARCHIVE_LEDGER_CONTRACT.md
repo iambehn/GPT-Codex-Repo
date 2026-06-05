@@ -92,6 +92,11 @@ Upload mark rule:
 - `drive_url` must be non-empty
 - `measured_pages` is optional but must be greater than zero when provided
 
+Supersede rule:
+
+- `superseded_by` must be non-empty
+- `superseded_by` must not equal the current `batch_id`
+
 ## Rebuild Rule
 
 If a batch is rebuilt or replaced:

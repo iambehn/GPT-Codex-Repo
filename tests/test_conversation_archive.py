@@ -243,6 +243,39 @@ class ConversationArchiveTests(unittest.TestCase):
             self.assertFalse(missing_url["ok"])
             self.assertEqual(missing_url["status"], "invalid_drive_url")
 
+    def test_supersede_rejects_empty_and_self_referential_replacement_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            ledger_path = root / "ledger.json"
+            record_path = root / "record.json"
+            record = record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Archive supersede flow",
+                body_markdown=_body_with_words(SOFT_CLOSE_THRESHOLD + 50),
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            batch = append_conversation_archive_batch(archive_record=record["output_path"], ledger_path=ledger_path)
+
+            empty_result = supersede_conversation_archive_batch(
+                batch_id=batch["batch_id"],
+                superseded_by="",
+                ledger_path=ledger_path,
+            )
+            self.assertFalse(empty_result["ok"])
+            self.assertEqual(empty_result["status"], "invalid_superseded_by")
+
+            self_result = supersede_conversation_archive_batch(
+                batch_id=batch["batch_id"],
+                superseded_by=batch["batch_id"],
+                ledger_path=ledger_path,
+            )
+            self.assertFalse(self_result["ok"])
+            self.assertEqual(self_result["status"], "invalid_superseded_by")
+
 
 if __name__ == "__main__":
     unittest.main()

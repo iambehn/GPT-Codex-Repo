@@ -345,6 +345,37 @@ class RunTests(unittest.TestCase):
             self.assertFalse(uploaded["ok"])
             self.assertEqual(uploaded["status"], "invalid_batch_status")
 
+    def test_run_supersede_conversation_archive_batch_rejects_empty_replacement_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            body_path = root / "conversation.md"
+            record_path = root / "record.json"
+            ledger_path = root / "ledger.json"
+            body_path.write_text(("automation dashboard backlog " * 39000).strip(), encoding="utf-8")
+
+            record = run_record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Operator workflow and automation archive",
+                body_path=body_path,
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            self.assertTrue(record["ok"])
+
+            batch = run_append_conversation_archive_batch(record["output_path"], ledger_path=ledger_path)
+            self.assertTrue(batch["ok"])
+
+            result = run_supersede_conversation_archive_batch(
+                batch_id=batch["batch_id"],
+                superseded_by="",
+                ledger_path=ledger_path,
+            )
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_superseded_by")
+
     def test_run_record_conversation_archive_returns_invalid_status_for_missing_body(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             result = run_record_conversation_archive(

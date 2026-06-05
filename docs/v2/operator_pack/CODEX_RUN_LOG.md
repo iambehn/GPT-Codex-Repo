@@ -2053,3 +2053,26 @@ verification:
 
 notes:
 - this reduces the chance of recording a false uploaded state before the external Drive import is actually complete
+
+## 2026-06-05T18:40Z
+
+target:
+- harden the archive supersede contract so replacement lineage cannot collapse into empty or self-referential values
+
+status:
+- completed
+
+result:
+- `supersede_conversation_archive_batch()` now fails closed unless:
+  - `superseded_by` is non-empty
+  - `superseded_by` does not equal the current `batch_id`
+- added archive unit coverage for empty and self-referential replacement ids
+- added one run-level regression for the empty replacement-id case
+- documented the supersede rule in the archive ledger contract
+
+verification:
+- `.venv/bin/python -m unittest tests.test_conversation_archive tests.test_run.RunTests.test_run_supersede_conversation_archive_batch_rejects_empty_replacement_id`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this keeps replacement lineage explicit and prevents a malformed supersede operation from mutating durable archive state
