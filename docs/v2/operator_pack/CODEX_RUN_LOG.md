@@ -1902,3 +1902,25 @@ verification:
 notes:
 - the desktop app currently allows only one active heartbeat automation per thread
 - the repo-side archive system is implemented, but the recurring archive worker remains constrained by that platform limit for thread-attached context capture
+
+## 2026-06-05T17:05Z
+
+target:
+- compact operator inspector for the conversation archive ledger
+
+status:
+- completed
+
+result:
+- added `tools/inspect_conversation_archive_ledger.py`
+- added CLI support in `run.py` for `--inspect-conversation-archive-ledger`
+- added focused tests for compact rendering, JSON mode, and invalid-ledger failure
+- linked the inspector from the archive ledger contract doc
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_ledger tests.test_run.RunTests.test_run_inspect_conversation_archive_ledger_renders_compact_summary`
+- `python3 run.py --run-repo-quality-health`
+- result: `OK` / `Ok: True`
+
+notes:
+- the archive workflow now has the same compact-inspector posture used by the repo's other ledger-driven operator surfaces

@@ -9,6 +9,10 @@ Local canonical ledger path:
 
 - `outputs/conversation_archives/conversation_archive_ledger.json`
 
+Compact inspector:
+
+- `python3 run.py --inspect-conversation-archive-ledger outputs/conversation_archives/conversation_archive_ledger.json`
+
 Schema version:
 
 - `conversation_archive_ledger_v1`

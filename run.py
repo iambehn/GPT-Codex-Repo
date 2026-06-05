@@ -183,6 +183,7 @@ from tools.conversation_archive import (
     record_conversation_archive,
     supersede_conversation_archive_batch,
 )
+from tools.inspect_conversation_archive_ledger import inspect_conversation_archive_ledger
 
 try:
     from tools.inspect_detector_calibration_followup_report import inspect_detector_calibration_followup_report
@@ -2766,6 +2767,17 @@ def run_supersede_conversation_archive_batch(
         }
 
 
+def run_inspect_conversation_archive_ledger(
+    ledger: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_conversation_archive_ledger(
+        ledger=ledger,
+        emit_json=emit_json,
+    )
+
+
 def run_report_unresolved_derived_rows(
     draft_root: str | Path,
     *,
@@ -5089,6 +5101,11 @@ def main() -> int:
         help="Mark one conversation archive batch as superseded by a replacement batch id.",
     )
     parser.add_argument(
+        "--inspect-conversation-archive-ledger",
+        metavar="PATH",
+        help="Inspect one conversation archive ledger in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
         "--curation-profile",
         default="multikill",
         help="Curated wiki medal profile to apply. Defaults to 'multikill'.",
@@ -5978,6 +5995,13 @@ def main() -> int:
             batch_id=str(args.batch_id or "").strip(),
             superseded_by=str(args.superseded_by or "").strip(),
             ledger_path=args.ledger_path,
+        )
+        return _print_cli_result(result)
+
+    if args.inspect_conversation_archive_ledger:
+        result = run_inspect_conversation_archive_ledger(
+            args.inspect_conversation_archive_ledger,
+            emit_json=bool(args.emit_json),
         )
         return _print_cli_result(result)
 
