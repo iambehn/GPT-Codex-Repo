@@ -25,6 +25,10 @@ Upload-manifest inspector:
 
 - `python3 run.py --inspect-conversation-archive-upload-manifest <upload_manifest_path>`
 
+Publication-queue report:
+
+- `python3 run.py --report-conversation-archive-publication-queue outputs/conversation_archives/conversation_archive_ledger.json`
+
 Schema version:
 
 - `conversation_archive_ledger_v1`

@@ -2008,3 +2008,24 @@ verification:
 notes:
 - the repo-side archive publication path is locally complete through upload-ready source material
 - the next external step is to refresh Google Drive authentication, then retry `_import_document` on the prepared text source
+
+## 2026-06-05T18:15Z
+
+target:
+- expose the existing archive publication-queue reporter through the canonical runner surface
+
+status:
+- completed
+
+result:
+- wired `tools/report_conversation_archive_publication_queue.py` into `run.py`
+- added CLI support for `--report-conversation-archive-publication-queue`
+- added one run-level regression covering the ready-for-import path
+- updated the archive ledger contract doc with the publication-queue command
+
+verification:
+- `.venv/bin/python -m unittest tests.test_report_conversation_archive_publication_queue tests.test_run.RunTests.test_run_report_conversation_archive_publication_queue_renders_ready_status`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this closes the local operator gap between raw archive ledger state and the external Drive import step

@@ -55,6 +55,7 @@ from run import (
     run_materialize_conversation_archive_doc_source,
     run_prepare_conversation_archive_upload,
     run_record_conversation_archive,
+    run_report_conversation_archive_publication_queue,
     run_refresh_clip_registry,
     run_prepare_proxy_review,
     run_scan_chat_log,
@@ -444,6 +445,42 @@ class RunTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertIn("Drive folder:", result["rendered_output"])
             self.assertIn("Doc title:", result["rendered_output"])
+
+    def test_run_report_conversation_archive_publication_queue_renders_ready_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            body_path = root / "conversation.md"
+            record_path = root / "record.json"
+            ledger_path = root / "ledger.json"
+            body_path.write_text(("automation dashboard backlog " * 39000).strip(), encoding="utf-8")
+
+            record = run_record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Operator workflow and automation archive",
+                body_path=body_path,
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            self.assertTrue(record["ok"])
+            batch = run_append_conversation_archive_batch(record["output_path"], ledger_path=ledger_path)
+            self.assertTrue(batch["ok"])
+            upload = run_prepare_conversation_archive_upload(
+                ledger=ledger_path,
+                batch_id=batch["batch_id"],
+            )
+            self.assertTrue(upload["ok"])
+            source = run_materialize_conversation_archive_doc_source(
+                upload_manifest=upload["output_path"],
+            )
+            self.assertTrue(source["ok"])
+
+            result = run_report_conversation_archive_publication_queue(ledger_path)
+            self.assertTrue(result["ok"])
+            self.assertIn("ready_for_drive_import", result["rendered_output"])
+            self.assertIn(batch["batch_id"], result["rendered_output"])
 
     def test_run_export_wiki_research_packet_returns_semantic_identity_fields(self) -> None:
         helper = WikiMedalCurationTests()

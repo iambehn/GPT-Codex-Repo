@@ -187,6 +187,7 @@ from tools.inspect_conversation_archive_ledger import inspect_conversation_archi
 from tools.inspect_conversation_archive_upload_manifest import inspect_conversation_archive_upload_manifest
 from tools.materialize_conversation_archive_doc_source import materialize_conversation_archive_doc_source
 from tools.prepare_conversation_archive_upload import prepare_conversation_archive_upload
+from tools.report_conversation_archive_publication_queue import report_conversation_archive_publication_queue
 
 try:
     from tools.inspect_detector_calibration_followup_report import inspect_detector_calibration_followup_report
@@ -2816,6 +2817,17 @@ def run_materialize_conversation_archive_doc_source(
     )
 
 
+def run_report_conversation_archive_publication_queue(
+    ledger: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return report_conversation_archive_publication_queue(
+        ledger=ledger,
+        emit_json=emit_json,
+    )
+
+
 def run_report_unresolved_derived_rows(
     draft_root: str | Path,
     *,
@@ -5160,6 +5172,11 @@ def main() -> int:
         help="Render one Google Docs-importable text source plus metadata from a prepared conversation archive upload manifest.",
     )
     parser.add_argument(
+        "--report-conversation-archive-publication-queue",
+        metavar="PATH",
+        help="Report which conversation archive batches are ready for Drive import, missing prep artifacts, or already published.",
+    )
+    parser.add_argument(
         "--curation-profile",
         default="multikill",
         help="Curated wiki medal profile to apply. Defaults to 'multikill'.",
@@ -6078,6 +6095,13 @@ def main() -> int:
         result = run_materialize_conversation_archive_doc_source(
             upload_manifest=args.upload_manifest,
             output_root=args.output_path,
+        )
+        return _print_cli_result(result)
+
+    if args.report_conversation_archive_publication_queue:
+        result = run_report_conversation_archive_publication_queue(
+            args.report_conversation_archive_publication_queue,
+            emit_json=bool(getattr(args, "emit_json", False)),
         )
         return _print_cli_result(result)
 
