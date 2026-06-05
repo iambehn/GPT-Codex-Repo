@@ -107,6 +107,15 @@ class InspectConversationArchiveLedgerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "ledger missing required fields"):
                 inspect_conversation_archive_ledger(ledger=ledger_path)
 
+    def test_invalid_ledger_schema_version_fails_clearly(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ledger_path = Path(tempdir) / "ledger.json"
+            payload = _ledger_payload(rows=[_ledger_row()])
+            payload["schema_version"] = "wrong_schema"
+            ledger_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "ledger schema_version is invalid"):
+                inspect_conversation_archive_ledger(ledger=ledger_path)
+
     def test_main_returns_error_code_for_invalid_ledger(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             ledger_path = Path(tempdir) / "ledger.json"

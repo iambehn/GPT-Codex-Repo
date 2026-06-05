@@ -2160,3 +2160,22 @@ verification:
 
 notes:
 - this keeps upload-manifest generation aligned with the same fail-closed archive contract used by inspection and doc-source materialization
+
+## 2026-06-06T09:10Z
+
+target:
+- harden the archive ledger inspector so it rejects wrong-schema payloads explicitly instead of relying only on missing-field checks
+
+status:
+- completed
+
+result:
+- `inspect_conversation_archive_ledger()` now validates `schema_version` explicitly against `conversation_archive_ledger_v1`
+- added focused coverage proving a wrong-schema ledger payload fails clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_ledger`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns the ledger inspector with the same explicit schema-check posture now used across the archive inspection and publication helpers
