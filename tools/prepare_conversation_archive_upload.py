@@ -45,7 +45,41 @@ def prepare_conversation_archive_upload(
             "ledger_path": str(ledger_path),
             "batch_id": batch_id,
         }
-    batch_markdown_path = _resolve_path(str(row.get("local_batch_markdown_path") or "").strip())
+    if not isinstance(row.get("conversation_ids"), list):
+        return {
+            "ok": False,
+            "status": "invalid_batch_shape",
+            "error": "conversation_ids must be a list",
+            "ledger_path": str(ledger_path),
+            "batch_id": batch_id,
+        }
+    if not isinstance(row.get("record_paths"), list):
+        return {
+            "ok": False,
+            "status": "invalid_batch_shape",
+            "error": "record_paths must be a list",
+            "ledger_path": str(ledger_path),
+            "batch_id": batch_id,
+        }
+    topic = str(row.get("topic") or "").strip()
+    if not topic:
+        return {
+            "ok": False,
+            "status": "invalid_batch_shape",
+            "error": "topic must be non-empty",
+            "ledger_path": str(ledger_path),
+            "batch_id": batch_id,
+        }
+    batch_markdown_value = str(row.get("local_batch_markdown_path") or "").strip()
+    if not batch_markdown_value:
+        return {
+            "ok": False,
+            "status": "invalid_batch_shape",
+            "error": "local_batch_markdown_path must be non-empty",
+            "ledger_path": str(ledger_path),
+            "batch_id": batch_id,
+        }
+    batch_markdown_path = _resolve_path(batch_markdown_value)
     if not batch_markdown_path.exists():
         return {
             "ok": False,
@@ -55,7 +89,6 @@ def prepare_conversation_archive_upload(
             "batch_id": batch_id,
         }
 
-    topic = str(row.get("topic") or "").strip()
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "prepared_at": _utc_now(),

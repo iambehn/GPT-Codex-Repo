@@ -2137,3 +2137,26 @@ verification:
 
 notes:
 - this keeps the doc-source generation contract aligned with the fail-closed posture already applied to the other archive publication steps
+
+## 2026-06-06T06:10Z
+
+target:
+- harden archive upload preparation so malformed ledger-row shapes fail before manifest generation
+
+status:
+- completed
+
+result:
+- `prepare_conversation_archive_upload()` now validates:
+  - `conversation_ids` is a list
+  - `record_paths` is a list
+  - `topic` is non-empty
+  - `local_batch_markdown_path` is non-empty
+- added focused coverage proving malformed ledger-row shape fails with `invalid_batch_shape`
+
+verification:
+- `.venv/bin/python -m unittest tests.test_prepare_conversation_archive_upload`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this keeps upload-manifest generation aligned with the same fail-closed archive contract used by inspection and doc-source materialization
