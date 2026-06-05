@@ -1977,3 +1977,34 @@ verification:
 
 notes:
 - the repo now has a complete local path from conversation archive record to Google Docs-importable source material
+
+## 2026-06-05T17:55Z
+
+target:
+- real Google Docs import check for the archive publication path plus upload-manifest inspection support
+
+status:
+- partial_external_blocker
+
+result:
+- exercised the local publication path against a real demo archive batch:
+  - created demo archive records
+  - created a `closed_pending_upload` exception batch
+  - prepared an upload manifest
+  - materialized a Google Docs-importable text source
+- attempted a real Google Drive import from the generated text source
+- the Drive import failed with external auth error:
+  - `token_expired`
+  - `Provided authentication token is expired. Please try signing in again.`
+- added `tools/inspect_conversation_archive_upload_manifest.py`
+- added CLI support in `run.py` for `--inspect-conversation-archive-upload-manifest`
+- updated the archive ledger contract doc to include the upload-manifest inspector
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_upload_manifest tests.test_run.RunTests.test_run_inspect_conversation_archive_upload_manifest_renders_compact_summary`
+- `python3 run.py --run-repo-quality-health`
+- result: `OK` / `Ok: True`
+
+notes:
+- the repo-side archive publication path is locally complete through upload-ready source material
+- the next external step is to refresh Google Drive authentication, then retry `_import_document` on the prepared text source

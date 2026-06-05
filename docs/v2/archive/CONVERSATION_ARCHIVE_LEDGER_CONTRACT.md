@@ -21,6 +21,10 @@ Google Docs source materializer:
 
 - `python3 run.py --materialize-conversation-archive-doc-source --upload-manifest <upload_manifest_path>`
 
+Upload-manifest inspector:
+
+- `python3 run.py --inspect-conversation-archive-upload-manifest <upload_manifest_path>`
+
 Schema version:
 
 - `conversation_archive_ledger_v1`

@@ -184,6 +184,7 @@ from tools.conversation_archive import (
     supersede_conversation_archive_batch,
 )
 from tools.inspect_conversation_archive_ledger import inspect_conversation_archive_ledger
+from tools.inspect_conversation_archive_upload_manifest import inspect_conversation_archive_upload_manifest
 from tools.materialize_conversation_archive_doc_source import materialize_conversation_archive_doc_source
 from tools.prepare_conversation_archive_upload import prepare_conversation_archive_upload
 
@@ -2780,6 +2781,17 @@ def run_inspect_conversation_archive_ledger(
     )
 
 
+def run_inspect_conversation_archive_upload_manifest(
+    manifest: str | Path,
+    *,
+    emit_json: bool = False,
+) -> dict[str, Any]:
+    return inspect_conversation_archive_upload_manifest(
+        manifest=manifest,
+        emit_json=emit_json,
+    )
+
+
 def run_prepare_conversation_archive_upload(
     *,
     ledger: str | Path,
@@ -5133,6 +5145,11 @@ def main() -> int:
         help="Inspect one conversation archive ledger in a compact terminal view or raw JSON form.",
     )
     parser.add_argument(
+        "--inspect-conversation-archive-upload-manifest",
+        metavar="PATH",
+        help="Inspect one prepared conversation archive upload manifest in a compact terminal view or raw JSON form.",
+    )
+    parser.add_argument(
         "--prepare-conversation-archive-upload",
         action="store_true",
         help="Prepare one closed conversation archive batch for deterministic Google Docs upload using the local ledger and batch markdown.",
@@ -6038,7 +6055,14 @@ def main() -> int:
     if args.inspect_conversation_archive_ledger:
         result = run_inspect_conversation_archive_ledger(
             args.inspect_conversation_archive_ledger,
-            emit_json=bool(args.emit_json),
+            emit_json=bool(getattr(args, "emit_json", False)),
+        )
+        return _print_cli_result(result)
+
+    if args.inspect_conversation_archive_upload_manifest:
+        result = run_inspect_conversation_archive_upload_manifest(
+            args.inspect_conversation_archive_upload_manifest,
+            emit_json=bool(getattr(args, "emit_json", False)),
         )
         return _print_cli_result(result)
 
