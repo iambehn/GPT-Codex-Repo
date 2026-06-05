@@ -177,6 +177,12 @@ from pipeline.training_export import export_training_data
 from pipeline.v2_training_export import export_v2_training_datasets
 from pipeline.unified_replay_viewer import render_unified_replay_viewer
 from pipeline.wiki_enrichment import WikiFetchError, WikiSource, enrich_game_from_sources, enrich_game_from_wiki
+from tools.conversation_archive import (
+    append_conversation_archive_batch,
+    mark_conversation_archive_uploaded,
+    record_conversation_archive,
+    supersede_conversation_archive_batch,
+)
 
 try:
     from tools.inspect_detector_calibration_followup_report import inspect_detector_calibration_followup_report
@@ -2657,6 +2663,109 @@ def run_export_wiki_research_packet(
         }
 
 
+def run_record_conversation_archive(
+    *,
+    source_thread_id: str,
+    agent_name: str,
+    started_at: str,
+    ended_at: str,
+    summary: str,
+    body_path: str | Path,
+    primary_topic: str | None = None,
+    secondary_topics: list[str] | None = None,
+    repo_refs: list[str] | None = None,
+    archivable_status: str = "ready",
+    output_path: str | Path | None = None,
+) -> dict[str, Any]:
+    try:
+        body_markdown = Path(body_path).read_text(encoding="utf-8")
+        return record_conversation_archive(
+            source_thread_id=source_thread_id,
+            agent_name=agent_name,
+            started_at=started_at,
+            ended_at=ended_at,
+            summary=summary,
+            body_markdown=body_markdown,
+            primary_topic=primary_topic,
+            secondary_topics=secondary_topics,
+            repo_refs=repo_refs,
+            archivable_status=archivable_status,
+            output_path=output_path,
+        )
+    except (ValueError, TypeError, FileNotFoundError, json.JSONDecodeError) as exc:
+        return {
+            "ok": False,
+            "status": "invalid_conversation_archive_record",
+            "body_path": str(body_path),
+            "error": str(exc),
+        }
+
+
+def run_append_conversation_archive_batch(
+    archive_record: str | Path,
+    *,
+    ledger_path: str | Path | None = None,
+) -> dict[str, Any]:
+    try:
+        return append_conversation_archive_batch(
+            archive_record=archive_record,
+            ledger_path=ledger_path,
+        )
+    except (ValueError, TypeError, FileNotFoundError, json.JSONDecodeError) as exc:
+        return {
+            "ok": False,
+            "status": "invalid_conversation_archive_batch_append",
+            "archive_record": str(archive_record),
+            "error": str(exc),
+        }
+
+
+def run_mark_conversation_archive_uploaded(
+    *,
+    batch_id: str,
+    drive_doc_id: str,
+    drive_url: str,
+    ledger_path: str | Path | None = None,
+    measured_pages: float | None = None,
+) -> dict[str, Any]:
+    try:
+        return mark_conversation_archive_uploaded(
+            batch_id=batch_id,
+            drive_doc_id=drive_doc_id,
+            drive_url=drive_url,
+            ledger_path=ledger_path,
+            measured_pages=measured_pages,
+        )
+    except (ValueError, TypeError, FileNotFoundError, json.JSONDecodeError) as exc:
+        return {
+            "ok": False,
+            "status": "invalid_conversation_archive_upload_mark",
+            "batch_id": batch_id,
+            "error": str(exc),
+        }
+
+
+def run_supersede_conversation_archive_batch(
+    *,
+    batch_id: str,
+    superseded_by: str,
+    ledger_path: str | Path | None = None,
+) -> dict[str, Any]:
+    try:
+        return supersede_conversation_archive_batch(
+            batch_id=batch_id,
+            superseded_by=superseded_by,
+            ledger_path=ledger_path,
+        )
+    except (ValueError, TypeError, FileNotFoundError, json.JSONDecodeError) as exc:
+        return {
+            "ok": False,
+            "status": "invalid_conversation_archive_batch_supersede",
+            "batch_id": batch_id,
+            "error": str(exc),
+        }
+
+
 def run_report_unresolved_derived_rows(
     draft_root: str | Path,
     *,
@@ -4341,6 +4450,22 @@ def main() -> int:
     parser.add_argument("--account-id", metavar="ID", help="Optional account identifier used by post and analytics commands.")
     parser.add_argument("--evidence-mode", metavar="MODE", help="Optional evidence-mode filter used by V2 dataset export and registry query commands.")
     parser.add_argument("--source-root", action="append", metavar="PATH", help="Optional source root used by --import-real-posted-lineage. May be repeated.")
+    parser.add_argument("--body-path", metavar="PATH", help="Optional body markdown path used by --record-conversation-archive.")
+    parser.add_argument("--source-thread-id", metavar="ID", help="Optional source thread identifier used by conversation archive commands.")
+    parser.add_argument("--agent-name", metavar="NAME", help="Optional agent name used by conversation archive commands.")
+    parser.add_argument("--started-at", metavar="ISO8601", help="Optional started-at timestamp used by conversation archive commands.")
+    parser.add_argument("--ended-at", metavar="ISO8601", help="Optional ended-at timestamp used by conversation archive commands.")
+    parser.add_argument("--summary", metavar="TEXT", help="Optional summary text used by conversation archive commands and summary-based inspectors.")
+    parser.add_argument("--primary-topic", metavar="TOPIC", help="Optional primary topic used by conversation archive commands.")
+    parser.add_argument("--secondary-topic", action="append", metavar="TOPIC", help="Optional repeated secondary topic used by --record-conversation-archive.")
+    parser.add_argument("--repo-ref", action="append", metavar="REF", help="Optional repeated repo/workstream reference used by --record-conversation-archive.")
+    parser.add_argument("--archivable-status", metavar="STATUS", help="Optional archive status used by --record-conversation-archive.")
+    parser.add_argument("--archive-record", metavar="PATH", help="Optional archive record path used by --append-conversation-archive-batch.")
+    parser.add_argument("--ledger-path", metavar="PATH", help="Optional conversation archive ledger path.")
+    parser.add_argument("--drive-doc-id", metavar="ID", help="Optional Google Docs document id used by --mark-conversation-archive-uploaded.")
+    parser.add_argument("--drive-url", metavar="URL", help="Optional Google Docs URL used by --mark-conversation-archive-uploaded.")
+    parser.add_argument("--measured-pages", metavar="N", type=float, help="Optional measured page count used by --mark-conversation-archive-uploaded.")
+    parser.add_argument("--superseded-by", metavar="BATCH_ID", help="Optional replacement batch id used by --supersede-conversation-archive-batch.")
     parser.add_argument("--intake-root", metavar="PATH", help="Optional canonical intake root used by --validate-real-artifact-intake and --refresh-real-artifact-intake.")
     parser.add_argument("--bundle-name", metavar="NAME", help="Optional bundle name used by real-artifact intake bootstrap commands.")
     parser.add_argument("--has-disagreement", action="store_true", help="Optional disagreement filter used by --query-clip-registry.")
@@ -4372,6 +4497,7 @@ def main() -> int:
     parser.add_argument("--gpt-repo", metavar="PATH", help="Optional GPT review repo path used by proxy review bridge commands.")
     parser.add_argument("--session-name", metavar="NAME", help="Optional session name used by --prepare-proxy-review.")
     parser.add_argument("--dataset-manifest", metavar="PATH", help="Dataset manifest path used by shadow replay commands.")
+    parser.add_argument("--batch-id", metavar="ID", help="Optional batch identifier used by conversation archive commands.")
     parser.add_argument("--model-path", metavar="PATH", help="Optional model adapter path used by --run-shadow-ranking-replay.")
     parser.add_argument("--model-family", metavar="NAME", help="Optional model-family label used by --run-shadow-ranking-replay.")
     parser.add_argument("--model-version", metavar="NAME", help="Optional model-version label used by shadow replay commands.")
@@ -4941,6 +5067,26 @@ def main() -> int:
         "--export-wiki-research-packet",
         metavar="WIKI_DRAFT_ROOT",
         help="Export one wiki or wiki_curated bundle into semantic-first researcher handoff files, including packet identity and first-send guidance, without renaming canonical bundle files.",
+    )
+    parser.add_argument(
+        "--record-conversation-archive",
+        action="store_true",
+        help="Record one completed or paused agent conversation into the local conversation archive record format.",
+    )
+    parser.add_argument(
+        "--append-conversation-archive-batch",
+        action="store_true",
+        help="Append one archived conversation record into the open topic batch, rotating when thresholds require it.",
+    )
+    parser.add_argument(
+        "--mark-conversation-archive-uploaded",
+        action="store_true",
+        help="Mark one conversation archive batch as uploaded to Google Docs and store the Drive identifiers in the ledger.",
+    )
+    parser.add_argument(
+        "--supersede-conversation-archive-batch",
+        action="store_true",
+        help="Mark one conversation archive batch as superseded by a replacement batch id.",
     )
     parser.add_argument(
         "--curation-profile",
@@ -5793,6 +5939,47 @@ def main() -> int:
     )
     if onboarding_analysis_exit is not None:
         return onboarding_analysis_exit
+
+    if args.record_conversation_archive:
+        result = run_record_conversation_archive(
+            source_thread_id=str(args.source_thread_id or "").strip(),
+            agent_name=str(args.agent_name or "").strip(),
+            started_at=str(args.started_at or "").strip(),
+            ended_at=str(args.ended_at or "").strip(),
+            summary=str(args.summary or "").strip(),
+            body_path=args.body_path,
+            primary_topic=args.primary_topic,
+            secondary_topics=list(args.secondary_topic or []),
+            repo_refs=list(args.repo_ref or []),
+            archivable_status=str(args.archivable_status or "ready").strip() or "ready",
+            output_path=args.output_path,
+        )
+        return _print_cli_result(result)
+
+    if args.append_conversation_archive_batch:
+        result = run_append_conversation_archive_batch(
+            args.archive_record,
+            ledger_path=args.ledger_path,
+        )
+        return _print_cli_result(result)
+
+    if args.mark_conversation_archive_uploaded:
+        result = run_mark_conversation_archive_uploaded(
+            batch_id=str(args.batch_id or "").strip(),
+            drive_doc_id=str(args.drive_doc_id or "").strip(),
+            drive_url=str(args.drive_url or "").strip(),
+            ledger_path=args.ledger_path,
+            measured_pages=args.measured_pages,
+        )
+        return _print_cli_result(result)
+
+    if args.supersede_conversation_archive_batch:
+        result = run_supersede_conversation_archive_batch(
+            batch_id=str(args.batch_id or "").strip(),
+            superseded_by=str(args.superseded_by or "").strip(),
+            ledger_path=args.ledger_path,
+        )
+        return _print_cli_result(result)
 
     parser.print_help()
     return 0

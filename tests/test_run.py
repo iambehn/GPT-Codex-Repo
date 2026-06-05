@@ -36,6 +36,7 @@ from run import (
     run_audit_pipeline_contracts,
     run_apply_proxy_review,
     run_apply_onboarding_identity_review,
+    run_append_conversation_archive_batch,
     run_cleanup_proxy_review,
     run_cleanup_onboarding_identity_review,
     run_create_workflow_run,
@@ -50,11 +51,14 @@ from run import (
     run_summarize_derived_row_review,
     run_validate_onboarding_publish,
     run_query_clip_registry,
+    run_mark_conversation_archive_uploaded,
+    run_record_conversation_archive,
     run_refresh_clip_registry,
     run_prepare_proxy_review,
     run_scan_chat_log,
     run_scan_vod,
     run_scan_vod_batch,
+    run_supersede_conversation_archive_batch,
 )
 
 
@@ -258,6 +262,62 @@ class RunTests(unittest.TestCase):
             result = run_export_wiki_research_packet(Path(tempdir))
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_wiki_research_packet_export")
+
+    def test_run_conversation_archive_flow_records_batches_and_marks_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            body_path = root / "conversation.md"
+            record_path = root / "record.json"
+            ledger_path = root / "ledger.json"
+            body_path.write_text("automation dashboard backlog " * 200, encoding="utf-8")
+
+            record = run_record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Operator workflow and automation archive",
+                body_path=body_path,
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            self.assertTrue(record["ok"])
+
+            batch = run_append_conversation_archive_batch(record["output_path"], ledger_path=ledger_path)
+            self.assertTrue(batch["ok"])
+
+            uploaded = run_mark_conversation_archive_uploaded(
+                batch_id=batch["batch_id"],
+                drive_doc_id="doc-123",
+                drive_url="https://docs.google.com/document/d/doc-123",
+                ledger_path=ledger_path,
+                measured_pages=400.0,
+            )
+            self.assertTrue(uploaded["ok"])
+
+            superseded = run_supersede_conversation_archive_batch(
+                batch_id=batch["batch_id"],
+                superseded_by="operator_workflows_and_automation__batch__replacement",
+                ledger_path=ledger_path,
+            )
+            self.assertTrue(superseded["ok"])
+
+            ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+            self.assertEqual(ledger["rows"][0]["status"], "superseded")
+
+    def test_run_record_conversation_archive_returns_invalid_status_for_missing_body(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            result = run_record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Missing body",
+                body_path=Path(tempdir) / "missing.md",
+                primary_topic="operator_workflows_and_automation",
+            )
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_conversation_archive_record")
 
     def test_run_export_wiki_research_packet_returns_semantic_identity_fields(self) -> None:
         helper = WikiMedalCurationTests()

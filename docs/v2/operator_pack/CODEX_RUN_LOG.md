@@ -1871,3 +1871,34 @@ verification:
 
 notes:
 - this removes one remaining operator-pack mismatch and one remaining historical handoff that still read like current guidance
+
+## 2026-06-05T16:40Z
+
+target:
+- bounded Codex heartbeat implementation plus local conversation archive contract
+
+status:
+- completed
+
+result:
+- added a local conversation archive toolchain with:
+  - archive record capture
+  - topic-batch append and rotation
+  - local archive ledger persistence
+  - uploaded/superseded batch state updates
+- added durable operator/archive docs for:
+  - heartbeat stop/defer rules
+  - conversation archive batching policy
+  - archive topic taxonomy
+  - archive ledger contract
+  - heartbeat and archive automation prompts
+- created one active thread heartbeat automation for bounded local repo work
+
+verification:
+- `.venv/bin/python -m unittest tests.test_conversation_archive tests.test_run.RunTests.test_run_conversation_archive_flow_records_batches_and_marks_upload tests.test_run.RunTests.test_run_record_conversation_archive_returns_invalid_status_for_missing_body`
+- `python3 run.py --run-repo-quality-health`
+- result: `OK` / `Ok: True`
+
+notes:
+- the desktop app currently allows only one active heartbeat automation per thread
+- the repo-side archive system is implemented, but the recurring archive worker remains constrained by that platform limit for thread-attached context capture

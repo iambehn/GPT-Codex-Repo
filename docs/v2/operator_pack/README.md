@@ -15,6 +15,8 @@ Use these files to keep Codex work phase-aware, inspectable, and autonomous with
 - `PIPELINE_CONTRACTS.md`: minimal stage contracts and validation levels
 - `OPEN_QUESTIONS.md`: unresolved P0 and P1 decisions that block or shape execution
 - `FAILURE_TAXONOMY.md`: seed failure modes and required escalation behavior
+- `CODEX_HEARTBEAT_AUTOMATION_POLICY.md`: the bounded recurring Codex automation rules
+- `CODEX_HEARTBEAT_AUTOMATION_PROMPT.md`: the prompt text for the recurring heartbeat automation
 
 This pack is intentionally compact. It is not a duplicate architecture doc.
 
