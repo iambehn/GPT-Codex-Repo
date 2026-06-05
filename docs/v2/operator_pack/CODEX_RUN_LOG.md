@@ -2114,3 +2114,26 @@ verification:
 
 notes:
 - this keeps archive inspection aligned with the same explicit schema checks already enforced by the materialization path
+
+## 2026-06-06T03:10Z
+
+target:
+- harden the archive doc-source materializer so upload-manifest type errors fail clearly before file generation
+
+status:
+- completed
+
+result:
+- `materialize_conversation_archive_doc_source()` now validates:
+  - `conversation_ids` is a list
+  - `batch_markdown_path` is non-empty
+  - `suggested_drive_folder` is non-empty
+  - `suggested_doc_title` is non-empty
+- added focused coverage proving malformed upload-manifest field types fail before materialization
+
+verification:
+- `.venv/bin/python -m unittest tests.test_materialize_conversation_archive_doc_source`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this keeps the doc-source generation contract aligned with the fail-closed posture already applied to the other archive publication steps
