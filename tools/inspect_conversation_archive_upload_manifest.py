@@ -10,6 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+EXPECTED_SCHEMA_VERSION = "conversation_archive_upload_manifest_v1"
 REQUIRED_TOP_LEVEL_FIELDS = (
     "schema_version",
     "prepared_at",
@@ -83,6 +84,8 @@ def _render_compact_text(manifest_path: Path, payload: dict[str, Any]) -> str:
 def _validate_manifest_payload(payload: dict[str, Any]) -> None:
     if not isinstance(payload, dict):
         raise ValueError("upload manifest payload must be a mapping")
+    if str(payload.get("schema_version") or "").strip() != EXPECTED_SCHEMA_VERSION:
+        raise ValueError("upload manifest schema_version is invalid")
     missing = [field for field in REQUIRED_TOP_LEVEL_FIELDS if field not in payload]
     if missing:
         raise ValueError(f"upload manifest missing required fields: {', '.join(missing)}")

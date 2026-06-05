@@ -2095,3 +2095,22 @@ verification:
 
 notes:
 - this keeps the publication queue readable when rebuilt or replaced batches are still present in durable ledger history
+
+## 2026-06-06T00:10Z
+
+target:
+- harden the archive upload-manifest inspector so it rejects wrong-schema payloads instead of only checking field presence
+
+status:
+- completed
+
+result:
+- `inspect_conversation_archive_upload_manifest()` now validates `schema_version` explicitly against `conversation_archive_upload_manifest_v1`
+- added focused coverage proving a wrong-schema payload fails clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_upload_manifest`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this keeps archive inspection aligned with the same explicit schema checks already enforced by the materialization path
