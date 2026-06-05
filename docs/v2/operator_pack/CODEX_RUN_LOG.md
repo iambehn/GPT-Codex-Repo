@@ -1950,3 +1950,30 @@ verification:
 
 notes:
 - this closes the last local gap between closed archive batches and a deterministic Google Docs upload handoff
+
+## 2026-06-05T17:36Z
+
+target:
+- Google Docs source materializer for prepared conversation archive uploads
+
+status:
+- completed
+
+result:
+- added `tools/materialize_conversation_archive_doc_source.py`
+- added CLI support in `run.py` for `--materialize-conversation-archive-doc-source`
+- the helper now converts a prepared archive upload manifest into:
+  - one Google Docs-importable text source
+  - one doc-source manifest carrying the suggested title and folder routing
+- updated archive docs so the automation flow now points at:
+  - upload manifest preparation
+  - doc-source materialization
+  - then Drive import
+
+verification:
+- `.venv/bin/python -m unittest tests.test_materialize_conversation_archive_doc_source tests.test_run.RunTests.test_run_materialize_conversation_archive_doc_source_emits_text_file`
+- `python3 run.py --run-repo-quality-health`
+- result: `OK` / `Ok: True`
+
+notes:
+- the repo now has a complete local path from conversation archive record to Google Docs-importable source material

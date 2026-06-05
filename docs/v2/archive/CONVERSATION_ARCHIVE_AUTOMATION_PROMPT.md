@@ -13,7 +13,8 @@ Follow this workflow:
 3. assign exactly one primary topic and any helpful secondary tags
 4. append the record into the correct topic batch
 5. if a batch becomes `closed_pending_upload`, prepare it for Google Docs upload using `python3 run.py --prepare-conversation-archive-upload --ledger-path <ledger> --batch-id <batch_id>`
-6. if Google Docs upload is completed, update the local ledger with:
+6. materialize an importable text source using `python3 run.py --materialize-conversation-archive-doc-source --upload-manifest <upload_manifest>`
+7. if Google Docs upload is completed, update the local ledger with:
    - `drive_doc_id`
    - `drive_url`
    - `measured_pages` when available

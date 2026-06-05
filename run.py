@@ -184,6 +184,7 @@ from tools.conversation_archive import (
     supersede_conversation_archive_batch,
 )
 from tools.inspect_conversation_archive_ledger import inspect_conversation_archive_ledger
+from tools.materialize_conversation_archive_doc_source import materialize_conversation_archive_doc_source
 from tools.prepare_conversation_archive_upload import prepare_conversation_archive_upload
 
 try:
@@ -2792,6 +2793,17 @@ def run_prepare_conversation_archive_upload(
     )
 
 
+def run_materialize_conversation_archive_doc_source(
+    *,
+    upload_manifest: str | Path,
+    output_root: str | Path | None = None,
+) -> dict[str, Any]:
+    return materialize_conversation_archive_doc_source(
+        upload_manifest=upload_manifest,
+        output_root=output_root,
+    )
+
+
 def run_report_unresolved_derived_rows(
     draft_root: str | Path,
     *,
@@ -4487,6 +4499,7 @@ def main() -> int:
     parser.add_argument("--repo-ref", action="append", metavar="REF", help="Optional repeated repo/workstream reference used by --record-conversation-archive.")
     parser.add_argument("--archivable-status", metavar="STATUS", help="Optional archive status used by --record-conversation-archive.")
     parser.add_argument("--archive-record", metavar="PATH", help="Optional archive record path used by --append-conversation-archive-batch.")
+    parser.add_argument("--upload-manifest", metavar="PATH", help="Optional prepared upload manifest path used by --materialize-conversation-archive-doc-source.")
     parser.add_argument("--ledger-path", metavar="PATH", help="Optional conversation archive ledger path.")
     parser.add_argument("--drive-doc-id", metavar="ID", help="Optional Google Docs document id used by --mark-conversation-archive-uploaded.")
     parser.add_argument("--drive-url", metavar="URL", help="Optional Google Docs URL used by --mark-conversation-archive-uploaded.")
@@ -5123,6 +5136,11 @@ def main() -> int:
         "--prepare-conversation-archive-upload",
         action="store_true",
         help="Prepare one closed conversation archive batch for deterministic Google Docs upload using the local ledger and batch markdown.",
+    )
+    parser.add_argument(
+        "--materialize-conversation-archive-doc-source",
+        action="store_true",
+        help="Render one Google Docs-importable text source plus metadata from a prepared conversation archive upload manifest.",
     )
     parser.add_argument(
         "--curation-profile",
@@ -6029,6 +6047,13 @@ def main() -> int:
             ledger=args.ledger_path,
             batch_id=str(args.batch_id or "").strip(),
             output_path=args.output_path,
+        )
+        return _print_cli_result(result)
+
+    if args.materialize_conversation_archive_doc_source:
+        result = run_materialize_conversation_archive_doc_source(
+            upload_manifest=args.upload_manifest,
+            output_root=args.output_path,
         )
         return _print_cli_result(result)
 

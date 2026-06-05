@@ -17,6 +17,10 @@ Upload-prep helper:
 
 - `python3 run.py --prepare-conversation-archive-upload --ledger-path outputs/conversation_archives/conversation_archive_ledger.json --batch-id <batch_id>`
 
+Google Docs source materializer:
+
+- `python3 run.py --materialize-conversation-archive-doc-source --upload-manifest <upload_manifest_path>`
+
 Schema version:
 
 - `conversation_archive_ledger_v1`

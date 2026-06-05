@@ -52,6 +52,7 @@ from run import (
     run_validate_onboarding_publish,
     run_query_clip_registry,
     run_mark_conversation_archive_uploaded,
+    run_materialize_conversation_archive_doc_source,
     run_prepare_conversation_archive_upload,
     run_record_conversation_archive,
     run_refresh_clip_registry,
@@ -377,6 +378,39 @@ class RunTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             payload = json.loads(Path(result["output_path"]).read_text(encoding="utf-8"))
             self.assertEqual(payload["batch_id"], batch["batch_id"])
+
+    def test_run_materialize_conversation_archive_doc_source_emits_text_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            body_path = root / "conversation.md"
+            record_path = root / "record.json"
+            ledger_path = root / "ledger.json"
+            body_path.write_text(("automation dashboard backlog " * 39000).strip(), encoding="utf-8")
+
+            record = run_record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Operator workflow and automation archive",
+                body_path=body_path,
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            self.assertTrue(record["ok"])
+            batch = run_append_conversation_archive_batch(record["output_path"], ledger_path=ledger_path)
+            self.assertTrue(batch["ok"])
+            upload = run_prepare_conversation_archive_upload(
+                ledger=ledger_path,
+                batch_id=batch["batch_id"],
+            )
+            self.assertTrue(upload["ok"])
+
+            result = run_materialize_conversation_archive_doc_source(
+                upload_manifest=upload["output_path"],
+            )
+            self.assertTrue(result["ok"])
+            self.assertTrue(Path(result["doc_source_path"]).exists())
 
     def test_run_export_wiki_research_packet_returns_semantic_identity_fields(self) -> None:
         helper = WikiMedalCurationTests()
