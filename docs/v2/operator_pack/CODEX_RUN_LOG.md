@@ -2179,3 +2179,24 @@ verification:
 
 notes:
 - this aligns the ledger inspector with the same explicit schema-check posture now used across the archive inspection and publication helpers
+
+## 2026-06-06T12:10Z
+
+target:
+- heartbeat reassessment after the archive publication-contract hardening pass
+
+status:
+- deferred_external_blocker
+
+result:
+- no further bounded local archive task remains above the current usefulness threshold
+- the remaining material blockers are unchanged:
+  - external researcher evidence for the `call_of_duty` top-right anchor branch
+  - external Google Drive authentication refresh for real archive import
+
+verification:
+- none
+
+notes:
+- the archive lane has reached diminishing returns for heartbeat-sized local hardening slices
+- the recurring heartbeat should be retired until one of the external blockers changes
