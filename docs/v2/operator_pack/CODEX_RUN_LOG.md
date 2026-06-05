@@ -2076,3 +2076,22 @@ verification:
 
 notes:
 - this keeps replacement lineage explicit and prevents a malformed supersede operation from mutating durable archive state
+
+## 2026-06-05T21:10Z
+
+target:
+- make the archive publication-queue report distinguish superseded batches from generic not-ready rows
+
+status:
+- completed
+
+result:
+- `report_conversation_archive_publication_queue()` now emits `publication_status: superseded` for superseded ledger rows
+- added focused coverage proving superseded batches render explicitly in the compact report
+
+verification:
+- `.venv/bin/python -m unittest tests.test_report_conversation_archive_publication_queue`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this keeps the publication queue readable when rebuilt or replaced batches are still present in durable ledger history

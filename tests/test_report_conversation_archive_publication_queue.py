@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.conversation_archive import append_conversation_archive_batch, record_conversation_archive
+from tools.conversation_archive import append_conversation_archive_batch, record_conversation_archive, supersede_conversation_archive_batch
 from tools.materialize_conversation_archive_doc_source import materialize_conversation_archive_doc_source
 from tools.prepare_conversation_archive_upload import prepare_conversation_archive_upload
 from tools.report_conversation_archive_publication_queue import report_conversation_archive_publication_queue
@@ -75,6 +75,32 @@ class ReportConversationArchivePublicationQueueTests(unittest.TestCase):
             ledger_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
             result = report_conversation_archive_publication_queue(ledger=ledger_path, emit_json=True)
             self.assertEqual(json.loads(result["rendered_output"])["row_count"], 0)
+
+    def test_reports_superseded_rows_explicitly(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            ledger_path = root / "ledger.json"
+            record_path = root / "record.json"
+            record = record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Conversation archive queue",
+                body_markdown=_body_with_words(116900),
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            batch = append_conversation_archive_batch(archive_record=record["output_path"], ledger_path=ledger_path)
+            supersede_conversation_archive_batch(
+                batch_id=batch["batch_id"],
+                superseded_by="operator_workflows_and_automation__batch__replacement",
+                ledger_path=ledger_path,
+            )
+
+            result = report_conversation_archive_publication_queue(ledger=ledger_path)
+            self.assertTrue(result["ok"])
+            self.assertIn("superseded", result["rendered_output"])
 
 
 if __name__ == "__main__":

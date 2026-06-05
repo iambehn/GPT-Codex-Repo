@@ -87,6 +87,8 @@ def _publication_status(
 ) -> str:
     if batch_status == "uploaded" and drive_doc_id:
         return "published"
+    if batch_status == "superseded":
+        return "superseded"
     if batch_status != "closed_pending_upload":
         return "not_ready"
     if not upload_manifest_exists:
