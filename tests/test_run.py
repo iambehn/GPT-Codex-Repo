@@ -274,7 +274,7 @@ class RunTests(unittest.TestCase):
             body_path = root / "conversation.md"
             record_path = root / "record.json"
             ledger_path = root / "ledger.json"
-            body_path.write_text("automation dashboard backlog " * 200, encoding="utf-8")
+            body_path.write_text(("automation dashboard backlog " * 39000).strip(), encoding="utf-8")
 
             record = run_record_conversation_archive(
                 source_thread_id="thread-1",
@@ -290,6 +290,7 @@ class RunTests(unittest.TestCase):
 
             batch = run_append_conversation_archive_batch(record["output_path"], ledger_path=ledger_path)
             self.assertTrue(batch["ok"])
+            self.assertEqual(batch["batch_status"], "closed_pending_upload")
 
             uploaded = run_mark_conversation_archive_uploaded(
                 batch_id=batch["batch_id"],
@@ -309,6 +310,40 @@ class RunTests(unittest.TestCase):
 
             ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
             self.assertEqual(ledger["rows"][0]["status"], "superseded")
+
+    def test_run_mark_conversation_archive_uploaded_rejects_open_batch(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            body_path = root / "conversation.md"
+            record_path = root / "record.json"
+            ledger_path = root / "ledger.json"
+            body_path.write_text("automation dashboard backlog " * 200, encoding="utf-8")
+
+            record = run_record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Operator workflow and automation archive",
+                body_path=body_path,
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            self.assertTrue(record["ok"])
+
+            batch = run_append_conversation_archive_batch(record["output_path"], ledger_path=ledger_path)
+            self.assertTrue(batch["ok"])
+            self.assertEqual(batch["batch_status"], "open")
+
+            uploaded = run_mark_conversation_archive_uploaded(
+                batch_id=batch["batch_id"],
+                drive_doc_id="doc-123",
+                drive_url="https://docs.google.com/document/d/doc-123",
+                ledger_path=ledger_path,
+                measured_pages=400.0,
+            )
+            self.assertFalse(uploaded["ok"])
+            self.assertEqual(uploaded["status"], "invalid_batch_status")
 
     def test_run_record_conversation_archive_returns_invalid_status_for_missing_body(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

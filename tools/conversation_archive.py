@@ -249,9 +249,19 @@ def mark_conversation_archive_uploaded(
     row = _find_batch_row(ledger, batch_id=batch_id)
     if row is None:
         return _failure("unknown_batch_id", f"batch_id not found: {batch_id}")
+    if str(row.get("status") or "").strip() != "closed_pending_upload":
+        return _failure("invalid_batch_status", "batch must be closed_pending_upload before it can be marked uploaded")
+    normalized_drive_doc_id = str(drive_doc_id).strip()
+    normalized_drive_url = str(drive_url).strip()
+    if not normalized_drive_doc_id:
+        return _failure("invalid_drive_doc_id", "drive_doc_id must be non-empty")
+    if not normalized_drive_url:
+        return _failure("invalid_drive_url", "drive_url must be non-empty")
+    if measured_pages is not None and float(measured_pages) <= 0:
+        return _failure("invalid_measured_pages", "measured_pages must be greater than zero when provided")
     row["status"] = "uploaded"
-    row["drive_doc_id"] = str(drive_doc_id).strip()
-    row["drive_url"] = str(drive_url).strip()
+    row["drive_doc_id"] = normalized_drive_doc_id
+    row["drive_url"] = normalized_drive_url
     row["uploaded_at"] = _utc_now()
     row["measured_pages"] = measured_pages
     _finalize_ledger(ledger_target, ledger)

@@ -2029,3 +2029,27 @@ verification:
 
 notes:
 - this closes the local operator gap between raw archive ledger state and the external Drive import step
+
+## 2026-06-05T18:28Z
+
+target:
+- harden the archive upload-mark contract so the ledger cannot claim published state prematurely
+
+status:
+- completed
+
+result:
+- `mark_conversation_archive_uploaded()` now fails closed unless:
+  - the batch status is `closed_pending_upload`
+  - `drive_doc_id` is non-empty
+  - `drive_url` is non-empty
+  - `measured_pages` is positive when provided
+- updated archive unit and run-level tests to reflect the stricter contract
+- documented the upload-mark rule in the archive ledger contract
+
+verification:
+- `.venv/bin/python -m unittest tests.test_conversation_archive tests.test_run.RunTests.test_run_conversation_archive_flow_records_batches_and_marks_upload tests.test_run.RunTests.test_run_mark_conversation_archive_uploaded_rejects_open_batch`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this reduces the chance of recording a false uploaded state before the external Drive import is actually complete

@@ -153,11 +153,12 @@ class ConversationArchiveTests(unittest.TestCase):
                 started_at="2026-06-05T10:00:00Z",
                 ended_at="2026-06-05T10:30:00Z",
                 summary="Archive upload flow",
-                body_markdown=_body_with_words(500),
+                body_markdown=_body_with_words(SOFT_CLOSE_THRESHOLD + 50),
                 primary_topic="operator_workflows_and_automation",
                 output_path=record_path,
             )
             batch = append_conversation_archive_batch(archive_record=record["output_path"], ledger_path=ledger_path)
+            self.assertEqual(batch["batch_status"], "closed_pending_upload")
             upload = mark_conversation_archive_uploaded(
                 batch_id=batch["batch_id"],
                 drive_doc_id="doc-123",
@@ -178,6 +179,69 @@ class ConversationArchiveTests(unittest.TestCase):
             self.assertEqual(row["status"], "superseded")
             self.assertEqual(row["drive_doc_id"], "doc-123")
             self.assertEqual(row["superseded_by"], "operator_workflows_and_automation__batch__replacement")
+
+    def test_mark_uploaded_rejects_open_batch_and_empty_drive_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            ledger_path = root / "ledger.json"
+            record_path = root / "record.json"
+            record = record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Archive upload flow",
+                body_markdown=_body_with_words(500),
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            batch = append_conversation_archive_batch(archive_record=record["output_path"], ledger_path=ledger_path)
+            self.assertEqual(batch["batch_status"], "open")
+
+            result = mark_conversation_archive_uploaded(
+                batch_id=batch["batch_id"],
+                drive_doc_id="",
+                drive_url="",
+                ledger_path=ledger_path,
+            )
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_batch_status")
+
+    def test_mark_uploaded_rejects_empty_drive_fields_for_closed_batch(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            ledger_path = root / "ledger.json"
+            record_path = root / "record.json"
+            record = record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Archive upload flow",
+                body_markdown=_body_with_words(SOFT_CLOSE_THRESHOLD + 50),
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            batch = append_conversation_archive_batch(archive_record=record["output_path"], ledger_path=ledger_path)
+            self.assertEqual(batch["batch_status"], "closed_pending_upload")
+
+            missing_id = mark_conversation_archive_uploaded(
+                batch_id=batch["batch_id"],
+                drive_doc_id="",
+                drive_url="https://docs.google.com/document/d/doc-123",
+                ledger_path=ledger_path,
+            )
+            self.assertFalse(missing_id["ok"])
+            self.assertEqual(missing_id["status"], "invalid_drive_doc_id")
+
+            missing_url = mark_conversation_archive_uploaded(
+                batch_id=batch["batch_id"],
+                drive_doc_id="doc-123",
+                drive_url="",
+                ledger_path=ledger_path,
+            )
+            self.assertFalse(missing_url["ok"])
+            self.assertEqual(missing_url["status"], "invalid_drive_url")
 
 
 if __name__ == "__main__":

@@ -85,6 +85,13 @@ Allowed statuses:
 - `uploaded`
 - `superseded`
 
+Upload mark rule:
+
+- only `closed_pending_upload` batches may be marked `uploaded`
+- `drive_doc_id` must be non-empty
+- `drive_url` must be non-empty
+- `measured_pages` is optional but must be greater than zero when provided
+
 ## Rebuild Rule
 
 If a batch is rebuilt or replaced:
