@@ -276,6 +276,62 @@ class ConversationArchiveTests(unittest.TestCase):
             self.assertFalse(self_result["ok"])
             self.assertEqual(self_result["status"], "invalid_superseded_by")
 
+    def test_append_rejects_invalid_existing_ledger_row_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            ledger_path = root / "ledger.json"
+            record_path = root / "record.json"
+            record = record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Archive append flow",
+                body_markdown=_body_with_words(500),
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            ledger_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "conversation_archive_ledger_v1",
+                        "generated_at": "2026-06-05T12:00:00Z",
+                        "words_per_page_estimate": 275,
+                        "soft_open_threshold": 103125,
+                        "soft_close_threshold": 116875,
+                        "hard_close_threshold": 123750,
+                        "rows": [
+                            {
+                                "batch_id": "",
+                                "topic": "operator_workflows_and_automation",
+                                "status": "open",
+                                "conversation_ids": [],
+                                "record_paths": [],
+                                "word_count": 0,
+                                "estimated_pages": 0.0,
+                                "measured_pages": None,
+                                "drive_doc_id": None,
+                                "drive_url": None,
+                                "opened_at": "2026-06-05T10:00:00Z",
+                                "closed_at": None,
+                                "uploaded_at": None,
+                                "superseded_by": None,
+                                "local_batch_markdown_path": "/tmp/batch.md",
+                                "date_range_start": "2026-06-05T10:00:00Z",
+                                "date_range_end": "2026-06-05T10:30:00Z",
+                                "batch_summary": "bad row",
+                                "is_single_conversation_exception": False,
+                            }
+                        ],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "archive ledger row batch_id must be non-empty"):
+                append_conversation_archive_batch(archive_record=record["output_path"], ledger_path=ledger_path)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2314,3 +2314,25 @@ verification:
 
 notes:
 - this keeps the ledger inspector aligned with the stronger non-empty contract already enforced across the archive preparation and inspection helpers
+
+## 2026-06-08T12:05Z
+
+target:
+- harden the shared archive ledger validator so empty required row identifiers and paths fail before mutation helpers consume the ledger
+
+status:
+- completed
+
+result:
+- the shared `_validate_ledger_payload()` in `tools/conversation_archive.py` now validates:
+  - each row `batch_id` is non-empty
+  - each row `topic` is non-empty
+  - each row `local_batch_markdown_path` is non-empty
+- added focused coverage proving `append_conversation_archive_batch()` rejects malformed existing ledger rows before mutation
+
+verification:
+- `.venv/bin/python -m unittest tests.test_conversation_archive`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this pushes the stronger non-empty archive-row contract down into the shared mutation layer instead of leaving it only at inspector surfaces
