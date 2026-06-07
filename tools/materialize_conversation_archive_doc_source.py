@@ -115,6 +115,10 @@ def _validate_upload_manifest_payload(payload: dict[str, Any]) -> None:
             raise ValueError(f"upload manifest missing required field: {field}")
     if not isinstance(payload.get("conversation_ids"), list):
         raise ValueError("upload manifest conversation_ids must be a list")
+    if str(payload.get("batch_id") or "").strip() == "":
+        raise ValueError("upload manifest batch_id must be non-empty")
+    if str(payload.get("topic") or "").strip() == "":
+        raise ValueError("upload manifest topic must be non-empty")
     if str(payload.get("batch_markdown_path") or "").strip() == "":
         raise ValueError("upload manifest batch_markdown_path must be non-empty")
     if str(payload.get("suggested_drive_folder") or "").strip() == "":

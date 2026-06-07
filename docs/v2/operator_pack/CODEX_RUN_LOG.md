@@ -2362,3 +2362,24 @@ verification:
 
 notes:
 - this extends the stronger non-empty archive contract into the shared record-validation layer instead of leaving it only at record creation time
+
+## 2026-06-08T13:05Z
+
+target:
+- harden the archive doc-source materializer so empty upload-manifest identifiers fail before path derivation and doc rendering
+
+status:
+- completed
+
+result:
+- `materialize_conversation_archive_doc_source()` now validates:
+  - `batch_id` is non-empty
+  - `topic` is non-empty
+- added focused coverage proving an empty required identifier fails clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_materialize_conversation_archive_doc_source`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this keeps the doc-source materializer aligned with the stricter non-empty manifest contract already enforced by the upload-manifest inspector
