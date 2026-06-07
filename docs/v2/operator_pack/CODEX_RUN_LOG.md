@@ -2557,3 +2557,22 @@ verification:
 
 notes:
 - this aligns upload-manifest inspection with the stricter shared archive conversation-id contract already enforced by the ledger mutation layer and downstream queue reporting
+
+## 2026-06-08T16:40Z
+
+target:
+- harden archive upload preparation so malformed `conversation_ids` entries fail before a broken upload manifest is written
+
+status:
+- completed
+
+result:
+- `prepare_conversation_archive_upload()` now rejects batch rows whose `conversation_ids` list contains empty entries
+- added focused coverage proving empty `conversation_ids` entries return `invalid_batch_shape`
+
+verification:
+- `.venv/bin/python -m unittest tests.test_prepare_conversation_archive_upload`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns upload-manifest authoring with the stricter shared archive conversation-id contract already enforced by the ledger mutation layer and downstream archive readers

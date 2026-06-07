@@ -53,6 +53,14 @@ def prepare_conversation_archive_upload(
             "ledger_path": str(ledger_path),
             "batch_id": batch_id,
         }
+    if any(str(item).strip() == "" for item in list(row.get("conversation_ids") or [])):
+        return {
+            "ok": False,
+            "status": "invalid_batch_shape",
+            "error": "conversation_ids entries must be non-empty",
+            "ledger_path": str(ledger_path),
+            "batch_id": batch_id,
+        }
     if not isinstance(row.get("record_paths"), list):
         return {
             "ok": False,

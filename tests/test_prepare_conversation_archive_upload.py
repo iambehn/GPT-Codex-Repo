@@ -117,6 +117,34 @@ class PrepareConversationArchiveUploadTests(unittest.TestCase):
             self.assertFalse(result["ok"])
             self.assertEqual(result["status"], "invalid_batch_shape")
 
+    def test_prepare_rejects_empty_conversation_id_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            ledger_path = root / "ledger.json"
+            record_path = root / "record.json"
+            record = record_conversation_archive(
+                source_thread_id="thread-1",
+                agent_name="codex",
+                started_at="2026-06-05T10:00:00Z",
+                ended_at="2026-06-05T10:30:00Z",
+                summary="Conversation archive upload prep",
+                body_markdown=_body_with_words(116900),
+                primary_topic="operator_workflows_and_automation",
+                output_path=record_path,
+            )
+            batch = append_conversation_archive_batch(archive_record=record["output_path"], ledger_path=ledger_path)
+            ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+            ledger["rows"][0]["conversation_ids"] = [""]
+            ledger_path.write_text(json.dumps(ledger, indent=2), encoding="utf-8")
+
+            result = prepare_conversation_archive_upload(
+                ledger=ledger_path,
+                batch_id=batch["batch_id"],
+            )
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["status"], "invalid_batch_shape")
+            self.assertEqual(result["error"], "conversation_ids entries must be non-empty")
+
     def test_prepare_rejects_empty_record_path_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
