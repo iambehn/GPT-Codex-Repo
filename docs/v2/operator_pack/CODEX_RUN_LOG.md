@@ -2402,3 +2402,22 @@ verification:
 
 notes:
 - this tightens the manifest-authoring surface instead of relying on downstream inspectors to notice unusable record path entries
+
+## 2026-06-08T13:45Z
+
+target:
+- harden the archive upload-manifest inspector so malformed `record_paths` entries fail before rendering or reuse
+
+status:
+- completed
+
+result:
+- `inspect_conversation_archive_upload_manifest()` now rejects manifests whose `record_paths` list contains empty entries
+- added focused coverage proving empty `record_paths` entries fail clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_upload_manifest`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns inspector-side validation with the stricter manifest-authoring contract already enforced by upload preparation

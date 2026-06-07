@@ -78,6 +78,15 @@ class InspectConversationArchiveUploadManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "upload manifest batch_id must be non-empty"):
                 inspect_conversation_archive_upload_manifest(manifest=manifest_path)
 
+    def test_invalid_manifest_empty_record_path_entry_fails_clearly(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            manifest_path = Path(tempdir) / "upload-manifest.json"
+            payload = _manifest_payload()
+            payload["record_paths"] = [""]
+            manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "upload manifest record_paths entries must be non-empty"):
+                inspect_conversation_archive_upload_manifest(manifest=manifest_path)
+
     def test_main_returns_error_code_for_invalid_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             manifest_path = Path(tempdir) / "upload-manifest.json"
