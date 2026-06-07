@@ -2383,3 +2383,22 @@ verification:
 
 notes:
 - this keeps the doc-source materializer aligned with the stricter non-empty manifest contract already enforced by the upload-manifest inspector
+
+## 2026-06-08T13:25Z
+
+target:
+- harden archive upload preparation so malformed `record_paths` entries fail before a broken upload manifest is written
+
+status:
+- completed
+
+result:
+- `prepare_conversation_archive_upload()` now rejects batch rows whose `record_paths` list contains empty entries
+- added focused coverage proving empty `record_paths` entries return `invalid_batch_shape`
+
+verification:
+- `.venv/bin/python -m unittest tests.test_prepare_conversation_archive_upload`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this tightens the manifest-authoring surface instead of relying on downstream inspectors to notice unusable record path entries
