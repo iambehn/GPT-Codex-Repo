@@ -161,6 +161,8 @@ def _validate_ledger_payload(payload: dict[str, Any]) -> None:
             raise ValueError("archive ledger row status must be non-empty")
         if not isinstance(row.get("conversation_ids"), list):
             raise ValueError("archive ledger row conversation_ids must be a list")
+        if any(str(item).strip() == "" for item in list(row.get("conversation_ids") or [])):
+            raise ValueError("archive ledger row conversation_ids entries must be non-empty")
 
 
 def _resolve_path(path: str | Path) -> Path:

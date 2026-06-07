@@ -2519,3 +2519,22 @@ verification:
 
 notes:
 - this aligns ledger-inspector validation with the stricter shared archive ledger contract already enforced by the mutation layer
+
+## 2026-06-08T16:00Z
+
+target:
+- harden the archive publication-queue reporter so malformed `conversation_ids` entries fail before queue status reporting
+
+status:
+- completed
+
+result:
+- `report_conversation_archive_publication_queue()` now rejects ledger rows whose `conversation_ids` list contains empty entries
+- added focused coverage proving empty `conversation_ids` entries fail clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_report_conversation_archive_publication_queue`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns publication-queue reporting with the stricter shared archive ledger contract already enforced by the mutation layer and ledger inspector
