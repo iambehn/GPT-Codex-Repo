@@ -102,6 +102,29 @@ class ReportConversationArchivePublicationQueueTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertIn("superseded", result["rendered_output"])
 
+    def test_rejects_invalid_ledger_row_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ledger_path = Path(tempdir) / "ledger.json"
+            payload = {
+                "schema_version": "conversation_archive_ledger_v1",
+                "generated_at": "2026-06-05T00:00:00Z",
+                "words_per_page_estimate": 275,
+                "soft_open_threshold": 103125,
+                "soft_close_threshold": 116875,
+                "hard_close_threshold": 123750,
+                "rows": [
+                    {
+                        "batch_id": "batch-1",
+                        "topic": "operator_workflows_and_automation",
+                        "status": "closed_pending_upload",
+                        "conversation_ids": "not-a-list",
+                    }
+                ],
+            }
+            ledger_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "archive ledger row conversation_ids must be a list"):
+                report_conversation_archive_publication_queue(ledger=ledger_path)
+
 
 if __name__ == "__main__":
     unittest.main()

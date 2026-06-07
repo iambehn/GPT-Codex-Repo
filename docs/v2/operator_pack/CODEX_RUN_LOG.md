@@ -2222,3 +2222,24 @@ verification:
 notes:
 - the archive lane has reached diminishing returns for heartbeat-sized local hardening slices
 - the recurring heartbeat should be retired until one of the external blockers changes
+
+## 2026-06-08T10:15Z
+
+target:
+- harden the archive publication-queue report so malformed ledger-row shapes fail explicitly instead of being summarized loosely
+
+status:
+- completed
+
+result:
+- `report_conversation_archive_publication_queue()` now validates:
+  - each ledger row is a mapping
+  - each row `conversation_ids` field is a list
+- added focused coverage proving malformed ledger-row shape fails clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_report_conversation_archive_publication_queue`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns the publication-queue report with the stricter fail-closed posture already used by the other archive inspection and publication helpers

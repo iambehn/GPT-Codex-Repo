@@ -147,8 +147,14 @@ def _doc_source_path(*, topic: str, batch_id: str) -> Path:
 def _validate_ledger_payload(payload: dict[str, Any]) -> None:
     if str(payload.get("schema_version") or "").strip() != "conversation_archive_ledger_v1":
         raise ValueError("archive ledger schema_version is invalid")
-    if not isinstance(payload.get("rows"), list):
+    rows = payload.get("rows")
+    if not isinstance(rows, list):
         raise ValueError("archive ledger rows must be a list")
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("archive ledger rows must contain mappings")
+        if not isinstance(row.get("conversation_ids"), list):
+            raise ValueError("archive ledger row conversation_ids must be a list")
 
 
 def _resolve_path(path: str | Path) -> Path:
