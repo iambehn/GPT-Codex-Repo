@@ -2616,3 +2616,26 @@ verification:
 
 notes:
 - this pushes the normalization contract for secondary topics and repo refs into the shared mutation layer instead of relying only on record-creation cleanup
+
+## 2026-06-08T17:45Z
+
+target:
+- define a first-pass work-order model so the pipeline can be reframed as a production system that processes editing work orders instead of only emitting detector artifacts
+
+status:
+- completed
+
+result:
+- added [2026-06-08-video-editing-work-order-model-design.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-08-video-editing-work-order-model-design.md)
+- the spec defines:
+  - the first canonical order type: `short_clip_edit_order_v1`
+  - the station model
+  - the order status model
+  - the mapping from current repo surfaces to the new operational layer
+  - the migration strategy that preserves current registry/artifact architecture
+
+verification:
+- doc-only change
+
+notes:
+- this is intentionally an additive operational layer design, not a detector or registry rewrite
