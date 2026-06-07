@@ -124,6 +124,14 @@ class InspectConversationArchiveLedgerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "ledger row batch_id must be non-empty"):
                 inspect_conversation_archive_ledger(ledger=ledger_path)
 
+    def test_invalid_ledger_empty_record_path_entry_fails_clearly(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            ledger_path = Path(tempdir) / "ledger.json"
+            payload = _ledger_payload(rows=[{**_ledger_row(), "record_paths": [""]}])
+            ledger_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "ledger row record_paths entries must be non-empty"):
+                inspect_conversation_archive_ledger(ledger=ledger_path)
+
     def test_main_returns_error_code_for_invalid_ledger(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             ledger_path = Path(tempdir) / "ledger.json"

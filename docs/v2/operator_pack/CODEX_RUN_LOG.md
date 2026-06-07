@@ -2421,3 +2421,22 @@ verification:
 
 notes:
 - this aligns inspector-side validation with the stricter manifest-authoring contract already enforced by upload preparation
+
+## 2026-06-08T14:10Z
+
+target:
+- harden the archive ledger inspector so malformed `record_paths` entries fail before archive status inspection or reuse
+
+status:
+- completed
+
+result:
+- `inspect_conversation_archive_ledger()` now rejects ledger rows whose `record_paths` list contains empty entries
+- added focused coverage proving empty `record_paths` entries fail clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_ledger`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns ledger-inspector validation with the stricter archive publication contract already enforced by upload preparation and upload-manifest inspection
