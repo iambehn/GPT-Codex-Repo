@@ -2663,3 +2663,25 @@ verification:
 
 notes:
 - this keeps the ERP/work-order reframing additive and preserves current workflow-run and artifact architecture
+
+## 2026-06-08T18:30Z
+
+target:
+- prepare a concise researcher-facing note so the upcoming redesign protocol stays focused on defining work orders, worker responsibilities, and market-facing task shape instead of drifting into a rewrite
+
+status:
+- completed
+
+result:
+- added [2026-06-08-work-order-redesign-notes-for-project-researcher.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-08-work-order-redesign-notes-for-project-researcher.md)
+- the note captures:
+  - the ERP/work-order reframing
+  - current Codex design direction
+  - the key business and workflow questions for the researcher
+  - the output shape that would actually help pipeline redesign
+
+verification:
+- doc-only change
+
+notes:
+- this is a researcher handoff aid, not a new control surface or a replacement architecture
