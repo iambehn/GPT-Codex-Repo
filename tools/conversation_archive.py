@@ -568,6 +568,8 @@ def _validate_ledger_payload(payload: dict[str, Any]) -> None:
             raise ValueError("archive ledger row conversation_ids must be a list")
         if not isinstance(row.get("record_paths"), list):
             raise ValueError("archive ledger row record_paths must be a list")
+        if any(str(path).strip() == "" for path in list(row.get("record_paths") or [])):
+            raise ValueError("archive ledger row record_paths entries must be non-empty")
 
 
 def _archive_record_id(

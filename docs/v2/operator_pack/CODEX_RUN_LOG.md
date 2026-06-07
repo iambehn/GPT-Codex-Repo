@@ -2440,3 +2440,22 @@ verification:
 
 notes:
 - this aligns ledger-inspector validation with the stricter archive publication contract already enforced by upload preparation and upload-manifest inspection
+
+## 2026-06-08T14:30Z
+
+target:
+- harden the shared archive ledger validator so malformed `record_paths` entries fail before archive mutation helpers consume the ledger
+
+status:
+- completed
+
+result:
+- the shared `_validate_ledger_payload()` in `tools/conversation_archive.py` now rejects ledger rows whose `record_paths` list contains empty entries
+- added focused coverage proving `append_conversation_archive_batch()` rejects existing ledger rows with empty `record_paths` entries before mutation
+
+verification:
+- `.venv/bin/python -m unittest tests.test_conversation_archive`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this pushes the stricter `record_paths` contract into the shared mutation layer instead of leaving it only at archive inspection and upload-preparation boundaries
