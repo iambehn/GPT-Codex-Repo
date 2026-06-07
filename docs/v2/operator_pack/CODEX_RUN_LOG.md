@@ -2243,3 +2243,25 @@ verification:
 
 notes:
 - this aligns the publication-queue report with the stricter fail-closed posture already used by the other archive inspection and publication helpers
+
+## 2026-06-08T10:40Z
+
+target:
+- harden the archive publication-queue report so required row identifiers fail explicitly before derived path inspection
+
+status:
+- completed
+
+result:
+- `report_conversation_archive_publication_queue()` now validates:
+  - each row `batch_id` is non-empty
+  - each row `topic` is non-empty
+  - each row `status` is non-empty
+- added focused coverage proving empty required row identifiers fail clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_report_conversation_archive_publication_queue`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this prevents the queue report from deriving misleading artifact paths from malformed ledger rows

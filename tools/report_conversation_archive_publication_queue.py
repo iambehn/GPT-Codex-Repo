@@ -153,6 +153,12 @@ def _validate_ledger_payload(payload: dict[str, Any]) -> None:
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError("archive ledger rows must contain mappings")
+        if str(row.get("batch_id") or "").strip() == "":
+            raise ValueError("archive ledger row batch_id must be non-empty")
+        if str(row.get("topic") or "").strip() == "":
+            raise ValueError("archive ledger row topic must be non-empty")
+        if str(row.get("status") or "").strip() == "":
+            raise ValueError("archive ledger row status must be non-empty")
         if not isinstance(row.get("conversation_ids"), list):
             raise ValueError("archive ledger row conversation_ids must be a list")
 
