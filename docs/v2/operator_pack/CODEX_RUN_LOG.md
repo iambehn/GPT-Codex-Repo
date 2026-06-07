@@ -2291,3 +2291,26 @@ verification:
 
 notes:
 - this keeps the upload-manifest inspector aligned with the stricter contract already enforced by upload preparation and doc-source materialization
+
+## 2026-06-08T11:35Z
+
+target:
+- harden the archive ledger inspector so empty required row identifiers and paths fail explicitly instead of rendering as weak empty-state values
+
+status:
+- completed
+
+result:
+- `inspect_conversation_archive_ledger()` now validates:
+  - each row `batch_id` is non-empty
+  - each row `topic` is non-empty
+  - each row `status` is non-empty
+  - each row `local_batch_markdown_path` is non-empty
+- added focused coverage proving an empty required row string fails clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_ledger`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this keeps the ledger inspector aligned with the stronger non-empty contract already enforced across the archive preparation and inspection helpers

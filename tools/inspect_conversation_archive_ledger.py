@@ -124,6 +124,14 @@ def _validate_ledger_payload(payload: dict[str, Any]) -> None:
         missing_row = [field for field in REQUIRED_ROW_FIELDS if field not in row]
         if missing_row:
             raise ValueError(f"ledger row missing required fields: {', '.join(missing_row)}")
+        if str(row.get("batch_id") or "").strip() == "":
+            raise ValueError("ledger row batch_id must be non-empty")
+        if str(row.get("topic") or "").strip() == "":
+            raise ValueError("ledger row topic must be non-empty")
+        if str(row.get("status") or "").strip() == "":
+            raise ValueError("ledger row status must be non-empty")
+        if str(row.get("local_batch_markdown_path") or "").strip() == "":
+            raise ValueError("ledger row local_batch_markdown_path must be non-empty")
         if not isinstance(row.get("conversation_ids"), list):
             raise ValueError("ledger row conversation_ids must be a list")
         if not isinstance(row.get("record_paths"), list):
