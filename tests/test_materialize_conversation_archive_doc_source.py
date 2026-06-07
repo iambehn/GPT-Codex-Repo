@@ -110,6 +110,28 @@ class MaterializeConversationArchiveDocSourceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "upload manifest record_paths entries must be non-empty"):
                 materialize_conversation_archive_doc_source(upload_manifest=manifest_path)
 
+    def test_materialize_rejects_empty_conversation_id_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            batch_markdown_path = root / "batch.md"
+            batch_markdown_path.write_text("example batch body\n", encoding="utf-8")
+            manifest_path = root / "upload.json"
+            payload = {
+                "schema_version": "conversation_archive_upload_manifest_v1",
+                "batch_id": "batch-1",
+                "topic": "operator_workflows_and_automation",
+                "conversation_ids": [""],
+                "record_paths": ["/tmp/record-1.json"],
+                "word_count": 120000,
+                "estimated_pages": 436.4,
+                "batch_markdown_path": str(batch_markdown_path),
+                "suggested_drive_folder": "Codex Conversation Archive/operator_workflows_and_automation",
+                "suggested_doc_title": "operator_workflows_and_automation__archive_batch__2026-06-05_to_2026-06-05",
+            }
+            manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "upload manifest conversation_ids entries must be non-empty"):
+                materialize_conversation_archive_doc_source(upload_manifest=manifest_path)
+
 
 if __name__ == "__main__":
     unittest.main()

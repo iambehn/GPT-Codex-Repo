@@ -116,6 +116,8 @@ def _validate_upload_manifest_payload(payload: dict[str, Any]) -> None:
             raise ValueError(f"upload manifest missing required field: {field}")
     if not isinstance(payload.get("conversation_ids"), list):
         raise ValueError("upload manifest conversation_ids must be a list")
+    if any(str(item).strip() == "" for item in list(payload.get("conversation_ids") or [])):
+        raise ValueError("upload manifest conversation_ids entries must be non-empty")
     if not isinstance(payload.get("record_paths"), list):
         raise ValueError("upload manifest record_paths must be a list")
     if any(str(path).strip() == "" for path in list(payload.get("record_paths") or [])):

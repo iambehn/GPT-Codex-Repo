@@ -2576,3 +2576,22 @@ verification:
 
 notes:
 - this aligns upload-manifest authoring with the stricter shared archive conversation-id contract already enforced by the ledger mutation layer and downstream archive readers
+
+## 2026-06-08T17:00Z
+
+target:
+- harden the archive doc-source materializer so malformed `conversation_ids` entries fail before Google Docs source rendering
+
+status:
+- completed
+
+result:
+- `materialize_conversation_archive_doc_source()` now rejects upload manifests whose `conversation_ids` list contains empty entries
+- added focused coverage proving empty `conversation_ids` entries fail clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_materialize_conversation_archive_doc_source`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns the doc-source materializer with the stricter shared archive conversation-id contract already enforced by the ledger mutation layer and upload-manifest authoring and inspection
