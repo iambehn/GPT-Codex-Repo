@@ -2481,3 +2481,22 @@ verification:
 
 notes:
 - this aligns the doc-source materializer with the upload-manifest schema already enforced by manifest preparation and inspection
+
+## 2026-06-08T15:20Z
+
+target:
+- harden the shared archive ledger validator so malformed `conversation_ids` entries fail before archive mutation helpers consume the ledger
+
+status:
+- completed
+
+result:
+- the shared `_validate_ledger_payload()` in `tools/conversation_archive.py` now rejects ledger rows whose `conversation_ids` list contains empty entries
+- added focused coverage proving `append_conversation_archive_batch()` rejects existing ledger rows with empty `conversation_ids` entries before mutation
+
+verification:
+- `.venv/bin/python -m unittest tests.test_conversation_archive`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this pushes the stricter conversation-id contract into the shared mutation layer instead of leaving downstream archive consumers to infer missing identifiers
