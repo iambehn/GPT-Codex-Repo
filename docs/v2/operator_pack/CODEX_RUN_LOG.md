@@ -2459,3 +2459,25 @@ verification:
 
 notes:
 - this pushes the stricter `record_paths` contract into the shared mutation layer instead of leaving it only at archive inspection and upload-preparation boundaries
+
+## 2026-06-08T14:55Z
+
+target:
+- harden the archive doc-source materializer so it consumes the full upload-manifest `record_paths` contract instead of a weakened subset
+
+status:
+- completed
+
+result:
+- `materialize_conversation_archive_doc_source()` now requires upload manifests to include:
+  - `record_paths`
+  - `record_paths` as a list
+  - non-empty `record_paths` entries
+- added focused coverage proving empty `record_paths` entries fail clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_materialize_conversation_archive_doc_source`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns the doc-source materializer with the upload-manifest schema already enforced by manifest preparation and inspection
