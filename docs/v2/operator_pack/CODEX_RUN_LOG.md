@@ -2538,3 +2538,22 @@ verification:
 
 notes:
 - this aligns publication-queue reporting with the stricter shared archive ledger contract already enforced by the mutation layer and ledger inspector
+
+## 2026-06-08T16:20Z
+
+target:
+- harden the archive upload-manifest inspector so malformed `conversation_ids` entries fail before manifest inspection or reuse
+
+status:
+- completed
+
+result:
+- `inspect_conversation_archive_upload_manifest()` now rejects manifests whose `conversation_ids` list contains empty entries
+- added focused coverage proving empty `conversation_ids` entries fail clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_upload_manifest`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns upload-manifest inspection with the stricter shared archive conversation-id contract already enforced by the ledger mutation layer and downstream queue reporting
