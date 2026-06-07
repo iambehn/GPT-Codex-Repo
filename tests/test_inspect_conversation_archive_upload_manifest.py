@@ -69,6 +69,15 @@ class InspectConversationArchiveUploadManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "upload manifest schema_version is invalid"):
                 inspect_conversation_archive_upload_manifest(manifest=manifest_path)
 
+    def test_invalid_manifest_empty_required_string_fails_clearly(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            manifest_path = Path(tempdir) / "upload-manifest.json"
+            payload = _manifest_payload()
+            payload["batch_id"] = ""
+            manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "upload manifest batch_id must be non-empty"):
+                inspect_conversation_archive_upload_manifest(manifest=manifest_path)
+
     def test_main_returns_error_code_for_invalid_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             manifest_path = Path(tempdir) / "upload-manifest.json"

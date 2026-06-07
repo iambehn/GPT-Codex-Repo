@@ -2265,3 +2265,29 @@ verification:
 
 notes:
 - this prevents the queue report from deriving misleading artifact paths from malformed ledger rows
+
+## 2026-06-08T11:05Z
+
+target:
+- harden the archive upload-manifest inspector so required manifest identifiers and paths fail explicitly when empty
+
+status:
+- completed
+
+result:
+- `inspect_conversation_archive_upload_manifest()` now validates:
+  - `source_ledger_path` is non-empty
+  - `batch_id` is non-empty
+  - `topic` is non-empty
+  - `batch_status` is non-empty
+  - `batch_markdown_path` is non-empty
+  - `suggested_drive_folder` is non-empty
+  - `suggested_doc_title` is non-empty
+- added focused coverage proving an empty required string field fails clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_upload_manifest`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this keeps the upload-manifest inspector aligned with the stricter contract already enforced by upload preparation and doc-source materialization
