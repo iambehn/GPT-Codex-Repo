@@ -2180,6 +2180,28 @@ verification:
 notes:
 - this aligns the ledger inspector with the same explicit schema-check posture now used across the archive inspection and publication helpers
 
+## 2026-06-06T18:10Z
+
+target:
+- post-heartbeat reassessment after the archive publication-contract defer state
+
+status:
+- deferred_external_blocker
+
+result:
+- repo truth is unchanged from the previous defer checkpoint
+- no new bounded local task currently clears the usefulness threshold without drifting into low-yield archive tightening
+- the remaining material blockers are still:
+  - external researcher evidence for the `call_of_duty` top-right anchor branch
+  - external Google Drive authentication refresh for real archive import
+
+verification:
+- none
+
+notes:
+- the recurring heartbeat was already retired
+- this entry records that the same defer decision still holds under the current repo state
+
 ## 2026-06-06T12:10Z
 
 target:
