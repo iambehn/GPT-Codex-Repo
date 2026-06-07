@@ -2595,3 +2595,24 @@ verification:
 
 notes:
 - this aligns the doc-source materializer with the stricter shared archive conversation-id contract already enforced by the ledger mutation layer and upload-manifest authoring and inspection
+
+## 2026-06-08T17:20Z
+
+target:
+- harden the shared archive-record validator so malformed `secondary_topics` and `repo_refs` entries fail before archive mutation helpers consume existing records
+
+status:
+- completed
+
+result:
+- the shared `_validate_archive_record_payload()` in `tools/conversation_archive.py` now rejects existing archive records whose:
+  - `secondary_topics` list contains empty entries
+  - `repo_refs` list contains empty entries
+- added focused coverage proving `append_conversation_archive_batch()` rejects malformed existing archive records before mutation
+
+verification:
+- `.venv/bin/python -m unittest tests.test_conversation_archive`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this pushes the normalization contract for secondary topics and repo refs into the shared mutation layer instead of relying only on record-creation cleanup

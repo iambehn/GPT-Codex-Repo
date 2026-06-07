@@ -541,8 +541,12 @@ def _validate_archive_record_payload(payload: dict[str, Any]) -> None:
         raise ValueError("archive record primary_topic is invalid")
     if not isinstance(payload.get("secondary_topics"), list):
         raise ValueError("archive record secondary_topics must be a list")
+    if any(str(item).strip() == "" for item in list(payload.get("secondary_topics") or [])):
+        raise ValueError("archive record secondary_topics entries must be non-empty")
     if not isinstance(payload.get("repo_refs"), list):
         raise ValueError("archive record repo_refs must be a list")
+    if any(str(item).strip() == "" for item in list(payload.get("repo_refs") or [])):
+        raise ValueError("archive record repo_refs entries must be non-empty")
     if str(payload.get("archivable_status") or "").strip() not in ALLOWED_ARCHIVE_STATUSES:
         raise ValueError("archive record archivable_status is invalid")
 

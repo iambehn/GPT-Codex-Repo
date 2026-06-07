@@ -68,6 +68,66 @@ class ConversationArchiveTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "archive record archive_record_id must be non-empty"):
                 append_conversation_archive_batch(archive_record=record_path, ledger_path=ledger_path)
 
+    def test_append_rejects_empty_secondary_topic_entries_in_existing_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            ledger_path = root / "ledger.json"
+            record_path = root / "record.json"
+            record_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "conversation_archive_record_v1",
+                        "archive_record_id": "conv-archive-123",
+                        "source_thread_id": "thread-1",
+                        "agent_name": "codex",
+                        "started_at": "2026-06-05T10:00:00Z",
+                        "ended_at": "2026-06-05T10:30:00Z",
+                        "primary_topic": "operator_workflows_and_automation",
+                        "secondary_topics": [""],
+                        "summary": "Bad record",
+                        "body_markdown": "hello world",
+                        "word_count": 2,
+                        "repo_refs": [],
+                        "archivable_status": "ready",
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "archive record secondary_topics entries must be non-empty"):
+                append_conversation_archive_batch(archive_record=record_path, ledger_path=ledger_path)
+
+    def test_append_rejects_empty_repo_ref_entries_in_existing_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            ledger_path = root / "ledger.json"
+            record_path = root / "record.json"
+            record_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "conversation_archive_record_v1",
+                        "archive_record_id": "conv-archive-123",
+                        "source_thread_id": "thread-1",
+                        "agent_name": "codex",
+                        "started_at": "2026-06-05T10:00:00Z",
+                        "ended_at": "2026-06-05T10:30:00Z",
+                        "primary_topic": "operator_workflows_and_automation",
+                        "secondary_topics": [],
+                        "summary": "Bad record",
+                        "body_markdown": "hello world",
+                        "word_count": 2,
+                        "repo_refs": [""],
+                        "archivable_status": "ready",
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "archive record repo_refs entries must be non-empty"):
+                append_conversation_archive_batch(archive_record=record_path, ledger_path=ledger_path)
+
     def test_append_batches_multiple_records_into_one_topic_batch(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
