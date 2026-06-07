@@ -2685,3 +2685,25 @@ verification:
 
 notes:
 - this is a researcher handoff aid, not a new control surface or a replacement architecture
+
+## 2026-06-08T18:55Z
+
+target:
+- prepare a researcher-facing task-fit and work-sourcing note so the redesign protocol can narrow acceptable work orders to tasks Codex can fulfill reliably and that remain adjacent to the core FPS highlight workflow
+
+status:
+- completed
+
+result:
+- added [2026-06-08-codex-task-fit-and-adjacent-work-sourcing-notes.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/handoffs/2026-06-08-codex-task-fit-and-adjacent-work-sourcing-notes.md)
+- the note captures:
+  - high-fit, medium-fit, and low-fit work-order categories
+  - recommended acceptance constraints for early work
+  - what Codex can do reliably versus what needs extra editorial support
+  - current adjacent sourcing channels for this style of work
+
+verification:
+- doc-only change
+
+notes:
+- this note is meant to constrain order intake and market targeting, not to define the final business strategy
