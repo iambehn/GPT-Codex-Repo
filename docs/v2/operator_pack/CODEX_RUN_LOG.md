@@ -2639,3 +2639,27 @@ verification:
 
 notes:
 - this is intentionally an additive operational layer design, not a detector or registry rewrite
+
+## 2026-06-08T18:05Z
+
+target:
+- define the station-transition model for `short_clip_edit_order_v1` so the new work-order layer has explicit routing, blockers, approvals, terminal states, and retry semantics
+
+status:
+- completed
+
+result:
+- added [2026-06-08-short-clip-edit-order-station-transitions-design.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-08-short-clip-edit-order-station-transitions-design.md)
+- the spec defines:
+  - canonical stations
+  - station-local statuses
+  - success, block, defer, failure, and retry transitions
+  - terminal states
+  - human decision gates
+  - mapping to existing repo workflow, review, export, and post surfaces
+
+verification:
+- doc-only change
+
+notes:
+- this keeps the ERP/work-order reframing additive and preserves current workflow-run and artifact architecture
