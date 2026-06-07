@@ -134,6 +134,8 @@ def _validate_ledger_payload(payload: dict[str, Any]) -> None:
             raise ValueError("ledger row local_batch_markdown_path must be non-empty")
         if not isinstance(row.get("conversation_ids"), list):
             raise ValueError("ledger row conversation_ids must be a list")
+        if any(str(item).strip() == "" for item in list(row.get("conversation_ids") or [])):
+            raise ValueError("ledger row conversation_ids entries must be non-empty")
         if not isinstance(row.get("record_paths"), list):
             raise ValueError("ledger row record_paths must be a list")
         if any(str(path).strip() == "" for path in list(row.get("record_paths") or [])):

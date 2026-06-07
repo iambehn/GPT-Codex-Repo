@@ -2500,3 +2500,22 @@ verification:
 
 notes:
 - this pushes the stricter conversation-id contract into the shared mutation layer instead of leaving downstream archive consumers to infer missing identifiers
+
+## 2026-06-08T15:40Z
+
+target:
+- harden the archive ledger inspector so malformed `conversation_ids` entries fail before archive status inspection or reuse
+
+status:
+- completed
+
+result:
+- `inspect_conversation_archive_ledger()` now rejects ledger rows whose `conversation_ids` list contains empty entries
+- added focused coverage proving empty `conversation_ids` entries fail clearly
+
+verification:
+- `.venv/bin/python -m unittest tests.test_inspect_conversation_archive_ledger`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this aligns ledger-inspector validation with the stricter shared archive ledger contract already enforced by the mutation layer
