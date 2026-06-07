@@ -2336,3 +2336,29 @@ verification:
 
 notes:
 - this pushes the stronger non-empty archive-row contract down into the shared mutation layer instead of leaving it only at inspector surfaces
+
+## 2026-06-08T12:35Z
+
+target:
+- harden the shared archive-record validator so empty required string fields fail before archive mutation helpers consume the record
+
+status:
+- completed
+
+result:
+- the shared `_validate_archive_record_payload()` in `tools/conversation_archive.py` now validates:
+  - `archive_record_id` is non-empty
+  - `source_thread_id` is non-empty
+  - `agent_name` is non-empty
+  - `started_at` is non-empty
+  - `ended_at` is non-empty
+  - `summary` is non-empty
+  - `body_markdown` is non-empty
+- added focused coverage proving `append_conversation_archive_batch()` rejects malformed existing archive records before mutation
+
+verification:
+- `.venv/bin/python -m unittest tests.test_conversation_archive`
+- `python3 run.py --run-repo-quality-health`
+
+notes:
+- this extends the stronger non-empty archive contract into the shared record-validation layer instead of leaving it only at record creation time

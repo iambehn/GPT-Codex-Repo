@@ -526,6 +526,17 @@ def _validate_archive_record_payload(payload: dict[str, Any]) -> None:
     missing = [field for field in required_fields if field not in payload]
     if missing:
         raise ValueError(f"archive record missing required fields: {', '.join(missing)}")
+    for field in (
+        "archive_record_id",
+        "source_thread_id",
+        "agent_name",
+        "started_at",
+        "ended_at",
+        "summary",
+        "body_markdown",
+    ):
+        if str(payload.get(field) or "").strip() == "":
+            raise ValueError(f"archive record {field} must be non-empty")
     if str(payload.get("primary_topic") or "").strip() not in TOPIC_TAXONOMY:
         raise ValueError("archive record primary_topic is invalid")
     if not isinstance(payload.get("secondary_topics"), list):
