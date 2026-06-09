@@ -2707,3 +2707,27 @@ verification:
 
 notes:
 - this note is meant to constrain order intake and market targeting, not to define the final business strategy
+
+## 2026-06-10T18:40Z
+
+target:
+- create a canonical pipeline-redesign goal-stack note that consolidates the work-order redesign direction, researcher notes, and goal hierarchy into one durable planning surface
+
+status:
+- completed
+
+result:
+- added [2026-06-10-pipeline-redesign-goal-stack.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-pipeline-redesign-goal-stack.md)
+- consolidated the existing work-order specs plus the researcher bundle into:
+  - one ordered goal hierarchy
+  - explicit goal dependencies
+  - blocked-by conditions
+  - non-goals
+  - per-goal `/goal` command candidates
+
+verification:
+- doc-only change
+
+notes:
+- this note is intended to be the shared long-form planning surface between manager, architect, and researcher
+- it does not finalize the first commercial lane; it keeps that as the root unresolved decision
