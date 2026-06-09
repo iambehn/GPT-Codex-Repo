@@ -40,6 +40,7 @@ This note turns them into one explicit hierarchy of goals and subgoals so the re
 ## Operating Assumptions
 
 - The internal architecture should continue using the work-order / MRP mindset even if the external commercial wrapper later becomes productized deliverables, recurring support, or a hybrid.
+- States should describe artifact condition, not process steps.
 - The first commercial lane is not yet final.
 - The current repo evidence, review, export, and lineage architecture should be extended, not replaced.
 - The first pass should optimize for decision clarity, not brevity.
@@ -70,6 +71,108 @@ The intent is to make each goal legible as:
 This keeps the goal stack aligned with the work-order / MRP framing and the researcher bundle's emphasis on qualification-driven operating logic.
 
 ## Goal Hierarchy
+
+### Goal 0: Define The State Model
+
+#### Goal Type
+
+INFRASTRUCTURE
+
+#### Current State
+
+The redesign has implied artifact conditions such as raw source, review-ready outputs, approved clip sets, and published assets, but those conditions are not yet defined as one canonical control-plane state model.
+
+#### Desired State
+
+The redesign has one compact state foundation that defines:
+
+- canonical production states
+- canonical cross-artifact control states
+- state-level entry conditions
+- state-level exit rules
+- state-level inspection requirements
+
+#### Desired Transition
+
+Implicit artifact conditions
+→
+Canonical state foundation
+
+#### Current Qualification
+
+Q1 plausible
+
+#### Target Qualification
+
+Q3 operational
+
+#### Artifact Produced
+
+State Catalog v0
+
+#### Future Transition Enabled
+
+Descriptive workflow discussion
+→
+State-grounded transition, routing, inspection, and qualification design
+
+#### Consequence Horizon
+
+Years
+
+#### Objective
+
+Define the first canonical state model for the redesigned control plane.
+
+#### Why It Matters
+
+States are the atomic conditions that the rest of the redesign will attach to.
+
+Without canonical states:
+
+- transitions stay descriptive instead of explicit
+- routing remains ambiguous
+- inspection criteria drift
+- failure attribution becomes inconsistent
+- qualification cannot attach to stable targets
+
+#### Success Criteria
+
+- one compact state schema is defined
+- production states are separated from cross-artifact control states
+- each state is defined as an artifact condition, not a process step
+- each state has entry conditions, exit rules, and inspection requirements
+- the first state catalog is explicit enough to support later transition design
+
+#### Subgoals
+
+1. Define the state schema for v0.
+2. Define the first production states for the likely short-form workflow.
+3. Define the first cross-artifact control states for non-happy-path handling.
+4. State the guardrail that transitions and work orders may reference states, but states themselves must not encode actions.
+5. Define the first rules for how later transition design will attach to the state catalog.
+
+#### Dependencies
+
+- current redesign notes
+- current short-clip order and station-transition specs
+
+#### Blocked By
+
+- unresolved disagreement about whether states should describe artifact condition or process steps
+
+#### Non-Goals
+
+- no routing model yet
+- no qualification engine yet
+- no inventory or planning model yet
+- no process-step verbs encoded as states
+
+#### `/goal` Candidate
+
+```text
+/goal Add Goal 0 — State Model to the pipeline redesign goal stack and create State Catalog v0 as the first control-plane artifact, verified by a compact state table with canonical state names, definitions, entry conditions, valid next states, and inspection requirements. Preserve the MRP/work-order framing. Do not implement routing, qualification, or inventory yet; only create the state foundation they will attach to. If state definitions start collapsing into process steps, stop and report the ambiguity.
+```
 
 ### Goal 1: Choose The First Business Lane
 
@@ -163,6 +266,7 @@ It controls:
 
 #### Dependencies
 
+- Goal 0 state foundation
 - researcher notes
 - market reasoning
 - comparison of alternative business lanes
@@ -271,6 +375,7 @@ This goal creates the operational object that lets the business reason about rea
 
 #### Dependencies
 
+- Goal 0 state foundation
 - Goal 1 chosen lane
 - existing work-order and station-transition specs in this repo
 
@@ -393,7 +498,8 @@ Qualification must be tied to:
 
 #### Dependencies
 
-- Goal 2 state model
+- Goal 0 state foundation
+- Goal 2 work-order system
 
 #### Blocked By
 
@@ -532,7 +638,8 @@ The system needs durable ways to measure:
 
 #### Dependencies
 
-- Goal 2 state model
+- Goal 0 state foundation
+- Goal 2 work-order system
 - Goal 3 qualified envelopes
 
 #### Blocked By
@@ -644,6 +751,7 @@ The internal architecture may be work-order and content-operations driven, but t
 
 #### Dependencies
 
+- Goal 0 state foundation
 - Goal 1 lane selection
 - Goal 3 qualified envelopes
 
@@ -766,6 +874,7 @@ Queue and portfolio rules keep the system from either:
 
 #### Dependencies
 
+- Goal 0 state foundation
 - Goals 2 through 5
 
 #### Blocked By
@@ -876,6 +985,7 @@ It should not be driven by:
 
 #### Dependencies
 
+- Goal 0 state foundation
 - Goal 1 lane selection
 - Goal 4 measurement logic
 - Goal 5 offer model
@@ -899,13 +1009,14 @@ It should not be driven by:
 
 The dependency order is:
 
+0. Define the state model.
 1. Choose the first business lane.
-2. Define the canonical work-order system around that lane.
+2. Define the canonical work-order system around that lane and state foundation.
 3. Define qualified envelopes for the lane and adjacent classes.
 4. Build the measurement system for those envelopes.
 5. Shape the external wrapper and sourcing model to match them.
 6. Set portfolio and queue rules around the resulting lane mix.
-7. Choose capability builds only after the lane, envelopes, and measurement model are stable enough to support rational investment.
+7. Choose capability builds only after the lane, state foundation, envelopes, and measurement model are stable enough to support rational investment.
 
 ## Immediate Working Interpretation Of The Research Bundle
 

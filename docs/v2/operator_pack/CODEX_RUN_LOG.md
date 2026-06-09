@@ -2756,3 +2756,26 @@ verification:
 
 notes:
 - this keeps the note aligned with the researcher bundle's transition-centric and qualification-driven framing without rewriting the subgoal layer into a heavier protocol
+
+## 2026-06-10T20:10Z
+
+target:
+- add the state-model foundation to the pipeline-redesign control plane and create the first canonical state artifact before transition design
+
+status:
+- completed
+
+result:
+- updated [2026-06-10-pipeline-redesign-goal-stack.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-pipeline-redesign-goal-stack.md)
+- added [2026-06-10-state-catalog-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-state-catalog-v0.md)
+- introduced:
+  - Goal 0 - State Model
+  - state-only guardrails
+  - a split between production states and cross-artifact control states
+  - initial canonical states for raw source, review-pack, approved-clip, platform-package, published, invalid, blocked, and archived conditions
+
+verification:
+- doc-only change
+
+notes:
+- this establishes states as artifact conditions rather than process steps so later transition, routing, inspection, failure, and qualification artifacts can attach to stable control-plane objects
