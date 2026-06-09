@@ -2731,3 +2731,28 @@ verification:
 notes:
 - this note is intended to be the shared long-form planning surface between manager, architect, and researcher
 - it does not finalize the first commercial lane; it keeps that as the root unresolved decision
+
+## 2026-06-10T19:20Z
+
+target:
+- refine the pipeline-redesign goal stack so each top-level goal is encoded as a transition-qualified goal work order instead of only a planning heading
+
+status:
+- completed
+
+result:
+- updated [2026-06-10-pipeline-redesign-goal-stack.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-pipeline-redesign-goal-stack.md)
+- added a reusable goal work-order template and enriched all seven top-level goals with:
+  - goal type
+  - current and desired state
+  - desired transition
+  - current and target qualification
+  - artifact produced
+  - future transition enabled
+  - consequence horizon
+
+verification:
+- doc-only change
+
+notes:
+- this keeps the note aligned with the researcher bundle's transition-centric and qualification-driven framing without rewriting the subgoal layer into a heavier protocol

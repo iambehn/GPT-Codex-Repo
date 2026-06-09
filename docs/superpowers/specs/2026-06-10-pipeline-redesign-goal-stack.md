@@ -45,9 +45,81 @@ This note turns them into one explicit hierarchy of goals and subgoals so the re
 - The first pass should optimize for decision clarity, not brevity.
 - Partial-fulfillment outputs may be real products, but that is still a research-dependent question.
 
+## Goal Work-Order Template
+
+Each top-level goal in this note should be treated as a goal work order rather than only a planning heading.
+
+Every goal work order should declare:
+
+- Goal Type
+- Current State
+- Desired State
+- Desired Transition
+- Current Qualification
+- Target Qualification
+- Artifact Produced
+- Future Transition Enabled
+- Consequence Horizon
+
+The intent is to make each goal legible as:
+
+- a transition the system is trying to complete
+- a qualification target the system is trying to earn
+- an artifact-producing unit of work
+
+This keeps the goal stack aligned with the work-order / MRP framing and the researcher bundle's emphasis on qualification-driven operating logic.
+
 ## Goal Hierarchy
 
 ### Goal 1: Choose The First Business Lane
+
+#### Goal Type
+
+DISCOVERY
+
+#### Current State
+
+No commercially qualified first lane has been selected.
+
+Multiple plausible lanes exist, but the business does not yet have a defensible first-lane decision strong enough to govern architecture, sourcing, and build priorities.
+
+#### Desired State
+
+One commercially qualified first lane is chosen with explicit:
+
+- scope
+- comparative rationale
+- buyer fit
+- channel fit
+- capability consequence
+
+#### Desired Transition
+
+Unqualified lane ambiguity
+→
+Qualified first-lane decision
+
+#### Current Qualification
+
+Q1 plausible
+
+#### Target Qualification
+
+Q3 operational
+
+#### Artifact Produced
+
+Lane Decision Package
+
+#### Future Transition Enabled
+
+Generic redesign planning
+→
+Lane-specific architecture, qualification, offer, and build work
+
+#### Consequence Horizon
+
+Months / Years
 
 #### Objective
 
@@ -113,6 +185,51 @@ It controls:
 
 ### Goal 2: Define The Canonical Work-Order System
 
+#### Goal Type
+
+INFRASTRUCTURE
+
+#### Current State
+
+The repo has strong artifact, review, export, and lineage systems, but business/job state remains mostly implicit and must be inferred from technical artifacts.
+
+#### Desired State
+
+The repo has one explicit work-order operating model above the artifact layer, with:
+
+- named order classes
+- named stations
+- explicit ownership
+- explicit routing for approval, revision, defer, and cancel
+
+#### Desired Transition
+
+Implicit operational state
+→
+Explicit work-order operating model
+
+#### Current Qualification
+
+Q1 plausible
+
+#### Target Qualification
+
+Q3 operational
+
+#### Artifact Produced
+
+Canonical Work-Order System Spec
+
+#### Future Transition Enabled
+
+Artifact-driven workflow inference
+→
+Explicit order routing, ownership, and closeout logic
+
+#### Consequence Horizon
+
+Years
+
 #### Objective
 
 Translate the chosen lane into a work-order-driven operating model that sits above the current artifact pipeline.
@@ -174,6 +291,53 @@ This goal creates the operational object that lets the business reason about rea
 ```
 
 ### Goal 3: Define Qualified Work Envelopes
+
+#### Goal Type
+
+QUALIFICATION
+
+#### Current State
+
+The pipeline has only broad or partially implied ideas of what the agents can do.
+
+Qualification is not yet stated as explicit work envelopes tied to order class, source condition, approval complexity, revision scope, and rescue burden.
+
+#### Desired State
+
+The pipeline has explicit qualified work envelopes for the top order classes, with:
+
+- fixed qualification ladder
+- explicit guardrails
+- explicit class/source/approval combinations
+- explicit separation between technical capability and commercial qualification
+
+#### Desired Transition
+
+Broad assumed capability
+→
+Explicit qualified work envelopes
+
+#### Current Qualification
+
+Q1 plausible
+
+#### Target Qualification
+
+Q3 operational
+
+#### Artifact Produced
+
+Qualified Work Envelope Model
+
+#### Future Transition Enabled
+
+Generic confidence in agent ability
+→
+Evidence-backed lane qualification and specialization control
+
+#### Consequence Horizon
+
+Years
 
 #### Objective
 
@@ -248,6 +412,56 @@ Qualification must be tied to:
 ```
 
 ### Goal 4: Build The Measurement System
+
+#### Goal Type
+
+VALIDATION
+
+#### Current State
+
+The redesign direction is rich in concepts, but the measurement layer is still not encoded as one coherent evidence system for:
+
+- order outcomes
+- qualification drift
+- sourcing quality
+- promotion/demotion decisions
+
+#### Desired State
+
+The pipeline has one explicit measurement model that can:
+
+- score order classes
+- score qualification
+- classify friction
+- drive weekly and monthly management review
+
+#### Desired Transition
+
+Conceptual redesign logic
+→
+Evidence-driven operating measurement
+
+#### Current Qualification
+
+Q1 plausible
+
+#### Target Qualification
+
+Q3 operational
+
+#### Artifact Produced
+
+Measurement System Definition
+
+#### Future Transition Enabled
+
+Opinion-driven specialization
+→
+Evidence-driven sourcing, qualification, and roadmap control
+
+#### Consequence Horizon
+
+Years
 
 #### Objective
 
@@ -339,6 +553,58 @@ The system needs durable ways to measure:
 
 ### Goal 5: Define The Offer And Sourcing Model
 
+#### Goal Type
+
+DISCOVERY
+
+#### Current State
+
+The likely internal architecture is getting clearer, but the external commercial wrapper is still unresolved.
+
+The system does not yet have:
+
+- one first offer
+- one second offer
+- one preferred buyer/channel mix
+- one explicit set of rejected market postures
+
+#### Desired State
+
+The business has a narrow external wrapper that:
+
+- makes the chosen lane legible to buyers
+- attracts good-fit work
+- rejects weak-fit work early
+- stays aligned with qualified internal envelopes
+
+#### Desired Transition
+
+Unresolved commercial wrapper
+→
+Lane-aligned offer and sourcing model
+
+#### Current Qualification
+
+Q1 plausible
+
+#### Target Qualification
+
+Q3 operational
+
+#### Artifact Produced
+
+Offer And Sourcing Model Package
+
+#### Future Transition Enabled
+
+Internal architectural clarity
+→
+Externally legible, qualified market positioning
+
+#### Consequence Horizon
+
+Months / Years
+
 #### Objective
 
 Shape the external wrapper so it attracts work the pipeline can actually close.
@@ -398,6 +664,62 @@ The internal architecture may be work-order and content-operations driven, but t
 ```
 
 ### Goal 6: Define Portfolio And Queue Operating Rules
+
+#### Goal Type
+
+GOVERNANCE
+
+#### Current State
+
+The redesign now distinguishes:
+
+- stable-throughput work
+- strategic-core work
+- adjacent work
+- trial work
+- internal inventory work
+
+but these categories are not yet encoded into explicit portfolio and queue rules.
+
+#### Desired State
+
+The business has explicit rules for:
+
+- portfolio balance
+- queue truth
+- trial caps
+- defer/cancel hygiene
+- widening control
+
+so the workers can stay productive without letting the business drift into noise.
+
+#### Desired Transition
+
+Implicit queue and portfolio behavior
+→
+Explicit flow-governance rules
+
+#### Current Qualification
+
+Q1 plausible
+
+#### Target Qualification
+
+Q3 operational
+
+#### Artifact Produced
+
+Portfolio And Queue Operating Rules
+
+#### Future Transition Enabled
+
+Ad hoc flow management
+→
+Controlled throughput, learning balance, and widening discipline
+
+#### Consequence Horizon
+
+Years
 
 #### Objective
 
@@ -463,6 +785,55 @@ Queue and portfolio rules keep the system from either:
 ```
 
 ### Goal 7: Define The First Capability Build Agenda
+
+#### Goal Type
+
+GOVERNANCE
+
+#### Current State
+
+There are several plausible build candidates, but the redesign does not yet have one lane-specific, leverage-ranked capability agenda tied to:
+
+- good-fit lost value
+- stable-throughput protection
+- strategic-core strengthening
+
+#### Desired State
+
+The business has one explicit first capability agenda with:
+
+- one chosen build
+- ranked next builds
+- explicit non-builds
+- lane-unlock logic
+
+#### Desired Transition
+
+General improvement ambition
+→
+Lane-specific leverage-ranked capability agenda
+
+#### Current Qualification
+
+Q1 plausible
+
+#### Target Qualification
+
+Q3 operational
+
+#### Artifact Produced
+
+Capability Build Agenda
+
+#### Future Transition Enabled
+
+Generic feature discussion
+→
+Qualified build sequencing tied to business leverage
+
+#### Consequence Horizon
+
+Months / Years
 
 #### Objective
 
