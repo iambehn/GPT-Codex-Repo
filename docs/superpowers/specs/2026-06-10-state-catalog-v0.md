@@ -77,7 +77,8 @@ Examples:
 - `review_pack`
 - `approved_clip_set`
 - `platform_package`
-- `published_asset`
+- `completed_local_delivery`
+- `completed_posted_asset`
 - `generic_control`
 
 ### `definition`
@@ -123,8 +124,9 @@ Use:
 | STATE-003 | review_pack_approved | production | review_pack | The review pack has passed its expected review gate and is accepted as valid downstream input. | A review-ready pack exists and the required inspection has passed. | The approved review pack is used to generate approved clips, blocked, or archived. | `approved_clips_ready`, `blocked`, `archived` | required | no |
 | STATE-004 | review_pack_rejected | production | review_pack | The review pack has been inspected and explicitly not accepted as a valid downstream basis. | A review-ready pack exists and the required inspection has failed or been denied. | The rejected pack is archived or replaced by a new successful review-pack-ready artifact. | `archived`, `review_pack_ready` | required | no |
 | STATE-005 | approved_clips_ready | production | approved_clip_set | A bounded set of approved clips exists and is ready for packaging or downstream finishing. | Approved clips are explicitly selected and available as downstream inputs. | The approved clip set is used to produce a platform package, blocked, or archived. | `platform_package_ready`, `blocked`, `archived` | required | no |
-| STATE-006 | platform_package_ready | production | platform_package | A platform-specific package exists in a state that is ready for publish readiness review or delivery. | The selected clip set has been transformed into a bounded package for a target platform. | The package is published, blocked, or archived. | `published_asset`, `blocked`, `archived` | required | no |
-| STATE-007 | published_asset | production | published_asset | The artifact has reached the intended published end state for the current path. | A platform package has passed the required inspection and has been promoted to published status. | No further production-state transition is expected in this v0 model. | `archived` | required | yes |
+| STATE-006 | platform_package_ready | production | platform_package | A platform-specific package exists in a state that is ready for final delivery or posting inspection. | The selected clip set has been transformed into a bounded package for a target platform. | The package is completed locally, completed as a posted asset, blocked, or archived. | `completed_local`, `completed_posted`, `blocked`, `archived` | required | no |
+| STATE-007 | completed_local | production | completed_local_delivery | Terminal production state for an export-ready or locally delivered package with no posting obligation. | A platform package has passed the required final inspection for local completion. | No further production-state transition is expected in this v0 model. | `archived` | required | yes |
+| STATE-008 | completed_posted | production | completed_posted_asset | Terminal production state for an externally posted or published asset. | A platform package has passed the required final inspection for posted completion and the posting action has succeeded. | No further production-state transition is expected in this v0 model. | `archived` | required | yes |
 
 ## Cross-Artifact Control States
 
@@ -133,7 +135,7 @@ These states do not represent normal production progress. They represent handlin
 | state_id | state_name | state_scope | artifact_type | definition | entry_condition | exit_allowed_when | valid_next_states | inspection_required | terminal_state |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STATE-101 | invalid_source | cross_artifact_control | generic_control | The artifact or source input is not valid for the intended workflow and should not advance through normal production states. | Validation, intake, or review shows the source is unsupported, unusable, or malformed for the intended path. | The invalid condition is corrected through explicit re-entry or the artifact is archived. | `raw_vod`, `archived` | required | no |
-| STATE-102 | blocked | cross_artifact_control | generic_control | The artifact cannot currently progress because a dependency, decision, input, or capability is missing. | A normal production transition cannot continue without an external unblock condition. | The blocking condition is resolved or the artifact is archived. | `raw_vod`, `review_pack_ready`, `review_pack_approved`, `review_pack_rejected`, `approved_clips_ready`, `platform_package_ready`, `archived` | required | no |
+| STATE-102 | blocked | cross_artifact_control | generic_control | The artifact cannot currently progress because a dependency, decision, input, or capability is missing. | A normal production transition cannot continue without an external unblock condition. | The blocking condition is resolved through a context-specific routing decision or the artifact is archived. | `context_specific`, `archived` | required | no |
 | STATE-103 | archived | cross_artifact_control | generic_control | The artifact is intentionally removed from active progression and preserved only for record, reference, or later reactivation policy. | The artifact is complete, superseded, rejected, invalid, or intentionally retired from active control-plane flow. | Re-entry is only allowed by an explicit future policy, not by default in v0. | none | required | yes |
 
 ## First Rules For Future Transition Design
@@ -146,6 +148,12 @@ The transition layer should inherit these rules:
 4. Inspection should validate whether the claimed output state was actually reached.
 5. Failure attribution should explain why the intended output state was not reached.
 
+## Deferred Re-Entry Note
+
+For v0, `blocked` is intentionally modeled as a non-terminal control posture without broad built-in re-entry paths.
+
+Its return to a production state is deferred to routing architecture so unblock behavior remains context-specific rather than implicitly global.
+
 ## Non-Goals
 
 - This v0 catalog does not define transition IDs.
@@ -154,6 +162,19 @@ The transition layer should inherit these rules:
 - This v0 catalog does not define inventory policy.
 - This v0 catalog does not mutate runtime code, manifests, or schemas yet.
 
-## Immediate Follow-On Artifact
+## State Patch Note
 
-The next structurally dependent artifact should be a transition catalog that uses these state records as its explicit input and output anchors.
+This v0 catalog originally used `published_asset` as a single terminal production state.
+
+That state was split into:
+
+- `completed_local`
+- `completed_posted`
+
+Reason:
+
+- the control plane needs to distinguish local/export completion from externally posted completion before transition design, otherwise terminal transitions become ambiguous.
+
+## Immediate Follow-On Layer
+
+The next structurally dependent layer is transition design built on these revised state records as explicit input and output anchors.

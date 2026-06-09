@@ -2779,3 +2779,171 @@ verification:
 
 notes:
 - this establishes states as artifact conditions rather than process steps so later transition, routing, inspection, failure, and qualification artifacts can attach to stable control-plane objects
+
+## 2026-06-10T20:45Z
+
+target:
+- create the first transition catalog from the state foundation and patch the terminal state model so local completion and posted completion remain distinct
+
+status:
+- completed
+
+result:
+- updated [2026-06-10-state-catalog-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-state-catalog-v0.md)
+- added [2026-06-10-transition-catalog-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-transition-catalog-v0.md)
+- introduced:
+  - a terminal-state split from `published_asset` into `completed_local` and `completed_posted`
+  - canonical transition types for production, inspection, control, and archive flows
+  - state-to-state transition rows anchored to work-order classes, completion events, inspection events, and failure-class placeholders
+
+verification:
+- doc-only change
+
+notes:
+- this preserves the state/work-order/MRP framing and stops short of routing, qualification, inventory, or planning design
+
+## 2026-06-10T21:05Z
+
+target:
+- apply only the reviewed v0 transition fixes without expanding the transition foundation into routing or qualification
+
+status:
+- completed
+
+result:
+- updated [2026-06-10-transition-catalog-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-transition-catalog-v0.md)
+- added:
+  - explicit production rework transition `review_pack_rejected -> review_pack_ready`
+  - note that `blocked` is non-terminal and its re-entry is deferred to routing architecture
+  - note that `invalid_source` transition coverage is deferred until source-intake states are modeled
+
+verification:
+- doc-only change
+
+notes:
+- this keeps transition v0 narrow and structurally consistent without prematurely adding unblock routing or source-intake transition branches
+
+## 2026-06-10T21:35Z
+
+target:
+- define the first inspection architecture on top of the current state and transition foundation without expanding into routing, failure taxonomy, or qualification
+
+status:
+- completed
+
+result:
+- added [2026-06-10-inspection-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-inspection-architecture-v0.md)
+- clarified inspection as:
+  - target-state arrival validation
+  - role-based evidence review
+  - bounded outcome emission
+- defined:
+  - inspection roles
+  - inspection object model
+  - outcome vocabulary
+  - transition inspection matrix
+  - transitions that need only authorization rather than substantive inspection
+- updated [2026-06-10-transition-catalog-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-transition-catalog-v0.md) to remove one stale note about review-pack rejection paths
+
+verification:
+- doc-only change
+
+notes:
+- this keeps inspection separate from routing and qualification so later failure and trust layers can attach to an explicit inspection foundation
+
+## 2026-06-10T22:05Z
+
+target:
+- define the first failure taxonomy on top of the current state, transition, and inspection foundation without expanding into routing or qualification policy
+
+status:
+- completed
+
+result:
+- added [2026-06-10-failure-taxonomy-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-failure-taxonomy-v0.md)
+- defined:
+  - failure families
+  - failure record shape
+  - initial actionable failure classes
+  - mapping rules from inspection outcomes and transition types into failure categories
+  - explicit reject versus rework guidance
+
+verification:
+- doc-only change
+
+notes:
+- this keeps failure taxonomy as an explanatory layer attached to states, transitions, and inspection outcomes without silently encoding routing or qualification policy
+
+## 2026-06-10T22:35Z
+
+target:
+- define the first routing architecture on top of the current state, transition, inspection, and failure foundation without expanding into qualification, inventory, or planning
+
+status:
+- completed
+
+result:
+- added [2026-06-10-routing-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-routing-architecture-v0.md)
+- defined:
+  - routing object model
+  - routing result types
+  - canonical outcome routing rules
+  - major routing table
+  - explicit blocked, reject, rework, archive, and terminal routing rules
+  - explicit deferrals for unblock and deeper rework branches
+
+verification:
+- doc-only change
+
+notes:
+- this keeps routing as next-step logic attached to states, transitions, inspection outcomes, and failure classes without turning it into qualification or planning policy
+
+## 2026-06-10T23:05Z
+
+target:
+- define the first qualification architecture on top of the current transition, inspection, failure, and routing foundation without expanding into staffing, inventory, or planning policy
+
+status:
+- completed
+
+result:
+- added [2026-06-10-qualification-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-qualification-architecture-v0.md)
+- defined:
+  - qualification subjects
+  - qualification ladder
+  - qualification evidence model
+  - qualification record shape
+  - transition qualification matrix
+  - promotion and demotion guidance
+  - support-versus-control qualification rules
+
+verification:
+- doc-only change
+
+notes:
+- this keeps qualification as a trust layer attached to transitions and their inspection/failure history without turning it into staffing or planning policy
+
+## 2026-06-10T23:35Z
+
+target:
+- repair only the reviewed v0 control-plane blockers before any commit decision
+
+status:
+- completed
+
+result:
+- updated [2026-06-10-state-catalog-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-state-catalog-v0.md)
+- updated [2026-06-10-transition-catalog-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-transition-catalog-v0.md)
+- updated [2026-06-10-routing-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-routing-architecture-v0.md)
+- updated [2026-06-10-qualification-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-qualification-architecture-v0.md)
+- repaired:
+  - `ROUTE-006` so reject no longer encodes archive
+  - transition `known_failure_classes` so they use canonical failure families
+  - `blocked` state re-entry so it is explicitly context-specific and deferred
+  - optimistic `Q3`/`Q4` current-state placements so v0 remains conservative
+
+verification:
+- doc-only change
+
+notes:
+- this repair pass was intentionally bounded to review blockers and did not add new artifacts or expand routing, planning, inventory, or failure subtypes
