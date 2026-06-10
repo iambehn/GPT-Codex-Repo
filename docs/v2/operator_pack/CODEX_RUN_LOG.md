@@ -3463,3 +3463,26 @@ verification:
 
 notes:
 - this pass preserved the implementation as the baseline and identified the current open semantic question as broader confirmation of the `TRANS-016` mapping under real workflow use
+
+## 2026-06-11T08:55Z
+
+target:
+- measure evidence-density improvement after accepted-binding, publish-readiness, and source-fetch instrumentation
+
+status:
+- completed
+
+result:
+- added [2026-06-11-evidence-density-improvement-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-evidence-density-improvement-report-v0.md)
+- compared the original `118`-event onboarding observation baseline against current post-instrumentation generator capability for the same workflow-family event classes
+- found:
+  - native transition coverage improved from `0 / 118` to `118 / 118`
+  - attribution quality improved from `6 medium + 112 weak/unknown` to `118 medium`
+  - effective `unknown_subject` dependency for the measured event classes dropped from `112 / 118` to `0 / 118`
+  - qualification evidence improved from `112 medium + 6 weak` to `118 medium`
+
+verification:
+- doc-and-artifact comparison only
+
+notes:
+- the after-state is intentionally framed as current generator capability for the historical workflow family, not retroactive mutation of older workflow artifacts
