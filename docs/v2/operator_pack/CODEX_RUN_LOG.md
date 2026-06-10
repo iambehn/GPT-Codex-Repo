@@ -2997,3 +2997,78 @@ verification:
 
 notes:
 - this patch stays bounded to the validated aggregate mixed-status gap and does not add inventory, planning, or resource-model architecture
+
+## 2026-06-11T01:05Z
+
+target:
+- apply the current control-plane baseline to three additional historical workflows and assess transferability without widening architecture
+
+status:
+- completed
+
+result:
+- added [2026-06-11-control-plane-transferability-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-control-plane-transferability-report-v0.md)
+- tested:
+  - `assets/games/call_of_duty/drafts/onboarding/20260505T212727Z`
+  - `assets/games/call_of_duty/drafts/onboarding/20260505T213409Z`
+  - `assets/games/marvel_rivals/drafts/onboarding/20260509T143952Z`
+- found:
+  - two workflows transfer cleanly through the current control plane
+  - one workflow stresses an earlier source/population slice rather than the aggregate mixed-status review patch
+  - no major redesign is justified yet
+
+verification:
+- doc-only change
+
+notes:
+- this pass stayed in validation mode and did not add inventory, planning, staffing, or resource-model logic
+
+## 2026-06-11T01:40Z
+
+target:
+- define Source Intake Architecture v0 for the validated control-plane model using the transferability report as the evidence surface
+
+status:
+- completed
+
+result:
+- added [2026-06-11-source-intake-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-source-intake-architecture-v0.md)
+- defined:
+  - a source catalog spanning onboarding remote sources, populated onboarding draft sources, accepted clip inventory rows, and accepted clip fixture manifests
+  - a source-state model for declared, fetched, population-review-required, population-ready, and source-invalid conditions
+  - source qualification rules based on structural validity, fetch or presence validity, population validity, identity stability, and entry-path fit
+  - explicit source-intake entry transitions into the committed control-plane states `raw_vod`, `review_pack_ready`, and `invalid_source`
+- preserved the committed control-plane artifacts as stable and kept source-intake transitions in a separate upstream spec
+
+verification:
+- doc-only change
+
+notes:
+- this pass stayed upstream of inventory, planning, staffing, queue management, and broad control-plane redesign
+
+## 2026-06-11T02:05Z
+
+target:
+- apply only the Source Intake Architecture v0 review repair around direct `review_pack_ready` entry and source-qualification boundary clarity
+
+status:
+- completed
+
+result:
+- tightened `source_population_ready` so direct `review_pack_ready` entry requires:
+  - no blocking population findings
+  - an already existing aggregate review artifact
+  - stable enough identity for inspection
+  - a reviewable artifact form
+- clarified that source qualification ends when the entry transition into the committed control plane fires
+- clarified that downstream trust is then governed by the committed control-plane qualification architecture
+- split the prior mixed-input invalidation transition into:
+  - `source_declared -> source_invalid`
+  - `source_fetched -> source_invalid`
+  - `source_invalid -> invalid_source`
+
+verification:
+- doc-only change
+
+notes:
+- this repair stayed bounded and did not add inventory, planning, staffing, queue logic, or new downstream control-plane transitions
