@@ -219,6 +219,52 @@ verification:
 notes:
 - this is intended to unblock the next implementation slice without pretending that the web search produced a strong external packet
 
+## 2026-06-11T08:15Z
+
+target:
+- publish-readiness instrumentation slice readiness
+
+status:
+- completed
+
+result:
+- identified the shared publish-readiness write seam as `_refresh_phase_status_from_publish_readiness(...)`
+- produced a bounded readiness report for publish-readiness instrumentation
+- proposed committed-vocabulary mappings for `ready_to_publish` and `needs_binding_review`
+- documented the main implementation risk: current helper is state-change-oriented while event capture must stay append-only
+
+verification:
+- inspected `pipeline/game_onboarding.py`
+- inspected `pipeline/derived_row_review.py`
+- inspected `pipeline/onboarding_publish_readiness.py`
+- inspected `tests/test_publish_readiness_goldset.py`
+
+notes:
+- no implementation or workflow mutation landed in this slice
+- recommended first implementation scope is limited to deterministic `system_validator` publish-readiness events
+
+## 2026-06-11T09:05Z
+
+target:
+- publish-readiness instrumentation slice
+
+status:
+- completed
+
+result:
+- instrumented `_refresh_phase_status_from_publish_readiness(...)` to emit append-only readiness events for `ready_to_publish` and `needs_binding_review`
+- persisted deterministic `system_validator` attribution and canonical transition / inspection fields
+- added duplicate protection through deterministic semantic `event_id` generation
+- left `needs_population_review` and `structurally_invalid` uninstrumented
+
+verification:
+- `python3 -m unittest tests.test_game_onboarding.GameOnboardingTests.test_refresh_publish_readiness_emits_ready_to_publish_event tests.test_game_onboarding.GameOnboardingTests.test_refresh_publish_readiness_emits_needs_binding_review_once_when_phase_unchanged tests.test_game_onboarding.GameOnboardingTests.test_refresh_publish_readiness_skips_non_instrumented_outcome`
+- `python3 -m unittest tests.test_game_onboarding.GameOnboardingTests.test_apply_derived_row_review_accept_candidate_resolves_selected_row tests.test_game_onboarding.GameOnboardingTests.test_apply_derived_row_review_accept_recommended_uses_single_recommended_candidate tests.test_publish_readiness_goldset tests.test_onboarding_publish_readiness`
+
+notes:
+- append-only emission is keyed to qualifying readiness outcomes, not only `phase_status` mutation
+- duplicate avoidance is semantic and deterministic, based on readiness outcome plus supporting workflow evidence
+
 ## 2026-06-04T07:18Z
 
 target:

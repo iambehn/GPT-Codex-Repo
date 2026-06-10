@@ -3279,6 +3279,12 @@ def _refresh_phase_status_from_publish_readiness(
 
     derive_game_detection_manifest(draft_root)
     readiness = validate_onboarding_publish(draft_root, repo_root=repo_root)
+    _emit_publish_readiness_transition_event(
+        draft_root,
+        readiness=readiness,
+        bindings=bindings,
+        qa_queue=qa_queue,
+    )
     final_phase_status = "ready_to_publish" if bool(readiness.get("can_publish")) else "bindings_pending"
     if str(manifest_payload.get("phase_status", "")).strip() == final_phase_status and str(state_payload.get("phase_status", "")).strip() == final_phase_status:
         return final_phase_status
@@ -3295,6 +3301,158 @@ def _refresh_phase_status_from_publish_readiness(
         state_payload=state_payload,
     )
     return final_phase_status
+
+
+def _emit_publish_readiness_transition_event(
+    draft_root: Path,
+    *,
+    readiness: dict[str, Any],
+    bindings: list[dict[str, Any]],
+    qa_queue: list[dict[str, Any]],
+) -> None:
+    readiness_name = str(readiness.get("readiness", "")).strip()
+    event_fields = _publish_readiness_transition_fields(readiness_name)
+    if event_fields is None:
+        return
+
+    event_id = _publish_readiness_event_id(
+        draft_root,
+        readiness=readiness,
+        bindings=bindings,
+        qa_queue=qa_queue,
+        transition_id=event_fields["transition_id"],
+    )
+    events_path = _publish_readiness_events_path(draft_root)
+    existing_rows = _read_jsonl_rows(events_path)
+    if any(str(row.get("event_id", "")).strip() == event_id for row in existing_rows):
+        return
+
+    evidence_reference = f"{events_path}#event_id={event_id}"
+    row = {
+        "event_id": event_id,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "subject": "system_validator",
+        "subject_kind": "deterministic",
+        "subject_attribution_basis": "deterministic_system_step",
+        "transition_id": event_fields["transition_id"],
+        "input_state": event_fields["input_state"],
+        "output_state": event_fields["output_state"],
+        "inspection_result": event_fields["inspection_result"],
+        "failure_family": event_fields["failure_family"],
+        "rescue_required": event_fields["rescue_required"],
+        "evidence_reference": evidence_reference,
+        "capture_source": "onboarding_publish_readiness",
+        "notes": f"publish-readiness concluded {readiness_name}",
+    }
+    events_path.parent.mkdir(parents=True, exist_ok=True)
+    with events_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(row, sort_keys=True))
+        handle.write("\n")
+
+
+def _publish_readiness_transition_fields(readiness_name: str) -> dict[str, Any] | None:
+    if readiness_name == "ready_to_publish":
+        return {
+            "transition_id": "TRANS-002",
+            "input_state": "review_pack_ready",
+            "output_state": "review_pack_approved",
+            "inspection_result": "pass",
+            "failure_family": "none",
+            "rescue_required": False,
+        }
+    if readiness_name == "needs_binding_review":
+        return {
+            "transition_id": "TRANS-017",
+            "input_state": "review_pack_mixed_status",
+            "output_state": "review_pack_needs_rework",
+            "inspection_result": "rework_required",
+            "failure_family": "inspection",
+            "rescue_required": True,
+        }
+    return None
+
+
+def _publish_readiness_event_id(
+    draft_root: Path,
+    *,
+    readiness: dict[str, Any],
+    bindings: list[dict[str, Any]],
+    qa_queue: list[dict[str, Any]],
+    transition_id: str,
+) -> str:
+    accepted_bindings = sorted(
+        {
+            (
+                str(row.get("detection_id", "")).strip(),
+                str(row.get("candidate_id", "")).strip(),
+                str(row.get("status", "")).strip(),
+            )
+            for row in bindings
+            if str(row.get("status", "")).strip() == "accepted"
+        }
+    )
+    readiness_findings = readiness.get("findings", [])
+    normalized_findings = []
+    if isinstance(readiness_findings, list):
+        for row in readiness_findings:
+            if not isinstance(row, dict):
+                continue
+            normalized_findings.append(
+                {
+                    "type": str(row.get("type", "")).strip(),
+                    "severity": str(row.get("severity", "")).strip(),
+                    "status": str(row.get("status", "")).strip(),
+                    "reason": str(row.get("reason", "")).strip(),
+                    "detection_id": str(row.get("detection_id", "")).strip(),
+                    "target_id": str(row.get("target_id", "")).strip(),
+                    "message": str(row.get("message", "")).strip(),
+                }
+            )
+    qa_signature = sorted(
+        {
+            (
+                str(row.get("item_type", "")).strip(),
+                str(row.get("status", "")).strip(),
+                str(row.get("reason", "")).strip(),
+                str(row.get("detection_id", "")).strip(),
+                str(row.get("target_id", "")).strip(),
+            )
+            for row in qa_queue
+        }
+    )
+    payload = {
+        "draft_root": str(draft_root.resolve()),
+        "game": str(readiness.get("game", "")).strip(),
+        "readiness": str(readiness.get("readiness", "")).strip(),
+        "can_publish": bool(readiness.get("can_publish")),
+        "transition_id": transition_id,
+        "counts": readiness.get("counts", {}),
+        "source_summary": readiness.get("source_summary", {}),
+        "accepted_bindings": accepted_bindings,
+        "findings": sorted(normalized_findings, key=lambda item: json.dumps(item, sort_keys=True)),
+        "qa_signature": qa_signature,
+    }
+    digest = hashlib.sha1(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+    return f"publish-readiness-{draft_root.name}-{digest}"
+
+
+def _publish_readiness_events_path(draft_root: Path) -> Path:
+    return draft_root / "manifests" / "publish_readiness_events.jsonl"
+
+
+def _read_jsonl_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            payload = json.loads(stripped)
+            if isinstance(payload, dict):
+                rows.append(payload)
+    return rows
 
 
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:

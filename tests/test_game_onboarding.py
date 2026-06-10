@@ -12,8 +12,10 @@ from pipeline.onboarding_publish_readiness import validate_onboarding_publish
 from pipeline.simple_yaml import dump_yaml_file, load_yaml_file
 from pipeline.asset_candidate_quality import score_binding_candidate
 from pipeline.game_onboarding import (
+    _build_onboarding_state,
     _build_qa_queue,
     _load_runtime_detection_schema,
+    _refresh_phase_status_from_publish_readiness,
     OnboardingSource,
     adapt_game_schema,
     build_onboarding_draft,
@@ -41,6 +43,12 @@ _ONE_BY_ONE_PNG = (
 
 
 class GameOnboardingTests(unittest.TestCase):
+    def _minimal_publish_readiness_draft(self, root: Path) -> Path:
+        draft_root = root / "assets" / "games" / "marvel_rivals" / "drafts" / "onboarding" / "20260611T000000Z"
+        (draft_root / "manifests").mkdir(parents=True, exist_ok=True)
+        (draft_root / "catalog").mkdir(parents=True, exist_ok=True)
+        return draft_root
+
     def _write_marvel_starter_seed(self, root: Path) -> None:
         starter_root = root / "starter_assets" / "marvel_rivals"
         starter_root.mkdir(parents=True, exist_ok=True)
@@ -3399,3 +3407,207 @@ class GameOnboardingTests(unittest.TestCase):
             self.assertEqual(result["counts"]["source_failures"], 1)
             fetch_log = self._read_csv(Path(result["artifacts"]["source_fetch_log_csv"]))
             self.assertTrue(any(row["status"] == "fetch_failed" for row in fetch_log))
+
+    def test_refresh_publish_readiness_emits_ready_to_publish_event(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            draft_root = self._minimal_publish_readiness_draft(Path(tempdir))
+            ontology = {"heroes": [], "abilities": [], "events": []}
+            detection_manifest = {
+                "schema_version": "game_detection_manifest_v1",
+                "game_id": "marvel_rivals",
+                "row_count": 0,
+                "required_row_count": 0,
+                "ready_row_count": 0,
+                "rows_needing_assets": 0,
+                "rows": [],
+            }
+            bindings = [{"detection_id": "row-1", "candidate_id": "candidate-1", "status": "accepted"}]
+            manifest_payload = {
+                "game_id": "marvel_rivals",
+                "phase_status": "bindings_pending",
+                "source_count": 1,
+                "source_fetch_log": [{"status": "fetched", "source_role": "roster"}],
+            }
+            state_payload = _build_onboarding_state(
+                "marvel_rivals",
+                phase_status="bindings_pending",
+                source_count=1,
+                schema_path="manifests/game_detection_schema.yaml",
+            )
+            readiness_payload = {
+                "ok": True,
+                "game": "marvel_rivals",
+                "can_publish": True,
+                "readiness": "ready_to_publish",
+                "counts": {"accepted_bindings": 1, "binding_findings": 0},
+                "source_summary": {"source_count": 1, "fetched_count": 1, "status_counts": {"fetched": 1}},
+                "findings": [],
+            }
+            with patch("pipeline.derived_detection_manifest.derive_game_detection_manifest", return_value={"ok": True}), patch(
+                "pipeline.game_onboarding.validate_onboarding_publish",
+                return_value=readiness_payload,
+            ):
+                phase_status = _refresh_phase_status_from_publish_readiness(
+                    draft_root,
+                    ontology=ontology,
+                    detection_manifest=detection_manifest,
+                    candidates=[],
+                    bindings=bindings,
+                    qa_queue=[],
+                    manifest_payload=manifest_payload,
+                    state_payload=state_payload,
+                )
+
+            self.assertEqual(phase_status, "ready_to_publish")
+            events_path = draft_root / "manifests" / "publish_readiness_events.jsonl"
+            rows = [json.loads(line) for line in events_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+            self.assertEqual(row["subject"], "system_validator")
+            self.assertEqual(row["subject_kind"], "deterministic")
+            self.assertEqual(row["subject_attribution_basis"], "deterministic_system_step")
+            self.assertEqual(row["transition_id"], "TRANS-002")
+            self.assertEqual(row["input_state"], "review_pack_ready")
+            self.assertEqual(row["output_state"], "review_pack_approved")
+            self.assertEqual(row["inspection_result"], "pass")
+            self.assertEqual(row["failure_family"], "none")
+            self.assertFalse(row["rescue_required"])
+            self.assertEqual(row["capture_source"], "onboarding_publish_readiness")
+
+    def test_refresh_publish_readiness_emits_needs_binding_review_once_when_phase_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            draft_root = self._minimal_publish_readiness_draft(Path(tempdir))
+            ontology = {"heroes": [], "abilities": [], "events": []}
+            detection_manifest = {
+                "schema_version": "game_detection_manifest_v1",
+                "game_id": "marvel_rivals",
+                "row_count": 0,
+                "required_row_count": 0,
+                "ready_row_count": 0,
+                "rows_needing_assets": 0,
+                "rows": [],
+            }
+            bindings = [{"detection_id": "row-1", "candidate_id": "candidate-1", "status": "accepted"}]
+            qa_queue = [{"item_type": "manual_crop_required", "status": "needs_binding_review", "reason": "crop first"}]
+            manifest_payload = {
+                "game_id": "marvel_rivals",
+                "phase_status": "bindings_pending",
+                "source_count": 1,
+                "source_fetch_log": [{"status": "fetched", "source_role": "roster"}],
+            }
+            state_payload = _build_onboarding_state(
+                "marvel_rivals",
+                phase_status="bindings_pending",
+                source_count=1,
+                schema_path="manifests/game_detection_schema.yaml",
+            )
+            readiness_payload = {
+                "ok": True,
+                "game": "marvel_rivals",
+                "can_publish": False,
+                "readiness": "needs_binding_review",
+                "counts": {"accepted_bindings": 1, "binding_findings": 1},
+                "source_summary": {"source_count": 1, "fetched_count": 1, "status_counts": {"fetched": 1}},
+                "findings": [
+                    {
+                        "type": "manual_crop_required",
+                        "severity": "binding",
+                        "status": "needs_binding_review",
+                        "reason": "crop first",
+                        "detection_id": "row-1",
+                        "target_id": "target-1",
+                    }
+                ],
+            }
+            with patch("pipeline.derived_detection_manifest.derive_game_detection_manifest", return_value={"ok": True}), patch(
+                "pipeline.game_onboarding.validate_onboarding_publish",
+                return_value=readiness_payload,
+            ):
+                phase_status = _refresh_phase_status_from_publish_readiness(
+                    draft_root,
+                    ontology=ontology,
+                    detection_manifest=detection_manifest,
+                    candidates=[],
+                    bindings=bindings,
+                    qa_queue=qa_queue,
+                    manifest_payload=manifest_payload,
+                    state_payload=state_payload,
+                )
+                second_phase_status = _refresh_phase_status_from_publish_readiness(
+                    draft_root,
+                    ontology=ontology,
+                    detection_manifest=detection_manifest,
+                    candidates=[],
+                    bindings=bindings,
+                    qa_queue=qa_queue,
+                    manifest_payload=manifest_payload,
+                    state_payload=state_payload,
+                )
+
+            self.assertEqual(phase_status, "bindings_pending")
+            self.assertEqual(second_phase_status, "bindings_pending")
+            events_path = draft_root / "manifests" / "publish_readiness_events.jsonl"
+            rows = [json.loads(line) for line in events_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+            self.assertEqual(row["subject"], "system_validator")
+            self.assertEqual(row["subject_kind"], "deterministic")
+            self.assertEqual(row["subject_attribution_basis"], "deterministic_system_step")
+            self.assertEqual(row["transition_id"], "TRANS-017")
+            self.assertEqual(row["input_state"], "review_pack_mixed_status")
+            self.assertEqual(row["output_state"], "review_pack_needs_rework")
+            self.assertEqual(row["inspection_result"], "rework_required")
+            self.assertEqual(row["failure_family"], "inspection")
+            self.assertTrue(row["rescue_required"])
+
+    def test_refresh_publish_readiness_skips_non_instrumented_outcome(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            draft_root = self._minimal_publish_readiness_draft(Path(tempdir))
+            ontology = {"heroes": [], "abilities": [], "events": []}
+            detection_manifest = {
+                "schema_version": "game_detection_manifest_v1",
+                "game_id": "marvel_rivals",
+                "row_count": 0,
+                "required_row_count": 0,
+                "ready_row_count": 0,
+                "rows_needing_assets": 0,
+                "rows": [],
+            }
+            manifest_payload = {
+                "game_id": "marvel_rivals",
+                "phase_status": "bindings_pending",
+                "source_count": 1,
+                "source_fetch_log": [{"status": "fetched", "source_role": "roster"}],
+            }
+            state_payload = _build_onboarding_state(
+                "marvel_rivals",
+                phase_status="bindings_pending",
+                source_count=1,
+                schema_path="manifests/game_detection_schema.yaml",
+            )
+            readiness_payload = {
+                "ok": True,
+                "game": "marvel_rivals",
+                "can_publish": False,
+                "readiness": "needs_population_review",
+                "counts": {"accepted_bindings": 0, "population_findings": 1},
+                "source_summary": {"source_count": 1, "fetched_count": 1, "status_counts": {"fetched": 1}},
+                "findings": [{"type": "source_seed_disagreement", "severity": "population"}],
+            }
+            with patch("pipeline.derived_detection_manifest.derive_game_detection_manifest", return_value={"ok": True}), patch(
+                "pipeline.game_onboarding.validate_onboarding_publish",
+                return_value=readiness_payload,
+            ):
+                phase_status = _refresh_phase_status_from_publish_readiness(
+                    draft_root,
+                    ontology=ontology,
+                    detection_manifest=detection_manifest,
+                    candidates=[],
+                    bindings=[],
+                    qa_queue=[],
+                    manifest_payload=manifest_payload,
+                    state_payload=state_payload,
+                )
+
+            self.assertEqual(phase_status, "bindings_pending")
+            self.assertFalse((draft_root / "manifests" / "publish_readiness_events.jsonl").exists())
