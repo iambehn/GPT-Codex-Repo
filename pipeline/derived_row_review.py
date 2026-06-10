@@ -27,6 +27,13 @@ DERIVED_ROW_REVIEW_SCHEMA_VERSION = "derived_row_review_v1"
 _ALLOWED_REVIEW_STATUSES = {"unreviewed", "approved", "rejected"}
 _ALLOWED_DECISIONS = {"accept_candidate", "reject_all_candidates", "defer_row"}
 _TERMINAL_BINDING_STATUSES = {"rejected", "superseded"}
+_ALLOWED_SUBJECTS = {
+    "codex_structured_worker",
+    "system_validator",
+    "human_editor",
+    "manager_approver",
+    "unknown_subject",
+}
 
 
 def prepare_derived_row_review(
@@ -102,6 +109,7 @@ def prepare_derived_row_review(
             "review_status": "unreviewed",
             "review_decision": "",
             "selected_candidate_id": "",
+            "reviewed_by_subject": "",
             "review_notes": "",
             "apply_status": "pending_review",
             "recommended_decision": recommended_decision,
@@ -369,7 +377,9 @@ def _apply_single_review(
     review_status = str(payload.get("review_status", "")).strip()
     review_decision = str(payload.get("review_decision", "")).strip()
     selected_candidate_id = str(payload.get("selected_candidate_id", "")).strip()
+    reviewed_by_subject = _normalized_review_subject(payload)
     review_notes = str(payload.get("review_notes", "")).strip()
+    reviewed_at = _utc_now()
 
     if detection_id not in detection_rows_by_id:
         payload["apply_status"] = "missing_detection_row"
@@ -383,6 +393,10 @@ def _apply_single_review(
         payload["apply_status"] = "unreviewed"
         row["apply_status"] = "unreviewed"
         return {"bucket": "skipped", "row": row}
+    if reviewed_by_subject not in _ALLOWED_SUBJECTS:
+        payload["apply_status"] = "invalid_review_subject"
+        row["apply_status"] = "invalid_review_subject"
+        return {"bucket": "failed", "row": row}
     if review_decision not in _ALLOWED_DECISIONS:
         payload["apply_status"] = "invalid_review_decision"
         row["apply_status"] = "invalid_review_decision"
@@ -413,14 +427,20 @@ def _apply_single_review(
                 binding["review_notes"] = review_notes
                 binding["derived_row_review_status"] = "approved"
                 binding["derived_row_review_decision"] = review_decision
-                binding["derived_row_reviewed_at"] = _utc_now()
+                binding["derived_row_reviewed_at"] = reviewed_at
+                _stamp_accepted_binding_instrumentation(
+                    binding,
+                    payload=payload,
+                    reviewed_by_subject=reviewed_by_subject,
+                    reviewed_at=reviewed_at,
+                )
                 found = True
             elif str(binding.get("status", "")).strip() not in _TERMINAL_BINDING_STATUSES:
                 binding["status"] = "superseded"
                 binding["review_notes"] = review_notes
                 binding["derived_row_review_status"] = "approved"
                 binding["derived_row_review_decision"] = review_decision
-                binding["derived_row_reviewed_at"] = _utc_now()
+                binding["derived_row_reviewed_at"] = reviewed_at
         if not found:
             payload["apply_status"] = "selected_binding_not_found"
             row["apply_status"] = "selected_binding_not_found"
@@ -433,7 +453,7 @@ def _apply_single_review(
             binding["review_notes"] = review_notes
             binding["derived_row_review_status"] = "approved"
             binding["derived_row_review_decision"] = review_decision
-            binding["derived_row_reviewed_at"] = _utc_now()
+            binding["derived_row_reviewed_at"] = reviewed_at
     else:
         for binding in bindings:
             if str(binding.get("detection_id", "")).strip() != detection_id:
@@ -441,10 +461,10 @@ def _apply_single_review(
             binding["review_notes"] = review_notes
             binding["derived_row_review_status"] = "approved"
             binding["derived_row_review_decision"] = review_decision
-            binding["derived_row_reviewed_at"] = _utc_now()
+            binding["derived_row_reviewed_at"] = reviewed_at
 
     payload["apply_status"] = "applied"
-    payload["applied_at"] = _utc_now()
+    payload["applied_at"] = reviewed_at
     row["apply_status"] = "applied"
     row["review_decision"] = review_decision
     row["selected_candidate_id"] = selected_candidate_id or None
@@ -533,6 +553,8 @@ def _apply_recommended_defaults(payload: dict[str, Any]) -> None:
     payload["review_status"] = "approved"
     payload["review_decision"] = "accept_candidate"
     payload["selected_candidate_id"] = recommended_candidate_id
+    if not str(payload.get("reviewed_by_subject", "")).strip():
+        payload["reviewed_by_subject"] = "codex_structured_worker"
     if not str(payload.get("review_notes", "")).strip():
         payload["review_notes"] = "auto-applied recommended candidate"
     payload["auto_populated_in_run"] = True
@@ -578,3 +600,49 @@ def _review_id(detection_id: str) -> str:
 
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def _normalized_review_subject(payload: dict[str, Any]) -> str:
+    subject = str(payload.get("reviewed_by_subject", "")).strip()
+    if subject:
+        return subject
+    return "unknown_subject"
+
+
+def _subject_kind_and_basis(payload: dict[str, Any], reviewed_by_subject: str) -> tuple[str, str]:
+    if reviewed_by_subject == "unknown_subject":
+        return "unknown", "unknown_at_capture"
+    if bool(payload.get("auto_populated_in_run", False)) and reviewed_by_subject == "codex_structured_worker":
+        return "deterministic", "deterministic_system_step"
+    return "explicit", "explicit_review_record"
+
+
+def _binding_transition_event_id(*, payload: dict[str, Any], binding: dict[str, str], reviewed_at: str) -> str:
+    detection_id = str(payload.get("detection_id", "")).strip()
+    candidate_id = str(binding.get("candidate_id", "")).strip()
+    review_id = str(payload.get("review_id", "")).strip()
+    digest = hashlib.sha1("::".join([review_id, detection_id, candidate_id, reviewed_at]).encode("utf-8")).hexdigest()[:16]
+    return f"binding-transition-{digest}"
+
+
+def _stamp_accepted_binding_instrumentation(
+    binding: dict[str, str],
+    *,
+    payload: dict[str, Any],
+    reviewed_by_subject: str,
+    reviewed_at: str,
+) -> None:
+    subject_kind, attribution_basis = _subject_kind_and_basis(payload, reviewed_by_subject)
+    binding["reviewed_by_subject"] = reviewed_by_subject
+    binding["subject"] = reviewed_by_subject
+    binding["subject_kind"] = subject_kind
+    binding["subject_attribution_basis"] = attribution_basis
+    binding["event_id"] = _binding_transition_event_id(payload=payload, binding=binding, reviewed_at=reviewed_at)
+    binding["transition_id"] = "TRANS-016"
+    binding["input_state"] = "review_pack_ready"
+    binding["output_state"] = "review_pack_mixed_status"
+    binding["inspection_result"] = "pass"
+    binding["failure_family"] = "none"
+    binding["rescue_required"] = False
+    binding["evidence_reference"] = str(payload.get("review_file_path", "")).strip()
+    binding["capture_source"] = "derived_row_review"

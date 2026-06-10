@@ -2519,6 +2519,7 @@ class GameOnboardingTests(unittest.TestCase):
             review_payload["review_status"] = "approved"
             review_payload["review_decision"] = "accept_candidate"
             review_payload["selected_candidate_id"] = review_payload["candidate_options"][0]["candidate_id"]
+            review_payload["reviewed_by_subject"] = "human_editor"
             review_payload["review_notes"] = "resolved via targeted row review"
             review_file.write_text(json.dumps(review_payload, indent=2), encoding="utf-8")
 
@@ -2534,6 +2535,18 @@ class GameOnboardingTests(unittest.TestCase):
             ]
             self.assertEqual(len(accepted), 1)
             self.assertEqual(accepted[0]["derived_row_review_decision"], "accept_candidate")
+            self.assertEqual(accepted[0]["reviewed_by_subject"], "human_editor")
+            self.assertEqual(accepted[0]["subject"], "human_editor")
+            self.assertEqual(accepted[0]["subject_kind"], "explicit")
+            self.assertEqual(accepted[0]["subject_attribution_basis"], "explicit_review_record")
+            self.assertEqual(accepted[0]["transition_id"], "TRANS-016")
+            self.assertEqual(accepted[0]["input_state"], "review_pack_ready")
+            self.assertEqual(accepted[0]["output_state"], "review_pack_mixed_status")
+            self.assertEqual(accepted[0]["inspection_result"], "pass")
+            self.assertEqual(accepted[0]["failure_family"], "none")
+            self.assertEqual(accepted[0]["rescue_required"], "False")
+            self.assertTrue(accepted[0]["event_id"])
+            self.assertEqual(accepted[0]["evidence_reference"], str(review_file))
 
             derived_manifest = load_yaml_file(draft_root / "manifests" / "derived_detection_manifest.yaml")
             selected_row = next(
@@ -2635,6 +2648,20 @@ class GameOnboardingTests(unittest.TestCase):
             self.assertEqual(updated_review_payload["review_status"], "approved")
             self.assertEqual(updated_review_payload["review_decision"], "accept_candidate")
             self.assertTrue(updated_review_payload["selected_candidate_id"])
+
+            bindings = self._read_csv(draft_root / "catalog" / "bindings.csv")
+            accepted = [
+                row
+                for row in bindings
+                if row["detection_id"] == detection_id and row["status"] == "accepted"
+            ]
+            self.assertEqual(len(accepted), 1)
+            self.assertEqual(accepted[0]["reviewed_by_subject"], "codex_structured_worker")
+            self.assertEqual(accepted[0]["subject"], "codex_structured_worker")
+            self.assertEqual(accepted[0]["subject_kind"], "deterministic")
+            self.assertEqual(accepted[0]["subject_attribution_basis"], "deterministic_system_step")
+            self.assertEqual(accepted[0]["transition_id"], "TRANS-016")
+            self.assertEqual(accepted[0]["inspection_result"], "pass")
 
             derived_manifest = load_yaml_file(draft_root / "manifests" / "derived_detection_manifest.yaml")
             selected_row = next(

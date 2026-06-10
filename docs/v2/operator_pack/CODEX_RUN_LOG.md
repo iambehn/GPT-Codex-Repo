@@ -3325,3 +3325,28 @@ verification:
 
 notes:
 - this pass treated the next bottleneck as workflow adoption, not another architecture-layer problem
+
+## 2026-06-11T07:30Z
+
+target:
+- validate the accepted-binding instrumentation slice against executed workflow paths and compare emitted evidence quality to the pre-instrumentation baseline
+
+status:
+- completed
+
+result:
+- added [2026-06-11-instrumentation-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-instrumentation-validation-report-v0.md)
+- validated two execution paths:
+  - explicit accepted review path
+  - auto-applied accepted review path
+- found:
+  - manual accepted reviews now emit strong attribution and strong qualification evidence
+  - auto-applied accepted reviews now emit medium attribution and medium qualification evidence
+  - accepted binding writes now produce native event-grade fields instead of relying on retrospective reconstruction
+
+verification:
+- `python3 -m unittest tests.test_game_onboarding.GameOnboardingTests.test_apply_derived_row_review_accept_candidate_resolves_selected_row tests.test_game_onboarding.GameOnboardingTests.test_apply_derived_row_review_accept_recommended_uses_single_recommended_candidate`
+- `python3 -m unittest tests.test_onboarding_review_goldset`
+
+notes:
+- this pass preserved the implementation as the baseline and identified the current open semantic question as broader confirmation of the `TRANS-016` mapping under real workflow use
