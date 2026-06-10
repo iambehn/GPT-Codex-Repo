@@ -131,7 +131,7 @@ For v0, use these default interpretations:
 
 | route_id | route_context | trigger_transition | trigger_outcome | result_type | next_transition_or_state | notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| ROUTE-001 | successful source-to-review-pack progression | `TRANS-001` | `pass` | `advance` | `TRANS-002` or `TRANS-003` | Inspection determines whether the review-ready artifact is accepted or rejected. |
+| ROUTE-001 | successful source-to-review-pack progression | `TRANS-001` | `pass` | `advance` | `TRANS-002`, `TRANS-003`, or `TRANS-016` | Inspection determines whether the review-ready artifact is accepted, rejected, or identified as aggregate mixed-status. |
 | ROUTE-002 | source-to-review-pack blocked | `TRANS-001` or `INSP-001` | `blocked` | `control_hold` | `blocked` | Remain in non-terminal control hold until routing architecture later defines state-specific unblock rules. |
 | ROUTE-003 | source-to-review-pack archive outcome | `TRANS-001` or `INSP-001` | `archive` | `archive` | `archived` | Use when source or attempted output should not remain active. |
 | ROUTE-004 | review-pack accepted | `TRANS-002` | `pass` | `advance` | `TRANS-006` | Accepted review pack becomes downstream input for approved-clip production. |
@@ -151,6 +151,10 @@ For v0, use these default interpretations:
 | ROUTE-018 | final completion requires bounded correction | `INSP-006` or `INSP-007` | `rework_required` | `deferred_definition` | return-to-package correction path not yet separately modeled | v0 acknowledges correction need but does not yet define separate terminal rework transitions. |
 | ROUTE-019 | final completion blocked | `TRANS-011`, `TRANS-012`, `INSP-006`, or `INSP-007` | `blocked` | `control_hold` | `blocked` | Use when completion is prevented by missing authorization, posting proof, or external dependency. |
 | ROUTE-020 | any archive transition | `TRANS-005`, `TRANS-009`, `TRANS-010`, `TRANS-013`, `TRANS-014` | `pass` | `archive` | `archived` | Archive transitions are explicit retirement moves, not productive advancement. |
+| ROUTE-021 | review-pack mixed-status identified | `TRANS-016` | `pass` | `advance` | `TRANS-017` | Aggregate mixed-status is an active inspected condition that still requires a bounded readiness decision. |
+| ROUTE-022 | review-pack mixed-status blocked | `TRANS-016` or `INSP-008` | `blocked` | `control_hold` | `blocked` | Use when mixed aggregate status is visible but cannot yet be closed into a bounded next step. |
+| ROUTE-023 | aggregate review pack marked for bounded rework | `TRANS-017` | `pass` | `rework` | `TRANS-018` | The aggregate artifact remains active and routes into one bounded rework transition rather than open-ended retry. |
+| ROUTE-024 | aggregate review pack rework succeeds | `TRANS-018` | `pass` | `advance` | `TRANS-016`, `TRANS-002`, or `TRANS-003` | Corrected aggregate artifacts return to the normal review path and may again be mixed, accepted, or rejected. |
 
 ## Blocked Routing Rule
 
@@ -193,6 +197,7 @@ The following routing decisions remain intentionally deferred in v0:
 - explicit approved-clip rework transition beyond current inspection/failure signaling
 - explicit package rework transition beyond current inspection/failure signaling
 - explicit final-delivery or final-posting rework transition beyond current inspection/failure signaling
+- member-level routing inside aggregate mixed-status review artifacts
 
 These are deferred because v0 needs routing clarity without overbuilding correction branches before qualification and support-asset layers exist.
 

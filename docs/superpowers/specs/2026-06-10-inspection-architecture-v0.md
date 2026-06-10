@@ -123,6 +123,9 @@ The following transitions require explicit inspection in v0.
 | INSP-005 | platform_package_readiness_review | `system_validator` | `TRANS-007` | `approved_clips_ready` | `platform_package_ready` | platform package artifact exists, is attributable, and satisfies required local packaging checks | `pass` | `rework_required`, `blocked`, `archive` | This is readiness inspection before final delivery/posting inspection. |
 | INSP-006 | final_local_delivery_inspection | `manager_approver` | `TRANS-011` | `platform_package_ready` | `completed_local` | local/export artifact exists and satisfies the intended local completion contract | `pass` | `rework_required`, `blocked`, `archive` | Use when the terminal obligation is local completion only. |
 | INSP-007 | final_publish_inspection | `manager_approver` | `TRANS-012` | `platform_package_ready` | `completed_posted` | posting action succeeded, downstream proof exists, and the intended posted completion contract is satisfied | `pass` | `rework_required`, `blocked`, `archive` | Use when the terminal obligation includes external posting. |
+| INSP-008 | review_pack_mixed_status_assessment | `human_editor` | `TRANS-016` | `review_pack_ready` | `review_pack_mixed_status` | aggregate review artifact has recorded member-level outcomes showing a mix of resolved and unresolved required members | `pass` | `blocked`, `archive` | This captures mixed aggregate condition without overclaiming downstream readiness. |
+| INSP-009 | review_pack_needs_rework_assessment | `human_editor` | `TRANS-017` | `review_pack_mixed_status` | `review_pack_needs_rework` | aggregate review artifact plus decision record showing it remains active but is not yet acceptable downstream without bounded correction | `pass` | `blocked`, `archive` | This is an inspected non-terminal readiness state, not a terminal rejection. |
+| INSP-010 | corrected_review_pack_readiness_check | `system_validator` | `TRANS-018` | `review_pack_needs_rework` | `review_pack_ready` | corrected aggregate review artifact exists, is attributable, and is complete enough for re-review | `pass` | `blocked`, `archive` | This validates that bounded correction returned the aggregate artifact to a reviewable state. |
 
 ## Authorization Versus Inspection
 
@@ -178,3 +181,4 @@ The next review of this artifact should focus on:
 2. whether any inspection roles should be tightened or simplified
 3. whether `system_validator` versus `human_editor` is drawn in the right place for approved-clip and package readiness checks
 4. whether final local completion and final posted completion require distinct evidence surfaces
+5. whether aggregate mixed-status review evidence is strong enough to justify state changes without introducing member-level sub-inspections yet

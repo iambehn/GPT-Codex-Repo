@@ -132,7 +132,7 @@ Current high-level failure families most likely to prevent successful completion
 
 | transition_id | transition_name | transition_type | input_state | output_state | triggering_work_order_class | completion_event | inspection_event | allowed_next_transitions | known_failure_classes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| TRANS-001 | raw_vod_to_review_pack_ready | production | `raw_vod` | `review_pack_ready` | `vod_to_review_pack` | review-pack artifact created and attributable to the order | review-pack readiness check passes | `TRANS-002`, `TRANS-003`, `TRANS-004`, `TRANS-005` | `source`, `support`, `execution` |
+| TRANS-001 | raw_vod_to_review_pack_ready | production | `raw_vod` | `review_pack_ready` | `vod_to_review_pack` | review-pack artifact created and attributable to the order | review-pack readiness check passes | `TRANS-002`, `TRANS-003`, `TRANS-004`, `TRANS-005`, `TRANS-016` | `source`, `support`, `execution` |
 | TRANS-002 | review_pack_ready_to_review_pack_approved | inspection | `review_pack_ready` | `review_pack_approved` | `review_pack_to_approved_clips` | review decision recorded as accepted | review-pack approval recorded | `TRANS-006`, `TRANS-004`, `TRANS-005` | `inspection`, `requirement`, `control` |
 | TRANS-003 | review_pack_ready_to_review_pack_rejected | inspection | `review_pack_ready` | `review_pack_rejected` | `review_pack_to_approved_clips` | review decision recorded as rejected | rejection decision recorded | `TRANS-015`, `TRANS-010`, `TRANS-004`, `TRANS-005` | `inspection`, `requirement`, `control` |
 | TRANS-004 | review_pack_ready_to_blocked | control | `review_pack_ready` | `blocked` | `vod_to_review_pack` | blocking condition recorded against the active artifact | manager or operator confirms the block reason | state-specific unblock path defined later | `support`, `control`, `requirement` |
@@ -147,6 +147,9 @@ Current high-level failure families most likely to prevent successful completion
 | TRANS-013 | completed_local_to_archived | archive | `completed_local` | `archived` | `delivery_lifecycle` | local artifact retired from active flow | archive authorization recorded | none | `lifecycle` |
 | TRANS-014 | completed_posted_to_archived | archive | `completed_posted` | `archived` | `completed_posted_lifecycle` | posted artifact retired from active flow | archive authorization recorded | none | `lifecycle` |
 | TRANS-015 | review_pack_rejected_to_review_pack_ready | production | `review_pack_rejected` | `review_pack_ready` | `review_pack_rework` | revised review-pack artifact created and attributable | review-pack readiness check passes | `TRANS-002`, `TRANS-003`, `TRANS-004`, `TRANS-005` | `execution`, `requirement`, `support` |
+| TRANS-016 | review_pack_ready_to_review_pack_mixed_status | inspection | `review_pack_ready` | `review_pack_mixed_status` | `review_pack_to_approved_clips` | mixed member-level review outcome recorded against the aggregate review artifact | mixed-status review recorded | `TRANS-017`, `TRANS-002`, `TRANS-003`, `TRANS-004`, `TRANS-005` | `inspection`, `requirement`, `control` |
+| TRANS-017 | review_pack_mixed_status_to_review_pack_needs_rework | inspection | `review_pack_mixed_status` | `review_pack_needs_rework` | `review_pack_rework` | aggregate review decision recorded as not yet acceptable but viable after bounded correction | needs-rework decision recorded | `TRANS-018`, `TRANS-004`, `TRANS-005` | `inspection`, `requirement`, `support` |
+| TRANS-018 | review_pack_needs_rework_to_review_pack_ready | production | `review_pack_needs_rework` | `review_pack_ready` | `review_pack_rework` | corrected aggregate review-pack artifact created and attributable | corrected review-pack readiness check passes | `TRANS-016`, `TRANS-002`, `TRANS-003`, `TRANS-004`, `TRANS-005` | `execution`, `requirement`, `support` |
 
 ## Transition-Type Notes
 
@@ -177,6 +180,7 @@ This v0 catalog intentionally does not yet define:
 - how blocked artifacts return to a specific production state
 - transition coverage for `invalid_source`
 - whether review-pack rejection should support transition paths beyond the current rework and archive options
+- whether aggregate review-pack member status needs explicit member-level sub-transitions beyond the current aggregate mixed-status states
 - transition-specific qualification thresholds
 - transition-specific support assets
 - routing priority or scheduling behavior
@@ -189,6 +193,6 @@ For `invalid_source`, transition coverage is deferred until source-intake states
 
 The next review of this artifact should focus on:
 
-1. whether any additional production states are needed before routing design
+1. whether any additional production states are needed before further routing refinement
 2. whether blocked and archive flows need more explicit re-entry transitions
 3. whether the work-order class names are stable enough to anchor future qualification and inspection artifacts

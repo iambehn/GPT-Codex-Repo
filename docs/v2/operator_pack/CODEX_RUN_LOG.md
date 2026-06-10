@@ -2947,3 +2947,53 @@ verification:
 
 notes:
 - this repair pass was intentionally bounded to review blockers and did not add new artifacts or expand routing, planning, inventory, or failure subtypes
+
+## 2026-06-11T00:10Z
+
+target:
+- validate the committed control-plane v0 architecture against one real historical workflow example without expanding scope
+
+status:
+- completed
+
+result:
+- added [2026-06-10-control-plane-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-control-plane-validation-report-v0.md)
+- selected workflow:
+  - `assets/games/call_of_duty/drafts/onboarding/20260524T225117Z`
+- validated:
+  - where inspection, failure, routing, and transition-scoped trust fit cleanly
+  - where aggregate mixed-status artifacts break the current state and transition model
+  - minimum v1 changes needed before inventory, planning, or resource-model expansion
+
+verification:
+- doc-only change
+
+notes:
+- the selected workflow was concrete enough to use directly, so no invented details were needed
+
+## 2026-06-11T00:35Z
+
+target:
+- patch the committed control-plane v0 artifacts only for the aggregate mixed-status review-artifact gap found in validation
+
+status:
+- completed
+
+result:
+- updated [2026-06-10-state-catalog-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-state-catalog-v0.md)
+- updated [2026-06-10-transition-catalog-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-transition-catalog-v0.md)
+- updated [2026-06-10-inspection-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-inspection-architecture-v0.md)
+- updated [2026-06-10-routing-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-routing-architecture-v0.md)
+- updated [2026-06-10-qualification-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-qualification-architecture-v0.md)
+- updated [2026-06-10-control-plane-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-control-plane-validation-report-v0.md)
+- added:
+  - `review_pack_mixed_status`
+  - `review_pack_needs_rework`
+  - aggregate review transitions and inspections around mixed-status and bounded correction
+  - clarified subject-attributed qualification evidence rules for aggregate transitions
+
+verification:
+- doc-only change
+
+notes:
+- this patch stays bounded to the validated aggregate mixed-status gap and does not add inventory, planning, or resource-model architecture

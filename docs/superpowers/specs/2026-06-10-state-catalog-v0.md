@@ -120,7 +120,9 @@ Use:
 | state_id | state_name | state_scope | artifact_type | definition | entry_condition | exit_allowed_when | valid_next_states | inspection_required | terminal_state |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STATE-001 | raw_vod | production | source_media | Source gameplay media exists in raw ingest form and has not yet produced a review-ready downstream artifact. | Source media is present, referenced, and accepted as a candidate input. | The source is either found invalid, blocked, archived, or used to produce a review-pack-ready artifact. | `review_pack_ready`, `invalid_source`, `blocked`, `archived` | none | no |
-| STATE-002 | review_pack_ready | production | review_pack | A review pack exists in a form that is ready for structured review or approval. | Candidate extraction or packaging output exists and is complete enough to review. | The review pack is explicitly approved, rejected, blocked, or archived. | `review_pack_approved`, `review_pack_rejected`, `blocked`, `archived` | required | no |
+| STATE-002 | review_pack_ready | production | review_pack | A review pack exists in a form that is ready for structured review or approval. | Candidate extraction or packaging output exists and is complete enough to review. | The review pack is explicitly approved, rejected, assessed as mixed-status, blocked, or archived. | `review_pack_approved`, `review_pack_rejected`, `review_pack_mixed_status`, `blocked`, `archived` | required | no |
+| STATE-009 | review_pack_mixed_status | production | review_pack | An aggregate review pack remains active with mixed member status: at least one member is resolved while one or more required members remain unresolved, pending review, or otherwise not yet acceptable. | A review-ready aggregate artifact has undergone bounded review and produced mixed member-level outcomes. | The aggregate review pack is moved into a bounded needs-rework state, fully approved, explicitly rejected, blocked, or archived. | `review_pack_needs_rework`, `review_pack_approved`, `review_pack_rejected`, `blocked`, `archived` | required | no |
+| STATE-010 | review_pack_needs_rework | production | review_pack | An aggregate review pack has been inspected and determined to require bounded correction before it can be accepted downstream while remaining an active artifact. | A mixed-status or otherwise inspected aggregate review artifact exists and review concludes it is not yet acceptable but remains viable after bounded correction. | The corrected aggregate artifact returns to a review-ready state, or the artifact is blocked or archived. | `review_pack_ready`, `blocked`, `archived` | required | no |
 | STATE-003 | review_pack_approved | production | review_pack | The review pack has passed its expected review gate and is accepted as valid downstream input. | A review-ready pack exists and the required inspection has passed. | The approved review pack is used to generate approved clips, blocked, or archived. | `approved_clips_ready`, `blocked`, `archived` | required | no |
 | STATE-004 | review_pack_rejected | production | review_pack | The review pack has been inspected and explicitly not accepted as a valid downstream basis. | A review-ready pack exists and the required inspection has failed or been denied. | The rejected pack is archived or replaced by a new successful review-pack-ready artifact. | `archived`, `review_pack_ready` | required | no |
 | STATE-005 | approved_clips_ready | production | approved_clip_set | A bounded set of approved clips exists and is ready for packaging or downstream finishing. | Approved clips are explicitly selected and available as downstream inputs. | The approved clip set is used to produce a platform package, blocked, or archived. | `platform_package_ready`, `blocked`, `archived` | required | no |
@@ -147,6 +149,12 @@ The transition layer should inherit these rules:
 3. A transition must not invent a new state ad hoc when an existing state record already describes the resulting condition.
 4. Inspection should validate whether the claimed output state was actually reached.
 5. Failure attribution should explain why the intended output state was not reached.
+
+## Aggregate Review-State Note
+
+For v1 patching, `review_pack_mixed_status` and `review_pack_needs_rework` describe aggregate artifact condition, not individual member workflow steps.
+
+They exist to prevent the state model from overclaiming that a review artifact is wholly approved or wholly rejected when the persisted evidence shows mixed member-level status.
 
 ## Deferred Re-Entry Note
 
