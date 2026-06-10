@@ -265,6 +265,73 @@ notes:
 - append-only emission is keyed to qualifying readiness outcomes, not only `phase_status` mutation
 - duplicate avoidance is semantic and deterministic, based on readiness outcome plus supporting workflow evidence
 
+## 2026-06-11T09:40Z
+
+target:
+- remaining instrumentation surface prioritization
+
+status:
+- completed
+
+result:
+- produced a compact prioritization report comparing `source_fetch_log`, generic `qa_queue`, and identity-review audit rows inside `qa_queue`
+- ranked `source_fetch` as the next slice
+- documented why generic `qa_queue` remains lower priority: it is primarily a regenerated diagnostic surface rather than a primary transition-outcome surface
+
+verification:
+- inspected `pipeline/game_onboarding.py`
+- inspected `pipeline/onboarding_identity_review_bridge.py`
+- inspected committed instrumentation, observation, and attribution specs
+
+notes:
+- no implementation landed in this slice
+- recommended next move is source-fetch instrumentation readiness or a bounded source-fetch implementation slice
+
+## 2026-06-11T10:05Z
+
+target:
+- source-fetch instrumentation readiness
+
+status:
+- completed
+
+result:
+- identified source-fetch row creation and merge as the safest implementation seam
+- produced a bounded readiness report for source-fetch instrumentation
+- fixed the main semantic guardrail: fetch success maps to `SITRANS-001 source_declared -> source_fetched`, not `source_population_ready`
+- documented duplicate protection based on the existing source-fetch merge signature
+
+verification:
+- inspected `pipeline/game_onboarding.py`
+- inspected committed source-intake, event-capture, ledger-validation, attribution-validation, and prioritization specs
+- inspected source-fetch-related tests in `tests/test_game_onboarding.py`, `tests/test_onboarding_report.py`, and `tests/test_wiki_enrichment.py`
+
+notes:
+- no implementation landed in this slice
+- recommended first implementation scope is instrumenting successful `fetched` rows before extending to richer failure mappings
+
+## 2026-06-11T10:35Z
+
+target:
+- source-fetch instrumentation slice
+
+status:
+- completed
+
+result:
+- instrumented source-fetch success and fetch-failure rows with event-capture fields on the existing `source_fetch_log` surface
+- preserved the intake-plane guardrail that `fetched` maps to `SITRANS-001 source_declared -> source_fetched`
+- added deterministic semantic dedupe that upgrades previously uninstrumented rows once and preserves the original event timestamp on unchanged reruns
+- kept `source_population_ready` and broader invalidation semantics out of the slice
+
+verification:
+- `python3 -m unittest tests.test_game_onboarding.GameOnboardingTests.test_source_ingestion_populates_draft_from_saved_schema tests.test_game_onboarding.GameOnboardingTests.test_onboarding_keeps_successful_sources_when_one_source_fails tests.test_game_onboarding.GameOnboardingTests.test_merge_source_fetch_log_rows_semantically_dedupes_and_upgrades_uninstrumented_rows`
+- `python3 -m unittest tests.test_game_onboarding.GameOnboardingTests.test_apply_derived_row_review_accept_candidate_resolves_selected_row tests.test_game_onboarding.GameOnboardingTests.test_apply_derived_row_review_accept_recommended_uses_single_recommended_candidate tests.test_game_onboarding.GameOnboardingTests.test_refresh_publish_readiness_emits_ready_to_publish_event tests.test_game_onboarding.GameOnboardingTests.test_refresh_publish_readiness_emits_needs_binding_review_once_when_phase_unchanged tests.test_game_onboarding.GameOnboardingTests.test_refresh_publish_readiness_skips_non_instrumented_outcome tests.test_publish_readiness_goldset tests.test_onboarding_publish_readiness`
+
+notes:
+- fetch-failure rows are emitted conservatively as `SITRANS-006 source_declared -> source_invalid` with deterministic system attribution
+- generic `qa_queue` instrumentation remains deferred
+
 ## 2026-06-04T07:18Z
 
 target:

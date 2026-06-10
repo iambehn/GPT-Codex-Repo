@@ -15,6 +15,7 @@ from pipeline.game_onboarding import (
     _build_onboarding_state,
     _build_qa_queue,
     _load_runtime_detection_schema,
+    _merge_source_fetch_log_rows,
     _refresh_phase_status_from_publish_readiness,
     OnboardingSource,
     adapt_game_schema,
@@ -1381,6 +1382,22 @@ class GameOnboardingTests(unittest.TestCase):
             self.assertTrue(ability_row["starter_seed_applied"])
             self.assertTrue((draft_root / "catalog" / "asset_candidates.csv").exists())
             self.assertTrue((draft_root / "catalog" / "source_fetch_log.csv").exists())
+            fetch_log = self._read_csv(draft_root / "catalog" / "source_fetch_log.csv")
+            fetched_rows = [row for row in fetch_log if row["status"] == "fetched"]
+            self.assertGreaterEqual(len(fetched_rows), 1)
+            fetched = fetched_rows[0]
+            self.assertTrue(fetched["event_id"])
+            self.assertTrue(fetched["timestamp"])
+            self.assertEqual(fetched["subject"], "system_validator")
+            self.assertEqual(fetched["subject_kind"], "deterministic")
+            self.assertEqual(fetched["subject_attribution_basis"], "deterministic_system_step")
+            self.assertEqual(fetched["transition_id"], "SITRANS-001")
+            self.assertEqual(fetched["input_state"], "source_declared")
+            self.assertEqual(fetched["output_state"], "source_fetched")
+            self.assertEqual(fetched["inspection_result"], "pass")
+            self.assertEqual(fetched["failure_family"], "none")
+            self.assertEqual(fetched["rescue_required"], "False")
+            self.assertEqual(fetched["capture_source"], "source_intake_adapter")
 
     def test_source_ingestion_preserves_source_derived_structured_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -3406,7 +3423,70 @@ class GameOnboardingTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(result["counts"]["source_failures"], 1)
             fetch_log = self._read_csv(Path(result["artifacts"]["source_fetch_log_csv"]))
-            self.assertTrue(any(row["status"] == "fetch_failed" for row in fetch_log))
+            failed_rows = [row for row in fetch_log if row["status"] == "fetch_failed"]
+            self.assertEqual(len(failed_rows), 1)
+            failed = failed_rows[0]
+            self.assertTrue(failed["event_id"])
+            self.assertTrue(failed["timestamp"])
+            self.assertEqual(failed["subject"], "system_validator")
+            self.assertEqual(failed["subject_kind"], "deterministic")
+            self.assertEqual(failed["subject_attribution_basis"], "deterministic_system_step")
+            self.assertEqual(failed["transition_id"], "deferred")
+            self.assertEqual(failed["input_state"], "source_declared")
+            self.assertEqual(failed["output_state"], "deferred")
+            self.assertEqual(failed["inspection_result"], "blocked")
+            self.assertEqual(failed["failure_family"], "source")
+            self.assertEqual(failed["rescue_required"], "True")
+            self.assertEqual(failed["capture_source"], "source_intake_adapter")
+
+    def test_merge_source_fetch_log_rows_semantically_dedupes_and_upgrades_uninstrumented_rows(self) -> None:
+        existing = [
+            {
+                "source_page_url": "https://example.com/roster",
+                "source_role": "roster",
+                "source_title": "Roster",
+                "status": "fetched",
+                "content_type": "text/html",
+                "page_type": "article",
+            }
+        ]
+        new = [
+            {
+                "source_page_url": "https://example.com/roster",
+                "source_role": "roster",
+                "source_title": "Roster",
+                "status": "fetched",
+                "content_type": "text/html",
+                "page_type": "article",
+                "event_id": "source-fetch-abc123",
+                "timestamp": "2026-06-11T10:00:00+00:00",
+                "subject": "system_validator",
+                "subject_kind": "deterministic",
+                "subject_attribution_basis": "deterministic_system_step",
+                "transition_id": "SITRANS-001",
+                "input_state": "source_declared",
+                "output_state": "source_fetched",
+                "inspection_result": "pass",
+                "failure_family": "none",
+                "rescue_required": False,
+                "evidence_reference": "catalog/source_fetch_log.csv#event_id=source-fetch-abc123",
+                "capture_source": "source_intake_adapter",
+            }
+        ]
+        merged = _merge_source_fetch_log_rows(existing, new, [])
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["event_id"], "source-fetch-abc123")
+        self.assertEqual(merged[0]["transition_id"], "SITRANS-001")
+
+        unchanged_rerun = [
+            {
+                **new[0],
+                "timestamp": "2026-06-11T10:05:00+00:00",
+            }
+        ]
+        merged_again = _merge_source_fetch_log_rows(merged, unchanged_rerun, [])
+        self.assertEqual(len(merged_again), 1)
+        self.assertEqual(merged_again[0]["timestamp"], "2026-06-11T10:00:00+00:00")
 
     def test_refresh_publish_readiness_emits_ready_to_publish_event(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

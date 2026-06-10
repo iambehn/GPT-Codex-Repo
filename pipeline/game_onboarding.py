@@ -3551,7 +3551,7 @@ def _source_log_row(record: dict[str, Any]) -> dict[str, Any]:
         has_content = any(getattr(section, "items", []) or getattr(section, "images", []) for section in sections)
         if not has_content:
             status = "empty_source"
-    return {
+    row = {
         "source_page_url": record["url"],
         "source_role": record["role"],
         "source_title": record["title"],
@@ -3559,10 +3559,13 @@ def _source_log_row(record: dict[str, Any]) -> dict[str, Any]:
         "content_type": record["content_type"],
         "page_type": record["page_type"],
     }
+    if status == "fetched":
+        row.update(_source_fetch_event_fields(row))
+    return row
 
 
 def _source_failure_row(source: OnboardingSource, error: WikiFetchError) -> dict[str, Any]:
-    return {
+    row = {
         "source_page_url": source.url,
         "source_role": source.role,
         "source_title": "",
@@ -3573,6 +3576,73 @@ def _source_failure_row(source: OnboardingSource, error: WikiFetchError) -> dict
         "error": error.message,
         "hint": error.hint,
     }
+    row.update(_source_fetch_event_fields(row))
+    return row
+
+
+def _source_fetch_event_fields(row: dict[str, Any]) -> dict[str, Any]:
+    status = str(row.get("status", "")).strip()
+    if status == "fetched":
+        transition_id = "SITRANS-001"
+        input_state = "source_declared"
+        output_state = "source_fetched"
+        inspection_result = "pass"
+        failure_family = "none"
+        rescue_required = False
+    elif status == "fetch_failed":
+        transition_id = "deferred"
+        input_state = "source_declared"
+        output_state = "deferred"
+        inspection_result = "blocked"
+        failure_family = "source"
+        rescue_required = True
+    else:
+        return {}
+
+    event_id = _source_fetch_event_id(row)
+    return {
+        "event_id": event_id,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "subject": "system_validator",
+        "subject_kind": "deterministic",
+        "subject_attribution_basis": "deterministic_system_step",
+        "transition_id": transition_id,
+        "input_state": input_state,
+        "output_state": output_state,
+        "inspection_result": inspection_result,
+        "failure_family": failure_family,
+        "rescue_required": rescue_required,
+        "evidence_reference": _source_fetch_evidence_reference(row, event_id=event_id),
+        "capture_source": "source_intake_adapter",
+    }
+
+
+def _source_fetch_event_id(row: dict[str, Any]) -> str:
+    digest = hashlib.sha1(json.dumps(_source_fetch_semantic_key(row), sort_keys=True).encode("utf-8")).hexdigest()[:16]
+    return f"source-fetch-{digest}"
+
+
+def _source_fetch_evidence_reference(row: dict[str, Any], *, event_id: str) -> str:
+    return (
+        "catalog/source_fetch_log.csv"
+        f"#event_id={event_id}"
+        f"&source_role={str(row.get('source_role', '')).strip()}"
+        f"&status={str(row.get('status', '')).strip()}"
+    )
+
+
+def _source_fetch_semantic_key(row: dict[str, Any]) -> tuple[str, str, str, str, str]:
+    return (
+        str(row.get("source_page_url", "")).strip(),
+        str(row.get("source_role", "")).strip(),
+        str(row.get("status", "")).strip(),
+        str(row.get("failure_category", "")).strip(),
+        str(row.get("error", "")).strip(),
+    )
+
+
+def _source_fetch_row_is_instrumented(row: dict[str, Any]) -> bool:
+    return bool(str(row.get("event_id", "")).strip() and str(row.get("transition_id", "")).strip())
 
 
 def _empty_ontology() -> dict[str, list[dict[str, Any]]]:
@@ -4348,20 +4418,17 @@ def _merge_source_fetch_log_rows(
     new_failure_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     merged: list[dict[str, Any]] = []
-    seen_keys: set[tuple[str, str, str, str, str]] = set()
+    key_to_index: dict[tuple[str, str, str, str, str], int] = {}
     for row in [*existing_rows, *new_success_rows, *new_failure_rows]:
         if not isinstance(row, dict):
             continue
-        key = (
-            str(row.get("source_page_url", "")).strip(),
-            str(row.get("source_role", "")).strip(),
-            str(row.get("status", "")).strip(),
-            str(row.get("failure_category", "")).strip(),
-            str(row.get("error", "")).strip(),
-        )
-        if key in seen_keys:
+        key = _source_fetch_semantic_key(row)
+        if key in key_to_index:
+            current = merged[key_to_index[key]]
+            if not _source_fetch_row_is_instrumented(current) and _source_fetch_row_is_instrumented(row):
+                merged[key_to_index[key]] = row
             continue
-        seen_keys.add(key)
+        key_to_index[key] = len(merged)
         merged.append(row)
     return merged
 
