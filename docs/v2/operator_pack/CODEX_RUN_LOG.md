@@ -3072,3 +3072,256 @@ verification:
 
 notes:
 - this repair stayed bounded and did not add inventory, planning, staffing, queue logic, or new downstream control-plane transitions
+
+## 2026-06-11T03:05Z
+
+target:
+- validate the qualification architecture against historical workflow evidence and reconstruct transition trust levels using observed evidence only
+
+status:
+- completed
+
+result:
+- added [2026-06-11-qualification-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-qualification-validation-report-v0.md)
+- used evidence from:
+  - [2026-06-10-control-plane-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-control-plane-validation-report-v0.md)
+  - [2026-06-11-control-plane-transferability-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-control-plane-transferability-report-v0.md)
+  - [2026-06-10-qualification-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-10-qualification-architecture-v0.md)
+- found:
+  - `subject x transition` remains the right qualification unit
+  - support/control separation from execution trust survives evidence review
+  - most `Q1` placements remain defensible
+  - several current `Q2` placements are still normative placeholders rather than empirically proven
+  - no live `Q3` or `Q4` interpretation is supported by the validated workflow evidence set
+
+verification:
+- doc-only change
+
+notes:
+- this pass stayed in validation mode and did not expand into planning, inventory, staffing, or resource-allocation policy
+
+## 2026-06-11T03:35Z
+
+target:
+- define Transition Outcome Ledger v0 as a compact subject-attributed transition-history artifact that can support qualification and other downstream consumers without expanding into planning or inventory
+
+status:
+- completed
+
+result:
+- added [2026-06-11-transition-outcome-ledger-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-transition-outcome-ledger-v0.md)
+- defined:
+  - a compact ledger top-level schema with `schema_version`, `generated_at`, `ledger_id`, `row_count`, `source_artifact_family`, and `rows`
+  - an event row contract centered on:
+    - `event_id`
+    - `timestamp`
+    - `subject`
+    - `transition_id`
+    - `input_state`
+    - `output_state`
+    - `inspection_result`
+    - `failure_family`
+    - `rescue_required`
+    - `evidence_reference`
+    - `notes`
+  - a subject-attribution model that permits `unknown_subject` but treats it as weak qualification evidence
+  - a clear separation between transition history capture and downstream consumers such as qualification, failure analysis, routing analysis, and future planning
+
+verification:
+- doc-only change
+
+notes:
+- this pass stayed limited to transition outcome capture and evidence attribution and did not add inventory, planning, scheduling, staffing, or resource-allocation logic
+
+## 2026-06-11T04:00Z
+
+target:
+- validate Transition Outcome Ledger v0 against one historical workflow and test whether real artifacts can populate the compact event schema without widening architecture
+
+status:
+- completed
+
+result:
+- added [2026-06-11-transition-outcome-ledger-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-transition-outcome-ledger-validation-report-v0.md)
+- validated the ledger against:
+  - `assets/games/call_of_duty/drafts/onboarding/20260524T225117Z`
+- reconstructed representative outcome rows for:
+  - source fetch success
+  - accepted binding success
+  - non-terminal publish-readiness failure
+- found:
+  - the ledger row schema survives real-artifact reconstruction
+  - subject attribution remains the strongest evidence gap
+  - timestamps are not consistently recoverable for all upstream and inspection events
+  - no required schema expansion is justified yet
+
+verification:
+- doc-only change
+
+notes:
+- this pass stayed in validation mode and did not expand into inventory, planning, staffing, or resource-allocation logic
+
+## 2026-06-11T04:30Z
+
+target:
+- define Transition Event Capture v0 as the minimal execution-time mechanism that can emit subject-attributed transition outcome records directly into the ledger surface
+
+status:
+- completed
+
+result:
+- added [2026-06-11-transition-event-capture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-transition-event-capture-v0.md)
+- defined:
+  - one minimal execution-time capture envelope aligned directly to ledger-required fields
+  - append-only emission rules
+  - bounded attribution fallback using `unknown_subject`
+  - emission rules by transition class
+  - validation rules for required capture-time fields and bounded vocabularies
+- kept the capture layer separate from planning, inventory, staffing, and qualification policy
+
+verification:
+- doc-only change
+
+notes:
+- this pass stayed limited to event capture design and treated the existing ledger schema as the baseline output contract
+
+## 2026-06-11T05:00Z
+
+target:
+- run one real workflow through the current intake, control-plane, event-capture, and outcome-ledger architecture at an observational level and report what the system can actually record today
+
+status:
+- completed
+
+result:
+- added [2026-06-11-operational-observation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-operational-observation-report-v0.md)
+- observed workflow:
+  - `assets/games/call_of_duty/drafts/onboarding/20260524T225117Z`
+- found:
+  - `5` source-fetch outcomes
+  - `112` accepted-binding outcomes with review timestamps
+  - `1` workflow-level non-terminal publish-readiness failure
+  - strong partial evidence capture but no automatic ledger-grade event emission yet
+  - zero explicit subject-attribution rows in the current workflow artifacts
+  - qualification-evidence density remains mostly medium or weak, not strong
+
+verification:
+- doc-only change
+
+notes:
+- this pass stayed in operational observation mode and did not redesign architecture or expand into inventory, planning, staffing, or resource allocation
+
+## 2026-06-11T05:30Z
+
+target:
+- define Attribution Architecture v0 as the compact capture-quality layer for subject identity, attribution source, confidence, and basis at transition execution time
+
+status:
+- completed
+
+result:
+- added [2026-06-11-attribution-architecture-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-attribution-architecture-v0.md)
+- defined:
+  - bounded attribution dimensions:
+    - `subject_identity`
+    - `attribution_source`
+    - `attribution_confidence`
+    - `attribution_basis`
+  - conservative confidence rules:
+    - `strong`
+    - `medium`
+    - `weak`
+    - `unknown`
+  - mapping from attribution dimensions into the existing event-capture and ledger baseline without introducing a second schema
+  - execution-time rules for explicit, deterministic, weak, and unknown subject capture
+- kept the slice bounded:
+  - no qualification-policy changes
+  - no planning or inventory expansion
+  - no staffing or scheduling logic
+
+verification:
+- doc-only change
+
+notes:
+- this pass treated weak subject attribution as a capture-quality problem, not a control-plane redesign problem
+
+## 2026-06-11T06:00Z
+
+target:
+- validate Attribution Architecture v0 against one historical workflow and separate realistic attribution mechanisms from optimistic ones
+
+status:
+- completed
+
+result:
+- added [2026-06-11-attribution-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-attribution-validation-report-v0.md)
+- validated the attribution model against:
+  - `assets/games/call_of_duty/drafts/onboarding/20260524T225117Z`
+- found:
+  - `deterministic_system_step` is realistic and supports `medium` attribution under current artifacts
+  - `workflow_owned_default` is realistic only as a `weak` fallback
+  - `explicit_review_record`, `explicit_approval_record`, and `explicit_actor_argument` are too optimistic for the current workflow family
+  - the main leverage point is explicit identity persistence on accepted binding and publish-readiness writes
+
+verification:
+- doc-only change
+
+notes:
+- this pass stayed in validation mode and treated attribution weakness as a workflow-emission gap rather than a qualification-policy problem
+
+## 2026-06-11T06:30Z
+
+target:
+- define Workflow Instrumentation Specification v0 as the compact emission contract that real workflows must satisfy to populate the evidence plane without retrospective reconstruction
+
+status:
+- completed
+
+result:
+- added [2026-06-11-workflow-instrumentation-specification-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-workflow-instrumentation-specification-v0.md)
+- defined:
+  - required identity fields
+  - required attribution fields
+  - required inspection fields
+  - required outcome-emission fields
+  - per-surface delta requirements for:
+    - `catalog/source_fetch_log.csv`
+    - `catalog/bindings.csv`
+    - `catalog/qa_queue.csv`
+    - `manifests/onboarding_state.json`
+- identified the main leverage point:
+  - explicit reviewer identity and canonical transition/inspection emission on accepted binding writes
+
+verification:
+- doc-only change
+
+notes:
+- this pass preserved the current control-plane, ledger, and attribution architectures as the baseline and treated instrumentation as a workflow-emission problem
+
+## 2026-06-11T07:00Z
+
+target:
+- define Workflow Instrumentation Adoption Plan v0 as the minimal rollout strategy for introducing evidence-plane fields into the existing onboarding workflow family
+
+status:
+- completed
+
+result:
+- added [2026-06-11-workflow-instrumentation-adoption-plan-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-workflow-instrumentation-adoption-plan-v0.md)
+- defined:
+  - current onboarding workflow surfaces in scope
+  - required evidence emissions
+  - gap analysis
+  - minimal rollout slices
+  - validation strategy
+  - rollout order
+- prioritized rollout:
+  - accepted binding writes
+  - publish-readiness outcome emission
+  - source fetch event-grade writes
+
+verification:
+- doc-only change
+
+notes:
+- this pass treated the next bottleneck as workflow adoption, not another architecture-layer problem
