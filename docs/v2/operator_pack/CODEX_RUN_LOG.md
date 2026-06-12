@@ -4001,3 +4001,422 @@ notes:
 - the previously observed replay failure was caused by source-path-sensitive editorial identity generation across absolute versus repo-relative clip paths
 - the bounded replay contract now normalizes repo-local sources to a stable identity basis and upgrades stale editorial ids during review re-apply
 - outputs remain local-only and not publish-cleared
+
+## 2026-06-13T22:33Z
+
+target:
+- define the bounded operator procedure for `call_of_duty` editorial replay validation and historical export regeneration using the new replay contract
+
+status:
+- completed
+
+result:
+- added bounded operator procedure:
+  - [CALL_OF_DUTY_EDITORIAL_REPLAY_PROCEDURE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/CALL_OF_DUTY_EDITORIAL_REPLAY_PROCEDURE.md)
+- documented:
+  - required inputs
+  - canonical commands
+  - replay object expectations
+  - expected artifacts
+  - pass/fail checks
+  - replay-validation outputs to record
+- updated operator-pack index to include the new procedure:
+  - [README.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/README.md)
+
+verification:
+- grounded all procedure commands and expectations in:
+  - [EXECUTION_TARGET.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/EXECUTION_TARGET.md)
+  - [2026-06-13-call-of-duty-bounded-replay-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-bounded-replay-validation-report-v0.md)
+
+notes:
+- this is an operator-procedure slice only
+- no runtime, review-policy, export-policy, or publish behavior was changed
+- scope remains bounded to the canonical `call_of_duty` replay path
+
+## 2026-06-13T22:44Z
+
+target:
+- audit the bounded `call_of_duty` replay contract for identity, decision, and snapshot coherence
+
+status:
+- completed
+
+result:
+- active runtime and fused session-linked replay artifacts are coherent
+- historical export snapshot linkage for `workflow-11aea2937311834b` is coherent
+- no replay-correctness break was found in the active contract
+- replay roots contain superseded pre-normalization `call_of_duty` identity and decision artifacts that are no longer referenced by canonical session manifests
+- produced audit report:
+  - [2026-06-13-call-of-duty-replay-contract-audit-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replay-contract-audit-report-v0.md)
+
+verification:
+- bounded audit script comparing:
+  - canonical runtime review session items
+  - canonical fused review session items
+  - linked replay artifacts
+  - all persisted `call_of_duty` replay artifacts
+  - historical workflow rows for `workflow-11aea2937311834b`
+  - matching export-ready snapshots
+
+notes:
+- the main residual issue is artifact hygiene, not replay correctness
+- active identity payload sources are normalized to repo-relative form while canonical session manifest item sources remain absolute; this is expected under the current contract and should not be treated as a replay failure
+
+## 2026-06-13T22:53Z
+
+target:
+- define the bounded replay-artifact supersession procedure for `call_of_duty`
+
+status:
+- completed
+
+result:
+- added bounded operator procedure:
+  - [CALL_OF_DUTY_REPLAY_ARTIFACT_SUPERSESSION_PROCEDURE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/CALL_OF_DUTY_REPLAY_ARTIFACT_SUPERSESSION_PROCEDURE.md)
+- defined:
+  - active
+  - superseded
+  - protected
+  replay-artifact classes for the bounded `call_of_duty` path
+- documented the classification rules, pass/fail conditions, and allowed next
+  actions before any cleanup slice
+- updated operator-pack index:
+  - [README.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/README.md)
+
+verification:
+- grounded the procedure in:
+  - [2026-06-13-call-of-duty-replay-contract-audit-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replay-contract-audit-report-v0.md)
+  - [CALL_OF_DUTY_EDITORIAL_REPLAY_PROCEDURE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/CALL_OF_DUTY_EDITORIAL_REPLAY_PROCEDURE.md)
+
+notes:
+- this is a bounded operator-procedure slice only
+- no cleanup, deletion, relocation, or runtime behavior change was performed
+
+## 2026-06-13T23:02Z
+
+target:
+- apply the bounded `call_of_duty` replay-artifact supersession procedure to the current replay roots and produce a supersession audit report
+
+status:
+- completed
+
+result:
+- produced supersession audit report:
+  - [2026-06-13-call-of-duty-replay-artifact-supersession-audit-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replay-artifact-supersession-audit-report-v0.md)
+- classification result:
+  - active identities: `6`
+  - active decisions: `6`
+  - protected snapshots: `1`
+  - superseded identities: `6`
+  - superseded decisions: `6`
+  - unresolved identities: `0`
+  - unresolved decisions: `0`
+  - unresolved snapshots: `0`
+- overall supersession result:
+  - `pass`
+
+verification:
+- bounded audit script applied the supersession procedure to:
+  - canonical runtime and fused review-session manifests
+  - `call_of_duty` identity roots
+  - `call_of_duty` decision roots
+  - `call_of_duty` snapshot roots
+  - historical export replay anchor `workflow-11aea2937311834b`
+
+notes:
+- this was a classification-only slice
+- no cleanup, relocation, or deletion was performed
+- the replay roots are now fully classifiable with no unresolved artifacts
+
+## 2026-06-13T23:10Z
+
+target:
+- define the bounded replay-artifact quarantine procedure for `call_of_duty`
+
+status:
+- completed
+
+result:
+- added bounded operator procedure:
+  - [CALL_OF_DUTY_REPLAY_ARTIFACT_QUARANTINE_PROCEDURE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/CALL_OF_DUTY_REPLAY_ARTIFACT_QUARANTINE_PROCEDURE.md)
+- documented:
+  - quarantine preconditions
+  - quarantine candidate-set rules
+  - intended quarantine destination contract
+  - quarantine manifest contract
+  - safety checks
+  - post-quarantine replay verification requirements
+- updated operator-pack index:
+  - [README.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/README.md)
+
+verification:
+- grounded the procedure in:
+  - [CALL_OF_DUTY_REPLAY_ARTIFACT_SUPERSESSION_PROCEDURE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/CALL_OF_DUTY_REPLAY_ARTIFACT_SUPERSESSION_PROCEDURE.md)
+  - [2026-06-13-call-of-duty-replay-artifact-supersession-audit-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replay-artifact-supersession-audit-report-v0.md)
+
+notes:
+- this is a planning and safety slice only
+- no quarantine, cleanup, relocation, or deletion was performed
+
+## 2026-06-13T23:18Z
+
+target:
+- define the bounded cleanup implementation slice for superseded `call_of_duty` replay artifacts
+
+status:
+- completed
+
+result:
+- added implementation-slice design artifact:
+  - [2026-06-13-call-of-duty-replay-artifact-cleanup-implementation-slice-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replay-artifact-cleanup-implementation-slice-v0.md)
+- specified:
+  - exact authorized move set
+  - quarantine manifest contract
+  - execution sequence
+  - pass/fail conditions
+  - rollback rule
+  - post-move replay verification requirements
+
+verification:
+- grounded the slice in:
+  - [CALL_OF_DUTY_REPLAY_ARTIFACT_QUARANTINE_PROCEDURE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/CALL_OF_DUTY_REPLAY_ARTIFACT_QUARANTINE_PROCEDURE.md)
+  - [2026-06-13-call-of-duty-replay-artifact-supersession-audit-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replay-artifact-supersession-audit-report-v0.md)
+
+notes:
+- this is still a non-executing design slice
+- no replay artifacts were moved, quarantined, deleted, or restored
+
+## 2026-06-13T23:45Z
+
+target:
+- execute the bounded `call_of_duty` replay-artifact cleanup implementation slice
+
+status:
+- completed
+
+result:
+- materialized quarantine root:
+  - [20260612T221128Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_replay_quarantine/call_of_duty/20260612T221128Z)
+- wrote quarantine manifest:
+  - [call_of_duty.replay_artifact_quarantine_manifest.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_replay_quarantine/call_of_duty/20260612T221128Z/manifests/call_of_duty.replay_artifact_quarantine_manifest.json)
+- moved only the superseded replay artifacts:
+  - identities moved: `6`
+  - decisions moved: `6`
+  - total moved: `12`
+- preserved:
+  - active identities: `6`
+  - active decisions: `6`
+  - protected snapshots: `1`
+- added cleanup execution report:
+  - [2026-06-13-call-of-duty-replay-artifact-cleanup-execution-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replay-artifact-cleanup-execution-report-v0.md)
+
+verification:
+- reran bounded mechanical proof-path checks:
+  - runtime replay:
+    - `ok = true`
+    - `event_count = 3`
+  - fusion replay:
+    - `ok = true`
+    - `fused_event_count = 3`
+  - reviewed selection export:
+    - `selected_highlight_count = 3`
+  - fresh-fused selection export:
+    - `selected_highlight_count = 3`
+- reran isolated repo-local replay validation after cleanup:
+  - validation root:
+    - [20260612T221526Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/replay_validation/call_of_duty/20260612T221526Z)
+  - copied active identities: `6`
+  - copied active decisions: `6`
+  - copied protected snapshots: `1`
+  - runtime replay:
+    - `ok`
+    - `review_status = approved`
+  - fused replay:
+    - `ok`
+    - `applied_count = 2`
+  - historical export regeneration:
+    - `ok`
+    - `export_count = 1`
+    - `replayed_from_export_ready_snapshot = true`
+
+notes:
+- rollback was not required
+- cleanup remained scoped to the bounded `call_of_duty` replay roots only
+
+## 2026-06-13T23:56Z
+
+target:
+- record the bounded `call_of_duty` replayability status after implementation, cleanup, and operational validation
+
+status:
+- completed
+
+result:
+- added bounded status artifact:
+  - [2026-06-13-call-of-duty-replayability-status-report-v1.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replayability-status-report-v1.md)
+- classified current proof-path status:
+  - runtime analysis: `proven`
+  - fusion analysis: `proven`
+  - highlight selection export: `proven`
+  - editorial decision persistence: `proven`
+  - editorial replay: `proven`
+  - historical export regeneration: `proven`
+  - local export artifact production: `proven`
+  - publish workflow: `unproven`
+  - multi-game generalization: `unproven`
+- recorded the smallest justified widening step:
+  - second bounded real-media `call_of_duty` clip validation
+
+verification:
+- grounded the status report in:
+  - [2026-06-13-call-of-duty-bounded-replay-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-bounded-replay-validation-report-v0.md)
+  - [2026-06-13-call-of-duty-replay-artifact-cleanup-execution-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replay-artifact-cleanup-execution-report-v0.md)
+
+notes:
+- this is a status-only closeout artifact
+- no runtime behavior changed
+- no widening was executed
+
+## 2026-06-14T00:20Z
+
+target:
+- run a second bounded real-media `call_of_duty` clip through the runtime-analysis, fused-review, local export, and replay-validation path
+
+status:
+- completed
+
+result:
+- added bounded second-clip validation report:
+  - [2026-06-13-call-of-duty-second-bounded-clip-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-second-bounded-clip-validation-report-v0.md)
+- validated second source clip:
+  - [SVbTc2AZzYw.10s.mp4](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.10s.mp4)
+- created isolated validation root:
+  - [20260612T231543Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/bounded_validation/call_of_duty/20260612T231543Z)
+- runtime result:
+  - `event_count = 2`
+- fusion result:
+  - `fused_event_count = 2`
+- runtime review session:
+  - `approved_count = 1`
+- fused review session:
+  - `approved_count = 1`
+- initial export batch:
+  - `export_count = 1`
+  - `replayed_from_export_ready_snapshot = false`
+- replayed export batch:
+  - `export_count = 1`
+  - `replayed_from_export_ready_snapshot = true`
+- isolated replay validation root:
+  - [20260612T231853Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/bounded_validation/call_of_duty/20260612T231543Z/replay_validation/call_of_duty/20260612T231853Z)
+- isolated replay result:
+  - copied identities: `2`
+  - copied decisions: `2`
+  - copied snapshots: `1`
+  - runtime replay: `ok`
+  - fused replay: `ok`
+  - export replay: `ok`
+
+verification:
+- replayed second clip through:
+  - runtime analysis
+  - fused analysis
+  - local runtime review apply
+  - local fused review apply
+  - highlight selection export
+  - hook candidate derivation
+  - export queue workflow run
+  - initial local export batch
+  - snapshot-based export regeneration
+  - isolated repo-local replay validation
+
+notes:
+- first fusion attempt failed because the runtime sidecar was not materialized yet
+- review-bridge apply expects `accepted`, not `approved`, in GPT metadata
+- outputs remain local-only and are not publish-cleared
+
+## 2026-06-14T00:31Z
+
+target:
+- close the bounded `call_of_duty` generalization step with a multi-clip status update and widening decision
+
+status:
+- completed
+
+result:
+- added bounded multi-clip status artifact:
+  - [2026-06-14-call-of-duty-multi-clip-replayability-status-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-call-of-duty-multi-clip-replayability-status-report-v0.md)
+- upgraded bounded `call_of_duty` status from single-clip proof to:
+  - `multi-clip proven`
+- added widening-decision artifact:
+  - [2026-06-14-bounded-replayability-widening-decision-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-replayability-widening-decision-report-v0.md)
+- recorded the recommended next widening step:
+  - one bounded `marvel_rivals` replayability validation
+
+verification:
+- grounded the decision in:
+  - [2026-06-13-call-of-duty-replayability-status-report-v1.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-replayability-status-report-v1.md)
+  - [2026-06-13-call-of-duty-second-bounded-clip-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-second-bounded-clip-validation-report-v0.md)
+  - [EXECUTION_TARGET.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/EXECUTION_TARGET.md)
+
+notes:
+- no widening was executed in this slice
+- this is a decision-and-status checkpoint only
+
+## 2026-06-14T00:59Z
+
+target:
+- run one bounded real-media `marvel_rivals` clip through the runtime-analysis, fused-review, local export, and replay-validation path
+
+status:
+- completed
+
+result:
+- added bounded adjacent-game transfer report:
+  - [2026-06-14-marvel-rivals-bounded-replay-transfer-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-marvel-rivals-bounded-replay-transfer-report-v0.md)
+- validated source clip:
+  - `/Users/tj/GPT-Codex-Repo/accepted/marvel_rivals/ABSOLUTE CINEMA_3522796292.mp4`
+- created isolated validation root:
+  - [20260612T232308Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/bounded_validation/marvel_rivals/20260612T232308Z)
+- runtime result:
+  - `event_count = 9`
+  - `signal_count = 39`
+- fused result:
+  - `proxy signal_count = 6`
+  - `fused_event_count = 39`
+- runtime review apply:
+  - `approved_count = 1`
+- fused review apply:
+  - `approved_count = 1`
+- initial export batch:
+  - `export_count = 1`
+  - `replayed_from_export_ready_snapshot = false`
+- replayed export batch:
+  - `export_count = 1`
+  - `replayed_from_export_ready_snapshot = true`
+- isolated replay validation root:
+  - [20260612T232641Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/bounded_validation/marvel_rivals/20260612T232308Z/replay_validation/marvel_rivals/20260612T232641Z)
+- isolated replay result:
+  - identities copied: `2`
+  - decisions copied: `2`
+  - snapshots copied: `1`
+  - runtime replay: `ok`
+  - fused replay: `ok`
+  - export replay: `ok`
+
+verification:
+- replayed the bounded `marvel_rivals` clip through:
+  - runtime analysis
+  - fused analysis
+  - local runtime review apply
+  - local fused review apply
+  - highlight selection export
+  - hook candidate derivation
+  - export queue workflow run
+  - initial local export batch
+  - snapshot-based export regeneration
+  - isolated repo-local replay validation
+
+notes:
+- first fusion attempt failed because the runtime sidecar was not yet materialized
+- runtime shell wrapper remained live after the sidecar had already been written
+- outputs remain local-only and are not publish-cleared

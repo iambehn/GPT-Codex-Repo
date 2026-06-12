@@ -13,6 +13,9 @@ Use these files to keep Codex work phase-aware, inspectable, and autonomous with
 - `CODEX_BACKLOG.md`: the ordered phase backlog Codex should work through
 - `CODEX_RUN_LOG.md`: the append-only routine execution log for progress that does not need a chat interruption
 - `PIPELINE_CONTRACTS.md`: minimal stage contracts and validation levels
+- `CALL_OF_DUTY_EDITORIAL_REPLAY_PROCEDURE.md`: bounded operator procedure for repo-local editorial replay and historical export regeneration on the canonical `call_of_duty` proof path
+- `CALL_OF_DUTY_REPLAY_ARTIFACT_SUPERSESSION_PROCEDURE.md`: bounded operator procedure for classifying `call_of_duty` replay artifacts as active, superseded, or protected before any cleanup slice
+- `CALL_OF_DUTY_REPLAY_ARTIFACT_QUARANTINE_PROCEDURE.md`: bounded operator procedure for planning reversible quarantine of superseded `call_of_duty` replay artifacts before any cleanup implementation slice
 - `OPEN_QUESTIONS.md`: unresolved P0 and P1 decisions that block or shape execution
 - `FAILURE_TAXONOMY.md`: seed failure modes and required escalation behavior
 - `CODEX_HEARTBEAT_AUTOMATION_POLICY.md`: the bounded recurring Codex automation rules
