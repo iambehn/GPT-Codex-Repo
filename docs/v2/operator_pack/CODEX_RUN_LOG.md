@@ -3808,3 +3808,129 @@ verification:
 
 notes:
 - this report correctly records hypothesis state without forcing a false pattern or premature intervention analysis
+
+## 2026-06-13T20:05Z
+
+target:
+- run one bounded real-media `call_of_duty` clip through the current runtime-analysis, fused-review, and local export path and determine whether the existing proof path still produces a valid local highlight export artifact
+
+status:
+- completed
+
+result:
+- added [2026-06-13-call-of-duty-bounded-proof-path-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-call-of-duty-bounded-proof-path-validation-report-v0.md)
+- fresh runtime replay succeeded with the repo-local `.venv`:
+  - `status = ok`
+  - `signal_count = 3`
+  - `event_count = 3`
+- fresh fused replay succeeded:
+  - `status = ok`
+  - `normalized_signal_count = 3`
+  - `fused_event_count = 3`
+- fresh selection export succeeded from:
+  - the canonical reviewed fused sidecar
+  - the fresh fused sidecar
+- canonical local export artifact remained present:
+  - `highlight_export_batch_v1`
+  - `export_count = 1`
+
+verification:
+- bounded real-media validation pass against the documented `call_of_duty` proof clip and existing proof-path artifacts
+
+notes:
+- `python3` failed the runtime rerun because `cv2` was unavailable; `./.venv/bin/python` was required
+- fresh review replay was not autonomous because the review bridge depends on external GPT or human decision artifacts
+- fresh export-batch creation did not replay on the current lifecycle snapshot:
+  - isolated workflow-run replay returned `item_count = 0`
+  - isolated export-batch replay returned `no_selected_candidates`
+- the proof path remains valid as a local validation slice, but it is currently only partially replayable end-to-end
+
+## 2026-06-13T20:31Z
+
+target:
+- trace why canonical runtime-review and fused-review decisions are not replayable from preserved repo artifacts alone for the bounded `call_of_duty` proof path
+
+status:
+- completed
+
+result:
+- added [2026-06-13-editorial-replay-gap-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-editorial-replay-gap-report-v0.md)
+- confirmed three replay blockers:
+  - review-source artifacts are partly externalized under `/Users/tj/GPT-Codex-Repo`
+  - review state is written onto specific sidecar files rather than a replayable in-repo decision ledger
+  - fused candidate identity is derived from `fused_sidecar_path`, so fresh reruns create new candidate ids
+
+verification:
+- artifact audit across:
+  - canonical review session manifests
+  - canonical reviewed sidecars
+  - fresh rerun sidecars
+  - lifecycle derivation and candidate-id code paths
+
+notes:
+- canonical reviewed sidecars preserve applied review state correctly
+- fresh rerun sidecars remain mechanically valid but have no embedded review state
+- the current gap is editorial-state replayability, not signal generation
+
+## 2026-06-13T20:49Z
+
+target:
+- audit the `call_of_duty` export regeneration path from reviewed fused sidecar to workflow run to export batch and determine why the current lifecycle snapshot no longer reproduces a `selected_for_export` candidate set
+
+status:
+- completed
+
+result:
+- added [2026-06-13-export-regeneration-gap-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-export-regeneration-gap-report-v0.md)
+- confirmed that export regeneration mixes:
+  - historical workflow memory
+  - current lifecycle state
+- found:
+  - historical workflow record still preserves `candidate-a0ca7ce9055af9a5` as `selected_for_export`
+  - current lifecycle state for that candidate is now `exported`
+  - fresh workflow-run regeneration therefore returns `item_count = 0`
+  - fresh export-batch regeneration therefore returns `no_selected_candidates`
+
+verification:
+- registry query and artifact audit across:
+  - canonical workflow-run manifest
+  - canonical export-batch manifest
+  - canonical selection manifest
+  - current lifecycle rows
+  - fresh workflow-run replay attempt
+
+notes:
+- the gap is not missing signal artifacts
+- the gap is that regeneration commands only consume present `selected_for_export` state and do not reconstruct from preserved historical export-ready moments
+
+## 2026-06-13T21:07Z
+
+target:
+- define the minimum artifact contract required to make bounded editorial replay deterministic for the `call_of_duty` proof path without widening beyond existing review bridge and export workflow surfaces
+
+status:
+- completed
+
+result:
+- added [2026-06-13-bounded-editorial-replay-minimum-artifact-contract-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-bounded-editorial-replay-minimum-artifact-contract-v0.md)
+- defined the minimum replayable contract as three repo-local durable objects:
+  - stable editorial identity record
+  - editorial decision record
+  - export-ready snapshot record
+- constrained the contract to existing workflow families only:
+  - reviewed sidecars
+  - review session manifests
+  - selection manifests
+  - workflow/export history surfaces
+
+verification:
+- contract-definition pass grounded in:
+  - current review session schemas
+  - current selection/export artifact schemas
+  - the editorial replay gap report
+  - the export regeneration gap report
+
+notes:
+- this is a contract-definition artifact only
+- no runtime, governance, or export behavior was changed
+- the contract is intentionally minimal and scoped to the bounded `call_of_duty` replay problem
