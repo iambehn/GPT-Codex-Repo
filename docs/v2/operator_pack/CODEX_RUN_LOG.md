@@ -3621,3 +3621,98 @@ verification:
 
 notes:
 - this ledger is defined as the durable trust-history surface that persists approved promotions, rejections, and deferrals without collapsing them into the transition outcome ledger
+
+## 2026-06-13T10:15Z
+
+target:
+- produce the first recurring Qualification Observation Report for the active observation program
+
+status:
+- completed
+
+result:
+- added [2026-06-13-qualification-observation-report-v1.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-qualification-observation-report-v1.md)
+- established the first recurring observation-window baseline across:
+  - candidate generation
+  - promotion decisions
+  - qualification updates
+  - evidence density
+  - failure review
+- measured:
+  - `candidate_count = 2`
+  - `approved = 1`
+  - `deferred = 0`
+  - `rejected = 0`
+  - `1` governance-approved `Q1 -> Q2` change
+  - `0` durably persisted qualification-update rows observed in the live repo state
+- confirmed:
+  - source fetch and publish readiness produced promotable medium-grade evidence
+  - accepted-binding replay remained attribution-limited due to historical `unknown_subject` capture
+  - no repeated observation failure mode was yet visible in the first window
+
+verification:
+- doc-and-artifact observation pass using the committed candidate, decision, and update-ledger baseline artifacts
+
+notes:
+- this is the first recurring operational artifact under the Qualification Observation Program and establishes the baseline for future window-to-window comparison
+
+## 2026-06-13T11:40Z
+
+target:
+- produce Qualification Observation Report v2 as the first comparative observation report against the v1 baseline
+
+status:
+- completed
+
+result:
+- added [2026-06-13-qualification-observation-report-v2.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-qualification-observation-report-v2.md)
+- created a fresh observation window under:
+  - [20260612T190811Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/assets/games/_qualification_observation/windows/20260612T190811Z)
+- replayed:
+  - `3` fresh onboarding source-manifest runs
+  - `3` fresh review-surface copies from the original pre-observation drafts
+- measured the first v1 -> v2 deltas:
+  - live unresolved `candidate_count`: `2 -> 1`
+  - `promotion_conversion_rate`: `50% -> 0%`
+  - new approved qualification updates: `1 -> 0`
+  - promotable evidence density: `strong = 0`, `medium = 16`, `weak = 0` remained unchanged
+  - attribution-limited `unknown_subject` history: `271 -> 271`
+- interpretation:
+  - the previously approved `system_validator x SITRANS-001` candidate is treated as resolved, not still live
+  - attribution quality was not improved in the second window
+  - promotion stagnation is a signal but remains `Inconclusive`, not yet a repeated pattern
+
+verification:
+- live workflow observation via current onboarding, review-application, and publish-readiness commands
+- comparative doc-and-artifact pass against [2026-06-13-qualification-observation-report-v1.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-13-qualification-observation-report-v1.md)
+
+notes:
+- Window 2 is the first report to convert the observation program from baseline measurement into explicit trend detection
+
+## 2026-06-13T12:05Z
+
+target:
+- add a lightweight operator recipe for deciding when the next qualification observation window is ready and how to generate the next comparative report
+
+status:
+- completed
+
+result:
+- added [QUALIFICATION_OBSERVATION_WINDOW_RECIPE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/QUALIFICATION_OBSERVATION_WINDOW_RECIPE.md)
+- documented:
+  - the window-readiness checklist
+  - the fixed comparison set
+  - the fresh window generation procedure
+  - the fixed report structure for later windows
+  - the hold vs escalate decision rules
+- preserved the current doctrine:
+  - observe
+  - measure
+  - compare
+  - intervene only on repeated failure
+
+verification:
+- doc-only operator pass aligned to the existing v1/v2 observation artifacts and current non-intervention doctrine
+
+notes:
+- this is an operational procedure only; it does not add new architecture, governance, or instrumentation scope
