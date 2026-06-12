@@ -3486,3 +3486,138 @@ verification:
 
 notes:
 - the after-state is intentionally framed as current generator capability for the historical workflow family, not retroactive mutation of older workflow artifacts
+
+## 2026-06-11T09:20Z
+
+target:
+- calibrate conservative qualification promotion thresholds after the three instrumentation slices
+
+status:
+- completed
+
+result:
+- added [2026-06-11-qualification-threshold-calibration-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-11-qualification-threshold-calibration-report-v0.md)
+- preserved the existing qualification architecture baseline
+- calibrated conservative evidence requirements for:
+  - `Q1`
+  - `Q2`
+  - `Q3`
+- defined:
+  - minimum qualifying event shape
+  - literal-transition requirement
+  - subject-attribution requirement
+  - multi-run repeat requirements for `Q2` and `Q3`
+- concluded:
+  - `Q1` can now be evidence-backed by native emitted events
+  - `Q2` should require repeated literal success under guardrails
+  - `Q3` should remain materially harder than the current rollout evidence
+
+verification:
+- doc-only calibration pass
+
+notes:
+- this pass intentionally leaves the committed qualification matrix unchanged and treats threshold calibration as an evidence-policy clarification layer rather than a control-plane redesign
+
+## 2026-06-12T18:15Z
+
+target:
+- run an observation pass on newer instrumented workflows and evaluate live `Q1` / `Q2` promotion candidates
+
+status:
+- completed
+
+result:
+- added [2026-06-12-qualification-promotion-candidate-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-12-qualification-promotion-candidate-report-v0.md)
+- observed:
+  - `3` fresh source-intake runs with native `SITRANS-001` evidence
+  - `3` review-surface observation copies reprocessed through current review and readiness logic
+- found:
+  - `system_validator x SITRANS-001` satisfies calibrated `Q1` and `Q2`
+  - `system_validator x TRANS-002` satisfies calibrated `Q1` but not `Q2`
+  - replayed `TRANS-016` accepted-binding evidence remains blocked from promotion because historical review payloads re-emit as `unknown_subject`
+
+verification:
+- live workflow observation via current onboarding, review-application, and publish-readiness commands
+
+notes:
+- this pass intentionally counted only literal attributed native events toward promotion and treated unattributed replay rows as operational evidence rather than promotable qualification evidence
+
+## 2026-06-12T18:45Z
+
+target:
+- define the first qualification promotion review packet using observed promotion candidates as evidence surfaces
+
+status:
+- completed
+
+result:
+- added [2026-06-12-qualification-promotion-review-packet-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-12-qualification-promotion-review-packet-v0.md)
+- specified:
+  - minimum evidence package
+  - review criteria
+  - promotion decision fields
+  - rejection criteria
+  - defer criteria
+  - audit-trail requirements
+- preserved existing qualification thresholds as the baseline
+- anchored the packet design against:
+  - `system_validator x SITRANS-001`
+  - `system_validator x TRANS-002`
+  - replayed `TRANS-016` with `unknown_subject`
+
+verification:
+- doc-only governance pass
+
+notes:
+- this packet is defined as the governance layer between threshold-satisfying candidates and actual qualification-state changes; it does not automate promotion
+
+## 2026-06-12T19:10Z
+
+target:
+- run the first qualification promotion review against the live `system_validator x SITRANS-001` candidate
+
+status:
+- completed
+
+result:
+- added [2026-06-12-first-qualification-promotion-review-decision-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-12-first-qualification-promotion-review-decision-report-v0.md)
+- reviewed the live `system_validator x SITRANS-001` candidate through the Qualification Promotion Review Packet v0
+- found:
+  - the candidate satisfies the calibrated `Q2` threshold
+  - the packet is sufficient to support a real decision
+  - promotion decision = `approve_promotion`
+  - approved level change = `Q1 -> Q2`
+- identified the remaining governance gap:
+  - no canonical qualification update record exists yet to persist approved trust-state changes
+
+verification:
+- doc-and-artifact governance review using the live source-fetch evidence rows from the observed instrumented runs
+
+notes:
+- this is the first complete qualification-promotion lifecycle in the current architecture: candidate, packet, decision
+
+## 2026-06-12T19:35Z
+
+target:
+- define the first qualification update ledger using the approved `system_validator x SITRANS-001` promotion decision
+
+status:
+- completed
+
+result:
+- added [2026-06-12-qualification-update-ledger-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-12-qualification-update-ledger-v0.md)
+- specified:
+  - canonical row shape for qualification-state changes
+  - required governance metadata
+  - audit-trail requirements
+  - append-only retention rules
+  - linkage rules to promotion review packets and candidate reports
+- preserved the separation between:
+  - transition outcome history
+  - qualification governance history
+
+verification:
+- doc-only governance-architecture pass
+
+notes:
+- this ledger is defined as the durable trust-history surface that persists approved promotions, rejections, and deferrals without collapsing them into the transition outcome ledger
