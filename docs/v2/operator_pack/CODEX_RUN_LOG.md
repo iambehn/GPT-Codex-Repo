@@ -4420,3 +4420,106 @@ notes:
 - first fusion attempt failed because the runtime sidecar was not yet materialized
 - runtime shell wrapper remained live after the sidecar had already been written
 - outputs remain local-only and are not publish-cleared
+
+## 2026-06-14T01:18Z
+
+target:
+- close the first adjacent-game transfer cycle with a cross-game status checkpoint and the next widening decision
+
+status:
+- completed
+
+result:
+- added cross-game bounded replayability status artifact:
+  - [2026-06-14-cross-game-bounded-replayability-status-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-cross-game-bounded-replayability-status-report-v0.md)
+- recorded current stronger bounded claim:
+  - `call_of_duty` = multi-clip proven
+  - `marvel_rivals` = bounded transfer proven on one clip
+  - cross-game replayability = demonstrated
+- added post-transfer widening-decision artifact:
+  - [2026-06-14-post-transfer-bounded-replayability-widening-decision-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-post-transfer-bounded-replayability-widening-decision-report-v0.md)
+- recorded the recommended next widening step:
+  - one second bounded `marvel_rivals` clip
+
+verification:
+- grounded the status and decision in:
+  - [2026-06-14-call-of-duty-multi-clip-replayability-status-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-call-of-duty-multi-clip-replayability-status-report-v0.md)
+  - [2026-06-14-marvel-rivals-bounded-replay-transfer-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-marvel-rivals-bounded-replay-transfer-report-v0.md)
+  - [EXECUTION_TARGET.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/EXECUTION_TARGET.md)
+
+notes:
+- this is a status-and-decision checkpoint only
+- no widening was executed in this slice
+- `valorant` remains unjustified
+
+## 2026-06-14T01:41Z
+
+target:
+- run a second bounded real-media `marvel_rivals` clip through the replayable proof path, then close the adjacent-game cycle with status and decision artifacts
+
+status:
+- completed
+
+result:
+- added bounded second-clip validation report:
+  - [2026-06-14-marvel-rivals-second-bounded-clip-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-marvel-rivals-second-bounded-clip-validation-report-v0.md)
+- validated source clip:
+  - [kjeRAyM5ekA7XVsRm.mp4](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/public_gameplay_mining/marvel_rivals_quad_ace_sources/kjeRAyM5ekA7XVsRm.mp4)
+- created isolated validation root:
+  - [20260612T233438Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/bounded_validation/marvel_rivals/20260612T233438Z)
+- runtime result:
+  - `event_count = 2`
+- fused result:
+  - `proxy signal_count = 3`
+  - `fused_event_count = 2`
+- runtime review apply:
+  - `approved_count = 1`
+- fused review apply:
+  - `approved_count = 1`
+  - `rejected_count = 1`
+- initial export batch:
+  - `export_count = 1`
+  - `replayed_from_export_ready_snapshot = false`
+- replayed export batch after registry refresh:
+  - `export_count = 1`
+  - `replayed_from_export_ready_snapshot = true`
+- isolated replay validation root:
+  - [20260612T234120Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/bounded_validation/marvel_rivals/20260612T233438Z/replay_validation/marvel_rivals/20260612T234120Z)
+- isolated replay result:
+  - identities copied: `3`
+  - decisions copied: `3`
+  - snapshots copied: `1`
+  - runtime replay: `ok`
+  - fused replay: `ok`
+  - export replay: `ok`
+- added bounded `marvel_rivals` multi-clip status artifact:
+  - [2026-06-14-marvel-rivals-multi-clip-replayability-status-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-marvel-rivals-multi-clip-replayability-status-report-v0.md)
+- upgraded bounded `marvel_rivals` status to:
+  - `multi-clip proven`
+- added post-multi-clip replayability decision artifact:
+  - [2026-06-14-post-marvel-multiclip-replayability-decision-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-post-marvel-multiclip-replayability-decision-report-v0.md)
+- recorded the recommended next step:
+  - stop widening the replayability track and checkpoint it
+
+verification:
+- replayed the bounded second `marvel_rivals` clip through:
+  - runtime analysis
+  - fused analysis
+  - local runtime review apply
+  - local fused review apply
+  - highlight selection export
+  - hook candidate derivation
+  - export queue workflow run
+  - initial local export batch
+  - snapshot-based export regeneration after registry refresh
+  - isolated repo-local replay validation
+- grounded the closeout status and decision in:
+  - [2026-06-14-marvel-rivals-bounded-replay-transfer-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-marvel-rivals-bounded-replay-transfer-report-v0.md)
+  - [2026-06-14-call-of-duty-multi-clip-replayability-status-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-call-of-duty-multi-clip-replayability-status-report-v0.md)
+  - [2026-06-14-cross-game-bounded-replayability-status-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-cross-game-bounded-replayability-status-report-v0.md)
+  - [EXECUTION_TARGET.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/EXECUTION_TARGET.md)
+
+notes:
+- initial export replay only became snapshot-backed after refreshing the bounded registry to ingest the exported lifecycle state
+- outputs remain local-only and are not publish-cleared
+- `valorant` remains unjustified
