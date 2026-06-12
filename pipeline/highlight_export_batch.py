@@ -12,6 +12,7 @@ from pipeline.clip_registry import (
     load_workflow_run_details,
     refresh_clip_registry,
 )
+from pipeline.editorial_replay_contract import load_export_ready_snapshots
 from pipeline.highlight_selection_export import export_highlight_selection
 
 
@@ -41,6 +42,14 @@ def create_highlight_export_batch(
         game=game,
         fixture_id=fixture_id,
     )
+    replayed_from_snapshot = False
+    if not lifecycle_rows and (workflow_run_id is not None or selection_manifest is not None):
+        lifecycle_rows = _export_ready_snapshot_rows(
+            workflow_run_id=workflow_run_id,
+            selection_manifest=selection_manifest,
+            game=game,
+        )
+        replayed_from_snapshot = bool(lifecycle_rows)
     if not lifecycle_rows:
         return {
             "ok": False,
@@ -130,6 +139,7 @@ def create_highlight_export_batch(
         "game": str(lifecycle_rows[0].get("game") or "").strip() or "unknown_game",
         "workflow_run_id": str(workflow_run_id or "").strip() or None,
         "selection_manifest_path": str(_resolve_path(selection_manifest)) if selection_manifest is not None else None,
+        "replayed_from_export_ready_snapshot": replayed_from_snapshot,
         "linked_inputs": {
             "fused_sidecar_paths": sorted(fused_paths),
             "hook_manifest_paths": sorted(hook_paths),
@@ -146,6 +156,7 @@ def create_highlight_export_batch(
         "export_batch_id": export_batch_id,
         "manifest_path": str(target),
         "export_count": len(exports),
+        "replayed_from_export_ready_snapshot": replayed_from_snapshot,
     }
 
 
@@ -757,6 +768,7 @@ def _write_export_batch_from_rows(
         "game": str(lifecycle_rows[0].get("game") or "").strip() or "unknown_game",
         "workflow_run_id": str(workflow_run_id or "").strip() or None,
         "selection_manifest_path": str(_resolve_path(selection_manifest)) if selection_manifest is not None else None,
+        "replayed_from_export_ready_snapshot": bool(metadata_extra and metadata_extra.get("replayed_from_export_ready_snapshot")),
         "linked_inputs": {
             "fused_sidecar_paths": sorted(fused_paths),
             "hook_manifest_paths": sorted(hook_paths),
@@ -774,6 +786,42 @@ def _write_export_batch_from_rows(
         "manifest_path": str(target),
         "export_count": len(exports),
     }
+
+
+def _export_ready_snapshot_rows(
+    *,
+    workflow_run_id: str | None,
+    selection_manifest: str | Path | None,
+    game: str | None,
+) -> list[dict[str, Any]]:
+    snapshot_rows = load_export_ready_snapshots(
+        repo_root=REPO_ROOT,
+        workflow_run_id=workflow_run_id,
+        selection_manifest_path=selection_manifest,
+        game=game,
+    )
+    rows: list[dict[str, Any]] = []
+    for snapshot in snapshot_rows:
+        rows.append(
+            {
+                "candidate_id": str(snapshot.get("candidate_id_at_selection") or "").strip() or None,
+                "game": str(snapshot.get("game") or "").strip() or None,
+                "source": str(snapshot.get("source") or "").strip() or None,
+                "fixture_id": str(snapshot.get("fixture_id") or "").strip() or None,
+                "event_id": str(snapshot.get("event_id") or "").strip() or None,
+                "lifecycle_state": "selected_for_export",
+                "latest_review_status": str(snapshot.get("approved_review_status") or "").strip() or None,
+                "recommended_action": "highlight_candidate",
+                "final_score": snapshot.get("final_score"),
+                "fused_sidecar_path": str(snapshot.get("fused_sidecar_path_at_selection") or "").strip() or None,
+                "selection_basis": str(snapshot.get("selection_basis") or "").strip() or None,
+                "highlight_selection_manifest_path": str(snapshot.get("selection_manifest_path") or "").strip() or None,
+                "export_artifact_path": None,
+                "post_ledger_path": None,
+            }
+        )
+    rows.sort(key=lambda row: (str(row.get("game") or ""), str(row.get("fixture_id") or ""), str(row.get("candidate_id") or "")))
+    return rows
 
 
 def _selection_highlight(*, selection_path: str | None, candidate_id: str, event_id: str) -> dict[str, Any]:

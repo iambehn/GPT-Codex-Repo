@@ -8,6 +8,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from pipeline.editorial_replay_contract import (
+    persist_runtime_review_decision,
+    runtime_editorial_object_id,
+)
 from pipeline.simple_yaml import load_yaml_file
 
 
@@ -120,11 +124,22 @@ def apply_runtime_review(session_manifest: str | Path, *, gpt_repo: str | Path |
             "gpt_final_path": final_path,
         }
         sidecar_path.write_text(json.dumps(sidecar, indent=2), encoding="utf-8")
+        contract_result = persist_runtime_review_decision(
+            repo_root=REPO_ROOT,
+            manifest=manifest,
+            item=item,
+            review_status=review_status,
+            reviewed_at=reviewed_at,
+            sidecar=sidecar,
+        )
 
         item["apply_status"] = "applied"
         item["review_status"] = review_status
         item["reviewed_at"] = reviewed_at
         item["gpt_final_path"] = final_path
+        item["editorial_object_id"] = contract_result["editorial_object_id"]
+        item["editorial_identity_path"] = contract_result["identity_path"]
+        item["editorial_decision_path"] = contract_result["decision_path"]
 
         if review_status == "approved":
             approved_count += 1
@@ -337,6 +352,10 @@ def _materialize_candidate(
 
     return {
         "clip_id": bridge_stem,
+        "editorial_object_id": runtime_editorial_object_id(
+            game=game,
+            source=candidate["source"],
+        ),
         "sidecar_path": candidate["sidecar_path"],
         "source": candidate["source"],
         "gpt_processed_path": str(gpt_processed_path),

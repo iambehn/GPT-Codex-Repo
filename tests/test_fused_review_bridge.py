@@ -8,6 +8,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+import pipeline.editorial_replay_contract as editorial_replay_contract
 import pipeline.fused_review_bridge as fused_review_bridge
 from run import (
     main as run_main,
@@ -287,6 +288,7 @@ class FusedReviewBridgeTests(unittest.TestCase):
 
             with (
                 patch.object(fused_review_bridge, "REPO_ROOT", root),
+                patch.object(editorial_replay_contract, "REPO_ROOT", root),
                 patch.object(fused_review_bridge, "_materialize_segment", side_effect=self._fake_materialize_segment),
             ):
                 prepared = run_prepare_fused_review(
@@ -324,6 +326,42 @@ class FusedReviewBridgeTests(unittest.TestCase):
             self.assertEqual(alpha_sidecar["fused_review"]["events"]["event-1"]["review_status"], "approved")
             self.assertEqual(bravo_sidecar["fused_review"]["events"]["event-2"]["review_status"], "rejected")
             self.assertNotIn("runtime_review", alpha_sidecar)
+            applied_manifest = json.loads(Path(prepared["manifest_path"]).read_text(encoding="utf-8"))
+            decision_statuses: list[str] = []
+            for item in applied_manifest["items"]:
+                identity_path = Path(item["editorial_identity_path"])
+                decision_path = Path(item["editorial_decision_path"])
+                self.assertTrue(identity_path.exists())
+                self.assertTrue(decision_path.exists())
+                identity_payload = json.loads(identity_path.read_text(encoding="utf-8"))
+                decision_payload = json.loads(decision_path.read_text(encoding="utf-8"))
+                self.assertEqual(identity_payload["schema_version"], "editorial_identity_v1")
+                self.assertEqual(identity_payload["review_surface"], "fused")
+                self.assertEqual(decision_payload["schema_version"], "editorial_decision_v1")
+                self.assertEqual(decision_payload["review_surface"], "fused")
+                decision_statuses.append(decision_payload["review_status"])
+            self.assertEqual(sorted(decision_statuses), ["approved", "rejected"])
+
+            fresh_alpha_path = sidecar_root / "marvel_rivals" / "alpha-fresh.fused_analysis.json"
+            _write_fused_sidecar(
+                fresh_alpha_path,
+                game="marvel_rivals",
+                source=alpha,
+                events=[_event(event_id="event-1", event_type="medal_seen", final_score=0.40)],
+            )
+            fresh_alpha_payload = json.loads(fresh_alpha_path.read_text(encoding="utf-8"))
+            fresh_alpha_payload.pop("fused_review", None)
+            fresh_alpha_payload["source"] = str(alpha.relative_to(root).as_posix())
+            fresh_alpha_payload["sidecar_path"] = str(fresh_alpha_path.resolve())
+            fresh_alpha_path.write_text(json.dumps(fresh_alpha_payload, indent=2), encoding="utf-8")
+
+            replay_result = editorial_replay_contract.replay_fused_editorial_decisions(
+                fresh_alpha_path,
+                repo_root=root,
+            )
+            self.assertTrue(replay_result["ok"])
+            replayed_alpha = json.loads(fresh_alpha_path.read_text(encoding="utf-8"))
+            self.assertEqual(replayed_alpha["fused_review"]["events"]["event-1"]["review_status"], "approved")
 
     def test_cleanup_fused_review_removes_generated_bridge_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

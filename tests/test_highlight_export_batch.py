@@ -237,6 +237,60 @@ class HighlightExportBatchTests(unittest.TestCase):
             self.assertEqual(row["export_status"], "exported")
             self.assertTrue(str(row["hook_mode"]))
             self.assertTrue(Path(row["otio_path"]).exists())
+            self.assertEqual(len(workflow["export_ready_snapshot_paths"]), 1)
+            snapshot_payload = json.loads(Path(workflow["export_ready_snapshot_paths"][0]).read_text(encoding="utf-8"))
+            self.assertEqual(snapshot_payload["schema_version"], "export_ready_snapshot_v1")
+            self.assertEqual(snapshot_payload["workflow_run_id"], workflow["workflow_run_id"])
+
+    def test_create_highlight_export_batch_replays_from_export_ready_snapshot_after_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _fused_sidecar(fused_path, game="call_of_duty", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+            export_highlight_selection(
+                fused_sidecar=fused_path,
+                output_path=root / "selection" / "alpha.highlight_selection.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            derive_hook_candidates(
+                fused_path,
+                registry_path=registry_path,
+                output_path=root / "hooks" / "alpha.hook_candidates.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            workflow = create_workflow_run(
+                "export_queue",
+                registry_path=registry_path,
+                output_path=root / "workflow" / "export.workflow_run.json",
+            )
+
+            first_export = create_highlight_export_batch(
+                registry_path=registry_path,
+                workflow_run_id=workflow["workflow_run_id"],
+                output_path=root / "exports" / "first.highlight_export_batch.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            export_queue = query_workflow_queue("export_queue", registry_path=registry_path)
+            self.assertEqual(export_queue["row_count"], 0)
+
+            replay_export = create_highlight_export_batch(
+                registry_path=registry_path,
+                workflow_run_id=workflow["workflow_run_id"],
+                output_path=root / "exports" / "replayed.highlight_export_batch.json",
+            )
+
+            self.assertTrue(first_export["ok"])
+            self.assertTrue(replay_export["ok"])
+            self.assertTrue(replay_export["replayed_from_export_ready_snapshot"])
+            replay_manifest = json.loads(Path(replay_export["manifest_path"]).read_text(encoding="utf-8"))
+            self.assertTrue(replay_manifest["replayed_from_export_ready_snapshot"])
+            self.assertEqual(replay_manifest["workflow_run_id"], workflow["workflow_run_id"])
+            self.assertEqual(replay_manifest["export_count"], 1)
 
     def test_local_export_boundary_keeps_post_ledger_unset_until_posting(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

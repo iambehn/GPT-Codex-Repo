@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from pipeline.editorial_replay_contract import fused_editorial_object_id
 from pipeline.fused_export import DEFAULT_ACTION_THRESHOLDS
 
 
@@ -236,6 +237,11 @@ def _selected_fused_events(payload: dict[str, Any], *, sidecar_path: Path) -> li
                     game=game,
                     source=source,
                     fused_sidecar_path=str(sidecar_path),
+                    event_id=event_id,
+                ),
+                "editorial_object_id": fused_editorial_object_id(
+                    game=game,
+                    source=source,
                     event_id=event_id,
                 ),
                 "fusion_id": fusion_id,

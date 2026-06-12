@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from pipeline.editorial_replay_contract import persist_export_ready_snapshots
 from pipeline.clip_registry import query_clip_registry
 
 
@@ -113,6 +114,15 @@ def create_workflow_run(
     target = _resolve_path(output_path) if output_path is not None else _default_output_path(normalized_workflow_type, run_id)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    snapshot_paths: list[str] = []
+    if normalized_workflow_type == "export_queue" and items:
+        snapshots = persist_export_ready_snapshots(
+            repo_root=REPO_ROOT,
+            workflow_run_id=run_id,
+            workflow_created_at=created_at,
+            lifecycle_rows=lifecycle_rows,
+        )
+        snapshot_paths = [str(row.get("manifest_path") or "").strip() for row in snapshots if str(row.get("manifest_path") or "").strip()]
     return {
         "ok": True,
         "status": "ok",
@@ -122,6 +132,7 @@ def create_workflow_run(
         "stage": lifecycle_state,
         "manifest_path": str(target),
         "item_count": len(items),
+        "export_ready_snapshot_paths": snapshot_paths,
     }
 
 

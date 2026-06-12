@@ -3934,3 +3934,70 @@ notes:
 - this is a contract-definition artifact only
 - no runtime, governance, or export behavior was changed
 - the contract is intentionally minimal and scoped to the bounded `call_of_duty` replay problem
+
+## 2026-06-13T21:39Z
+
+target:
+- implement the bounded editorial replay minimum artifact contract for the `call_of_duty` proof path only, preserving existing review and export workflow behavior
+
+status:
+- completed
+
+result:
+- added repo-local bounded replay contract module:
+  - [editorial_replay_contract.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/editorial_replay_contract.py)
+- persisted stable editorial identity and decision records during review apply:
+  - `pipeline/runtime_review_bridge.py`
+  - `pipeline/fused_review_bridge.py`
+- emitted export-ready snapshot records during `export_queue` workflow-run creation:
+  - `pipeline/workflow_run_state.py`
+- enabled `create_highlight_export_batch` to replay from preserved export-ready snapshots when a historical `workflow_run_id` is provided and current lifecycle state has already advanced past `selected_for_export`
+- added `editorial_object_id` to fused highlight selection exports for stable replay attachment
+
+verification:
+- `python3 -m py_compile pipeline/editorial_replay_contract.py pipeline/runtime_review_bridge.py pipeline/fused_review_bridge.py pipeline/highlight_selection_export.py pipeline/workflow_run_state.py pipeline/highlight_export_batch.py`
+- `python3 -m unittest tests.test_runtime_review_bridge tests.test_fused_review_bridge tests.test_highlight_export_batch`
+
+notes:
+- review and export behavior remain additive; no threshold, policy, or ontology change was introduced
+- runtime and fused review decisions are now replayable from repo-local decision artifacts without requiring external GPT metadata as the canonical decision source
+- historical export-ready moments are now preserved separately from current lifecycle state
+
+## 2026-06-13T22:14Z
+
+target:
+- rerun the bounded `call_of_duty` proof-path validation after replay-contract implementation and verify operational editorial replay plus historical export regeneration
+
+status:
+- completed
+
+result:
+- canonical runtime and fused review sessions were reapplied successfully after the contract change:
+  - runtime session: `approved_count = 2`, `rejected_count = 2`
+  - fused session: `approved_count = 1`, `rejected_count = 1`
+- isolated repo-local replay validation succeeded from copied decision artifacts even after all copied GPT paths were rewritten to nonexistent `/tmp/nonexistent/...` paths
+- runtime replay succeeded with:
+  - `review_status = approved`
+  - `review_app = repo_local_editorial_replay`
+- fused replay succeeded with:
+  - `applied_count = 2`
+- historical export regeneration succeeded for:
+  - `workflow-11aea2937311834b`
+  - `export_count = 1`
+  - `replayed_from_export_ready_snapshot = true`
+- runtime, fusion, and selection-export regression checks still pass on the bounded clip
+
+verification:
+- `python3 -m unittest tests.test_runtime_review_bridge tests.test_fused_review_bridge tests.test_highlight_export_batch`
+- `./.venv/bin/python run.py --apply-runtime-review outputs/runtime_review_sessions/call_of_duty/call_of_duty-runtime-review-bootstrap-real-cod-fbfbc59cafa4.runtime_review_session.json --full-json`
+- `./.venv/bin/python run.py --apply-fused-review outputs/fused_review_sessions/call_of_duty/call_of_duty-fused-review-bootstrap-real-cod-fused-19e9d6dcf48c.fused_review_session.json --full-json`
+- `./.venv/bin/python run.py --analyze-roi-runtime outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4 call_of_duty --sample-fps 1 --limit-frames 30 --output-path outputs/runtime_analysis/call_of_duty/svbtc2azzyw-60s-70s.validation-20260613.runtime_analysis.json --full-json`
+- `./.venv/bin/python run.py --fuse-clip-signals outputs/public_gameplay_mining/call_of_duty_test_sources/SVbTc2AZzYw.60s-70s.mp4 call_of_duty --proxy-sidecar outputs/proxy_scans/call_of_duty/svbtc2azzyw-60s-70s-c40d17236088.proxy_scan.json --runtime-sidecar outputs/runtime_analysis/call_of_duty/svbtc2azzyw-60s-70s.validation-20260613.runtime_analysis.json --output-path outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.validation-20260613.fused_analysis.json --full-json`
+- `./.venv/bin/python run.py --export-highlight-selection --fused-sidecar outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.bootstrap-real-cod.fused_analysis.json --output-path outputs/highlight_selection_exports/call_of_duty/svbtc2azzyw-60s-70s.validation-20260613.highlight_selection.json --full-json`
+- `./.venv/bin/python run.py --export-highlight-selection --fused-sidecar outputs/fused_analysis/call_of_duty/svbtc2azzyw-60s-70s.validation-20260613.fused_analysis.json --output-path outputs/highlight_selection_exports/call_of_duty/svbtc2azzyw-60s-70s.validation-20260613-from-fresh-fused.highlight_selection.json --full-json`
+- isolated replay-validation script using copied repo-local decision artifacts plus historical export regeneration against a copied registry
+
+notes:
+- the previously observed replay failure was caused by source-path-sensitive editorial identity generation across absolute versus repo-relative clip paths
+- the bounded replay contract now normalizes repo-local sources to a stable identity basis and upgrades stale editorial ids during review re-apply
+- outputs remain local-only and not publish-cleared

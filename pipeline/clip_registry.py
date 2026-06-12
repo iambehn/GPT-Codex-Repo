@@ -3421,6 +3421,7 @@ def _selected_highlight_details(highlight: dict[str, Any]) -> dict[str, Any]:
     for key in (
         "highlight_id",
         "candidate_id",
+        "editorial_object_id",
         "fusion_id",
         "event_id",
         "start_seconds",
