@@ -78,18 +78,48 @@ Current observation state:
 ## Window Readiness Checklist
 
 Do not generate a new observation report unless at least one of the following
-is true after the most recent observation window:
+is true after the most recent observation window.
 
-1. a new source-intake onboarding run exists
-2. a new review-surface replay or real review workflow run exists
-3. a new promotion candidate appears
-4. a new promotion decision appears
-5. a new qualification update record appears
+### Immediate triggers
+
+Open a new observation window immediately if any of the following exist:
+
+1. at least `1` new promotion candidate
+2. at least `1` new promotion decision
+3. at least `1` new qualification update record
+
+Rationale:
+
+- these are rare, high-information governance events
+- a single occurrence is enough to justify comparison
+
+### Aggregation triggers
+
+Open a new observation window if either of the following accumulation thresholds
+is met:
+
+1. at least `3` new onboarding workflow runs
+2. at least `10` new promotable outcome events
+
+Rationale:
+
+- individual operational events are often too noisy
+- aggregation provides a more meaningful comparison surface
 
 If none of those are true:
 
 - the next report is not ready
 - do not create a new observation report
+
+### Explicit non-triggers
+
+Do not open a new observation window when:
+
+- only reports changed
+- only specs changed
+- only governance docs changed
+- only code changed without producing new operational artifacts
+- the comparison set would remain unchanged
 
 ### Quick readiness checks
 
@@ -110,6 +140,36 @@ Check for new qualification-governance artifacts:
 
 ```bash
 rg -n "approve_promotion|defer_pending_more_evidence|reject_promotion|qualification-update" docs/superpowers/specs docs/v2/operator_pack/CODEX_RUN_LOG.md
+```
+
+### Window sufficiency check
+
+Before opening a new observation window, ask:
+
+```text
+Would at least one of the following move?
+
+candidate_count
+
+promotion_conversion_rate
+
+qualification_updates
+
+evidence_density
+
+attribution_quality
+```
+
+If the answer is:
+
+```text
+No
+```
+
+then:
+
+```text
+Do not open the window.
 ```
 
 ## Window Generation Procedure

@@ -3716,3 +3716,38 @@ verification:
 
 notes:
 - this is an operational procedure only; it does not add new architecture, governance, or instrumentation scope
+
+## 2026-06-13T12:20Z
+
+target:
+- refine the qualification observation window readiness gate with explicit numeric sufficiency thresholds
+
+status:
+- completed
+
+result:
+- updated [QUALIFICATION_OBSERVATION_WINDOW_RECIPE.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/v2/operator_pack/QUALIFICATION_OBSERVATION_WINDOW_RECIPE.md)
+- added explicit readiness thresholds:
+  - immediate triggers:
+    - `>= 1` new promotion candidate
+    - `>= 1` new promotion decision
+    - `>= 1` new qualification update
+  - aggregation triggers:
+    - `>= 3` new onboarding workflow runs
+    - `>= 10` new promotable outcome events
+- added explicit non-triggers:
+  - reports/specs/governance-doc changes only
+  - code-only changes without operational artifacts
+  - unchanged comparison set
+- added an explicit window-sufficiency check tied to:
+  - `candidate_count`
+  - `promotion_conversion_rate`
+  - `qualification_updates`
+  - `evidence_density`
+  - `attribution_quality`
+
+verification:
+- doc-only operator-procedure refinement preserving the existing observation doctrine and comparison set
+
+notes:
+- this is an operator-procedure improvement only; it does not change ontology, governance, qualification thresholds, or instrumentation behavior
