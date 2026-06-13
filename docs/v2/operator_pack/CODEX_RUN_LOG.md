@@ -4523,3 +4523,220 @@ notes:
 - initial export replay only became snapshot-backed after refreshing the bounded registry to ingest the exported lifecycle state
 - outputs remain local-only and are not publish-cleared
 - `valorant` remains unjustified
+
+## 2026-06-14T02:06Z
+
+target:
+- produce a replayability closure review using the current `call_of_duty`, `marvel_rivals`, and cross-game replayability artifacts
+
+status:
+- completed
+
+result:
+- added replayability closure review artifact:
+  - [2026-06-14-replayability-closure-review-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-replayability-closure-review-v0.md)
+- explicitly classified:
+  - what is proven
+  - what remains local-only
+  - what remains unproven
+  - whether bounded replayability should be considered complete
+- closure conclusion:
+  - bounded replayability = `complete at current evidence limit`
+
+verification:
+- grounded the review in:
+  - [2026-06-14-call-of-duty-multi-clip-replayability-status-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-call-of-duty-multi-clip-replayability-status-report-v0.md)
+  - [2026-06-14-marvel-rivals-multi-clip-replayability-status-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-marvel-rivals-multi-clip-replayability-status-report-v0.md)
+  - [2026-06-14-marvel-rivals-second-bounded-clip-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-marvel-rivals-second-bounded-clip-validation-report-v0.md)
+  - [2026-06-14-post-marvel-multiclip-replayability-decision-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-post-marvel-multiclip-replayability-decision-report-v0.md)
+
+notes:
+- the older cross-game status artifact reflects the earlier one-clip `marvel_rivals` transfer checkpoint and is now superseded by the newer multi-clip `marvel_rivals` status plus this closure review
+- no new widening was executed in this slice
+
+## 2026-06-14T02:18Z
+
+target:
+- evaluate the editorial quality of the currently validated highlight outputs and classify the observed failure families
+
+status:
+- completed
+
+result:
+- added editorial quality assessment artifact:
+  - [2026-06-14-editorial-quality-assessment-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-editorial-quality-assessment-report-v0.md)
+- reviewed bounded validated export outputs across:
+  - `call_of_duty`
+  - `marvel_rivals`
+- classified failure families into:
+  - mechanical
+  - selection
+  - pacing
+  - narrative
+  - hook
+- main assessment:
+  - outputs are mechanically usable but editorially weak
+- dominant failure ordering:
+  - hook
+  - narrative
+  - pacing
+  - selection
+  - minor residual mechanical weakness
+
+verification:
+- grounded the assessment in current bounded selection, hook, and export artifacts:
+  - [bootstrap-real-cod.highlight_export_batch.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/highlight_exports/call_of_duty/bootstrap-real-cod.highlight_export_batch.json)
+  - [second-clip.replayed.highlight_export_batch.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/bounded_validation/call_of_duty/20260612T231543Z/highlight_exports/call_of_duty/second-clip.replayed.highlight_export_batch.json)
+  - [transfer.replayed.highlight_export_batch.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/bounded_validation/marvel_rivals/20260612T232308Z/highlight_exports/marvel_rivals/transfer.replayed.highlight_export_batch.json)
+  - [kjera.transfer.replayed.highlight_export_batch.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/bounded_validation/marvel_rivals/20260612T233438Z/highlight_exports/marvel_rivals/kjera.transfer.replayed.highlight_export_batch.json)
+  - corresponding highlight-selection and hook-candidate manifests
+
+notes:
+- no runtime behavior changed
+- this is an assessment-only slice
+
+## 2026-06-14T02:30Z
+
+target:
+- compare persisted editorial judgments against current runtime, fused, selection, and hook outputs for the bounded validated clip set
+
+status:
+- completed
+
+result:
+- added bounded human-review calibration artifact:
+  - [2026-06-14-human-review-calibration-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-human-review-calibration-report-v0.md)
+- reviewed persisted bounded judgment rows:
+  - total rows: `12`
+  - runtime rows: `6`
+  - fused rows: `6`
+- disagreement summary:
+  - `highlight_candidate -> approved`: `7`
+  - `highlight_candidate -> rejected`: `2`
+  - `inspect -> approved`: `1`
+  - `inspect -> rejected`: `2`
+- main disagreement result:
+  - system confidence remains materially misaligned with editorial judgment on
+    selection and hook quality
+
+verification:
+- grounded the report in persisted runtime-review and fused-review session manifests
+- cross-checked those judgments against the current bounded selection, hook, and export artifacts for:
+  - `call_of_duty`
+  - `marvel_rivals`
+
+notes:
+- this uses the persisted editorial judgments available in the repo's bounded review workflow
+- it is not a fresh external human-panel collection
+- no runtime behavior changed
+
+## 2026-06-14T02:38Z
+
+target:
+- build a bounded editorial disagreement ledger for the validated `call_of_duty` and `marvel_rivals` clip set
+
+status:
+- completed
+
+result:
+- added structured disagreement ledger:
+  - [20260612T235555Z.bounded_editorial_disagreement_ledger.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260612T235555Z.bounded_editorial_disagreement_ledger.json)
+- added bounded disagreement-ledger report:
+  - [2026-06-14-bounded-editorial-disagreement-ledger-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-editorial-disagreement-ledger-report-v0.md)
+- mapped `12` persisted runtime/fused review rows to dominant failure families
+- failure-family counts:
+  - `hook_failure = 6`
+  - `selection_failure = 3`
+  - `narrative_failure = 2`
+  - `pacing_failure = 1`
+- highest-frequency disagreement pattern to target next:
+  - `hook_failure`
+
+verification:
+- grounded the ledger in the persisted bounded review-session manifests already used in the human-review calibration report
+- encoded one dominant failure-family classification and one disagreement-pattern classification per row
+
+notes:
+- this is a bounded structured-calibration artifact only
+- no runtime behavior changed
+
+## 2026-06-14T02:46Z
+
+target:
+- produce a bounded hook-quality remediation analysis for the validated `call_of_duty` and `marvel_rivals` export set
+
+status:
+- completed
+
+result:
+- added hook-quality remediation analysis artifact:
+  - [2026-06-14-hook-quality-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-hook-quality-remediation-analysis-report-v0.md)
+- identified the repeated rejection shape across approved exports:
+  - `hook_mode = reject`
+  - `hook_archetype = other`
+  - `packaging_strategy = None`
+  - `rejection_reason = authenticity_risk_too_high`
+- separated the causes into:
+  - context insufficiency
+  - payoff readability weakness
+  - title-thumbnail weakness
+  - authenticity-risk inflation
+- root-cause ordering:
+  - context insufficiency
+  - title-thumbnail weakness
+  - authenticity-risk inflation
+  - payoff readability weakness
+
+verification:
+- grounded the analysis in the approved exported candidates and their paired hook-candidate artifacts for:
+  - `call_of_duty`
+  - `marvel_rivals`
+- cross-checked the metric pattern directly against the current hook-candidate scoring logic in:
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+
+notes:
+- this is an analysis-only slice
+- no runtime behavior changed
+
+## 2026-06-14T03:05Z
+
+target:
+- produce a bounded context-retention remediation design for approved exported
+  highlights
+
+status:
+- completed
+
+result:
+- added bounded design artifact:
+  - [2026-06-14-bounded-context-retention-remediation-design.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-context-retention-remediation-design.md)
+- defined the bounded intervention as an `Export Representation Enhancement`
+- preserved the explicit `anchor invariance` rule:
+  - approved anchor remains the canonical reviewed object
+- defined the dual-window model:
+  - `anchor_window`
+  - `context_window`
+- defined bounded signal-aware timing expansion:
+  - `call_of_duty`: `1.5s` pre-roll, `2.0s` post-roll
+  - `marvel_rivals`: `2.0s` pre-roll, `2.5s` post-roll
+- defined export metadata additions for auditability:
+  - `anchor_*`
+  - `context_*`
+  - `context_expansion_seconds`
+  - `context_expansion_reasons`
+  - `context_signal_count`
+  - `context_pre_signal_types`
+  - `context_post_signal_types`
+- defined bounded validation against the approved export set only
+
+verification:
+- grounded the design in the current approved export failure pattern documented
+  in:
+  - [2026-06-14-hook-quality-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-hook-quality-remediation-analysis-report-v0.md)
+- checked the current export-shape surfaces in:
+  - [highlight_selection_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/highlight_selection_export.py)
+  - [highlight_export_batch.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/highlight_export_batch.py)
+
+notes:
+- this is a design-only slice
+- no runtime behavior changed
