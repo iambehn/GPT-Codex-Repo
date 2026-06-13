@@ -606,8 +606,9 @@ def load_hook_candidate_details(
                    h.lifecycle_state, h.hook_archetype, h.hook_mode, h.hook_strength,
                    h.intensity_score, h.clarity_score, h.novelty_score, h.context_sufficiency_score,
                    h.payoff_readability_score, h.title_thumbnail_potential_score, h.authenticity_risk_score,
-                   h.sound_off_legibility_score, h.packaging_strategy, h.synthetic_subtype,
-                   h.synthetic_packaging_rationale, h.rejection_reason,
+                   h.sound_off_legibility_score, h.packaging_strategy, h.archetype_cue_match,
+                   h.archetype_rationale, h.synthetic_subtype, h.synthetic_packaging_rationale,
+                   h.rejection_reason,
                    h.highlight_selection_manifest_path, h.metadata_summary_json, h.created_at
             FROM hook_candidates h
         """
@@ -1985,6 +1986,8 @@ def _ingest_hook_candidate_manifest(path: Path, rows: dict[str, Any], *, game: s
                 "authenticity_risk_score": hook_row.get("authenticity_risk_score"),
                 "sound_off_legibility_score": hook_row.get("sound_off_legibility_score"),
                 "packaging_strategy": hook_row.get("packaging_strategy"),
+                "archetype_cue_match": hook_row.get("archetype_cue_match"),
+                "archetype_rationale": hook_row.get("archetype_rationale"),
                 "synthetic_subtype": hook_row.get("synthetic_subtype"),
                 "synthetic_packaging_rationale": hook_row.get("synthetic_packaging_rationale"),
                 "rejection_reason": hook_row.get("rejection_reason"),
@@ -4127,6 +4130,8 @@ def _create_schema(connection: sqlite3.Connection) -> None:
             authenticity_risk_score REAL,
             sound_off_legibility_score REAL,
             packaging_strategy TEXT,
+            archetype_cue_match TEXT,
+            archetype_rationale TEXT,
             synthetic_subtype TEXT,
             synthetic_packaging_rationale TEXT,
             rejection_reason TEXT,
@@ -4791,6 +4796,8 @@ def _create_schema(connection: sqlite3.Connection) -> None:
     _ensure_table_column(connection, "posted_highlights", "selected_highlight_details_json", "TEXT")
     _ensure_table_column(connection, "posted_metrics_snapshot_rows", "selected_highlight_details_json", "TEXT")
     _ensure_table_column(connection, "hook_candidates", "created_at", "TEXT")
+    _ensure_table_column(connection, "hook_candidates", "archetype_cue_match", "TEXT")
+    _ensure_table_column(connection, "hook_candidates", "archetype_rationale", "TEXT")
     _ensure_table_column(connection, "hook_candidates", "synthetic_subtype", "TEXT")
     _ensure_table_column(connection, "hook_candidates", "synthetic_packaging_rationale", "TEXT")
     _ensure_columns(
@@ -4878,6 +4885,8 @@ def _ensure_hook_candidate_primary_key(connection: sqlite3.Connection) -> None:
             authenticity_risk_score REAL,
             sound_off_legibility_score REAL,
             packaging_strategy TEXT,
+            archetype_cue_match TEXT,
+            archetype_rationale TEXT,
             synthetic_subtype TEXT,
             synthetic_packaging_rationale TEXT,
             rejection_reason TEXT,
@@ -5326,8 +5335,9 @@ def _query_rows(
                    h.lifecycle_state, h.hook_archetype, h.hook_mode, h.hook_strength,
                    h.intensity_score, h.clarity_score, h.novelty_score, h.context_sufficiency_score,
                    h.payoff_readability_score, h.title_thumbnail_potential_score, h.authenticity_risk_score,
-                   h.sound_off_legibility_score, h.packaging_strategy, h.synthetic_subtype,
-                   h.synthetic_packaging_rationale, h.rejection_reason,
+                   h.sound_off_legibility_score, h.packaging_strategy, h.archetype_cue_match,
+                   h.archetype_rationale, h.synthetic_subtype, h.synthetic_packaging_rationale,
+                   h.rejection_reason,
                    h.highlight_selection_manifest_path, h.metadata_summary_json, m.manifest_path
             FROM hook_candidates h
             LEFT JOIN hook_candidate_manifests m ON m.manifest_path = h.manifest_path
@@ -7194,6 +7204,8 @@ _HOOK_CANDIDATE_COLUMNS = (
     "authenticity_risk_score",
     "sound_off_legibility_score",
     "packaging_strategy",
+    "archetype_cue_match",
+    "archetype_rationale",
     "synthetic_subtype",
     "synthetic_packaging_rationale",
     "rejection_reason",

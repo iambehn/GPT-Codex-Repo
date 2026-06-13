@@ -164,7 +164,16 @@ def _derive_hook_candidate(*, index: int, event: dict[str, Any], lifecycle_row: 
         - (0.05 if has_context_window else 0.0)
     )
 
-    hook_archetype = _hook_archetype(event_type=event_type, final_score=final_score, signal_count=signal_count)
+    matched_signal_types = metadata.get("matched_signal_types")
+    hook_archetype, archetype_cue_match, archetype_rationale = _hook_archetype(
+        event_type=event_type,
+        final_score=final_score,
+        signal_count=signal_count,
+        context_pre_signal_types=selection_context["context_pre_signal_types"],
+        context_post_signal_types=selection_context["context_post_signal_types"],
+        matched_signal_types=matched_signal_types if isinstance(matched_signal_types, list) else [],
+        equipment_id=str(metadata.get("equipment_id") or "").strip() or None,
+    )
     hook_strength = _clamp(
         (0.2 * intensity_score)
         + (0.16 * clarity_score)
@@ -203,6 +212,8 @@ def _derive_hook_candidate(*, index: int, event: dict[str, Any], lifecycle_row: 
         "gate_status": gate_status,
         "event_type": event_type or None,
         "hook_archetype": hook_archetype,
+        "archetype_cue_match": archetype_cue_match,
+        "archetype_rationale": archetype_rationale,
         "hook_strength": round(hook_strength, 4),
         "intensity_score": round(intensity_score, 4),
         "clarity_score": round(clarity_score, 4),
@@ -267,23 +278,69 @@ def _hook_id(*, candidate_id: str) -> str:
     return f"hook-{digest}"
 
 
-def _hook_archetype(*, event_type: str, final_score: float, signal_count: int) -> str:
+def _hook_archetype(
+    *,
+    event_type: str,
+    final_score: float,
+    signal_count: int,
+    context_pre_signal_types: list[str],
+    context_post_signal_types: list[str],
+    matched_signal_types: list[Any],
+    equipment_id: str | None,
+) -> tuple[str, str | None, str | None]:
     text = event_type.lower()
+    normalized_matched_signal_types = {
+        str(value).strip().lower()
+        for value in matched_signal_types
+        if str(value).strip()
+    }
+    normalized_pre = {
+        str(value).strip().lower()
+        for value in context_pre_signal_types
+        if str(value).strip()
+    }
+    normalized_post = {
+        str(value).strip().lower()
+        for value in context_post_signal_types
+        if str(value).strip()
+    }
     if "clutch" in text:
-        return "clutch"
+        return "clutch", None, None
     if "reversal" in text or "swing" in text:
-        return "reversal"
+        return "reversal", None, None
     if "fail" in text or "death" in text or "whiff" in text:
-        return "fail"
+        return "fail", None, None
     if "comedy" in text or "funny" in text:
-        return "comedy"
+        return "comedy", None, None
     if "combo" in text:
-        return "flex"
+        return "flex", None, None
     if "medal" in text and final_score >= 0.85:
-        return "domination"
+        return "domination", None, None
+    if (
+        text == "ability_seen"
+        and "equipment_visibility" in normalized_matched_signal_types
+        and equipment_id
+    ):
+        return (
+            "chaos",
+            "ability_seen + equipment_visibility + equipment_id",
+            "bounded utility/equipment visibility shape is specific enough for contextual chaos",
+        )
+    if (
+        text == "team_wipe_seen"
+        and "team_wipe_visibility" in normalized_matched_signal_types
+    ):
+        cue_match = "team_wipe_seen + team_wipe_visibility"
+        if "round_state_visibility" in normalized_pre or "round_state_visibility" in normalized_post:
+            cue_match += " + round_state_visibility"
+        return (
+            "chaos",
+            cue_match,
+            "validated team-wipe event family is specific enough for chaos within the current bounded taxonomy",
+        )
     if signal_count >= 3 and final_score >= 0.8:
-        return "chaos"
-    return "other"
+        return "chaos", None, None
+    return "other", None, None
 
 
 def _hook_mode_and_strategy(

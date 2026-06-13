@@ -164,6 +164,62 @@ def _synthetic_other_fused_sidecar(path: Path, *, game: str, source: Path, revie
     )
 
 
+def _bounded_cod_archetype_fused_sidecar(path: Path, *, game: str, source: Path, review_status: str = "approved") -> None:
+    _write_json(
+        path,
+        {
+            "schema_version": "fused_analysis_v1",
+            "fusion_id": f"fusion-{path.stem}",
+            "ok": True,
+            "status": "ok",
+            "game": game,
+            "source": str(source.resolve()),
+            "normalized_signals": [
+                {
+                    "signal_id": "signal-1",
+                    "signal_type": "equipment_visibility",
+                    "producer_family": "runtime",
+                    "timestamp": 2.5,
+                    "start_timestamp": 2.0,
+                    "end_timestamp": 4.0,
+                },
+                {
+                    "signal_id": "signal-2",
+                    "signal_type": "equipment_visibility",
+                    "producer_family": "runtime",
+                    "timestamp": 3.0,
+                    "start_timestamp": 2.0,
+                    "end_timestamp": 4.0,
+                },
+            ],
+            "fused_events": [
+                {
+                    "event_id": "fused-event-1",
+                    "event_type": "ability_seen",
+                    "confidence": 0.91,
+                    "final_score": 0.91,
+                    "gate_status": "not_applicable",
+                    "synergy_applied": False,
+                    "minimum_required_signals_met": True,
+                    "suggested_start_timestamp": 2.0,
+                    "suggested_end_timestamp": 2.0,
+                    "contributing_signals": ["signal-1", "signal-2"],
+                    "metadata": {
+                        "matched_signal_types": ["equipment_visibility"],
+                        "equipment_id": "redeploy_extraction_token",
+                    },
+                }
+            ],
+            "fused_review": {
+                "session_id": "fused-session-1",
+                "reviewed_event_count": 1,
+                "events": {"fused-event-1": {"review_status": review_status}},
+            },
+            "sidecar_path": str(path.resolve()),
+        },
+    )
+
+
 def _runtime_sidecar(path: Path, *, game: str, source: Path, review_status: str = "approved") -> None:
     _runtime_sidecar_with_rows(path, game=game, source=source, review_status=review_status)
 
@@ -509,12 +565,64 @@ class HighlightExportBatchTests(unittest.TestCase):
             self.assertEqual(hook_row["hook_mode"], "synthetic")
             self.assertEqual(hook_row["synthetic_subtype"], "archetype_salvageable")
             self.assertEqual(hook_row["packaging_strategy"], "archetype_probe_then_context_card")
+            self.assertIsNone(hook_row.get("archetype_cue_match"))
+            self.assertIsNone(hook_row.get("archetype_rationale"))
 
             export_manifest = json.loads(Path(export_batch["manifest_path"]).read_text(encoding="utf-8"))
             export_row = export_manifest["exports"][0]
             self.assertEqual(export_row["hook_mode"], "synthetic")
             self.assertEqual(export_row["synthetic_subtype"], "archetype_salvageable")
             self.assertEqual(export_row["packaging_strategy"], "archetype_probe_then_context_card")
+            self.assertIsNone(export_row.get("archetype_cue_match"))
+            self.assertIsNone(export_row.get("archetype_rationale"))
+
+    def test_export_batch_propagates_bounded_archetype_extension_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "media" / "alpha.mp4"
+            media.parent.mkdir(parents=True, exist_ok=True)
+            media.write_bytes(b"video")
+            fused_path = root / "fused" / "alpha.fused_analysis.json"
+            registry_path = root / "registry.sqlite"
+            _bounded_cod_archetype_fused_sidecar(fused_path, game="call_of_duty", source=media)
+            refresh_clip_registry(root, registry_path=registry_path)
+            export_highlight_selection(
+                fused_sidecar=fused_path,
+                output_path=root / "selection" / "alpha.highlight_selection.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            hook_result = derive_hook_candidates(
+                fused_path,
+                registry_path=registry_path,
+                output_path=root / "hooks" / "alpha.hook_candidates.json",
+            )
+            refresh_clip_registry(root, registry_path=registry_path)
+            workflow = create_workflow_run(
+                "export_queue",
+                registry_path=registry_path,
+                output_path=root / "workflow" / "export.workflow_run.json",
+            )
+            export_batch = create_highlight_export_batch(
+                registry_path=registry_path,
+                workflow_run_id=workflow["workflow_run_id"],
+                output_path=root / "exports" / "batch.highlight_export_batch.json",
+            )
+
+            self.assertTrue(hook_result["ok"])
+            self.assertTrue(export_batch["ok"])
+            hook_manifest = json.loads(Path(hook_result["manifest_path"]).read_text(encoding="utf-8"))
+            hook_row = hook_manifest["hook_candidates"][0]
+            self.assertEqual(hook_row["hook_mode"], "synthetic")
+            self.assertEqual(hook_row["hook_archetype"], "chaos")
+            self.assertEqual(hook_row["archetype_cue_match"], "ability_seen + equipment_visibility + equipment_id")
+            self.assertIn("utility", hook_row["archetype_rationale"])
+
+            export_manifest = json.loads(Path(export_batch["manifest_path"]).read_text(encoding="utf-8"))
+            export_row = export_manifest["exports"][0]
+            self.assertEqual(export_row["hook_mode"], "synthetic")
+            self.assertEqual(export_row["hook_archetype"], "chaos")
+            self.assertEqual(export_row["archetype_cue_match"], "ability_seen + equipment_visibility + equipment_id")
+            self.assertIn("utility", export_row["archetype_rationale"])
 
     def test_runtime_only_reviewed_artifacts_are_not_export_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

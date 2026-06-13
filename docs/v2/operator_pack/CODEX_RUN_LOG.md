@@ -4726,6 +4726,52 @@ notes:
 - no runtime behavior changed
 - implementation is now ready to start on the bounded archetype-routing slice
 
+## 2026-06-14T05:32Z
+
+target:
+- implement and validate the bounded archetype-routing remediation at the main
+  assignment point
+
+status:
+- completed
+
+result:
+- implemented bounded archetype refinement in:
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+- propagated additive archetype explanation fields through:
+  - [clip_registry.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/clip_registry.py)
+  - [highlight_export_batch.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/highlight_export_batch.py)
+- added regression coverage in:
+  - [test_hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/tests/test_hook_candidate_export.py)
+  - [test_highlight_export_batch.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/tests/test_highlight_export_batch.py)
+- added bounded validation report:
+  - [2026-06-14-bounded-archetype-routing-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-archetype-routing-validation-report-v0.md)
+- produced bounded comparison artifacts under:
+  - [20260613T015114Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T015114Z)
+
+verification:
+- compile:
+  - `python3 -m py_compile pipeline/hook_candidate_export.py pipeline/clip_registry.py pipeline/highlight_export_batch.py tests/test_hook_candidate_export.py tests/test_highlight_export_batch.py`
+- targeted tests:
+  - `source .venv/bin/activate && python -m unittest tests.test_hook_candidate_export tests.test_highlight_export_batch`
+- repo quality gate:
+  - `source .venv/bin/activate && python run.py --run-repo-quality-health`
+- bounded validation result:
+  - `other -> chaos` transitions: `2`
+  - unchanged `hook_mode` count: `4`
+  - unchanged export status count: `4`
+  - old hook archetypes:
+    - `chaos = 2`
+    - `other = 2`
+  - new hook archetypes:
+    - `chaos = 4`
+
+notes:
+- top-level hook thresholds remained unchanged
+- the hook-comparison recommendation stayed `inconclusive` because the slice was
+  intentionally additive inside the existing assignment surface
+- outputs remain local-only and are not publish-cleared
+
 ## 2026-06-14T04:49Z
 
 target:

@@ -832,6 +832,8 @@ def _export_row(
         "context_post_signal_types": highlight.get("context_post_signal_types"),
         "final_score": row.get("final_score"),
         "hook_archetype": (hook_row or {}).get("hook_archetype"),
+        "archetype_cue_match": (hook_row or {}).get("archetype_cue_match"),
+        "archetype_rationale": (hook_row or {}).get("archetype_rationale"),
         "hook_mode": (hook_row or {}).get("hook_mode"),
         "packaging_strategy": (hook_row or {}).get("packaging_strategy"),
         "synthetic_subtype": (hook_row or {}).get("synthetic_subtype"),
@@ -879,6 +881,8 @@ def _otio_clip(export_row: dict[str, Any]) -> dict[str, Any]:
                                 "event_id": export_row.get("event_id"),
                                 "hook_mode": export_row.get("hook_mode"),
                                 "hook_archetype": export_row.get("hook_archetype"),
+                                "archetype_cue_match": export_row.get("archetype_cue_match"),
+                                "archetype_rationale": export_row.get("archetype_rationale"),
                                 "synthetic_subtype": export_row.get("synthetic_subtype"),
                             },
                         }

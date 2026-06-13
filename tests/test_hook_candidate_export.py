@@ -80,8 +80,58 @@ def _synthetic_other_sidecar(source: Path, *, review_status: str = "approved", f
                 "minimum_required_signals_met": True,
                 "suggested_start_timestamp": 2.0,
                 "suggested_end_timestamp": 2.0,
-                "contributing_signals": ["signal-1", "signal-2"],
-                "metadata": {"matched_signal_types": ["equipment_visibility"]},
+                    "contributing_signals": ["signal-1", "signal-2"],
+                    "metadata": {"matched_signal_types": ["equipment_visibility"]},
+                }
+            ],
+            "fused_review": {"events": {"fused-1": {"review_status": review_status}}},
+        }
+
+
+def _bounded_cod_archetype_sidecar(source: Path, *, review_status: str = "approved", final_score: float = 0.91) -> dict[str, object]:
+    payload = _synthetic_other_sidecar(source, review_status=review_status, final_score=final_score)
+    payload["fused_events"][0]["metadata"]["equipment_id"] = "redeploy_extraction_token"
+    return payload
+
+
+def _bounded_marvel_team_wipe_sidecar(source: Path, *, review_status: str = "approved", final_score: float = 0.91) -> dict[str, object]:
+    return {
+        "schema_version": "fused_analysis_v1",
+        "fusion_id": "fused-team-wipe",
+        "ok": True,
+        "game": "marvel_rivals",
+        "source": str(source.resolve()),
+        "normalized_signals": [
+            {
+                "signal_id": "signal-1",
+                "signal_type": "team_wipe_visibility",
+                "producer_family": "runtime",
+                "timestamp": 1.5,
+                "start_timestamp": 0.0,
+                "end_timestamp": 2.5,
+            },
+            {
+                "signal_id": "signal-2",
+                "signal_type": "round_state_visibility",
+                "producer_family": "runtime",
+                "timestamp": 2.0,
+                "start_timestamp": 0.0,
+                "end_timestamp": 2.5,
+            },
+        ],
+        "fused_events": [
+            {
+                "event_id": "fused-1",
+                "event_type": "team_wipe_seen",
+                "confidence": final_score,
+                "final_score": final_score,
+                "gate_status": "not_applicable",
+                "synergy_applied": False,
+                "minimum_required_signals_met": True,
+                "suggested_start_timestamp": 0.0,
+                "suggested_end_timestamp": 0.0,
+                "contributing_signals": ["signal-1"],
+                "metadata": {"matched_signal_types": ["team_wipe_visibility"]},
             }
         ],
         "fused_review": {"events": {"fused-1": {"review_status": review_status}}},
@@ -158,7 +208,55 @@ class HookCandidateExportTests(unittest.TestCase):
             self.assertEqual(row["packaging_strategy"], "archetype_probe_then_context_card")
             self.assertIn("archetype", row["synthetic_packaging_rationale"])
             self.assertEqual(row["hook_archetype"], "other")
+            self.assertIsNone(row.get("archetype_cue_match"))
+            self.assertIsNone(row.get("archetype_rationale"))
             self.assertIsNone(row["rejection_reason"])
+
+    def test_bounded_call_of_duty_archetype_extension_is_additive(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "alpha.mp4"
+            media.write_bytes(b"video")
+            fused_path = root / "alpha.fused_analysis.json"
+            fused_path.write_text(json.dumps(_bounded_cod_archetype_sidecar(media), indent=2), encoding="utf-8")
+            export_highlight_selection(fused_sidecar=fused_path, output_path=root / "alpha.highlight_selection.json")
+            registry_path = root / "registry.sqlite"
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            result = derive_hook_candidates(fused_path, registry_path=registry_path, output_path=root / "alpha.hook_candidates.json")
+
+            self.assertTrue(result["ok"])
+            manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
+            row = manifest["hook_candidates"][0]
+            self.assertEqual(row["hook_mode"], "synthetic")
+            self.assertEqual(row["hook_archetype"], "chaos")
+            self.assertEqual(row["archetype_cue_match"], "ability_seen + equipment_visibility + equipment_id")
+            self.assertIn("utility", row["archetype_rationale"])
+            self.assertEqual(row["synthetic_subtype"], "context_salvageable")
+            self.assertEqual(row["packaging_strategy"], "setup_then_payoff_with_context_card")
+
+    def test_bounded_marvel_team_wipe_archetype_extension_is_additive(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "alpha.mp4"
+            media.write_bytes(b"video")
+            fused_path = root / "alpha.fused_analysis.json"
+            fused_path.write_text(json.dumps(_bounded_marvel_team_wipe_sidecar(media), indent=2), encoding="utf-8")
+            export_highlight_selection(fused_sidecar=fused_path, output_path=root / "alpha.highlight_selection.json")
+            registry_path = root / "registry.sqlite"
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            result = derive_hook_candidates(fused_path, registry_path=registry_path, output_path=root / "alpha.hook_candidates.json")
+
+            self.assertTrue(result["ok"])
+            manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
+            row = manifest["hook_candidates"][0]
+            self.assertEqual(row["hook_mode"], "synthetic")
+            self.assertEqual(row["hook_archetype"], "chaos")
+            self.assertEqual(row["archetype_cue_match"], "team_wipe_seen + team_wipe_visibility + round_state_visibility")
+            self.assertIn("team-wipe", row["archetype_rationale"])
+            self.assertEqual(row["synthetic_subtype"], "context_salvageable")
+            self.assertEqual(row["packaging_strategy"], "setup_then_payoff_with_context_card")
 
     def test_derive_hook_candidates_skips_ineligible_lifecycle(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
