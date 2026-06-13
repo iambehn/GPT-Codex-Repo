@@ -375,7 +375,12 @@ def _hook_mode_and_strategy(
     )
     return (
         "synthetic",
-        _synthetic_packaging_strategy(synthetic_subtype, hook_archetype=hook_archetype),
+        _synthetic_packaging_strategy(
+            synthetic_subtype,
+            hook_archetype=hook_archetype,
+            context_pre_signal_types=context_pre_signal_types,
+            context_post_signal_types=context_post_signal_types,
+        ),
         None,
         synthetic_subtype,
         synthetic_packaging_rationale,
@@ -419,7 +424,15 @@ def _synthetic_subtype(
     return "weak_synthetic", "above reject but still too weak for stronger synthetic packaging"
 
 
-def _synthetic_packaging_strategy(synthetic_subtype: str, *, hook_archetype: str) -> str:
+def _synthetic_packaging_strategy(
+    synthetic_subtype: str,
+    *,
+    hook_archetype: str,
+    context_pre_signal_types: list[str] | None = None,
+    context_post_signal_types: list[str] | None = None,
+) -> str:
+    context_pre_signal_types = context_pre_signal_types or []
+    context_post_signal_types = context_post_signal_types or []
     if synthetic_subtype == "near_natural_contextual":
         if hook_archetype in {"clutch", "reversal", "chaos"}:
             return "cold_open_payoff_then_context_caption"
@@ -427,6 +440,10 @@ def _synthetic_packaging_strategy(synthetic_subtype: str, *, hook_archetype: str
     if synthetic_subtype == "archetype_salvageable":
         return "archetype_probe_then_context_card"
     if synthetic_subtype == "context_salvageable":
+        if context_pre_signal_types:
+            return "setup_then_payoff_with_context_card"
+        if context_post_signal_types:
+            return "low_claim_post_payoff"
         return "setup_then_payoff_with_context_card"
     return "low_claim_context_first"
 

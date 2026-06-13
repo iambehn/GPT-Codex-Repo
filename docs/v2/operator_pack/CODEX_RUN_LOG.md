@@ -4765,6 +4765,54 @@ notes:
 - this is a planning-only slice
 - no runtime behavior changed
 
+## 2026-06-14T05:14Z
+
+target:
+- implement and validate the bounded synthetic context-framing remediation
+  slice
+
+status:
+- completed
+
+result:
+- implemented bounded framing refinement in:
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+- updated focused regression coverage in:
+  - [test_hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/tests/test_hook_candidate_export.py)
+  - [test_highlight_export_batch.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/tests/test_highlight_export_batch.py)
+- added bounded validation report:
+  - [2026-06-14-bounded-synthetic-context-framing-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-synthetic-context-framing-validation-report-v0.md)
+- produced bounded comparison artifacts under:
+  - [20260613T024155Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T024155Z)
+- reduced the repeated setup-first packaging collapse from:
+  - `setup_then_payoff_with_context_card = 3`
+  to:
+  - `low_claim_post_payoff = 3`
+
+verification:
+- compile:
+  - `python3 -m py_compile pipeline/hook_candidate_export.py tests/test_hook_candidate_export.py tests/test_highlight_export_batch.py`
+- targeted tests:
+  - `source .venv/bin/activate && python -m unittest tests.test_hook_candidate_export tests.test_highlight_export_batch`
+- repo quality gate:
+  - `source .venv/bin/activate && python run.py --run-repo-quality-health`
+- bounded validation result:
+  - unchanged `hook_mode` count: `4`
+  - unchanged `synthetic_subtype` count: `4`
+  - unchanged export status count: `4`
+  - old packaging distribution:
+    - `setup_then_payoff_with_context_card = 3`
+    - `cold_open_payoff_then_context_caption = 1`
+  - new packaging distribution:
+    - `low_claim_post_payoff = 3`
+    - `cold_open_payoff_then_context_caption = 1`
+
+notes:
+- the remediation remained inside the existing `context_salvageable` packaging
+  surface
+- no replayability, timing, archetype, or threshold work was reopened
+- outputs remain local-only and are not publish-cleared
+
 ## 2026-06-14T04:19Z
 
 target:

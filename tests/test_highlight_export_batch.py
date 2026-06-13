@@ -614,6 +614,8 @@ class HighlightExportBatchTests(unittest.TestCase):
             hook_row = hook_manifest["hook_candidates"][0]
             self.assertEqual(hook_row["hook_mode"], "synthetic")
             self.assertEqual(hook_row["hook_archetype"], "chaos")
+            self.assertEqual(hook_row["synthetic_subtype"], "context_salvageable")
+            self.assertEqual(hook_row["packaging_strategy"], "low_claim_post_payoff")
             self.assertEqual(hook_row["archetype_cue_match"], "ability_seen + equipment_visibility + equipment_id")
             self.assertIn("utility", hook_row["archetype_rationale"])
 
@@ -621,6 +623,8 @@ class HighlightExportBatchTests(unittest.TestCase):
             export_row = export_manifest["exports"][0]
             self.assertEqual(export_row["hook_mode"], "synthetic")
             self.assertEqual(export_row["hook_archetype"], "chaos")
+            self.assertEqual(export_row["synthetic_subtype"], "context_salvageable")
+            self.assertEqual(export_row["packaging_strategy"], "low_claim_post_payoff")
             self.assertEqual(export_row["archetype_cue_match"], "ability_seen + equipment_visibility + equipment_id")
             self.assertIn("utility", export_row["archetype_rationale"])
 

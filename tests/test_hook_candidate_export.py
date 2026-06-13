@@ -233,7 +233,7 @@ class HookCandidateExportTests(unittest.TestCase):
             self.assertEqual(row["archetype_cue_match"], "ability_seen + equipment_visibility + equipment_id")
             self.assertIn("utility", row["archetype_rationale"])
             self.assertEqual(row["synthetic_subtype"], "context_salvageable")
-            self.assertEqual(row["packaging_strategy"], "setup_then_payoff_with_context_card")
+            self.assertEqual(row["packaging_strategy"], "low_claim_post_payoff")
 
     def test_bounded_marvel_team_wipe_archetype_extension_is_additive(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -256,6 +256,36 @@ class HookCandidateExportTests(unittest.TestCase):
             self.assertEqual(row["archetype_cue_match"], "team_wipe_seen + team_wipe_visibility + round_state_visibility")
             self.assertIn("team-wipe", row["archetype_rationale"])
             self.assertEqual(row["synthetic_subtype"], "context_salvageable")
+            self.assertEqual(row["packaging_strategy"], "low_claim_post_payoff")
+
+    def test_context_salvageable_with_pre_context_keeps_setup_first_strategy(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "alpha.mp4"
+            media.write_bytes(b"video")
+            fused_path = root / "alpha.fused_analysis.json"
+            fused_path.write_text(json.dumps(_bounded_cod_archetype_sidecar(media), indent=2), encoding="utf-8")
+            selection_path = root / "alpha.highlight_selection.json"
+            export_highlight_selection(fused_sidecar=fused_path, output_path=selection_path)
+
+            selection_payload = json.loads(selection_path.read_text(encoding="utf-8"))
+            selection_row = selection_payload["selected_highlights"][0]
+            selection_row["context_pre_signal_types"] = ["character_identity"]
+            selection_row["context_post_signal_types"] = []
+            selection_row["context_signal_count"] = 2
+            selection_path.write_text(json.dumps(selection_payload, indent=2), encoding="utf-8")
+
+            registry_path = root / "registry.sqlite"
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            result = derive_hook_candidates(fused_path, registry_path=registry_path, output_path=root / "alpha.hook_candidates.json")
+
+            self.assertTrue(result["ok"])
+            manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
+            row = manifest["hook_candidates"][0]
+            self.assertEqual(row["hook_mode"], "synthetic")
+            self.assertEqual(row["synthetic_subtype"], "context_salvageable")
+            self.assertEqual(row["context_pre_signal_types"], ["character_identity"])
             self.assertEqual(row["packaging_strategy"], "setup_then_payoff_with_context_card")
 
     def test_derive_hook_candidates_skips_ineligible_lifecycle(self) -> None:
