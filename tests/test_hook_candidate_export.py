@@ -44,6 +44,50 @@ def _fused_sidecar(source: Path, *, review_status: str = "approved", final_score
     }
 
 
+def _synthetic_other_sidecar(source: Path, *, review_status: str = "approved", final_score: float = 0.91) -> dict[str, object]:
+    return {
+        "schema_version": "fused_analysis_v1",
+        "fusion_id": "fused-synthetic-other",
+        "ok": True,
+        "game": "call_of_duty",
+        "source": str(source.resolve()),
+        "normalized_signals": [
+            {
+                "signal_id": "signal-1",
+                "signal_type": "equipment_visibility",
+                "producer_family": "runtime",
+                "timestamp": 2.5,
+                "start_timestamp": 2.0,
+                "end_timestamp": 4.0,
+            },
+            {
+                "signal_id": "signal-2",
+                "signal_type": "equipment_visibility",
+                "producer_family": "runtime",
+                "timestamp": 3.0,
+                "start_timestamp": 2.0,
+                "end_timestamp": 4.0,
+            },
+        ],
+        "fused_events": [
+            {
+                "event_id": "fused-1",
+                "event_type": "ability_seen",
+                "confidence": final_score,
+                "final_score": final_score,
+                "gate_status": "not_applicable",
+                "synergy_applied": False,
+                "minimum_required_signals_met": True,
+                "suggested_start_timestamp": 2.0,
+                "suggested_end_timestamp": 2.0,
+                "contributing_signals": ["signal-1", "signal-2"],
+                "metadata": {"matched_signal_types": ["equipment_visibility"]},
+            }
+        ],
+        "fused_review": {"events": {"fused-1": {"review_status": review_status}}},
+    }
+
+
 class HookCandidateExportTests(unittest.TestCase):
     def test_derive_hook_candidates_from_approved_lifecycle(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -89,6 +133,32 @@ class HookCandidateExportTests(unittest.TestCase):
             self.assertEqual(row["highlight_selection_manifest_path"], str((root / "alpha.highlight_selection.json").resolve()))
             self.assertGreater(row["context_sufficiency_score"], 0.5)
             self.assertLess(row["authenticity_risk_score"], 0.6)
+            self.assertEqual(row["hook_mode"], "natural")
+            self.assertIsNone(row["synthetic_subtype"])
+            self.assertIsNone(row["synthetic_packaging_rationale"])
+
+    def test_synthetic_subtype_routing_is_additive_and_does_not_change_hook_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            media = root / "alpha.mp4"
+            media.write_bytes(b"video")
+            fused_path = root / "alpha.fused_analysis.json"
+            fused_path.write_text(json.dumps(_synthetic_other_sidecar(media), indent=2), encoding="utf-8")
+            export_highlight_selection(fused_sidecar=fused_path, output_path=root / "alpha.highlight_selection.json")
+            registry_path = root / "registry.sqlite"
+            refresh_clip_registry(root, registry_path=registry_path)
+
+            result = derive_hook_candidates(fused_path, registry_path=registry_path, output_path=root / "alpha.hook_candidates.json")
+
+            self.assertTrue(result["ok"])
+            manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
+            row = manifest["hook_candidates"][0]
+            self.assertEqual(row["hook_mode"], "synthetic")
+            self.assertEqual(row["synthetic_subtype"], "archetype_salvageable")
+            self.assertEqual(row["packaging_strategy"], "archetype_probe_then_context_card")
+            self.assertIn("archetype", row["synthetic_packaging_rationale"])
+            self.assertEqual(row["hook_archetype"], "other")
+            self.assertIsNone(row["rejection_reason"])
 
     def test_derive_hook_candidates_skips_ineligible_lifecycle(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

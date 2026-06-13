@@ -174,13 +174,17 @@ def _derive_hook_candidate(*, index: int, event: dict[str, Any], lifecycle_row: 
         + (0.18 * title_thumbnail_potential_score)
         - (0.15 * authenticity_risk_score)
     )
-    hook_mode, packaging_strategy, rejection_reason = _hook_mode_and_strategy(
+    hook_mode, packaging_strategy, rejection_reason, synthetic_subtype, synthetic_packaging_rationale = _hook_mode_and_strategy(
         hook_strength=hook_strength,
         clarity_score=clarity_score,
         context_sufficiency_score=context_sufficiency_score,
         payoff_readability_score=payoff_readability_score,
+        title_thumbnail_potential_score=title_thumbnail_potential_score,
         authenticity_risk_score=authenticity_risk_score,
         hook_archetype=hook_archetype,
+        context_pre_signal_types=selection_context["context_pre_signal_types"],
+        context_post_signal_types=selection_context["context_post_signal_types"],
+        context_signal_count=int(selection_context["context_signal_count"]),
     )
 
     start_seconds = round(float(event.get("suggested_start_timestamp", event.get("start_timestamp", 0.0)) or 0.0), 4)
@@ -211,6 +215,8 @@ def _derive_hook_candidate(*, index: int, event: dict[str, Any], lifecycle_row: 
         "hook_mode": hook_mode,
         "packaging_strategy": packaging_strategy,
         "rejection_reason": rejection_reason,
+        "synthetic_subtype": synthetic_subtype,
+        "synthetic_packaging_rationale": synthetic_packaging_rationale,
         "contributing_signal_ids": contributing_signal_ids,
         "entity_id": str(metadata.get("entity_id") or "").strip() or None,
         "highlight_selection_manifest_path": str(lifecycle_row.get("highlight_selection_manifest_path") or "").strip() or None,
@@ -286,16 +292,86 @@ def _hook_mode_and_strategy(
     clarity_score: float,
     context_sufficiency_score: float,
     payoff_readability_score: float,
+    title_thumbnail_potential_score: float,
     authenticity_risk_score: float,
     hook_archetype: str,
-) -> tuple[str, str | None, str | None]:
+    context_pre_signal_types: list[str],
+    context_post_signal_types: list[str],
+    context_signal_count: int,
+) -> tuple[str, str | None, str | None, str | None, str | None]:
     if authenticity_risk_score >= 0.6:
-        return "reject", None, "authenticity_risk_too_high"
+        return "reject", None, "authenticity_risk_too_high", None, None
     if hook_strength < 0.45 or payoff_readability_score < 0.45:
-        return "reject", None, "weak_payoff_readability"
+        return "reject", None, "weak_payoff_readability", None, None
     if clarity_score >= 0.68 and context_sufficiency_score >= 0.55 and payoff_readability_score >= 0.65:
-        return "natural", _natural_packaging_strategy(hook_archetype), None
-    return "synthetic", "setup_then_payoff_with_context_card", None
+        return "natural", _natural_packaging_strategy(hook_archetype), None, None, None
+    synthetic_subtype, synthetic_packaging_rationale = _synthetic_subtype(
+        clarity_score=clarity_score,
+        context_sufficiency_score=context_sufficiency_score,
+        payoff_readability_score=payoff_readability_score,
+        title_thumbnail_potential_score=title_thumbnail_potential_score,
+        authenticity_risk_score=authenticity_risk_score,
+        hook_archetype=hook_archetype,
+        context_pre_signal_types=context_pre_signal_types,
+        context_post_signal_types=context_post_signal_types,
+        context_signal_count=context_signal_count,
+    )
+    return (
+        "synthetic",
+        _synthetic_packaging_strategy(synthetic_subtype, hook_archetype=hook_archetype),
+        None,
+        synthetic_subtype,
+        synthetic_packaging_rationale,
+    )
+
+
+def _synthetic_subtype(
+    *,
+    clarity_score: float,
+    context_sufficiency_score: float,
+    payoff_readability_score: float,
+    title_thumbnail_potential_score: float,
+    authenticity_risk_score: float,
+    hook_archetype: str,
+    context_pre_signal_types: list[str],
+    context_post_signal_types: list[str],
+    context_signal_count: int,
+) -> tuple[str, str]:
+    # Ordered routing. First match wins.
+    if (
+        clarity_score >= 0.62
+        and context_sufficiency_score >= 0.68
+        and payoff_readability_score >= 0.68
+        and authenticity_risk_score <= 0.5
+        and title_thumbnail_potential_score >= 0.55
+    ):
+        return "near_natural_contextual", "strong context/payoff; only clarity or title-thumbnail remain below natural"
+    if (
+        hook_archetype == "other"
+        and context_sufficiency_score >= 0.58
+        and payoff_readability_score >= 0.65
+        and (bool(context_pre_signal_types) or bool(context_post_signal_types) or context_signal_count >= 2)
+    ):
+        return "archetype_salvageable", "adequate context/payoff but archetype remains too generic"
+    if (
+        context_sufficiency_score >= 0.58
+        and payoff_readability_score >= 0.6
+        and (bool(context_pre_signal_types) or bool(context_post_signal_types) or context_signal_count >= 2)
+    ):
+        return "context_salvageable", "context retention is doing most of the work to keep the candidate viable"
+    return "weak_synthetic", "above reject but still too weak for stronger synthetic packaging"
+
+
+def _synthetic_packaging_strategy(synthetic_subtype: str, *, hook_archetype: str) -> str:
+    if synthetic_subtype == "near_natural_contextual":
+        if hook_archetype in {"clutch", "reversal", "chaos"}:
+            return "cold_open_payoff_then_context_caption"
+        return "tight_context_then_payoff"
+    if synthetic_subtype == "archetype_salvageable":
+        return "archetype_probe_then_context_card"
+    if synthetic_subtype == "context_salvageable":
+        return "setup_then_payoff_with_context_card"
+    return "low_claim_context_first"
 
 
 def _natural_packaging_strategy(hook_archetype: str) -> str:

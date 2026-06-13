@@ -834,6 +834,8 @@ def _export_row(
         "hook_archetype": (hook_row or {}).get("hook_archetype"),
         "hook_mode": (hook_row or {}).get("hook_mode"),
         "packaging_strategy": (hook_row or {}).get("packaging_strategy"),
+        "synthetic_subtype": (hook_row or {}).get("synthetic_subtype"),
+        "synthetic_packaging_rationale": (hook_row or {}).get("synthetic_packaging_rationale"),
         "export_status": "exported",
         "export_artifact_path": export_artifact_path,
         "otio_path": export_artifact_path,
@@ -877,6 +879,7 @@ def _otio_clip(export_row: dict[str, Any]) -> dict[str, Any]:
                                 "event_id": export_row.get("event_id"),
                                 "hook_mode": export_row.get("hook_mode"),
                                 "hook_archetype": export_row.get("hook_archetype"),
+                                "synthetic_subtype": export_row.get("synthetic_subtype"),
                             },
                         }
                     ],

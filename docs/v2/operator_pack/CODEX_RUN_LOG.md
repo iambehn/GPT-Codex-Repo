@@ -4698,6 +4698,60 @@ notes:
 - this is an analysis-only slice
 - no runtime behavior changed
 
+## 2026-06-14T04:49Z
+
+target:
+- implement and validate the bounded synthetic-packaging remediation inside
+  `hook_mode = synthetic`
+
+status:
+- completed
+
+result:
+- implemented bounded synthetic subtype routing in:
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+- propagated additive synthetic fields through:
+  - [clip_registry.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/clip_registry.py)
+  - [highlight_export_batch.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/highlight_export_batch.py)
+- added regression coverage in:
+  - [test_hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/tests/test_hook_candidate_export.py)
+  - [test_highlight_export_batch.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/tests/test_highlight_export_batch.py)
+- added bounded validation report:
+  - [2026-06-14-bounded-synthetic-packaging-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-synthetic-packaging-validation-report-v0.md)
+- produced bounded comparison artifacts under:
+  - [20260613T011541Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T011541Z)
+- preserved the current top-level packaging policy while adding:
+  - `synthetic_subtype`
+  - `synthetic_packaging_rationale`
+  - subtype-specific packaging strategy routing
+
+verification:
+- compile:
+  - `python3 -m py_compile pipeline/clip_registry.py pipeline/hook_candidate_export.py pipeline/highlight_export_batch.py tests/test_hook_candidate_export.py tests/test_highlight_export_batch.py`
+- targeted tests:
+  - `source .venv/bin/activate && python -m unittest tests.test_hook_candidate_export tests.test_highlight_export_batch`
+- repo quality gate:
+  - `source .venv/bin/activate && python run.py --run-repo-quality-health`
+- bounded validation result:
+  - baseline `hook_mode = synthetic`: `4`
+  - trial `hook_mode = synthetic`: `4`
+  - baseline packaging strategy collapse:
+    - `setup_then_payoff_with_context_card = 4`
+  - trial subtype distribution:
+    - `archetype_salvageable = 2`
+    - `context_salvageable = 1`
+    - `near_natural_contextual = 1`
+  - trial packaging strategy distribution:
+    - `archetype_probe_then_context_card = 2`
+    - `cold_open_payoff_then_context_caption = 1`
+    - `setup_then_payoff_with_context_card = 1`
+
+notes:
+- top-level `reject` and `natural` gates remained unchanged
+- the hook-comparison recommendation stayed `inconclusive` because the slice was
+  intentionally additive inside `synthetic`
+- outputs remain local-only and are not publish-cleared
+
 ## 2026-06-14T04:08Z
 
 target:
