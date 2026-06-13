@@ -403,6 +403,17 @@ class HighlightExportBatchTests(unittest.TestCase):
             self.assertEqual(export_row["hook_mode"], "reject")
             self.assertIsNone(export_row["packaging_strategy"])
             self.assertEqual(export_row["export_status"], "exported")
+            self.assertEqual(export_row["anchor_start_seconds"], 2.0)
+            self.assertEqual(export_row["anchor_end_seconds"], 2.0)
+            self.assertEqual(export_row["context_start_seconds"], 1.5)
+            self.assertEqual(export_row["context_end_seconds"], 2.75)
+            self.assertGreater(export_row["context_expansion_seconds"], 0.0)
+            self.assertEqual(export_row["context_expansion_policy"], "signal_aware_bounded_v1")
+            self.assertEqual(export_row["context_pre_signal_types"], [])
+            self.assertEqual(export_row["context_post_signal_types"], [])
+            self.assertEqual(export_row["context_signal_count"], 0)
+            self.assertIn("fallback_pre_pad", export_row["context_expansion_reasons"])
+            self.assertIn("fallback_post_pad", export_row["context_expansion_reasons"])
 
     def test_runtime_only_reviewed_artifacts_are_not_export_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

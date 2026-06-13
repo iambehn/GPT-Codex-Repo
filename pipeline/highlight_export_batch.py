@@ -13,7 +13,7 @@ from pipeline.clip_registry import (
     refresh_clip_registry,
 )
 from pipeline.editorial_replay_contract import load_export_ready_snapshots
-from pipeline.highlight_selection_export import export_highlight_selection
+from pipeline.highlight_selection_export import export_highlight_selection, load_selected_highlight_details
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -69,95 +69,16 @@ def create_highlight_export_batch(
             candidate_ids=[str(row.get("candidate_id") or "").strip() for row in lifecycle_rows],
         ),
     )
-    target.parent.mkdir(parents=True, exist_ok=True)
-    artifact_root = target.parent / f"{target.stem}_artifacts"
-    artifact_root.mkdir(parents=True, exist_ok=True)
-
-    exports: list[dict[str, Any]] = []
-    fused_paths: set[str] = set()
-    hook_paths: set[str] = set()
-    selection_paths: set[str] = set()
-    for row in lifecycle_rows:
-        candidate_id = str(row.get("candidate_id") or "").strip()
-        hook_row = hook_by_candidate.get(candidate_id)
-        selection_path = str(row.get("highlight_selection_manifest_path") or "").strip() or None
-        highlight = _selection_highlight(
-            selection_path=selection_path,
-            candidate_id=candidate_id,
-            event_id=str(row.get("event_id") or "").strip(),
-        )
-        export_id = _export_id(
-            candidate_id=candidate_id,
-            workflow_run_id=workflow_run_id,
-            selection_manifest=selection_manifest,
-        )
-        otio_path = artifact_root / f"{export_id}.otio.json"
-        export_artifact_path = str(otio_path.resolve())
-        export_row = {
-            "export_id": export_id,
-            "candidate_id": candidate_id,
-            "event_id": str(row.get("event_id") or "").strip() or None,
-            "hook_id": (hook_row or {}).get("hook_id"),
-            "fixture_id": row.get("fixture_id"),
-            "source": row.get("source"),
-            "fused_sidecar_path": row.get("fused_sidecar_path"),
-            "hook_manifest_path": (hook_row or {}).get("manifest_path"),
-            "highlight_selection_manifest_path": selection_path,
-            "start_seconds": highlight.get("start_seconds"),
-            "end_seconds": highlight.get("end_seconds"),
-            "final_score": row.get("final_score"),
-            "hook_archetype": (hook_row or {}).get("hook_archetype"),
-            "hook_mode": (hook_row or {}).get("hook_mode"),
-            "packaging_strategy": (hook_row or {}).get("packaging_strategy"),
-            "export_status": "exported",
-            "export_artifact_path": export_artifact_path,
-            "otio_path": export_artifact_path,
-            "metadata_json": {
-                "selection_basis": row.get("selection_basis"),
-                "recommended_action": row.get("recommended_action"),
-                "latest_review_status": row.get("latest_review_status"),
-            },
-        }
-        otio_path.write_text(json.dumps(_otio_clip(export_row), indent=2), encoding="utf-8")
-        exports.append(export_row)
-        if str(row.get("fused_sidecar_path") or "").strip():
-            fused_paths.add(str(row.get("fused_sidecar_path")))
-        if str((hook_row or {}).get("manifest_path") or "").strip():
-            hook_paths.add(str((hook_row or {}).get("manifest_path")))
-        if selection_path:
-            selection_paths.add(selection_path)
-
-    export_batch_id = _export_batch_id(
+    result = _write_export_batch_from_rows(
+        lifecycle_rows,
+        hook_by_candidate=hook_by_candidate,
         workflow_run_id=workflow_run_id,
         selection_manifest=selection_manifest,
-        candidate_ids=[str(row.get("candidate_id") or "").strip() for row in lifecycle_rows],
+        output_path=target,
+        metadata_extra={"replayed_from_export_ready_snapshot": replayed_from_snapshot},
     )
-    manifest = {
-        "schema_version": HIGHLIGHT_EXPORT_BATCH_SCHEMA_VERSION,
-        "export_batch_id": export_batch_id,
-        "created_at": _utc_now(),
-        "game": str(lifecycle_rows[0].get("game") or "").strip() or "unknown_game",
-        "workflow_run_id": str(workflow_run_id or "").strip() or None,
-        "selection_manifest_path": str(_resolve_path(selection_manifest)) if selection_manifest is not None else None,
-        "replayed_from_export_ready_snapshot": replayed_from_snapshot,
-        "linked_inputs": {
-            "fused_sidecar_paths": sorted(fused_paths),
-            "hook_manifest_paths": sorted(hook_paths),
-            "selection_manifest_paths": sorted(selection_paths),
-        },
-        "export_count": len(exports),
-        "exports": exports,
-    }
-    target.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    return {
-        "ok": True,
-        "status": "ok",
-        "schema_version": HIGHLIGHT_EXPORT_BATCH_SCHEMA_VERSION,
-        "export_batch_id": export_batch_id,
-        "manifest_path": str(target),
-        "export_count": len(exports),
-        "replayed_from_export_ready_snapshot": replayed_from_snapshot,
-    }
+    result["replayed_from_export_ready_snapshot"] = replayed_from_snapshot
+    return result
 
 
 def record_post_ledger(
@@ -726,28 +647,14 @@ def _write_export_batch_from_rows(
         }
         if metadata_extra:
             metadata_json.update(metadata_extra)
-        export_row = {
-            "export_id": export_id,
-            "candidate_id": candidate_id,
-            "event_id": str(row.get("event_id") or "").strip() or None,
-            "hook_id": (hook_row or {}).get("hook_id"),
-            "fixture_id": row.get("fixture_id"),
-            "source": row.get("source"),
-            "fused_sidecar_path": row.get("fused_sidecar_path"),
-            "hook_manifest_path": (hook_row or {}).get("manifest_path"),
-            "highlight_selection_manifest_path": selection_path,
-            "start_seconds": highlight.get("start_seconds"),
-            "end_seconds": highlight.get("end_seconds"),
-            "final_score": row.get("final_score"),
-            "hook_archetype": (hook_row or {}).get("hook_archetype"),
-            "hook_mode": (hook_row or {}).get("hook_mode"),
-            "packaging_strategy": (hook_row or {}).get("packaging_strategy"),
-            "export_status": "exported",
-            "export_artifact_path": export_artifact_path,
-            "otio_path": export_artifact_path,
-            "metadata_json": metadata_json,
-        }
-        otio_path.write_text(json.dumps(_otio_clip(export_row), indent=2), encoding="utf-8")
+        export_row = _export_row(
+            row=row,
+            hook_row=hook_row,
+            workflow_run_id=workflow_run_id,
+            selection_manifest=selection_manifest,
+            metadata_json=metadata_json,
+            artifact_root=artifact_root,
+        )
         exports.append(export_row)
         if str(row.get("fused_sidecar_path") or "").strip():
             fused_paths.add(str(row.get("fused_sidecar_path")))
@@ -825,27 +732,115 @@ def _export_ready_snapshot_rows(
 
 
 def _selection_highlight(*, selection_path: str | None, candidate_id: str, event_id: str) -> dict[str, Any]:
-    fallback = {"start_seconds": 0.0, "end_seconds": 0.0}
-    if not selection_path:
+    fallback = {
+        "start_seconds": 0.0,
+        "end_seconds": 0.0,
+        "anchor_start_seconds": 0.0,
+        "anchor_end_seconds": 0.0,
+        "context_start_seconds": 0.0,
+        "context_end_seconds": 0.0,
+        "context_expansion_seconds": 0.0,
+        "context_expansion_policy": None,
+        "context_expansion_reasons": [],
+        "context_signal_count": 0,
+        "context_pre_signal_types": [],
+        "context_post_signal_types": [],
+    }
+    row = load_selected_highlight_details(
+        selection_path,
+        candidate_id=candidate_id or None,
+        event_id=event_id or None,
+    )
+    if not isinstance(row, dict):
         return fallback
-    path = _resolve_path(selection_path)
-    if not path.exists() or not path.is_file():
-        return fallback
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    for row in list(payload.get("selected_highlights", [])):
-        if not isinstance(row, dict):
-            continue
-        if str(row.get("candidate_id") or "").strip() == candidate_id:
-            return {
-                "start_seconds": round(float(row.get("start_seconds", 0.0) or 0.0), 4),
-                "end_seconds": round(float(row.get("end_seconds", row.get("start_seconds", 0.0)) or 0.0), 4),
-            }
-        if str(row.get("event_id") or "").strip() == event_id:
-            return {
-                "start_seconds": round(float(row.get("start_seconds", 0.0) or 0.0), 4),
-                "end_seconds": round(float(row.get("end_seconds", row.get("start_seconds", 0.0)) or 0.0), 4),
-            }
-    return fallback
+    start_seconds = round(float(row.get("context_start_seconds", row.get("start_seconds", 0.0)) or 0.0), 4)
+    end_seconds = round(
+        max(
+            start_seconds,
+            float(row.get("context_end_seconds", row.get("end_seconds", row.get("start_seconds", 0.0))) or start_seconds),
+        ),
+        4,
+    )
+    anchor_start = round(float(row.get("anchor_start_seconds", row.get("start_seconds", start_seconds)) or start_seconds), 4)
+    anchor_end = round(
+        max(
+            anchor_start,
+            float(row.get("anchor_end_seconds", row.get("end_seconds", anchor_start)) or anchor_start),
+        ),
+        4,
+    )
+    return {
+        "start_seconds": start_seconds,
+        "end_seconds": end_seconds,
+        "anchor_start_seconds": anchor_start,
+        "anchor_end_seconds": anchor_end,
+        "context_start_seconds": start_seconds,
+        "context_end_seconds": end_seconds,
+        "context_expansion_seconds": round(float(row.get("context_expansion_seconds", max(0.0, (end_seconds - start_seconds) - (anchor_end - anchor_start))) or 0.0), 4),
+        "context_expansion_policy": str(row.get("context_expansion_policy") or "").strip() or None,
+        "context_expansion_reasons": list(row.get("context_expansion_reasons", [])) if isinstance(row.get("context_expansion_reasons"), list) else [],
+        "context_signal_count": int(row.get("context_signal_count", 0) or 0),
+        "context_pre_signal_types": list(row.get("context_pre_signal_types", [])) if isinstance(row.get("context_pre_signal_types"), list) else [],
+        "context_post_signal_types": list(row.get("context_post_signal_types", [])) if isinstance(row.get("context_post_signal_types"), list) else [],
+    }
+
+
+def _export_row(
+    *,
+    row: dict[str, Any],
+    hook_row: dict[str, Any] | None,
+    workflow_run_id: str | None,
+    selection_manifest: str | Path | None,
+    metadata_json: dict[str, Any],
+    artifact_root: Path,
+) -> dict[str, Any]:
+    candidate_id = str(row.get("candidate_id") or "").strip()
+    selection_path = str(row.get("highlight_selection_manifest_path") or "").strip() or None
+    highlight = _selection_highlight(
+        selection_path=selection_path,
+        candidate_id=candidate_id,
+        event_id=str(row.get("event_id") or "").strip(),
+    )
+    export_id = _export_id(
+        candidate_id=candidate_id,
+        workflow_run_id=workflow_run_id,
+        selection_manifest=selection_manifest,
+    )
+    otio_path = artifact_root / f"{export_id}.otio.json"
+    export_artifact_path = str(otio_path.resolve())
+    export_row = {
+        "export_id": export_id,
+        "candidate_id": candidate_id,
+        "event_id": str(row.get("event_id") or "").strip() or None,
+        "hook_id": (hook_row or {}).get("hook_id"),
+        "fixture_id": row.get("fixture_id"),
+        "source": row.get("source"),
+        "fused_sidecar_path": row.get("fused_sidecar_path"),
+        "hook_manifest_path": (hook_row or {}).get("manifest_path"),
+        "highlight_selection_manifest_path": selection_path,
+        "start_seconds": highlight.get("start_seconds"),
+        "end_seconds": highlight.get("end_seconds"),
+        "anchor_start_seconds": highlight.get("anchor_start_seconds"),
+        "anchor_end_seconds": highlight.get("anchor_end_seconds"),
+        "context_start_seconds": highlight.get("context_start_seconds"),
+        "context_end_seconds": highlight.get("context_end_seconds"),
+        "context_expansion_seconds": highlight.get("context_expansion_seconds"),
+        "context_expansion_policy": highlight.get("context_expansion_policy"),
+        "context_expansion_reasons": highlight.get("context_expansion_reasons"),
+        "context_signal_count": highlight.get("context_signal_count"),
+        "context_pre_signal_types": highlight.get("context_pre_signal_types"),
+        "context_post_signal_types": highlight.get("context_post_signal_types"),
+        "final_score": row.get("final_score"),
+        "hook_archetype": (hook_row or {}).get("hook_archetype"),
+        "hook_mode": (hook_row or {}).get("hook_mode"),
+        "packaging_strategy": (hook_row or {}).get("packaging_strategy"),
+        "export_status": "exported",
+        "export_artifact_path": export_artifact_path,
+        "otio_path": export_artifact_path,
+        "metadata_json": metadata_json,
+    }
+    otio_path.write_text(json.dumps(_otio_clip(export_row), indent=2), encoding="utf-8")
+    return export_row
 
 
 def _otio_clip(export_row: dict[str, Any]) -> dict[str, Any]:

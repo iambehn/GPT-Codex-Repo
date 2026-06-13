@@ -14,6 +14,13 @@ HIGHLIGHT_SELECTION_SCHEMA_VERSION = "highlight_selection_v1"
 DEFAULT_OUTPUT_ROOT = REPO_ROOT / "outputs" / "highlight_selection_exports"
 SUPPORTED_PROXY_SCAN_SCHEMA_VERSION = "proxy_scan_v1"
 SUPPORTED_FUSED_ANALYSIS_SCHEMA_VERSION = "fused_analysis_v1"
+CONTEXT_EXPANSION_POLICY = "signal_aware_bounded_v1"
+CONTEXT_EXPANSION_CAPS = {
+    "call_of_duty": {"pre_roll_seconds": 1.5, "post_roll_seconds": 2.0},
+    "marvel_rivals": {"pre_roll_seconds": 2.0, "post_roll_seconds": 2.5},
+}
+FALLBACK_PRE_ROLL_SECONDS = 0.5
+FALLBACK_POST_ROLL_SECONDS = 0.75
 
 
 def export_highlight_selection(
@@ -31,6 +38,28 @@ def export_highlight_selection(
         "status": "missing_sidecar",
         "error": "one of proxy_sidecar or fused_sidecar is required",
     }
+
+
+def load_selected_highlight_details(
+    selection_manifest: str | Path | None,
+    *,
+    candidate_id: str | None = None,
+    event_id: str | None = None,
+) -> dict[str, Any] | None:
+    if selection_manifest is None:
+        return None
+    path = _resolve_path(selection_manifest)
+    if not path.exists() or not path.is_file():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    for row in list(payload.get("selected_highlights", [])):
+        if not isinstance(row, dict):
+            continue
+        if candidate_id and str(row.get("candidate_id") or "").strip() == str(candidate_id).strip():
+            return row
+        if event_id and str(row.get("event_id") or "").strip() == str(event_id).strip():
+            return row
+    return None
 
 
 def _export_from_proxy_sidecar(
@@ -230,6 +259,12 @@ def _selected_fused_events(payload: dict[str, Any], *, sidecar_path: Path) -> li
                 if str(normalized_signal_lookup.get(signal_id, {}).get("producer_family") or "").strip()
             }
         )
+        context_details = _derive_context_window(
+            game=game,
+            event=event,
+            metadata=metadata,
+            normalized_signal_lookup=normalized_signal_lookup,
+        )
         rows.append(
             {
                 "highlight_id": f"highlight-{index}",
@@ -256,10 +291,197 @@ def _selected_fused_events(payload: dict[str, Any], *, sidecar_path: Path) -> li
                 "event_type": str(event.get("event_type", "")).strip() or None,
                 "entity_id": str(metadata.get("entity_id", "")).strip() or None,
                 "metadata_summary": _metadata_summary(metadata),
+                **context_details,
             }
         )
     rows.sort(key=lambda row: (-float(row["final_score"]), float(row["start_seconds"])))
     return rows
+
+
+def _derive_context_window(
+    *,
+    game: str,
+    event: dict[str, Any],
+    metadata: dict[str, Any],
+    normalized_signal_lookup: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    anchor_start = round(float(event.get("suggested_start_timestamp", event.get("start_timestamp", 0.0)) or 0.0), 4)
+    anchor_end = round(
+        max(
+            anchor_start,
+            float(event.get("suggested_end_timestamp", event.get("end_timestamp", anchor_start)) or anchor_start),
+        ),
+        4,
+    )
+    caps = CONTEXT_EXPANSION_CAPS.get(game)
+    if caps is None:
+        return _context_window_payload(
+            anchor_start=anchor_start,
+            anchor_end=anchor_end,
+            context_start=anchor_start,
+            context_end=anchor_end,
+            reasons=[],
+            overlapping_signal_ids=[],
+            pre_signal_types=[],
+            post_signal_types=[],
+            policy=None,
+        )
+
+    pre_cap = float(caps["pre_roll_seconds"])
+    post_cap = float(caps["post_roll_seconds"])
+    contributing_signal_ids = [str(value) for value in list(event.get("contributing_signals", [])) if str(value).strip()]
+    normalized_rows = [row for row in normalized_signal_lookup.values() if isinstance(row, dict)]
+    preferred_pre = _preferred_pre_signal_types(metadata)
+    preferred_post = _preferred_post_signal_types(event_type=str(event.get("event_type") or "").strip())
+
+    pre_candidates: list[dict[str, Any]] = []
+    post_candidates: list[dict[str, Any]] = []
+    for row in normalized_rows:
+        signal_start = _signal_start(row)
+        signal_end = _signal_end(row)
+        signal_type = str(row.get("signal_type") or "").strip()
+        if not signal_type:
+            continue
+        signal_id = str(row.get("signal_id") or "").strip()
+        if signal_start < anchor_start and signal_end <= anchor_start + 1e-6 and anchor_start - signal_end <= pre_cap + 1e-6:
+            pre_candidates.append(row)
+        elif signal_end > anchor_start and signal_start < anchor_start and anchor_start - signal_start <= pre_cap + 1e-6:
+            pre_candidates.append(row)
+        if signal_end > anchor_end and signal_start <= anchor_end + post_cap + 1e-6 and signal_start >= anchor_end - 1e-6:
+            post_candidates.append(row)
+        elif signal_start < anchor_end and signal_end > anchor_end and signal_end - anchor_end <= post_cap + 1e-6:
+            post_candidates.append(row)
+        elif signal_id in contributing_signal_ids and signal_end > anchor_end:
+            post_candidates.append(row)
+
+    selected_pre = _select_context_signals(pre_candidates, preferred_types=preferred_pre, anchor="pre")
+    selected_post = _select_context_signals(post_candidates, preferred_types=preferred_post, anchor="post")
+    context_start = anchor_start
+    context_end = anchor_end
+    reasons: list[str] = []
+    pre_signal_types = sorted({str(row.get("signal_type") or "").strip() for row in selected_pre if str(row.get("signal_type") or "").strip()})
+    post_signal_types = sorted({str(row.get("signal_type") or "").strip() for row in selected_post if str(row.get("signal_type") or "").strip()})
+
+    if selected_pre:
+        target_start = min(_signal_start(row) for row in selected_pre)
+        context_start = round(max(0.0, anchor_start - pre_cap, target_start), 4)
+        reasons.extend([f"pre_signal:{signal_type}" for signal_type in pre_signal_types])
+    elif anchor_start > 0.0:
+        context_start = round(max(0.0, anchor_start - min(FALLBACK_PRE_ROLL_SECONDS, pre_cap)), 4)
+        if context_start < anchor_start:
+            reasons.append("fallback_pre_pad")
+
+    if selected_post:
+        target_end = max(_signal_end(row) for row in selected_post)
+        context_end = round(min(anchor_end + post_cap, target_end), 4)
+        reasons.extend([f"post_signal:{signal_type}" for signal_type in post_signal_types])
+    else:
+        context_end = round(anchor_end + min(FALLBACK_POST_ROLL_SECONDS, post_cap), 4)
+        if context_end > anchor_end:
+            reasons.append("fallback_post_pad")
+
+    if context_end < context_start:
+        context_end = context_start
+
+    overlapping_signal_ids = sorted(
+        {
+            str(row.get("signal_id") or "").strip()
+            for row in normalized_rows
+            if str(row.get("signal_id") or "").strip()
+            and _signal_overlaps_window(row, start_seconds=context_start, end_seconds=context_end)
+        }
+    )
+    return _context_window_payload(
+        anchor_start=anchor_start,
+        anchor_end=anchor_end,
+        context_start=context_start,
+        context_end=context_end,
+        reasons=reasons,
+        overlapping_signal_ids=overlapping_signal_ids,
+        pre_signal_types=pre_signal_types,
+        post_signal_types=post_signal_types,
+        policy=CONTEXT_EXPANSION_POLICY,
+    )
+
+
+def _context_window_payload(
+    *,
+    anchor_start: float,
+    anchor_end: float,
+    context_start: float,
+    context_end: float,
+    reasons: list[str],
+    overlapping_signal_ids: list[str],
+    pre_signal_types: list[str],
+    post_signal_types: list[str],
+    policy: str | None,
+) -> dict[str, Any]:
+    anchor_duration = max(0.0, anchor_end - anchor_start)
+    context_duration = max(0.0, context_end - context_start)
+    return {
+        "anchor_start_seconds": round(anchor_start, 4),
+        "anchor_end_seconds": round(anchor_end, 4),
+        "context_start_seconds": round(context_start, 4),
+        "context_end_seconds": round(context_end, 4),
+        "context_expansion_seconds": round(max(0.0, context_duration - anchor_duration), 4),
+        "context_expansion_policy": policy,
+        "context_expansion_reasons": reasons,
+        "context_signal_count": len(overlapping_signal_ids),
+        "context_pre_signal_types": pre_signal_types,
+        "context_post_signal_types": post_signal_types,
+        "context_signal_ids": overlapping_signal_ids,
+    }
+
+
+def _preferred_pre_signal_types(metadata: dict[str, Any]) -> set[str]:
+    preferred = {"character_identity", "ability_activation", "ability_visibility", "round_state_visibility"}
+    if str(metadata.get("entity_id") or "").strip():
+        preferred.add("character_identity")
+    if str(metadata.get("ability_id") or "").strip():
+        preferred.update({"ability_activation", "ability_visibility"})
+    return preferred
+
+
+def _preferred_post_signal_types(*, event_type: str) -> set[str]:
+    preferred = {"team_wipe_visibility", "multikill", "reaction", "round_state_visibility"}
+    text = event_type.lower()
+    if "team_wipe" in text:
+        preferred.add("team_wipe_visibility")
+    if "combo" in text or "medal" in text:
+        preferred.add("multikill")
+    return preferred
+
+
+def _select_context_signals(rows: list[dict[str, Any]], *, preferred_types: set[str], anchor: str) -> list[dict[str, Any]]:
+    if not rows:
+        return []
+
+    def _score(row: dict[str, Any]) -> tuple[int, float, float]:
+        signal_type = str(row.get("signal_type") or "").strip()
+        confidence = float(row.get("confidence", row.get("strength", 0.0)) or 0.0)
+        span = max(0.0, _signal_end(row) - _signal_start(row))
+        preferred = 1 if signal_type in preferred_types else 0
+        return (preferred, confidence, span)
+
+    ordered = sorted(rows, key=_score, reverse=True)
+    # Keep the set intentionally small to avoid turning bounded context into reselection.
+    return ordered[:2]
+
+
+def _signal_start(row: dict[str, Any]) -> float:
+    return float(row.get("start_timestamp", row.get("timestamp", 0.0)) or 0.0)
+
+
+def _signal_end(row: dict[str, Any]) -> float:
+    start = _signal_start(row)
+    end = float(row.get("end_timestamp", row.get("timestamp", start)) or start)
+    return max(start, end)
+
+
+def _signal_overlaps_window(row: dict[str, Any], *, start_seconds: float, end_seconds: float) -> bool:
+    signal_start = _signal_start(row)
+    signal_end = _signal_end(row)
+    return signal_end >= start_seconds and signal_start <= end_seconds
 
 
 def _candidate_id(*, game: str, source: str, fused_sidecar_path: str, event_id: str) -> str:

@@ -4776,3 +4776,50 @@ notes:
 - the session did not provide the `writing-plans` skill, so the plan was
   written directly in the repo’s existing plan format
 - no runtime behavior changed
+
+## 2026-06-14T03:44Z
+
+target:
+- implement the bounded context-retention remediation slice for approved
+  exported highlights
+
+status:
+- completed
+
+result:
+- implemented bounded export-context retention in:
+  - [highlight_selection_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/highlight_selection_export.py)
+  - [highlight_export_batch.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/highlight_export_batch.py)
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+- added regression coverage in:
+  - [test_highlight_export_batch.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/tests/test_highlight_export_batch.py)
+  - [test_hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/tests/test_hook_candidate_export.py)
+- added bounded validation report:
+  - [2026-06-14-bounded-context-retention-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-context-retention-validation-report-v0.md)
+- produced bounded comparison artifacts under:
+  - [20260613T003613Z](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T003613Z)
+- preserved anchor invariance while adding:
+  - additive `anchor_*` and `context_*` export fields
+  - signal-aware bounded context expansion
+  - hook-derivation awareness of retained context
+
+verification:
+- compile:
+  - `python3 -m py_compile pipeline/highlight_selection_export.py pipeline/highlight_export_batch.py pipeline/hook_candidate_export.py tests/test_highlight_export_batch.py tests/test_hook_candidate_export.py`
+- targeted tests:
+  - `source .venv/bin/activate && python -m unittest tests.test_highlight_export_batch tests.test_hook_candidate_export`
+- repo quality gate:
+  - `source .venv/bin/activate && python run.py --run-repo-quality-health`
+- bounded validation result:
+  - hook comparison recommendation: `prefer_trial`
+  - all four approved exports moved from `hook_mode = reject` to
+    `hook_mode = synthetic`
+  - median `context_sufficiency_score` delta: `0.3`
+  - median `title_thumbnail_potential_score` delta: `0.1`
+  - median `authenticity_risk_score` delta: `-0.2754`
+
+notes:
+- the remediation remained inside export representation and hook-evaluation
+  surfaces
+- replayability scope did not widen
+- outputs remain local-only and are not publish-cleared

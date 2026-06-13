@@ -81,7 +81,14 @@ class HookCandidateExportTests(unittest.TestCase):
 
             self.assertTrue(result["ok"])
             manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
-            self.assertEqual(manifest["hook_candidates"][0]["lifecycle_state"], "selected_for_export")
+            row = manifest["hook_candidates"][0]
+            self.assertEqual(row["lifecycle_state"], "selected_for_export")
+            self.assertEqual(row["context_expansion_policy"], "signal_aware_bounded_v1")
+            self.assertGreater(row["context_expansion_seconds"], 0.0)
+            self.assertGreaterEqual(row["context_signal_count"], 1)
+            self.assertEqual(row["highlight_selection_manifest_path"], str((root / "alpha.highlight_selection.json").resolve()))
+            self.assertGreater(row["context_sufficiency_score"], 0.5)
+            self.assertLess(row["authenticity_risk_score"], 0.6)
 
     def test_derive_hook_candidates_skips_ineligible_lifecycle(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:

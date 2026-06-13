@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from pipeline.clip_registry import load_candidate_lifecycle_details
+from pipeline.highlight_selection_export import load_selected_highlight_details
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -99,15 +100,59 @@ def _derive_hook_candidate(*, index: int, event: dict[str, Any], lifecycle_row: 
     event_type = str(event.get("event_type") or "").strip()
     has_entity = bool(str(metadata.get("entity_id") or "").strip())
     has_ability = bool(str(metadata.get("ability_id") or "").strip())
-    signal_count = len(contributing_signal_ids)
+    selection_context = _selection_context_features(
+        selection_manifest_path=str(lifecycle_row.get("highlight_selection_manifest_path") or "").strip() or None,
+        candidate_id=str(lifecycle_row.get("candidate_id") or "").strip() or None,
+        event_id=str(event.get("event_id") or "").strip() or None,
+    )
+    signal_count = max(len(contributing_signal_ids), int(selection_context["context_signal_count"]))
     synergy_applied = bool(event.get("synergy_applied", False))
+    has_context_pre = bool(selection_context["context_pre_signal_types"])
+    has_context_post = bool(selection_context["context_post_signal_types"])
+    has_context_window = bool(selection_context["context_expansion_policy"])
+    context_window_duration = float(selection_context["context_window_duration"])
 
-    intensity_score = _clamp(final_score + (0.06 if gate_status == "confirmed" else 0.0) + (0.04 if synergy_applied else 0.0))
-    clarity_score = _clamp(0.4 + (0.22 if gate_status == "confirmed" else 0.0) + (0.12 if signal_count >= 2 else 0.0) + (0.1 if has_entity else 0.0))
+    intensity_score = _clamp(
+        final_score
+        + (0.06 if gate_status == "confirmed" else 0.0)
+        + (0.04 if synergy_applied else 0.0)
+        + (0.03 if has_context_post else 0.0)
+    )
+    clarity_score = _clamp(
+        0.4
+        + (0.22 if gate_status == "confirmed" else 0.0)
+        + (0.12 if signal_count >= 2 else 0.0)
+        + (0.1 if has_entity else 0.0)
+        + (0.06 if has_context_pre else 0.0)
+        + (0.08 if has_context_post else 0.0)
+    )
     novelty_score = _clamp(0.35 + (0.18 if synergy_applied else 0.0) + (0.1 if "combo" in event_type else 0.0) + (0.08 if signal_count >= 3 else 0.0))
-    context_sufficiency_score = _clamp(0.25 + (0.18 if has_entity else 0.0) + (0.14 if has_ability else 0.0) + (0.12 if signal_count >= 2 else 0.0) + (0.08 if lifecycle_state == "selected_for_export" else 0.0))
-    payoff_readability_score = _clamp(0.3 + (0.3 * final_score) + (0.18 if gate_status == "confirmed" else 0.0) + (0.08 if "medal" in event_type or "combo" in event_type else 0.0))
-    title_thumbnail_potential_score = _clamp(0.28 + (0.18 if has_entity else 0.0) + (0.14 if "combo" in event_type or "clutch" in event_type else 0.0) + (0.12 if final_score >= 0.85 else 0.0))
+    context_sufficiency_score = _clamp(
+        0.25
+        + (0.18 if has_entity else 0.0)
+        + (0.14 if has_ability else 0.0)
+        + (0.12 if signal_count >= 2 else 0.0)
+        + (0.08 if lifecycle_state == "selected_for_export" else 0.0)
+        + (0.1 if has_context_pre else 0.0)
+        + (0.12 if has_context_post else 0.0)
+        + (0.06 if has_context_window and context_window_duration >= 1.5 else 0.0)
+    )
+    payoff_readability_score = _clamp(
+        0.3
+        + (0.3 * final_score)
+        + (0.18 if gate_status == "confirmed" else 0.0)
+        + (0.08 if "medal" in event_type or "combo" in event_type else 0.0)
+        + (0.08 if has_context_post else 0.0)
+        + (0.05 if has_context_window and context_window_duration >= 1.5 else 0.0)
+    )
+    title_thumbnail_potential_score = _clamp(
+        0.28
+        + (0.18 if has_entity else 0.0)
+        + (0.14 if "combo" in event_type or "clutch" in event_type else 0.0)
+        + (0.12 if final_score >= 0.85 else 0.0)
+        + (0.08 if has_context_pre else 0.0)
+        + (0.1 if has_context_post else 0.0)
+    )
     sound_off_legibility_score = _clamp(0.3 + (0.2 if has_entity else 0.0) + (0.18 if gate_status == "confirmed" else 0.0) + (0.12 if payoff_readability_score >= 0.7 else 0.0))
     authenticity_risk_score = _clamp(
         0.92
@@ -116,6 +161,7 @@ def _derive_hook_candidate(*, index: int, event: dict[str, Any], lifecycle_row: 
         - (0.18 * payoff_readability_score)
         + (0.08 if signal_count < 2 else 0.0)
         + (0.06 if not has_entity else 0.0)
+        - (0.05 if has_context_window else 0.0)
     )
 
     hook_archetype = _hook_archetype(event_type=event_type, final_score=final_score, signal_count=signal_count)
@@ -167,7 +213,46 @@ def _derive_hook_candidate(*, index: int, event: dict[str, Any], lifecycle_row: 
         "rejection_reason": rejection_reason,
         "contributing_signal_ids": contributing_signal_ids,
         "entity_id": str(metadata.get("entity_id") or "").strip() or None,
+        "highlight_selection_manifest_path": str(lifecycle_row.get("highlight_selection_manifest_path") or "").strip() or None,
+        "context_expansion_policy": selection_context["context_expansion_policy"],
+        "context_expansion_seconds": round(selection_context["context_expansion_seconds"], 4),
+        "context_signal_count": int(selection_context["context_signal_count"]),
+        "context_pre_signal_types": selection_context["context_pre_signal_types"],
+        "context_post_signal_types": selection_context["context_post_signal_types"],
         "metadata_summary": _metadata_summary(metadata),
+    }
+
+
+def _selection_context_features(
+    *,
+    selection_manifest_path: str | None,
+    candidate_id: str | None,
+    event_id: str | None,
+) -> dict[str, Any]:
+    fallback = {
+        "context_expansion_policy": None,
+        "context_expansion_seconds": 0.0,
+        "context_signal_count": 0,
+        "context_pre_signal_types": [],
+        "context_post_signal_types": [],
+        "context_window_duration": 0.0,
+    }
+    row = load_selected_highlight_details(
+        selection_manifest_path,
+        candidate_id=candidate_id,
+        event_id=event_id,
+    )
+    if not isinstance(row, dict):
+        return fallback
+    context_start = float(row.get("context_start_seconds", row.get("start_seconds", 0.0)) or 0.0)
+    context_end = max(context_start, float(row.get("context_end_seconds", row.get("end_seconds", context_start)) or context_start))
+    return {
+        "context_expansion_policy": str(row.get("context_expansion_policy") or "").strip() or None,
+        "context_expansion_seconds": float(row.get("context_expansion_seconds", 0.0) or 0.0),
+        "context_signal_count": int(row.get("context_signal_count", 0) or 0),
+        "context_pre_signal_types": list(row.get("context_pre_signal_types", [])) if isinstance(row.get("context_pre_signal_types"), list) else [],
+        "context_post_signal_types": list(row.get("context_post_signal_types", [])) if isinstance(row.get("context_post_signal_types"), list) else [],
+        "context_window_duration": max(0.0, context_end - context_start),
     }
 
 
