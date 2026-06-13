@@ -4698,6 +4698,110 @@ notes:
 - this is an analysis-only slice
 - no runtime behavior changed
 
+## 2026-06-14T04:33Z
+
+target:
+- write the bounded synthetic context-framing remediation design spec
+
+status:
+- completed
+
+result:
+- added bounded design spec:
+  - [2026-06-14-bounded-synthetic-context-framing-remediation-design.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-synthetic-context-framing-remediation-design.md)
+- fixed the design boundary to:
+  - preserve `hook_mode`
+  - preserve `synthetic_subtype`
+  - preserve review semantics
+  - preserve replayability
+  - preserve selection scope
+  - preserve fallback behavior outside `context_salvageable`
+- defined the bounded split:
+  - `setup_then_payoff_with_context_card`
+  - `low_claim_post_payoff`
+- constrained the split to current retained cue shape only:
+  - pre-context present -> setup-first strategy
+  - pre-context absent with post-context present -> low-claim post-payoff
+
+verification:
+- grounded the spec in:
+  - [2026-06-14-context-framing-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-context-framing-remediation-analysis-report-v0.md)
+  - [2026-06-14-bounded-archetype-routing-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-archetype-routing-validation-report-v0.md)
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+
+notes:
+- this is a design-only slice
+- no runtime behavior changed
+
+## 2026-06-14T04:43Z
+
+target:
+- write the bounded synthetic context-framing remediation implementation plan
+
+status:
+- completed
+
+result:
+- added bounded implementation plan:
+  - [2026-06-14-bounded-synthetic-context-framing-remediation-plan.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/plans/2026-06-14-bounded-synthetic-context-framing-remediation-plan.md)
+- fixed implementation scope to:
+  - split packaging only inside `context_salvageable`
+  - preserve `hook_mode`
+  - preserve `synthetic_subtype`
+  - preserve approval/export status
+  - preserve replayability and selection scope
+- defined the exact bounded validation target:
+  - three post-only `context_salvageable` cases reroute to
+    `low_claim_post_payoff`
+  - `marvel_rivals-transfer-absolute-cinema` remains unchanged
+
+verification:
+- grounded the plan in:
+  - [2026-06-14-bounded-synthetic-context-framing-remediation-design.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-synthetic-context-framing-remediation-design.md)
+  - [2026-06-14-context-framing-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-context-framing-remediation-analysis-report-v0.md)
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+
+notes:
+- this is a planning-only slice
+- no runtime behavior changed
+
+## 2026-06-14T04:19Z
+
+target:
+- analyze the remaining setup-first synthetic framing pattern after bounded
+  archetype routing
+
+status:
+- completed
+
+result:
+- added bounded context-framing analysis artifact:
+  - [2026-06-14-context-framing-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-context-framing-remediation-analysis-report-v0.md)
+- established that the repeated remaining packaging shape is:
+  - `setup_then_payoff_with_context_card = 3 / 4`
+- separated the remaining causes into:
+  - `setup insufficiency`
+  - `payoff ordering weakness`
+  - `low-claim framing needs`
+- established that the strongest repeated row pattern is:
+  - no retained pre cue
+  - single retained post cue
+  - acceptable payoff readability but only moderate clarity/title-thumbnail
+    strength
+- identified bounded synthetic context-framing refinement as the narrowest
+  justified next surface
+
+verification:
+- grounded the analysis in:
+  - [2026-06-14-bounded-synthetic-packaging-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-synthetic-packaging-validation-report-v0.md)
+  - [2026-06-14-bounded-archetype-routing-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-archetype-routing-validation-report-v0.md)
+  - [20260613T015114Z.bounded_archetype_routing_comparison_ledger.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T015114Z/20260613T015114Z.bounded_archetype_routing_comparison_ledger.json)
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+
+notes:
+- this is an analysis-only slice
+- no runtime behavior changed
+
 ## 2026-06-14T05:18Z
 
 target:
@@ -4771,6 +4875,35 @@ notes:
 - the hook-comparison recommendation stayed `inconclusive` because the slice was
   intentionally additive inside the existing assignment surface
 - outputs remain local-only and are not publish-cleared
+
+## 2026-06-14T05:40Z
+
+target:
+- choose the next bounded intervention surface after successful archetype
+  routing validation
+
+status:
+- completed
+
+result:
+- added next-step decision artifact:
+  - [2026-06-14-post-archetype-routing-next-step-decision-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-post-archetype-routing-next-step-decision-report-v0.md)
+- explicitly ruled out reopening:
+  - replayability
+  - export timing
+  - archetype routing
+  - top-level hook policy
+- selected the next justified bounded surface:
+  - context framing inside `synthetic`
+
+verification:
+- grounded the decision in:
+  - [2026-06-14-bounded-archetype-routing-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-archetype-routing-validation-report-v0.md)
+  - [20260613T015114Z.bounded_archetype_routing_comparison_ledger.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T015114Z/20260613T015114Z.bounded_archetype_routing_comparison_ledger.json)
+
+notes:
+- this is a decision artifact only
+- no runtime behavior changed
 
 ## 2026-06-14T04:49Z
 
