@@ -4698,6 +4698,34 @@ notes:
 - this is an analysis-only slice
 - no runtime behavior changed
 
+## 2026-06-14T05:18Z
+
+target:
+- formalize the bounded archetype-routing slice into an approved design and
+  implementation plan
+
+status:
+- completed
+
+result:
+- added bounded design artifact:
+  - [2026-06-14-bounded-archetype-routing-remediation-design.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-archetype-routing-remediation-design.md)
+- added bounded implementation plan:
+  - [2026-06-14-bounded-archetype-routing-remediation-plan.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/plans/2026-06-14-bounded-archetype-routing-remediation-plan.md)
+- fixed the implementation target to:
+  - main assignment extension only
+  - two validated missing branches only
+  - additive explanation fields only
+
+verification:
+- grounded the spec and plan in:
+  - [2026-06-14-archetype-specificity-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-archetype-specificity-remediation-analysis-report-v0.md)
+  - [2026-06-14-post-synthetic-packaging-next-step-decision-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-post-synthetic-packaging-next-step-decision-report-v0.md)
+
+notes:
+- no runtime behavior changed
+- implementation is now ready to start on the bounded archetype-routing slice
+
 ## 2026-06-14T04:49Z
 
 target:
@@ -4751,6 +4779,67 @@ notes:
 - the hook-comparison recommendation stayed `inconclusive` because the slice was
   intentionally additive inside `synthetic`
 - outputs remain local-only and are not publish-cleared
+
+## 2026-06-14T05:01Z
+
+target:
+- choose the next bounded intervention surface after successful synthetic
+  packaging validation
+
+status:
+- completed
+
+result:
+- added next-step decision artifact:
+  - [2026-06-14-post-synthetic-packaging-next-step-decision-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-post-synthetic-packaging-next-step-decision-report-v0.md)
+- explicitly ruled out reopening:
+  - replayability
+  - export timing
+  - top-level hook policy
+- selected the next justified bounded surface:
+  - archetype specificity remediation
+
+verification:
+- grounded the decision in:
+  - [2026-06-14-bounded-synthetic-packaging-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-synthetic-packaging-validation-report-v0.md)
+  - [20260613T011541Z.bounded_synthetic_packaging_comparison_ledger.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T011541Z/20260613T011541Z.bounded_synthetic_packaging_comparison_ledger.json)
+  - [2026-06-14-synthetic-packaging-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-synthetic-packaging-remediation-analysis-report-v0.md)
+
+notes:
+- this is a decision artifact only
+- no runtime behavior changed
+
+## 2026-06-14T05:09Z
+
+target:
+- analyze the bounded remaining `hook_archetype = other` cases and choose the
+  smallest justified archetype-specificity intervention surface
+
+status:
+- completed
+
+result:
+- added bounded archetype-specificity analysis artifact:
+  - [2026-06-14-archetype-specificity-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-archetype-specificity-remediation-analysis-report-v0.md)
+- separated the remaining bounded failure into:
+  - missing event-family specificity
+  - weak retained-context cues
+  - archetype-mapping gaps
+- identified the dominant immediate cause:
+  - archetype-mapping gaps in [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+- recommended the smallest justified next implementation surface:
+  - additive context-aware archetype mapping
+
+verification:
+- grounded the analysis in:
+  - [2026-06-14-bounded-synthetic-packaging-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-synthetic-packaging-validation-report-v0.md)
+  - [20260613T011541Z.bounded_synthetic_packaging_comparison_ledger.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T011541Z/20260613T011541Z.bounded_synthetic_packaging_comparison_ledger.json)
+  - the live archetype assignment logic in:
+    - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+
+notes:
+- this is an analysis-only slice
+- no runtime behavior changed
 
 ## 2026-06-14T04:08Z
 
