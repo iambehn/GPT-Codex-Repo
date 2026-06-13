@@ -4740,3 +4740,39 @@ verification:
 notes:
 - this is a design-only slice
 - no runtime behavior changed
+
+## 2026-06-14T03:13Z
+
+target:
+- convert the approved bounded context-retention remediation design into an
+  implementation plan
+
+status:
+- completed
+
+result:
+- added bounded implementation plan artifact:
+  - [2026-06-14-bounded-context-retention-remediation-plan.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/plans/2026-06-14-bounded-context-retention-remediation-plan.md)
+- scoped the implementation to:
+  - bounded export-context derivation
+  - anchor/context dual-window persistence
+  - additive export metadata fields
+  - focused regression coverage
+  - bounded before/after validation artifacts
+- preserved explicit non-goals:
+  - no replayability contract changes
+  - no review-semantic changes
+  - no selection approval changes
+  - no hook-threshold tuning
+  - no multi-game widening beyond the current bounded set
+
+verification:
+- matched the plan structure to existing repo plan artifacts under:
+  - [docs/superpowers/plans](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/plans)
+- kept the plan aligned to the approved design artifact:
+  - [2026-06-14-bounded-context-retention-remediation-design.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-context-retention-remediation-design.md)
+
+notes:
+- the session did not provide the `writing-plans` skill, so the plan was
+  written directly in the repo’s existing plan format
+- no runtime behavior changed
