@@ -4698,6 +4698,45 @@ notes:
 - this is an analysis-only slice
 - no runtime behavior changed
 
+## 2026-06-14T04:08Z
+
+target:
+- produce a bounded synthetic-packaging remediation design for the approved
+  `call_of_duty` and `marvel_rivals` export set
+
+status:
+- completed
+
+result:
+- added bounded design artifact:
+  - [2026-06-14-bounded-synthetic-packaging-remediation-design.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-synthetic-packaging-remediation-design.md)
+- kept the top-level hook policy unchanged:
+  - `reject`
+  - `synthetic`
+  - `natural`
+- defined four bounded synthetic subtypes:
+  - `near_natural_contextual`
+  - `archetype_salvageable`
+  - `context_salvageable`
+  - `weak_synthetic`
+- defined ordered deterministic subtype routing
+- preserved explicit invariants:
+  - subtype assignment must not change `hook_mode`
+  - subtype routing may not change approval status, natural status, or publish
+    readiness
+- added `subtype_distribution` as an observational validation output
+
+verification:
+- grounded the design in:
+  - [2026-06-14-synthetic-packaging-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-synthetic-packaging-remediation-analysis-report-v0.md)
+  - [2026-06-14-bounded-context-retention-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-context-retention-validation-report-v0.md)
+- checked the active hook packaging logic in:
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+
+notes:
+- this is a design-only slice
+- no runtime behavior changed
+
 ## 2026-06-14T03:05Z
 
 target:
@@ -4823,3 +4862,37 @@ notes:
   surfaces
 - replayability scope did not widen
 - outputs remain local-only and are not publish-cleared
+
+## 2026-06-14T03:56Z
+
+target:
+- identify the next bounded editorial bottleneck after successful
+  context-retention remediation
+
+status:
+- completed
+
+result:
+- added bounded packaging analysis artifact:
+  - [2026-06-14-synthetic-packaging-remediation-analysis-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-synthetic-packaging-remediation-analysis-report-v0.md)
+- established that the current approved export set is no longer blocked by
+  authenticity risk
+- established that all four approved exports remain `synthetic` because the
+  natural-packaging gate is now primarily blocked by:
+  - `clarity_score`
+  - archetype under-specification
+  - coarse synthetic fallback packaging
+- identified packaging logic as the narrowest justified next intervention
+  surface
+
+verification:
+- grounded the analysis in:
+  - [2026-06-14-bounded-context-retention-validation-report-v0.md](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/docs/superpowers/specs/2026-06-14-bounded-context-retention-validation-report-v0.md)
+  - [20260613T003613Z.bounded_context_retention_comparison_ledger.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T003613Z/20260613T003613Z.bounded_context_retention_comparison_ledger.json)
+  - [20260613T003613Z.bounded_context_retention_hook_comparison.json](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/outputs/editorial_calibration/20260613T003613Z/20260613T003613Z.bounded_context_retention_hook_comparison.json)
+- checked the active hook gating logic in:
+  - [hook_candidate_export.py](/Users/tj/Documents/Codex/2026-04-21-https-github-com-iambehn-claude-repo/pipeline/hook_candidate_export.py)
+
+notes:
+- this is an analysis-only slice
+- no runtime behavior changed
